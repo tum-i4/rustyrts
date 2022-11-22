@@ -1,0 +1,21 @@
+[package]
+name = "rustyrts"
+version = "0.1.0"
+edition = "2021"
+
+[package.metadata.rust-analyzer]
+rustc_private=true
+
+[[bin]]
+name = "cargo-rustyrts"
+
+[[bin]]
+name = "rustyrts"
+
+[dependencies]
+cargo_metadata = "0.15.1"
+log = "0.4"
+log-derive = "0.4.1"
+libc = "0.2.66"
+serde_json = "1.0.61"
+lock_api = "0.4.9"
