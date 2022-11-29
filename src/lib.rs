@@ -15,6 +15,7 @@ extern crate rustc_infer;
 extern crate rustc_interface;
 extern crate rustc_middle;
 extern crate rustc_mir_build;
+extern crate rustc_mir_transform;
 extern crate rustc_query_impl;
 
 extern crate rustc_session;
@@ -30,5 +31,10 @@ pub mod analysis {
     pub mod visitor;
 }
 
+pub mod graph {
+    pub mod graph;
+}
+
 // Useful utilities
+pub mod paths;
 pub mod utils;

@@ -52,7 +52,8 @@ fn main() {
             }
         }
 
-        let mut callbacks = RustyRTSCallbacks::new();
+        let source_path = env::var("PROJECT_DIR").unwrap();
+        let mut callbacks = RustyRTSCallbacks::new(source_path);
 
         let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
         run_compiler.run()

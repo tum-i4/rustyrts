@@ -1,7 +1,9 @@
+use rustyrts::paths::{get_base_path, get_test_path};
 use rustyrts::utils;
 use serde_json;
 use std::ffi::OsString;
-use std::path::Path;
+use std::fs::{read_dir, File};
+use std::io::{BufRead, BufReader};
 use std::process::Command;
 
 //######################################################################################################################
@@ -35,80 +37,6 @@ fn has_arg_flag(name: &str) -> bool {
     args.any(|val| val == name)
 }
 
-// Gets the value of a `name`.
-// For example, get_arg_flag_value("--manifest-path")
-// Supports two styles: `--name value` or `--name=value`
-fn get_arg_flag_value(name: &str) -> Option<String> {
-    // Stop searching at `--`.
-    let mut args = std::env::args().take_while(|val| val != "--");
-    loop {
-        let arg = match args.next() {
-            Some(arg) => arg,
-            None => return None,
-        };
-        if !arg.starts_with(name) {
-            continue;
-        }
-        // Strip leading `name`.
-        let suffix = &arg[name.len()..];
-        if suffix.is_empty() {
-            // This argument is exactly `name`; the next one is the value.
-            return args.next();
-        } else if suffix.starts_with('=') {
-            // This argument is `name=value`; get the value.
-            // Strip leading `=`.
-            return Some(suffix[1..].to_owned());
-        }
-    }
-}
-
-// Get the top level crate that we need to analyze
-fn current_crate() -> cargo_metadata::Package {
-    // We need to get the manifest, and then the metadata, to enumerate targets.
-
-    // Path to the `Cargo.toml` file
-    let manifest_path =
-        get_arg_flag_value("--manifest-path").map(|m| Path::new(&m).canonicalize().unwrap());
-
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    if let Some(ref manifest_path) = manifest_path {
-        cmd.manifest_path(manifest_path);
-    }
-    let mut metadata = if let Ok(metadata) = cmd.exec() {
-        metadata
-    } else {
-        show_error("Could not obtain Cargo metadata; likely an ill-formed manifest".to_string());
-    };
-
-    let current_dir = std::env::current_dir();
-
-    let package_index = metadata
-        .packages
-        .iter()
-        .position(|package| {
-            let package_manifest_path = Path::new(&package.manifest_path);
-            if let Some(ref manifest_path) = manifest_path {
-                package_manifest_path == manifest_path
-            } else {
-                let current_dir = current_dir
-                    .as_ref()
-                    .expect("could not read current directory");
-                let package_manifest_directory = package_manifest_path
-                    .parent()
-                    .expect("could not find parent directory of package manifest");
-                package_manifest_directory == current_dir
-            }
-        })
-        .unwrap_or_else(|| {
-            show_error(
-                "This seems to be a workspace, which is not supported by cargo-miri".to_string(),
-            )
-        });
-    let package = metadata.packages.remove(package_index);
-
-    package
-}
-
 fn rustyrts() -> Command {
     let mut path = std::env::current_exe().expect("current executable path invalid");
     path.set_file_name("rustyrts");
@@ -134,11 +62,12 @@ fn main() {
         // This arm is for when `cargo rustyrts` is called. We call `cargo rustc` for each applicable target,
         // but with the `RUSTC` env var set to the `cargo-rustyrts` binary so that we come back in the other branch,
         // and dispatch the invocations to `rustc` and `rustyrts`, respectively.
-        in_cargo_rustyrts();
+        run_cargo_rustc();
+        select_and_execute_tests();
     } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // This arm is executed when `cargo-rustyrts` runs `cargo rustc` with the `RUSTC_WRAPPER` env var set to itself:
         // dependencies get dispatched to `rustc`, the final library/binary to `rustyrts`.
-        inside_cargo_rustc();
+        run_rustyrts();
     } else {
         show_error(
             "`cargo-rustyrts` must be called with either `rustyrts` or `rustc` as first argument."
@@ -153,79 +82,68 @@ fn main() {
 // `RUSTC_WRAPPER` is set to `cargo-rustyrts` itself so the execution will come back to the second branch as described above
 // `rustyrts_args` is set to the user-provided arguments for `rustyrts`
 // `RUSTYRTS_VERBOSE` is set if `-v` is provided
-fn in_cargo_rustyrts() {
+fn run_cargo_rustc() {
     let verbose = has_arg_flag("-v");
 
-    let current_crate = current_crate();
-
     // Now run the command.
-    for target in current_crate.targets.into_iter() {
-        let mut args = std::env::args().skip(2);
-        let kind = target
-            .kind
-            .get(0)
-            .expect("badly formatted cargo metadata: target::kind is an empty array");
 
-        // Now we run `cargo rustc $FLAGS $ARGS`, giving the user the
-        // chance to add additional arguments. `FLAGS` is set to identify
-        // this target.  The user gets to control what gets actually passed to rustyrts.
-        let mut cmd = cargo();
-        cmd.arg("rustc");
-        //cmd.arg("--tests");
-        match kind.as_str() {
-            "bin" => {
-                cmd.arg("--bin").arg(target.name);
-            }
-            "lib" => {
-                cmd.arg("--lib");
-            }
-            _ => continue,
+    let mut args = std::env::args().skip(2);
+
+    // Now we run `cargo rustc $FLAGS $ARGS`, giving the user the
+    // chance to add additional arguments. `FLAGS` is set to identify
+    // this target.  The user gets to control what gets actually passed to rustyrts.
+    let mut cmd = cargo();
+    cmd.arg("rustc");
+    cmd.arg("--tests");
+
+    // Add cargo args until first `--`.
+    while let Some(arg) = args.next() {
+        if arg == "--" {
+            break;
         }
+        cmd.arg(arg);
+    }
 
-        // Add cargo args until first `--`.
-        while let Some(arg) = args.next() {
-            if arg == "--" {
-                break;
-            }
-            cmd.arg(arg);
-        }
+    cmd.env(
+        "PROJECT_DIR",
+        std::env::current_dir().unwrap().to_str().unwrap(),
+    );
 
-        // Serialize the remaining args into a special environemt variable.
-        // This will be read by `inside_cargo_rustc` when we go to invoke
-        // our actual target crate.
-        // Since we're using "cargo check", we have no other way of passing
-        // these arguments.
-        let args_vec: Vec<String> = args.collect();
-        cmd.env(
-            "rustyrts_args",
-            serde_json::to_string(&args_vec).expect("failed to serialize args"),
-        );
+    // Serialize the remaining args into a special environemt variable.
+    // This will be read by `inside_cargo_rustc` when we go to invoke
+    // our actual target crate.
+    // Since we're using "cargo check", we have no other way of passing
+    // these arguments.
+    let args_vec: Vec<String> = args.collect();
+    cmd.env(
+        "rustyrts_args",
+        serde_json::to_string(&args_vec).expect("failed to serialize args"),
+    );
 
-        // Replace the rustc executable through RUSTC_WRAPPER environment variable
-        let path = std::env::current_exe().expect("current executable path invalid");
-        cmd.env("RUSTC_WRAPPER", path);
+    // Replace the rustc executable through RUSTC_WRAPPER environment variable
+    let path = std::env::current_exe().expect("current executable path invalid");
+    cmd.env("RUSTC_WRAPPER", path);
 
-        if verbose {
-            cmd.env("RUSTYRTS_VERBOSE", ""); // this makes `inside_cargo_rustc` verbose.
-            eprintln!("+ {:?}", cmd);
-        }
+    if verbose {
+        cmd.env("RUSTYRTS_VERBOSE", ""); // this makes `inside_cargo_rustc` verbose.
+        eprintln!("+ {:?}", cmd);
+    }
 
-        // Execute cmd
-        let exit_status = cmd
-            .spawn()
-            .expect("could not run cargo")
-            .wait()
-            .expect("failed to wait for cargo?");
+    // Execute cmd
+    let exit_status = cmd
+        .spawn()
+        .expect("could not run cargo")
+        .wait()
+        .expect("failed to wait for cargo?");
 
-        if !exit_status.success() {
-            std::process::exit(exit_status.code().unwrap_or(-1))
-        }
+    if !exit_status.success() {
+        std::process::exit(exit_status.code().unwrap_or(-1))
     }
 }
 
 // This will construct command line like:
 // `rustyrts --crate-name some_crate_name --edition=2018 src/lib.rs --crate-type lib --domain interval`
-fn inside_cargo_rustc() {
+fn run_rustyrts() {
     let mut cmd = rustyrts();
     cmd.args(std::env::args().skip(2)); // skip `cargo-rustyrts rustc`
 
@@ -252,5 +170,46 @@ fn inside_cargo_rustc() {
             }
         }
         Err(ref e) => panic!("error during rustyrts run: {:?}", e),
+    }
+}
+
+fn select_and_execute_tests() {
+    let mut cmd = cargo();
+    cmd.arg("test");
+    cmd.arg("--");
+    cmd.arg("--exact");
+
+    let path_buf = get_base_path(std::env::current_dir().unwrap().to_str().unwrap());
+
+    // Read possibly affected tests
+    let files = read_dir(path_buf.as_path()).unwrap();
+    for path_res in files {
+        if let Ok(path) = path_res {
+            if path.file_name().to_str().unwrap().ends_with("test") {
+                let file = match File::open(path.path()) {
+                    Ok(file) => file,
+                    Err(reason) => panic!("Failed to create file: {}", reason),
+                };
+
+                let lines = BufReader::new(file).lines();
+                for line_res in lines {
+                    if let Ok(line) = line_res {
+                        let (_, test) = line.split_once("::").unwrap();
+                        cmd.arg(test);
+                    }
+                }
+            }
+        }
+    }
+
+    // Execute cmd
+    let exit_status = cmd
+        .spawn()
+        .expect("could not run cargo test")
+        .wait()
+        .expect("failed to wait for cargo test?");
+
+    if !exit_status.success() {
+        std::process::exit(exit_status.code().unwrap_or(-1))
     }
 }
