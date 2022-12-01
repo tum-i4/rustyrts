@@ -1,8 +1,9 @@
-use std::fs::{create_dir_all, File};
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::mem::transmute;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::SeqCst;
+use std::sync::RwLock;
 
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -14,25 +15,27 @@ use rustc_middle::ty::query::query_keys::mir_built;
 
 use crate::analysis::visitor::GraphVisitor;
 use crate::graph::graph::DependencyGraph;
-use crate::paths::{get_base_path, get_graph_path, get_test_path};
+use crate::paths::{get_base_path, get_changes_path, get_graph_path, get_test_path};
+
+use super::util::def_path_debug_str_custom;
 
 pub struct RustyRTSCallbacks {
-    source_path: String,
     graph: DependencyGraph<String>,
 }
 
 impl RustyRTSCallbacks {
     pub fn new(source_path: String) -> Self {
+        let mut handle = BASE_PATH.write().unwrap();
+        *handle = source_path;
+
         Self {
-            source_path,
             graph: DependencyGraph::new(),
         }
     }
 
     fn run_analysis(&mut self, _compiler: &interface::Compiler, tcx: TyCtxt) {
-        let path_buf = get_base_path(&self.source_path);
-
-        create_dir_all(path_buf.as_path()).expect("Failed to create parent directories");
+        let handle = BASE_PATH.read().unwrap();
+        let path_buf = get_base_path(&*handle);
 
         let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
         let crate_id = tcx.sess.local_stable_crate_id().to_u64();
@@ -65,7 +68,7 @@ impl RustyRTSCallbacks {
         for def_id in tcx.mir_keys(()) {
             for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
                 if attr.name_or_empty().to_ident_string() == "rustc_test_marker" {
-                    tests.push(tcx.def_path_debug_str(def_id.to_def_id()));
+                    tests.push(def_path_debug_str_custom(tcx, def_id.to_def_id()));
                 }
             }
         }
@@ -87,6 +90,7 @@ impl RustyRTSCallbacks {
 }
 
 static OLD_FUNCTION_PTR: AtomicU64 = AtomicU64::new(0);
+static BASE_PATH: RwLock<String> = RwLock::new(String::new());
 
 fn custom_mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -103,13 +107,32 @@ fn custom_mir_built<'tcx>(
     let result = old_function(tcx, def);
 
     let def_id = result.borrow().source.instance.def_id();
-    let def_kind = tcx.def_kind(def_id);
+    //let def_kind = tcx.def_kind(def_id);
 
-    println!(
-        "Built MIR of {:?} {}",
-        def_kind,
-        tcx.def_path_debug_str(def_id)
-    );
+    //##################################################################################################################
+    // Append names of changed nodes to file
+
+    let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+    let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+
+    let handle = BASE_PATH.read().unwrap();
+    let path_buf = get_base_path(&*handle);
+    let changes_path_buf = get_changes_path(path_buf.clone(), &crate_name, crate_id);
+
+    let mut file = match OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(true)
+        .open(changes_path_buf.as_path())
+    {
+        Ok(file) => file,
+        Err(reason) => panic!("Failed to open file: {}", reason),
+    };
+
+    match file.write_all(format!("{}\n", def_path_debug_str_custom(tcx, def_id)).as_bytes()) {
+        Ok(_) => {}
+        Err(reason) => panic!("Failed to write to file: {}", reason),
+    };
 
     return result;
 }

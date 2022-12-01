@@ -1,9 +1,11 @@
-use rustyrts::paths::{get_base_path, get_test_path};
+use itertools::Itertools;
+use rustyrts::graph::graph::DependencyGraph;
+use rustyrts::paths::get_base_path;
 use rustyrts::utils;
 use serde_json;
+use std::collections::HashSet;
 use std::ffi::OsString;
-use std::fs::{read_dir, File};
-use std::io::{BufRead, BufReader};
+use std::fs::{create_dir_all, read_dir, read_to_string, remove_file, DirEntry};
 use std::process::Command;
 
 //######################################################################################################################
@@ -85,6 +87,19 @@ fn main() {
 fn run_cargo_rustc() {
     let verbose = has_arg_flag("-v");
 
+    let project_dir = std::env::current_dir().unwrap();
+    let path_buf = get_base_path(project_dir.to_str().unwrap());
+    create_dir_all(path_buf.as_path()).expect("Failed to create parent directories");
+
+    let files = read_dir(path_buf.as_path()).unwrap();
+    for path_res in files {
+        if let Ok(path) = path_res {
+            if path.file_name().to_str().unwrap().ends_with("changes") {
+                remove_file(path.path()).unwrap();
+            }
+        }
+    }
+
     // Now run the command.
 
     let mut args = std::env::args().skip(2);
@@ -104,10 +119,7 @@ fn run_cargo_rustc() {
         cmd.arg(arg);
     }
 
-    cmd.env(
-        "PROJECT_DIR",
-        std::env::current_dir().unwrap().to_str().unwrap(),
-    );
+    cmd.env("PROJECT_DIR", project_dir.to_str().unwrap());
 
     // Serialize the remaining args into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
@@ -174,32 +186,85 @@ fn run_rustyrts() {
 }
 
 fn select_and_execute_tests() {
+    let verbose = has_arg_flag("-v");
+
     let mut cmd = cargo();
     cmd.arg("test");
-    cmd.arg("--");
-    cmd.arg("--exact");
+    cmd.arg("--no-fail-fast");
 
     let path_buf = get_base_path(std::env::current_dir().unwrap().to_str().unwrap());
 
-    // Read possibly affected tests
-    let files = read_dir(path_buf.as_path()).unwrap();
-    for path_res in files {
-        if let Ok(path) = path_res {
-            if path.file_name().to_str().unwrap().ends_with("test") {
-                let file = match File::open(path.path()) {
-                    Ok(file) => file,
-                    Err(reason) => panic!("Failed to create file: {}", reason),
-                };
+    let files: Vec<DirEntry> = read_dir(path_buf.as_path())
+        .unwrap()
+        .map(|maybe_path| maybe_path.unwrap())
+        .collect();
 
-                let lines = BufReader::new(file).lines();
-                for line_res in lines {
-                    if let Ok(line) = line_res {
-                        let (_, test) = line.split_once("::").unwrap();
-                        cmd.arg(test);
-                    }
-                }
-            }
+    // Read possibly affected tests
+    let tests: HashSet<String> = files
+        .iter()
+        .filter(|path| path.file_name().to_str().unwrap().ends_with("test"))
+        .flat_map(|path| read_lines(path))
+        .filter(|line| line != "")
+        .collect();
+    if verbose {
+        eprintln!("Tests that have been found:\n{}\n", tests.iter().join("\n"));
+    }
+
+    // Read changed nodes
+    let changed_nodes: HashSet<String> = files
+        .iter()
+        .filter(|path| path.file_name().to_str().unwrap().ends_with("changes"))
+        .flat_map(|path| read_lines(path))
+        .filter(|line| line != "")
+        .collect();
+    if verbose {
+        eprintln!(
+            "Nodes that have changed:\n{}\n",
+            changed_nodes.iter().join("\n")
+        );
+    }
+
+    // Read graphs
+    let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
+    let edges = files
+        .iter()
+        .filter(|path| path.file_name().to_str().unwrap().ends_with("test"))
+        .flat_map(|path| read_lines(path))
+        .filter(|line| line.contains(" -> "));
+    dependency_graph.import_edges(edges);
+
+    let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
+    if verbose {
+        eprintln!(
+            "Nodes that reach any changed node in the graph:\n{}\n",
+            reached_nodes.iter().join("\n")
+        );
+    }
+
+    let affected_tests: HashSet<&String> = tests.intersection(&reached_nodes).collect();
+    if verbose {
+        eprintln!("Affected tests:\n{}\n", affected_tests.iter().join("\n"));
+    }
+
+    let mut affected_tests_iter = affected_tests
+        .iter()
+        .map(|line| {
+            let (_, test) = line.split_once("::").unwrap();
+            test.to_string()
+        })
+        .peekable();
+    if let None = affected_tests_iter.peek() {
+        cmd.arg("--no-run");
+    } else {
+        cmd.arg("--");
+        cmd.arg("--exact");
+        for test in affected_tests_iter {
+            cmd.arg(test);
         }
+    }
+
+    if verbose {
+        eprintln!("+ {:?}", cmd);
     }
 
     // Execute cmd
@@ -212,4 +277,10 @@ fn select_and_execute_tests() {
     if !exit_status.success() {
         std::process::exit(exit_status.code().unwrap_or(-1))
     }
+}
+
+fn read_lines(path: &DirEntry) -> Vec<String> {
+    let content = read_to_string(path.path()).unwrap();
+    let lines: Vec<String> = content.split("\n").map(|s| s.to_string()).collect();
+    lines
 }

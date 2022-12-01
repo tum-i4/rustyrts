@@ -22,12 +22,15 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
+extern crate itertools;
 extern crate log;
+extern crate queues;
 
 // Modules for static analyses
 pub mod analysis {
     // Definitions of callbacks for rustc
     pub mod callback;
+    pub mod util;
     pub mod visitor;
 }
 

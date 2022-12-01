@@ -16,3 +16,8 @@ pub fn get_test_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBu
     path_buf.push(format!("{}[{:04x}].test", crate_name, id >> 8 * 6,));
     path_buf
 }
+
+pub fn get_changes_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
+    path_buf.push(format!("{}[{:04x}].changes", crate_name, id >> 8 * 6,));
+    path_buf
+}

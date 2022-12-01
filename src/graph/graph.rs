@@ -1,3 +1,4 @@
+use queues::{IsQueue, Queue};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
@@ -29,12 +30,12 @@ impl FromStr for EdgeType {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct DependencyGraph<T: Eq + Hash> {
+pub struct DependencyGraph<T: Eq + Hash + Clone> {
     nodes: HashSet<T>,
     backwards_edges: HashMap<T, HashMap<T, HashSet<EdgeType>>>,
 }
 
-impl<T: Eq + Hash + Clone> DependencyGraph<T> {
+impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
     pub fn new() -> DependencyGraph<T> {
         DependencyGraph {
             nodes: HashSet::new(),
@@ -59,6 +60,65 @@ impl<T: Eq + Hash + Clone> DependencyGraph<T> {
         }
         let types = ingoing.get_mut(&start).unwrap();
         types.insert(edge_type);
+    }
+
+    pub fn reachable_nodes(&self, starting_points: HashSet<T>) -> HashSet<T> {
+        let mut queue: Queue<T> = Queue::new();
+        let mut reached: HashSet<T> = HashSet::new();
+
+        for ele in starting_points {
+            queue.add(ele).unwrap();
+        }
+
+        while let Ok(node) = queue.remove() {
+            reached.insert(node.clone());
+
+            if let Some(edges) = self.backwards_edges.get(&node) {
+                for (start, _types) in edges {
+                    if !reached.contains(start) {
+                        queue.add(start.clone()).unwrap();
+                    }
+                }
+            }
+        }
+
+        reached
+    }
+}
+
+impl DependencyGraph<String> {
+    pub fn import_edges<T>(&mut self, lines: T)
+    where
+        T: IntoIterator<Item = String>,
+    {
+        // Parse edges
+        for line in lines {
+            let (edge_str, edge_types_str) = line.split_once("//").unwrap();
+
+            if let Some(edge_types) = edge_types_str
+                .strip_prefix(" {")
+                .and_then(|s| s.strip_suffix("}"))
+                .and_then(|s| Some(s.split(", ")))
+            {
+                let (start_str, end_str) = edge_str.split_once("-> ").unwrap();
+                let start = start_str
+                    .strip_prefix("\"")
+                    .and_then(|s| s.strip_suffix("\" "))
+                    .unwrap();
+                let end = end_str
+                    .strip_prefix("\"")
+                    .and_then(|s| s.strip_suffix("\" "))
+                    .unwrap();
+
+                for edge_type in edge_types {
+                    self.add_edge(
+                        start.to_string(),
+                        end.to_string(),
+                        edge_type.parse().unwrap(),
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -96,41 +156,17 @@ impl FromStr for DependencyGraph<String> {
             .strip_prefix("digraph {") // Filter beginning and ending
             .and_then(|s| s.strip_suffix("}"))
         {
-            let lines = content
+            let lines: Vec<String> = content
                 .split("\n")
                 .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
-                .filter(|l| l.contains("->")); // Ignore Nodes
+                .filter(|l| l.contains("->")) // Ignore Nodes
+                .map(|s| s.to_string())
+                .collect();
 
             let mut result = Self::new();
 
             // Parse edges
-            for line in lines {
-                let (edge_str, edge_types_str) = line.split_once("//").unwrap();
-
-                if let Some(edge_types) = edge_types_str
-                    .strip_prefix(" {")
-                    .and_then(|s| s.strip_suffix("}"))
-                    .and_then(|s| Some(s.split(", ")))
-                {
-                    let (start_str, end_str) = edge_str.split_once("-> ").unwrap();
-                    let start = start_str
-                        .strip_prefix("\"")
-                        .and_then(|s| s.strip_suffix("\" "))
-                        .unwrap();
-                    let end = end_str
-                        .strip_prefix("\"")
-                        .and_then(|s| s.strip_suffix("\" "))
-                        .unwrap();
-
-                    for edge_type in edge_types {
-                        result.add_edge(
-                            start.to_string(),
-                            end.to_string(),
-                            edge_type.parse().unwrap(),
-                        );
-                    }
-                }
-            }
+            result.import_edges(lines);
 
             return Ok(result);
         }

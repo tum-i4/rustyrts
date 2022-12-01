@@ -10,6 +10,8 @@ use std::cell::RefCell;
 
 use crate::graph::graph::{DependencyGraph, EdgeType};
 
+use super::util::def_path_debug_str_custom;
+
 thread_local! {
     static PROCESSED_BODY: RefCell<Option<DefId>>  = RefCell::new(None);
 }
@@ -58,8 +60,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
                         if let DefKind::Fn = def_kind {
                             self.graph.add_edge(
-                                self.tcx.def_path_debug_str(caller),
-                                self.tcx.def_path_debug_str(def_id),
+                                def_path_debug_str_custom(self.tcx, caller),
+                                def_path_debug_str_custom(self.tcx, def_id),
                                 EdgeType::Call,
                             );
                         }
@@ -79,8 +81,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         let def_id = content.def.did;
 
                         self.graph.add_edge(
-                            self.tcx.def_path_debug_str(caller),
-                            self.tcx.def_path_debug_str(def_id),
+                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, def_id),
                             EdgeType::Unevaluated,
                         );
                     }
@@ -90,8 +92,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                 self.tcx.global_alloc(ptr.provenance)
                             {
                                 self.graph.add_edge(
-                                    self.tcx.def_path_debug_str(caller),
-                                    self.tcx.def_path_debug_str(def_id),
+                                    def_path_debug_str_custom(self.tcx, caller),
+                                    def_path_debug_str_custom(self.tcx, def_id),
                                     EdgeType::Scalar,
                                 );
                             }
@@ -112,22 +114,22 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 match kind {
                     TyKind::Closure(def_id, _) => {
                         self.graph.add_edge(
-                            self.tcx.def_path_debug_str(caller),
-                            self.tcx.def_path_debug_str(*def_id),
+                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, *def_id),
                             EdgeType::Closure,
                         );
                     }
                     TyKind::Generator(def_id, _, _) => {
                         self.graph.add_edge(
-                            self.tcx.def_path_debug_str(caller),
-                            self.tcx.def_path_debug_str(*def_id),
+                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, *def_id),
                             EdgeType::Generator,
                         );
                     }
                     TyKind::FnDef(def_id, _) => {
                         self.graph.add_edge(
-                            self.tcx.def_path_debug_str(caller),
-                            self.tcx.def_path_debug_str(*def_id),
+                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, *def_id),
                             EdgeType::FnDef,
                         );
                     }
