@@ -62,7 +62,10 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         types.insert(edge_type);
     }
 
-    pub fn reachable_nodes(&self, starting_points: HashSet<T>) -> HashSet<T> {
+    pub fn reachable_nodes<S>(&self, starting_points: S) -> HashSet<T>
+    where
+        S: IntoIterator<Item = T>,
+    {
         let mut queue: Queue<T> = Queue::new();
         let mut reached: HashSet<T> = HashSet::new();
 

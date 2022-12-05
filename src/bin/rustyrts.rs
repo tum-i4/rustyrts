@@ -52,6 +52,9 @@ fn main() {
             }
         }
 
+        rustc_args.push("-Z".to_string());
+        rustc_args.push("incremental-ignore-spans".to_string());
+
         let source_path = env::var("PROJECT_DIR").unwrap();
         let mut callbacks = RustyRTSCallbacks::new(source_path);
 

@@ -148,7 +148,7 @@ impl Callbacks for RustyRTSCallbacks {
         });
 
         // set incremental_ignore_spans to true
-        config.opts.unstable_opts.incremental_ignore_spans = true;
+        // config.opts.unstable_opts.incremental_ignore_spans = true;
     }
 
     /// Called after analysis. Return value instructs the compiler whether to

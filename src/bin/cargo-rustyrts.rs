@@ -13,7 +13,7 @@ use std::process::Command;
 // Source: https://github.com/lizhuohua/rust-mir-checker/blob/86c3c26e797d3e25a38044fa98b765c5d220e4ea/src/bin/cargo-mir-checker.rs
 //######################################################################################################################
 
-const CARGO_RUSTYRTS_HELP: &str = r#"Static analysis tool for exploring the MIR
+const CARGO_RUSTYRTS_HELP: &str = r#"Static regression test selection based on the MIR
 
 Usage:
     cargo rustyrts
@@ -67,8 +67,7 @@ fn main() {
         run_cargo_rustc();
         select_and_execute_tests();
     } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        // This arm is executed when `cargo-rustyrts` runs `cargo rustc` with the `RUSTC_WRAPPER` env var set to itself:
-        // dependencies get dispatched to `rustc`, the final library/binary to `rustyrts`.
+        // This arm is executed when `cargo-rustyrts` runs `cargo rustc` with the `RUSTC_WRAPPER` env var set to itself.
         run_rustyrts();
     } else {
         show_error(
@@ -109,7 +108,8 @@ fn run_cargo_rustc() {
     // this target.  The user gets to control what gets actually passed to rustyrts.
     let mut cmd = cargo();
     cmd.arg("rustc");
-    cmd.arg("--tests");
+    cmd.arg("--profile");
+    cmd.arg("test");
 
     // Add cargo args until first `--`.
     while let Some(arg) = args.next() {
@@ -119,13 +119,13 @@ fn run_cargo_rustc() {
         cmd.arg(arg);
     }
 
+    // Store directory of the project, such that rustyrts knows where to store information about tests, changes
+    // and the graph
     cmd.env("PROJECT_DIR", project_dir.to_str().unwrap());
 
     // Serialize the remaining args into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
-    // Since we're using "cargo check", we have no other way of passing
-    // these arguments.
     let args_vec: Vec<String> = args.collect();
     cmd.env(
         "rustyrts_args",
@@ -157,7 +157,7 @@ fn run_cargo_rustc() {
 // `rustyrts --crate-name some_crate_name --edition=2018 src/lib.rs --crate-type lib --domain interval`
 fn run_rustyrts() {
     let mut cmd = rustyrts();
-    cmd.args(std::env::args().skip(2)); // skip `cargo-rustyrts rustc`
+    cmd.args(std::env::args().skip(2)); // skip `cargo rustc`
 
     // Add sysroot
     let sysroot = utils::compile_time_sysroot().expect("Cannot find sysroot");
@@ -190,7 +190,7 @@ fn select_and_execute_tests() {
 
     let mut cmd = cargo();
     cmd.arg("test");
-    cmd.arg("--no-fail-fast");
+    cmd.arg("--no-fail-fast"); // Do not stop if a test fails, execute all included tests
 
     let path_buf = get_base_path(std::env::current_dir().unwrap().to_str().unwrap());
 
@@ -200,25 +200,15 @@ fn select_and_execute_tests() {
         .collect();
 
     // Read possibly affected tests
-    let tests: HashSet<String> = files
-        .iter()
-        .filter(|path| path.file_name().to_str().unwrap().ends_with("test"))
-        .flat_map(|path| read_lines(path))
-        .filter(|line| line != "")
-        .collect();
+    let tests = read_lines(&files, "test", |line| line != "");
     if verbose {
-        eprintln!("Tests that have been found:\n{}\n", tests.iter().join("\n"));
+        println!("Tests that have been found:\n{}\n", tests.iter().join("\n"));
     }
 
     // Read changed nodes
-    let changed_nodes: HashSet<String> = files
-        .iter()
-        .filter(|path| path.file_name().to_str().unwrap().ends_with("changes"))
-        .flat_map(|path| read_lines(path))
-        .filter(|line| line != "")
-        .collect();
+    let changed_nodes: HashSet<String> = read_lines(&files, "changes", |line| line != "");
     if verbose {
-        eprintln!(
+        println!(
             "Nodes that have changed:\n{}\n",
             changed_nodes.iter().join("\n")
         );
@@ -226,16 +216,12 @@ fn select_and_execute_tests() {
 
     // Read graphs
     let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
-    let edges = files
-        .iter()
-        .filter(|path| path.file_name().to_str().unwrap().ends_with("test"))
-        .flat_map(|path| read_lines(path))
-        .filter(|line| line.contains(" -> "));
+    let edges = read_lines(&files, "dot", |line| line.contains(" -> "));
     dependency_graph.import_edges(edges);
 
     let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
     if verbose {
-        eprintln!(
+        println!(
             "Nodes that reach any changed node in the graph:\n{}\n",
             reached_nodes.iter().join("\n")
         );
@@ -243,7 +229,7 @@ fn select_and_execute_tests() {
 
     let affected_tests: HashSet<&String> = tests.intersection(&reached_nodes).collect();
     if verbose {
-        eprintln!("Affected tests:\n{}\n", affected_tests.iter().join("\n"));
+        println!("Affected tests:\n{}\n", affected_tests.iter().join("\n"));
     }
 
     let mut affected_tests_iter = affected_tests
@@ -268,19 +254,29 @@ fn select_and_execute_tests() {
     }
 
     // Execute cmd
-    let exit_status = cmd
-        .spawn()
-        .expect("could not run cargo test")
-        .wait()
-        .expect("failed to wait for cargo test?");
-
-    if !exit_status.success() {
-        std::process::exit(exit_status.code().unwrap_or(-1))
+    match cmd.status() {
+        Ok(exit) => {
+            if !exit.success() {
+                std::process::exit(exit.code().unwrap_or(42));
+            }
+        }
+        Err(ref e) => panic!("error during rustyrts run: {:?}", e),
     }
 }
 
-fn read_lines(path: &DirEntry) -> Vec<String> {
-    let content = read_to_string(path.path()).unwrap();
-    let lines: Vec<String> = content.split("\n").map(|s| s.to_string()).collect();
-    lines
+fn read_lines<F>(files: &Vec<DirEntry>, file_ending: &str, filter: F) -> HashSet<String>
+where
+    F: Fn(&String) -> bool,
+{
+    let tests: HashSet<String> = files
+        .iter()
+        .filter(|path| path.file_name().to_str().unwrap().ends_with(file_ending))
+        .flat_map(|path| {
+            let content = read_to_string(path.path()).unwrap();
+            let lines: Vec<String> = content.split("\n").map(|s| s.to_string()).collect();
+            lines
+        })
+        .filter(filter)
+        .collect();
+    tests
 }
