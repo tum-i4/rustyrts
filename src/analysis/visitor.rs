@@ -163,7 +163,7 @@ mod test {
     use super::GraphVisitor;
 
     const TEST_DATA_PATH: &str = "test-data/src";
-    const CRATE_PREFIX: &str = "rust_out[c103]";
+    const CRATE_PREFIX: &str = "rust_out";
 
     fn load_test_code(file_name: &str) -> Result<String, Error> {
         let mut path_buf = PathBuf::from(TEST_DATA_PATH);
