@@ -62,6 +62,10 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         types.insert(edge_type);
     }
 
+    pub fn get_edges_to(&self, to_node: T) -> Option<&HashMap<T, HashSet<EdgeType>>> {
+        self.backwards_edges.get(&to_node)
+    }
+
     pub fn reachable_nodes<S>(&self, starting_points: S) -> HashSet<T>
     where
         S: IntoIterator<Item = T>,
@@ -130,13 +134,6 @@ impl ToString for DependencyGraph<String> {
         let mut result = String::new();
 
         result.push_str("digraph {\n");
-        result.push_str("\n//Nodes\n");
-
-        for node in &self.nodes {
-            result.push_str(format!("\"{}\"\n", *node).as_str())
-        }
-
-        result.push_str("\n//Edges\n");
 
         for (end, edge) in &self.backwards_edges {
             for (start, types) in edge {

@@ -170,10 +170,10 @@ fn run_rustyrts() {
         serde_json::from_str(&magic).expect("failed to deserialize rustyrts_args");
     cmd.args(rustyrts_args);
 
-    let verbose = std::env::var_os("RUSTYRTS_VERBOSE").is_some();
-    if verbose {
-        eprintln!("+ {:?}", cmd);
-    }
+    //let verbose = std::env::var_os("RUSTYRTS_VERBOSE").is_some();
+    //if verbose {
+    //    eprintln!("+ {:?}", cmd);
+    //}
 
     match cmd.status() {
         Ok(exit) => {
