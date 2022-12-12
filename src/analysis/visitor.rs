@@ -49,6 +49,9 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let def_id = body.source.instance.def_id();
 
+        self.graph
+            .add_node(def_path_debug_str_custom(self.tcx, def_id));
+
         PROCESSED_BODY.with(|processed| {
             processed.replace(Some(def_id));
             self.super_body(body);
@@ -60,14 +63,14 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         self.super_terminator(terminator, location);
 
         PROCESSED_BODY.with(|processed| {
-            if let Some(caller) = *processed.borrow() {
+            if let Some(outer) = *processed.borrow() {
                 if let TerminatorKind::Call { func, .. } = &terminator.kind {
                     if let Some((def_id, _)) = func.const_fn_def() {
                         let def_kind = self.tcx.def_kind(def_id);
 
                         if let DefKind::Fn = def_kind {
                             self.graph.add_edge(
-                                def_path_debug_str_custom(self.tcx, caller),
+                                def_path_debug_str_custom(self.tcx, outer),
                                 def_path_debug_str_custom(self.tcx, def_id),
                                 EdgeType::Call,
                             );
@@ -82,27 +85,37 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         let literal = constant.literal;
 
         PROCESSED_BODY.with(|processed| {
-            if let Some(caller) = *processed.borrow() {
+            if let Some(outer) = *processed.borrow() {
                 match literal {
                     ConstantKind::Unevaluated(content, _ty) => {
                         let def_id = content.def.did;
 
                         self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, outer),
                             def_path_debug_str_custom(self.tcx, def_id),
                             EdgeType::Unevaluated,
                         );
                     }
-                    ConstantKind::Val(cons, _ty) => {
+                    ConstantKind::Val(cons, ty) => {
                         if let ConstValue::Scalar(Scalar::Ptr(ptr, _)) = cons {
                             if let GlobalAlloc::Static(def_id) =
                                 self.tcx.global_alloc(ptr.provenance)
                             {
-                                self.graph.add_edge(
-                                    def_path_debug_str_custom(self.tcx, caller),
+                                let (accessor, accessed) = (
+                                    def_path_debug_str_custom(self.tcx, outer),
                                     def_path_debug_str_custom(self.tcx, def_id),
-                                    EdgeType::Scalar,
                                 );
+
+                                if ty.is_mutable_ptr() {
+                                    // If the ptr is mut, we also add an edge in the reverse direction
+                                    self.graph.add_edge(
+                                        accessed.clone(),
+                                        accessor.clone(),
+                                        EdgeType::Scalar,
+                                    );
+                                }
+                                // Since we do not know if a mut ptr is read, we unconditionally add an edge here
+                                self.graph.add_edge(accessor, accessed, EdgeType::Scalar);
                             }
                         }
                     }
@@ -117,25 +130,25 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         let kind = ty.kind();
 
         PROCESSED_BODY.with(|processed| {
-            if let Some(caller) = *processed.borrow() {
+            if let Some(outer) = *processed.borrow() {
                 match kind {
                     TyKind::Closure(def_id, _) => {
                         self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, outer),
                             def_path_debug_str_custom(self.tcx, *def_id),
                             EdgeType::Closure,
                         );
                     }
                     TyKind::Generator(def_id, _, _) => {
                         self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, outer),
                             def_path_debug_str_custom(self.tcx, *def_id),
                             EdgeType::Generator,
                         );
                     }
                     TyKind::FnDef(def_id, _) => {
                         self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, caller),
+                            def_path_debug_str_custom(self.tcx, outer),
                             def_path_debug_str_custom(self.tcx, *def_id),
                             EdgeType::FnDef,
                         );
@@ -149,6 +162,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
 #[cfg(test)]
 mod test {
+    use std::fmt::Debug;
+    use std::fmt::Display;
     use std::hash::Hash;
     use std::{fs, io::Error, path::PathBuf, string::String};
 
@@ -168,8 +183,6 @@ mod test {
     fn load_test_code(file_name: &str) -> Result<String, Error> {
         let mut path_buf = PathBuf::from(TEST_DATA_PATH);
         path_buf.push(file_name);
-
-        println!("Path: {}", path_buf.as_path().to_str().unwrap());
         fs::read_to_string(path_buf.as_path())
     }
 
@@ -215,34 +228,124 @@ mod test {
             });
         });
 
+        println!("{}", graph.to_string());
         graph
     }
 
-    fn assert_contains_edge<T: Eq + Hash + Clone>(
+    fn assert_contains_edge<T: Eq + Hash + Clone + Display>(
         graph: &DependencyGraph<T>,
-        start: T,
-        end: T,
-        edge_type: EdgeType,
+        start: &T,
+        end: &T,
+        edge_type: &EdgeType,
     ) {
-        let maybe_edges = graph.get_edges_to(start);
-        assert!(maybe_edges.is_some());
+        let error_str = format!("Did not find edge {} -> {} ({:?})", start, end, edge_type);
+
+        let maybe_edges = graph.get_edges_to(end);
+        assert!(maybe_edges.is_some(), "{}", error_str);
 
         let edges = maybe_edges.unwrap();
-        assert!(edges.contains_key(&end));
+        assert!(edges.contains_key(start), "{}", error_str);
 
-        let edge_types = edges.get(&end).unwrap();
-        assert!(edge_types.contains(&edge_type));
+        let edge_types = edges.get(&start).unwrap();
+        assert!(edge_types.contains(edge_type), "{}", error_str);
+    }
+
+    fn assert_does_not_contain_edge<T: Eq + Hash + Clone + Display>(
+        graph: &DependencyGraph<T>,
+        start: &T,
+        end: &T,
+        edge_type: &EdgeType,
+    ) {
+        let maybe_edges = graph.get_edges_to(end);
+        if maybe_edges.is_some() {
+            let edges = maybe_edges.unwrap();
+            if edges.contains_key(start) {
+                let edge_types = edges.get(start).unwrap();
+                assert!(
+                    !edge_types.contains(edge_type),
+                    "Found unexpected edge {} -> {} ({:?})",
+                    start,
+                    end,
+                    edge_type
+                );
+            }
+        }
     }
 
     #[test]
     fn test_function_call() {
-        let graph = compile_and_visit("function_call.rs");
+        let graph = compile_and_visit("call.rs");
 
-        println!("{}", graph.to_string());
+        let start = format!("{CRATE_PREFIX}::test::test");
+        let end = format!("{CRATE_PREFIX}::func");
+        let edge_type = EdgeType::Call;
+        assert_contains_edge(&graph, &start, &end, &edge_type);
+        assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+    }
 
-        let end = String::from(format!("{CRATE_PREFIX}::test::test"));
-        let start = String::from(format!("{CRATE_PREFIX}::func"));
+    #[test]
+    fn test_closure() {
+        let graph = compile_and_visit("closure.rs");
 
-        assert_contains_edge(&graph, start, end, EdgeType::Call);
+        let start = format!("{CRATE_PREFIX}::test::test");
+        let end = format!("{CRATE_PREFIX}::test::test#1::{{closure#0}}");
+        let edge_type = EdgeType::Closure;
+        assert_contains_edge(&graph, &start, &end, &edge_type);
+        assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+    }
+
+    #[test]
+    fn test_scalar() {
+        let graph = compile_and_visit("scalar.rs");
+        let edge_type = EdgeType::Scalar;
+
+        {
+            // const ptr, no edge in reverse direction
+            let end = format!("{CRATE_PREFIX}::FOO");
+
+            let start = format!("{CRATE_PREFIX}::test::test_direct_read");
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = format!("{CRATE_PREFIX}::test::test_indirect_ptr_read");
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = format!("{CRATE_PREFIX}::test::test_indirect_ref_read");
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
+
+        {
+            // mut ptr, additional edge in reverse direction
+            let start = format!("{CRATE_PREFIX}::BAR");
+
+            let end = format!("{CRATE_PREFIX}::test::test_direct_write");
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_contains_edge(&graph, &end, &start, &edge_type);
+
+            let end = format!("{CRATE_PREFIX}::test::test_indirect_ptr_write");
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_contains_edge(&graph, &end, &start, &edge_type);
+
+            let end = format!("{CRATE_PREFIX}::test::test_indirect_ref_write");
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_contains_edge(&graph, &end, &start, &edge_type);
+
+            let end = format!("{CRATE_PREFIX}::test::test_indirect_ref_write");
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_contains_edge(&graph, &end, &start, &edge_type);
+        }
+    }
+
+    #[test]
+    fn test_unealuated() {
+        let graph = compile_and_visit("unevaluated.rs");
+
+        let start = format!("{CRATE_PREFIX}::test::test_const_read");
+        let end = format!("{CRATE_PREFIX}::BAZ");
+        let edge_type = EdgeType::Unevaluated;
+        assert_contains_edge(&graph, &start, &end, &edge_type);
+        assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
     }
 }

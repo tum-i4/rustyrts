@@ -62,8 +62,8 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         types.insert(edge_type);
     }
 
-    pub fn get_edges_to(&self, to_node: T) -> Option<&HashMap<T, HashSet<EdgeType>>> {
-        self.backwards_edges.get(&to_node)
+    pub fn get_edges_to(&self, to_node: &T) -> Option<&HashMap<T, HashSet<EdgeType>>> {
+        self.backwards_edges.get(to_node)
     }
 
     pub fn reachable_nodes<S>(&self, starting_points: S) -> HashSet<T>
