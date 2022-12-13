@@ -1,6 +1,7 @@
 static FOO: &str = "Foo";
 static mut BAR: &str = "Bar";
 
+#[cfg(test)]
 mod test {
     use super::*;
 

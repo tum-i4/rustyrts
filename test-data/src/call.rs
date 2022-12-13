@@ -2,6 +2,7 @@ fn func() -> u64 {
     42
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 

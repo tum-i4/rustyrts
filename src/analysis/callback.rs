@@ -48,6 +48,7 @@ impl RustyRTSCallbacks {
         for def_id in tcx.mir_keys(()) {
             visitor.visit(def_id.to_def_id());
         }
+        visitor.process_traits();
 
         let graph_path_buf = get_graph_path(path_buf.clone(), &crate_name, crate_id);
 

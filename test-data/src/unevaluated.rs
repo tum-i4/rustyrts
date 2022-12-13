@@ -1,5 +1,6 @@
 const BAZ: &str = "Baz";
 
+#[cfg(test)]
 mod test {
     use super::*;
 

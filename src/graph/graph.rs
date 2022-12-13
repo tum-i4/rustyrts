@@ -11,6 +11,8 @@ pub enum EdgeType {
     Closure,
     Generator,
     FnDef,
+    FnPtr,
+    Impl,
 }
 
 impl FromStr for EdgeType {
@@ -24,6 +26,8 @@ impl FromStr for EdgeType {
             "Closure" => Ok(Self::Closure),
             "Generator" => Ok(Self::Generator),
             "FnDef" => Ok(Self::FnDef),
+            "FnPtr" => Ok(Self::FnPtr),
+            "Impl" => Ok(Self::Impl),
             _ => Err(()),
         }
     }
@@ -135,9 +139,13 @@ impl ToString for DependencyGraph<String> {
 
         result.push_str("digraph {\n");
 
+        for node in &self.nodes {
+            result.push_str(format!("\"{}\"\n", node).as_str())
+        }
+
         for (end, edge) in &self.backwards_edges {
             for (start, types) in edge {
-                result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", *start, *end, types).as_str())
+                result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", start, end, types).as_str())
             }
         }
 

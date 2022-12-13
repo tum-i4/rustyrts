@@ -5,6 +5,7 @@ where
     fun(input)
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
