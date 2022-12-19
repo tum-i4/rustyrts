@@ -1,11 +1,11 @@
 use log::debug;
-use rustc_hir::def::DefKind;
+
 use rustc_hir::def_id::DefId;
 use rustc_hir::ConstContext;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::{TyContext, Visitor};
-use rustc_middle::mir::{self, Body, Local, Location, Terminator, TerminatorKind};
-use rustc_middle::mir::{ConstantKind, LocalDecl};
+use rustc_middle::mir::ConstantKind;
+use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{Ty, TyCtxt, TyKind};
 use std::cell::RefCell;
 
@@ -37,7 +37,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             .maybe_body_owned_by(def_id.expect_local())
             .is_some();
 
-        debug!("Processing {}", def_path_debug_str_custom(self.tcx, def_id));
+        //debug!("Processing {}", def_path_debug_str_custom(self.tcx, def_id));
 
         if has_body {
             debug!("... with body");
@@ -84,28 +84,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             processed.replace(Some(def_id));
             self.super_body(body);
             processed.take();
-        });
-    }
-
-    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        self.super_terminator(terminator, location);
-
-        PROCESSED_BODY.with(|processed| {
-            if let Some(outer) = *processed.borrow() {
-                if let TerminatorKind::Call { func, .. } = &terminator.kind {
-                    if let Some((def_id, _)) = func.const_fn_def() {
-                        let def_kind = self.tcx.def_kind(def_id);
-
-                        if let DefKind::Fn | DefKind::AssocFn = def_kind {
-                            self.graph.add_edge(
-                                def_path_debug_str_custom(self.tcx, outer),
-                                def_path_debug_str_custom(self.tcx, def_id),
-                                EdgeType::Call,
-                            );
-                        }
-                    }
-                }
-            }
         });
     }
 
@@ -193,6 +171,30 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             EdgeType::FnDef,
                         );
                     }
+                    //TyKind::Foreign(def_id) => {
+                    //    // this has effectively no impact because we do not track modifications of external functions
+                    //    self.graph.add_edge(
+                    //        def_path_debug_str_custom(self.tcx, outer),
+                    //        def_path_debug_str_custom(self.tcx, *def_id),
+                    //        EdgeType::Foreign,
+                    //    );
+                    //}
+                    //TyKind::Opaque(def_id, _) => {
+                    //    // this has effectively no impact impact because traits have no mir body
+                    //    self.graph.add_edge(
+                    //        def_path_debug_str_custom(self.tcx, outer),
+                    //        def_path_debug_str_custom(self.tcx, *def_id),
+                    //        EdgeType::Opaque,
+                    //    );
+                    //}
+                    //TyKind::Adt(adt_def, _) => {
+                    //    // this has effectively no impact impact because adts (structs, eunms) have no mir body
+                    //    self.graph.add_edge(
+                    //        def_path_debug_str_custom(self.tcx, outer),
+                    //        def_path_debug_str_custom(self.tcx, adt_def.did()),
+                    //        EdgeType::Adt,
+                    //    );
+                    //}
                     _ => {}
                 }
             }
@@ -210,7 +212,7 @@ mod test {
 
     use rustc_errors::registry;
     use rustc_hash::{FxHashMap, FxHashSet};
-    use rustc_session::config::{self, CheckCfg};
+    use rustc_session::config::{self, CheckCfg, OptLevel};
     use rustc_span::source_map;
 
     use crate::graph::graph::DependencyGraph;
@@ -218,7 +220,7 @@ mod test {
 
     use super::GraphVisitor;
 
-    const TEST_DATA_PATH: &str = "test-data/src";
+    const TEST_DATA_PATH: &str = "test-data/unit/src";
     const CRATE_PREFIX: &str = "rust_out";
 
     fn load_test_code(file_name: &str) -> Result<String, Error> {
@@ -234,6 +236,7 @@ mod test {
             // Command line options
             opts: config::Options {
                 test: true,
+                optimize: OptLevel::No,
                 ..config::Options::default()
             },
             // cfg! configuration in addition to the default ones
@@ -320,7 +323,7 @@ mod test {
 
         let start = format!("{CRATE_PREFIX}::test::test");
         let end = format!("{CRATE_PREFIX}::func");
-        let edge_type = EdgeType::Call;
+        let edge_type = EdgeType::FnDef;
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
     }
@@ -330,7 +333,7 @@ mod test {
         let graph = compile_and_visit("closure.rs");
 
         let start = format!("{CRATE_PREFIX}::test::test");
-        let end = format!("{CRATE_PREFIX}::test::test#1::{{closure#0}}");
+        let end = format!("{CRATE_PREFIX}::test::test::{{closure#0}}");
         let edge_type = EdgeType::Closure;
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
@@ -381,7 +384,7 @@ mod test {
     }
 
     #[test]
-    fn test_unealuated() {
+    fn test_unevaluated() {
         let graph = compile_and_visit("unevaluated.rs");
 
         let start = format!("{CRATE_PREFIX}::test::test_const_read");
@@ -412,20 +415,20 @@ mod test {
     fn test_impls() {
         let graph = compile_and_visit("impls.rs");
 
-        let edge_type = EdgeType::Call;
+        let edge_type = EdgeType::FnDef;
 
         let start = format!("{CRATE_PREFIX}::test::test_static");
-        let end = format!("{CRATE_PREFIX}::{{impl#0}}::new");
+        let end = format!("{CRATE_PREFIX}::Foo::new");
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
         let start = format!("{CRATE_PREFIX}::test::test_const");
-        let end = format!("{CRATE_PREFIX}::{{impl#1}}::get");
+        let end = format!("{CRATE_PREFIX}::Foo::get");
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
         let start = format!("{CRATE_PREFIX}::test::test_mut");
-        let end = format!("{CRATE_PREFIX}::{{impl#1}}::set");
+        let end = format!("{CRATE_PREFIX}::Foo::set");
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
     }
@@ -435,14 +438,14 @@ mod test {
         let graph = compile_and_visit("traits.rs");
 
         {
-            let end = format!("{CRATE_PREFIX}::Animal::sound");
-            let edge_type = EdgeType::Call;
+            let end = format!("{CRATE_PREFIX}::<Self as Animal>::sound");
+            let edge_type = EdgeType::FnDef;
 
             let start = format!("{CRATE_PREFIX}::test::test_direct");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start = format!("{CRATE_PREFIX}::sound_generic");
+            let start = format!("{CRATE_PREFIX}::sound_generic::<T>");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
@@ -452,14 +455,14 @@ mod test {
         }
 
         {
-            let end = format!("{CRATE_PREFIX}::Animal::set_treat");
-            let edge_type = EdgeType::Call;
+            let end = format!("{CRATE_PREFIX}::<Self as Animal>::set_treat");
+            let edge_type = EdgeType::FnDef;
 
             let start = format!("{CRATE_PREFIX}::test::test_mut_direct");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start = format!("{CRATE_PREFIX}::set_treat_generic");
+            let start = format!("{CRATE_PREFIX}::set_treat_generic::<T>");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
@@ -469,27 +472,27 @@ mod test {
         }
 
         {
-            let start = format!("{CRATE_PREFIX}::Animal::set_treat");
+            let start = format!("{CRATE_PREFIX}::<Self as Animal>::set_treat");
             let edge_type = EdgeType::Impl;
 
-            let end = format!("{CRATE_PREFIX}::{{impl#0}}::set_treat");
+            let end = format!("{CRATE_PREFIX}::<Lion as Animal>::set_treat");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let end = format!("{CRATE_PREFIX}::{{impl#1}}::set_treat");
+            let end = format!("{CRATE_PREFIX}::<Dog as Animal>::set_treat");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
 
         {
-            let start = format!("{CRATE_PREFIX}::Animal::sound");
+            let start = format!("{CRATE_PREFIX}::<Self as Animal>::sound");
             let edge_type = EdgeType::Impl;
 
-            let end = format!("{CRATE_PREFIX}::{{impl#0}}::sound");
+            let end = format!("{CRATE_PREFIX}::<Lion as Animal>::sound");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let end = format!("{CRATE_PREFIX}::{{impl#1}}::sound");
+            let end = format!("{CRATE_PREFIX}::<Dog as Animal>::sound");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }

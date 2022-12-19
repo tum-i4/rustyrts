@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use queues::{IsQueue, Queue};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
@@ -5,14 +6,16 @@ use std::str::FromStr;
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum EdgeType {
-    Call,
     Unevaluated,
     Scalar,
     Closure,
     Generator,
     FnDef,
-    FnPtr,
+    FnPtr, // TODO: not sure if this is necessary
     Impl,
+    //Adt,
+    //Foreign,
+    //Opaque,
 }
 
 impl FromStr for EdgeType {
@@ -20,7 +23,6 @@ impl FromStr for EdgeType {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "Call" => Ok(Self::Call),
             "Unevaluated" => Ok(Self::Unevaluated),
             "Scalar" => Ok(Self::Scalar),
             "Closure" => Ok(Self::Closure),
@@ -28,6 +30,9 @@ impl FromStr for EdgeType {
             "FnDef" => Ok(Self::FnDef),
             "FnPtr" => Ok(Self::FnPtr),
             "Impl" => Ok(Self::Impl),
+            //"Adt" => Ok(Self::Adt),
+            //"Foreign" => Ok(Self::Foreign),
+            //"Opaque" => Ok(Self::Opaque),
             _ => Err(()),
         }
     }
@@ -139,12 +144,16 @@ impl ToString for DependencyGraph<String> {
 
         result.push_str("digraph {\n");
 
-        for node in &self.nodes {
+        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&b, &a)) {
             result.push_str(format!("\"{}\"\n", node).as_str())
         }
 
-        for (end, edge) in &self.backwards_edges {
-            for (start, types) in edge {
+        for (end, edge) in self
+            .backwards_edges
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0))
+        {
+            for (start, types) in edge.iter().sorted_by(|a, b| Ord::cmp(&b.0, &a.0)) {
                 result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", start, end, types).as_str())
             }
         }

@@ -54,7 +54,7 @@ mod test {
     fn test_mut_read() {
         unsafe {
             let ptr = &mut BAR;
-            assert_eq!(*ptr, "Bar");
+            assert_eq!(*ptr, "42");
         }
     }
 }
