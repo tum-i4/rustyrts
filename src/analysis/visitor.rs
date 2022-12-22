@@ -37,21 +37,12 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             .maybe_body_owned_by(def_id.expect_local())
             .is_some();
 
-        //debug!("Processing {}", def_path_debug_str_custom(self.tcx, def_id));
-
         if has_body {
-            debug!("... with body");
+            // Apparently optimized_mir() only works in these two cases
             if let Some(ConstContext::ConstFn) | None =
                 self.tcx.hir().body_const_context(def_id.expect_local())
             {
                 let body = self.tcx.optimized_mir(def_id);
-
-                //let target = "rust_out::test::test_higher_order";
-                //let actual = def_path_debug_str_custom(self.tcx, def_id);
-                //if actual == target {
-                //    debug!("{:?}", body);
-                //}
-
                 self.visit_body(body);
             }
         }
@@ -96,6 +87,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             if let Some(outer) = *processed.borrow() {
                 match literal {
                     ConstantKind::Unevaluated(content, _ty) => {
+                        // This takes care of borrows of e.g. "const var: u64"
                         let def_id = content.def.did;
 
                         self.graph.add_edge(
@@ -109,23 +101,26 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
                                 match self.tcx.global_alloc(ptr.provenance) {
                                     GlobalAlloc::Static(def_id) => {
+                                        // This takes care of borrows of e.g. "static var: u64"
                                         let (accessor, accessed) = (
                                             def_path_debug_str_custom(self.tcx, outer),
                                             def_path_debug_str_custom(self.tcx, def_id),
                                         );
 
                                         if ty.is_mutable_ptr() {
-                                            // If the ptr is mut, we also add an edge in the reverse direction
+                                            // If the borrow is mut, we also add an edge in the reverse direction
                                             self.graph.add_edge(
                                                 accessed.clone(),
                                                 accessor.clone(),
                                                 EdgeType::Scalar,
                                             );
                                         }
-                                        // Since we do not know if a mut ptr is read, we unconditionally add an edge here
+                                        // Since we do not know if a (potentially mut) borrow is read, we always add an edge here
                                         self.graph.add_edge(accessor, accessed, EdgeType::Scalar);
                                     }
                                     GlobalAlloc::Function(instance) => {
+                                        // TODO: I have not yet found out when this is usefull, but since there is a defId stored in here, it might be important
+                                        // Perhaps this refers to extern fns?
                                         let def_id = instance.def_id();
                                         let (accessor, accessed) = (
                                             def_path_debug_str_custom(self.tcx, outer),

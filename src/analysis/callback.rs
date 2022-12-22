@@ -93,6 +93,7 @@ impl RustyRTSCallbacks {
 static OLD_FUNCTION_PTR: AtomicU64 = AtomicU64::new(0);
 static BASE_PATH: RwLock<String> = RwLock::new(String::new());
 
+/// This function is executed instead of mir_built() in the compiler
 fn custom_mir_built<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: mir_built<'tcx>,
@@ -142,14 +143,11 @@ impl Callbacks for RustyRTSCallbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, config: &mut interface::Config) {
         config.override_queries = Some(|_sess, providers, _external_providers| {
-            // inject extended custum mir_build query
+            // inject custom mir_built query
             let old_mir_built = providers.mir_built;
             OLD_FUNCTION_PTR.store(old_mir_built as u64, SeqCst);
             providers.mir_built = custom_mir_built;
         });
-
-        // set incremental_ignore_spans to true
-        // config.opts.unstable_opts.incremental_ignore_spans = true;
     }
 
     /// Called after analysis. Return value instructs the compiler whether to

@@ -1,6 +1,7 @@
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::{List, TyCtxt};
 
+/// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub fn def_path_debug_str_custom<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     let substs = List::identity_for_item(tcx, def_id);
 
