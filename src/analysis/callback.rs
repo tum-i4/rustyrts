@@ -38,7 +38,6 @@ impl RustyRTSCallbacks {
         let path_buf = get_base_path(&*handle);
 
         let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-        let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
         //##############################################################################################################
         // Create Graph
@@ -50,7 +49,7 @@ impl RustyRTSCallbacks {
         }
         visitor.process_traits();
 
-        let graph_path_buf = get_graph_path(path_buf.clone(), &crate_name, crate_id);
+        let graph_path_buf = get_graph_path(path_buf.clone(), &crate_name);
 
         let mut file = match File::create(graph_path_buf.as_path()) {
             Ok(file) => file,
@@ -75,7 +74,7 @@ impl RustyRTSCallbacks {
         }
 
         if tests.len() > 0 {
-            let tests_path_buf = get_test_path(path_buf.clone(), &crate_name, crate_id);
+            let tests_path_buf = get_test_path(path_buf.clone(), &crate_name);
 
             let mut file = match File::create(tests_path_buf.as_path()) {
                 Ok(file) => file,
@@ -115,11 +114,10 @@ fn custom_mir_built<'tcx>(
     // Append names of changed nodes to file
 
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-    let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
     let handle = BASE_PATH.read().unwrap();
     let path_buf = get_base_path(&*handle);
-    let changes_path_buf = get_changes_path(path_buf.clone(), &crate_name, crate_id);
+    let changes_path_buf = get_changes_path(path_buf.clone(), &crate_name);
 
     let mut file = match OpenOptions::new()
         .create(true)

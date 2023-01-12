@@ -10,6 +10,8 @@ pub fn def_path_debug_str_custom<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Stri
         format!("{}::", tcx.crate_name(LOCAL_CRATE))
     } else {
         let cstore = tcx.cstore_untracked();
+
+        // We introduce a ! here, to indicate that the element after it has to be deleted
         format!("{}::!", cstore.crate_name(def_id.krate))
     };
 
@@ -20,7 +22,10 @@ pub fn def_path_debug_str_custom<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Stri
     );
 
     // This is a hack
-    let regex: Regex = Regex::new(r"!::([^:]*)").unwrap();
+    // If this is a non-local def_id:
+    //      We are removing the part of the path that corresponds to the alias name of the extern crate
+    //      In this crate itself, this part of the path is not present
+    let regex: Regex = Regex::new(r"(![^:]*::)").unwrap();
     def_path_str = regex.replace_all(&def_path_str, "").to_string();
 
     def_path_str

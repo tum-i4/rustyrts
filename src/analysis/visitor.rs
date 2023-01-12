@@ -1,5 +1,3 @@
-use log::debug;
-
 use rustc_hir::def_id::DefId;
 use rustc_hir::ConstContext;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
@@ -107,14 +105,18 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                             def_path_debug_str_custom(self.tcx, def_id),
                                         );
 
-                                        if ty.is_mutable_ptr() {
-                                            // If the borrow is mut, we also add an edge in the reverse direction
-                                            self.graph.add_edge(
-                                                accessed.clone(),
-                                                accessor.clone(),
-                                                EdgeType::Scalar,
-                                            );
-                                        }
+                                        // // This is not necessary since for a node that writes into a variable,
+                                        // // there nust exist a path from test to this node already
+                                        //
+                                        //if ty.is_mutable_ptr() {
+                                        //    // If the borrow is mut, we also add an edge in the reverse direction
+                                        //    self.graph.add_edge(
+                                        //        accessed.clone(),
+                                        //        accessor.clone(),
+                                        //        EdgeType::Scalar,
+                                        //    );
+                                        //}
+
                                         // Since we do not know if a (potentially mut) borrow is read, we always add an edge here
                                         self.graph.add_edge(accessor, accessed, EdgeType::Scalar);
                                     }
@@ -361,19 +363,19 @@ mod test {
             let start = format!("{CRATE_PREFIX}::BAR");
 
             let end = format!("{CRATE_PREFIX}::test::test_direct_write");
-            assert_contains_edge(&graph, &start, &end, &edge_type);
+            //assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_contains_edge(&graph, &end, &start, &edge_type);
 
             let end = format!("{CRATE_PREFIX}::test::test_indirect_ptr_write");
-            assert_contains_edge(&graph, &start, &end, &edge_type);
+            //assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_contains_edge(&graph, &end, &start, &edge_type);
 
             let end = format!("{CRATE_PREFIX}::test::test_indirect_ref_write");
-            assert_contains_edge(&graph, &start, &end, &edge_type);
+            //assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_contains_edge(&graph, &end, &start, &edge_type);
 
             let end = format!("{CRATE_PREFIX}::test::test_indirect_ref_write");
-            assert_contains_edge(&graph, &start, &end, &edge_type);
+            //assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_contains_edge(&graph, &end, &start, &edge_type);
         }
     }
