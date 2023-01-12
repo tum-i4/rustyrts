@@ -5,7 +5,8 @@ use rustyrts::utils;
 use serde_json;
 use std::collections::HashSet;
 use std::ffi::OsString;
-use std::fs::{create_dir_all, read_dir, read_to_string, remove_file, DirEntry};
+use std::fs::{create_dir_all, read_dir, read_to_string, remove_file, DirEntry, OpenOptions};
+use std::io::Write;
 use std::process::Command;
 
 //######################################################################################################################
@@ -218,6 +219,25 @@ fn select_and_execute_tests() {
     let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
     let edges = read_lines(&files, "dot", |line| line.contains(" -> "));
     dependency_graph.import_edges(edges);
+
+    if verbose {
+        let mut complete_graph_path = path_buf.clone();
+        complete_graph_path.push("!complete_graph.dot");
+        let mut file = match OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(false)
+            .open(complete_graph_path.as_path())
+        {
+            Ok(file) => file,
+            Err(reason) => panic!("Failed to open file: {}", reason),
+        };
+
+        match file.write_all(format!("{}\n", dependency_graph.to_string()).as_bytes()) {
+            Ok(_) => {}
+            Err(reason) => panic!("Failed to write to file: {}", reason),
+        };
+    }
 
     let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
     if verbose {
