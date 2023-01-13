@@ -71,28 +71,35 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         types.insert(edge_type);
     }
 
+    pub fn get_node(&self, node: &T) -> Option<&T> {
+        self.nodes.get(node)
+    }
+
     pub fn get_edges_to(&self, to_node: &T) -> Option<&HashMap<T, HashSet<EdgeType>>> {
         self.backwards_edges.get(to_node)
     }
 
-    pub fn reachable_nodes<S>(&self, starting_points: S) -> HashSet<T>
+    pub fn reachable_nodes<'b, S>(&'b self, starting_points: S) -> HashSet<&'b T>
     where
-        S: IntoIterator<Item = T>,
+        S: IntoIterator<Item = &'b T>,
     {
-        let mut queue: Queue<T> = Queue::new();
-        let mut reached: HashSet<T> = HashSet::new();
+        let mut queue: Queue<&'b T> = Queue::new();
+        let mut reached: HashSet<&'b T> = HashSet::new();
 
         for ele in starting_points {
             queue.add(ele).unwrap();
         }
 
         while let Ok(node) = queue.remove() {
-            reached.insert(node.clone());
+            if !reached.insert(node) {
+                // We already processed this node before
+                continue;
+            }
 
-            if let Some(edges) = self.backwards_edges.get(&node) {
+            if let Some(edges) = self.backwards_edges.get(node) {
                 for (start, _types) in edges {
                     if !reached.contains(start) {
-                        queue.add(start.clone()).unwrap();
+                        queue.add(start).unwrap();
                     }
                 }
             }
@@ -109,22 +116,16 @@ impl DependencyGraph<String> {
     {
         // Parse edges
         for line in lines {
-            let (edge_str, edge_types_str) = line.split_once("//").unwrap();
+            let (edge_str, edge_types_str) = line.split_once(" //").unwrap();
 
             if let Some(edge_types) = edge_types_str
                 .strip_prefix(" {")
                 .and_then(|s| s.strip_suffix("}"))
                 .and_then(|s| Some(s.split(", ")))
             {
-                let (start_str, end_str) = edge_str.split_once("-> ").unwrap();
-                let start = start_str
-                    .strip_prefix("\"")
-                    .and_then(|s| s.strip_suffix("\" "))
-                    .unwrap();
-                let end = end_str
-                    .strip_prefix("\"")
-                    .and_then(|s| s.strip_suffix("\" "))
-                    .unwrap();
+                let (start_str, end_str) = edge_str.split_once("\" -> \"").unwrap();
+                let start = start_str.strip_prefix("\"").unwrap();
+                let end = end_str.strip_suffix("\"").unwrap();
 
                 for edge_type in edge_types {
                     self.add_edge(
@@ -176,7 +177,7 @@ impl FromStr for DependencyGraph<String> {
             let lines: Vec<String> = content
                 .split("\n")
                 .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
-                .filter(|l| l.contains("->")) // Ignore Nodes
+                .filter(|l| l.contains("\" -> \"")) // Ignore Nodes
                 .map(|s| s.to_string())
                 .collect();
 

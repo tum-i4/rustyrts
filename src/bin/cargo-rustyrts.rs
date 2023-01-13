@@ -6,6 +6,7 @@ use serde_json;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::{create_dir_all, read_dir, read_to_string, remove_file, DirEntry, OpenOptions};
+use std::hash::Hash;
 use std::io::Write;
 use std::process::Command;
 
@@ -187,7 +188,8 @@ fn run_rustyrts() {
 }
 
 fn select_and_execute_tests() {
-    let verbose = has_arg_flag("-v");
+    let really_verbose = has_arg_flag("-vv");
+    let verbose = really_verbose || has_arg_flag("-v");
 
     let mut cmd = cargo();
     cmd.arg("test");
@@ -200,24 +202,9 @@ fn select_and_execute_tests() {
         .map(|maybe_path| maybe_path.unwrap())
         .collect();
 
-    // Read possibly affected tests
-    let tests = read_lines(&files, "test", |line| line != "");
-    if verbose {
-        println!("Tests that have been found:\n{}\n", tests.iter().join("\n"));
-    }
-
-    // Read changed nodes
-    let changed_nodes: HashSet<String> = read_lines(&files, "changes", |line| line != "");
-    if verbose {
-        println!(
-            "Nodes that have changed:\n{}\n",
-            changed_nodes.iter().join("\n")
-        );
-    }
-
     // Read graphs
     let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
-    let edges = read_lines(&files, "dot", |line| line.contains(" -> "));
+    let edges = read_lines(&files, "dot", |line| line.contains("\" -> \""), |line| line);
     dependency_graph.import_edges(edges);
 
     if verbose {
@@ -239,17 +226,56 @@ fn select_and_execute_tests() {
         };
     }
 
+    // Read changed nodes
+    let changed_nodes: HashSet<&String> = read_lines(
+        &files,
+        "changes",
+        |line| line != "" && dependency_graph.get_node(&line).is_some(),
+        |line| dependency_graph.get_node(&line).unwrap(),
+    );
+    if really_verbose {
+        println!(
+            "Nodes that have changed:\n{}\n",
+            changed_nodes.iter().join("\n")
+        );
+    } else {
+        println!(
+            "#Nodes that have changed: {}\n",
+            changed_nodes.iter().count()
+        );
+    }
+
+    // Read possibly affected tests
+    let tests = read_lines(
+        &files,
+        "test",
+        |line| line != "" && dependency_graph.get_node(&line).is_some(),
+        |line| dependency_graph.get_node(&line).unwrap(),
+    );
+    if really_verbose {
+        println!("Tests that have been found:\n{}\n", tests.iter().join("\n"));
+    } else {
+        println!("#Tests that have been found: {}\n", tests.iter().count());
+    }
+
     let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
-    if verbose {
+    if really_verbose {
         println!(
             "Nodes that reach any changed node in the graph:\n{}\n",
             reached_nodes.iter().join("\n")
         );
+    } else {
+        println!(
+            "#Nodes that reach any changed node in the graph: {}\n",
+            reached_nodes.iter().count()
+        );
     }
 
-    let affected_tests: HashSet<&String> = tests.intersection(&reached_nodes).collect();
-    if verbose {
+    let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
+    if really_verbose {
         println!("Affected tests:\n{}\n", affected_tests.iter().join("\n"));
+    } else {
+        println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
     let mut affected_tests_iter = affected_tests
@@ -284,11 +310,13 @@ fn select_and_execute_tests() {
     }
 }
 
-fn read_lines<F>(files: &Vec<DirEntry>, file_ending: &str, filter: F) -> HashSet<String>
+fn read_lines<F, M, O>(files: &Vec<DirEntry>, file_ending: &str, filter: F, mapper: M) -> HashSet<O>
 where
     F: Fn(&String) -> bool,
+    M: std::ops::FnMut(std::string::String) -> O,
+    O: Eq + Hash + Ord,
 {
-    let tests: HashSet<String> = files
+    let tokens: HashSet<O> = files
         .iter()
         .filter(|path| path.file_name().to_str().unwrap().ends_with(file_ending))
         .flat_map(|path| {
@@ -297,6 +325,7 @@ where
             lines
         })
         .filter(filter)
+        .map(mapper)
         .collect();
-    tests
+    tokens
 }
