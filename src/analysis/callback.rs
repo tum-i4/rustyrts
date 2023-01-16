@@ -1,6 +1,7 @@
-use std::fs::{File, OpenOptions};
+use std::fs::{read_to_string, File};
 use std::io::Write;
 use std::mem::transmute;
+use std::path::PathBuf;
 use std::sync::atomic::AtomicU64;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::RwLock;
@@ -15,8 +16,11 @@ use rustc_middle::ty::query::query_keys::mir_built;
 
 use crate::analysis::visitor::GraphVisitor;
 use crate::graph::graph::DependencyGraph;
-use crate::paths::{get_base_path, get_changes_path, get_graph_path, get_test_path};
+use crate::paths::{
+    get_base_path, get_changes_path, get_checksums_path, get_graph_path, get_test_path,
+};
 
+use super::checksums::Checksums;
 use super::util::def_path_debug_str_custom;
 
 pub struct RustyRTSCallbacks {
@@ -34,32 +38,20 @@ impl RustyRTSCallbacks {
     }
 
     fn run_analysis(&mut self, _compiler: &interface::Compiler, tcx: TyCtxt) {
-        let handle = BASE_PATH.read().unwrap();
-        let path_buf = get_base_path(&*handle);
-
         let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+        let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+
+        let old_checksums = self.import_checksums(tcx);
+
+        let mut visitor = GraphVisitor::new(tcx, &mut self.graph, old_checksums);
 
         //##############################################################################################################
-        // Create Graph
-
-        let mut visitor = GraphVisitor::new(tcx, &mut self.graph);
+        // Visit every def_id
 
         for def_id in tcx.mir_keys(()) {
             visitor.visit(def_id.to_def_id());
         }
         visitor.process_traits();
-
-        let graph_path_buf = get_graph_path(path_buf.clone(), &crate_name);
-
-        let mut file = match File::create(graph_path_buf.as_path()) {
-            Ok(file) => file,
-            Err(reason) => panic!("Failed to create file: {}", reason),
-        };
-
-        match file.write_all(self.graph.to_string().as_bytes()) {
-            Ok(_) => {}
-            Err(reason) => panic!("Failed to write to file: {}", reason),
-        };
 
         //##############################################################################################################
         // Determine which functions represent tests
@@ -74,17 +66,59 @@ impl RustyRTSCallbacks {
         }
 
         if tests.len() > 0 {
-            let tests_path_buf = get_test_path(path_buf.clone(), &crate_name);
+            write_to_file(tests.join("\n").to_string(), |buf| {
+                get_test_path(buf, &crate_name, crate_id)
+            });
+        }
 
-            let mut file = match File::create(tests_path_buf.as_path()) {
-                Ok(file) => file,
-                Err(reason) => panic!("Failed to create file: {}", reason),
-            };
+        //##############################################################################################################
+        // Write new checksums and changed nodes to file
 
-            match file.write_all(tests.join("\n").as_bytes()) {
-                Ok(_) => {}
-                Err(reason) => panic!("Failed to write to file: {}", reason),
-            };
+        let (checksums, changed_nodes) = visitor.terminate();
+        self.export_checksums(tcx, &checksums);
+
+        write_to_file(checksums.to_string().to_string(), |buf| {
+            get_checksums_path(buf, &crate_name, crate_id)
+        });
+
+        write_to_file(changed_nodes.join("\n").to_string(), |buf| {
+            get_changes_path(buf, &crate_name, crate_id)
+        });
+
+        //##############################################################################################################
+        // Write graph to file
+
+        write_to_file(self.graph.to_string(), |buf| {
+            get_graph_path(buf, &crate_name, crate_id)
+        });
+    }
+
+    fn export_checksums(&self, tcx: TyCtxt, checksums: &Checksums) {
+        let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+        let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+
+        write_to_file(checksums.to_string(), |buf| {
+            get_checksums_path(buf, &crate_name, crate_id)
+        });
+    }
+
+    fn import_checksums(&self, tcx: TyCtxt) -> Checksums {
+        //##################################################################################################################
+        // Import checksums
+
+        let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+        let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+
+        let handle = BASE_PATH.read().unwrap();
+        let path_buf = get_base_path(&*handle);
+        let checksums_path_buf = get_checksums_path(path_buf.clone(), &crate_name, crate_id);
+
+        let maybe = read_to_string(checksums_path_buf);
+
+        if let Ok(checksums_str) = maybe {
+            checksums_str.parse().expect("Failed to parse checksums")
+        } else {
+            Checksums::new()
         }
     }
 }
@@ -107,33 +141,6 @@ fn custom_mir_built<'tcx>(
 
     let result = old_function(tcx, def);
 
-    let def_id = result.borrow().source.instance.def_id();
-    //let def_kind = tcx.def_kind(def_id);
-
-    //##################################################################################################################
-    // Append names of changed nodes to file
-
-    let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-
-    let handle = BASE_PATH.read().unwrap();
-    let path_buf = get_base_path(&*handle);
-    let changes_path_buf = get_changes_path(path_buf.clone(), &crate_name);
-
-    let mut file = match OpenOptions::new()
-        .create(true)
-        .write(true)
-        .append(true)
-        .open(changes_path_buf.as_path())
-    {
-        Ok(file) => file,
-        Err(reason) => panic!("Failed to open file: {}", reason),
-    };
-
-    match file.write_all(format!("{}\n", def_path_debug_str_custom(tcx, def_id)).as_bytes()) {
-        Ok(_) => {}
-        Err(reason) => panic!("Failed to write to file: {}", reason),
-    };
-
     return result;
 }
 
@@ -155,11 +162,29 @@ impl Callbacks for RustyRTSCallbacks {
         compiler: &'compiler interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        queries
-            .global_ctxt()
-            .unwrap()
-            .peek_mut()
-            .enter(|tcx| self.run_analysis(compiler, tcx));
+        queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+            self.run_analysis(compiler, tcx);
+        });
+
         Compilation::Continue
     }
+}
+
+fn write_to_file<F>(content: String, path_buf_init: F)
+where
+    F: FnOnce(PathBuf) -> PathBuf,
+{
+    let handle = BASE_PATH.read().unwrap();
+    let path_buf = get_base_path(&*handle).clone();
+
+    let path_buf = path_buf_init(path_buf);
+    let mut file = match File::create(path_buf.as_path()) {
+        Ok(file) => file,
+        Err(reason) => panic!("Failed to create file: {}", reason),
+    };
+
+    match file.write_all(content.as_bytes()) {
+        Ok(_) => {}
+        Err(reason) => panic!("Failed to write to file: {}", reason),
+    };
 }

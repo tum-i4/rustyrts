@@ -1,6 +1,12 @@
+use crate::rustc_data_structures::stable_hasher::HashStable;
 use regex::Regex;
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_middle::ty::{List, TyCtxt};
+use rustc_middle::{
+    mir::Body,
+    ty::{List, TyCtxt},
+};
+use rustc_session::config::UnstableOptions;
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub fn def_path_debug_str_custom<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
@@ -29,4 +35,38 @@ pub fn def_path_debug_str_custom<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Stri
     def_path_str = regex.replace_all(&def_path_str, "").to_string();
 
     def_path_str
+}
+
+pub fn get_hash<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
+    let incremental_ignore_spans_before: bool;
+
+    // We only temporarily overwrite 'incremental_ignore_spans'
+    // We store its old value and restore it later on
+    unsafe {
+        // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
+        // We just write a boolean value to a boolean attributes
+        let u_opts =
+            (&tcx.sess.opts.unstable_opts as *const UnstableOptions) as *mut UnstableOptions;
+        incremental_ignore_spans_before = (*u_opts).incremental_ignore_spans;
+        (*u_opts).incremental_ignore_spans = true;
+    }
+
+    let mut hash = (0, 0);
+    tcx.with_stable_hashing_context(|ref mut context| {
+        let mut hasher = StableHasher::new();
+        body.hash_stable(context, &mut hasher);
+
+        hash = hasher.finalize();
+    });
+
+    // We restore the old value of 'incremental_ignore_spans'
+    unsafe {
+        // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
+        // We just write a boolean value to a boolean attributes
+        let u_opts =
+            (&tcx.sess.opts.unstable_opts as *const UnstableOptions) as *mut UnstableOptions;
+        (*u_opts).incremental_ignore_spans = incremental_ignore_spans_before;
+    }
+
+    hash
 }

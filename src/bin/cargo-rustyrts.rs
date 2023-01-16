@@ -63,13 +63,13 @@ fn main() {
     }
 
     if let Some("rustyrts") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        // This arm is for when `cargo rustyrts` is called. We call `cargo rustc` for each applicable target,
+        // This arm is for when `cargo rustyrts` is called. We call `cargo build`,
         // but with the `RUSTC` env var set to the `cargo-rustyrts` binary so that we come back in the other branch,
-        // and dispatch the invocations to `rustc` and `rustyrts`, respectively.
+        // and dispatch the invocations to `rustyrts`, respectively.
         run_cargo_rustc();
         select_and_execute_tests();
     } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        // This arm is executed when `cargo-rustyrts` runs `cargo rustc` with the `RUSTC_WRAPPER` env var set to itself.
+        // This arm is executed when `cargo-rustyrts` runs `cargo build` with the `RUSTC_WRAPPER` env var set to itself.
         run_rustyrts();
     } else {
         show_error(
@@ -80,7 +80,7 @@ fn main() {
 }
 
 // This will construct command line like:
-// `cargo rustc --bin some_crate_name -v -- cargo-rustyrts-marker-begin --top_crate_name some_top_crate_name --domain interval -v cargo-rustyrts-marker-end`
+// `cargo build --bin some_crate_name -v -- cargo-rustyrts-marker-begin --top_crate_name some_top_crate_name --domain interval -v cargo-rustyrts-marker-end`
 // And set the following environment variables:
 // `RUSTC_WRAPPER` is set to `cargo-rustyrts` itself so the execution will come back to the second branch as described above
 // `rustyrts_args` is set to the user-provided arguments for `rustyrts`
@@ -95,7 +95,7 @@ fn run_cargo_rustc() {
     let files = read_dir(path_buf.as_path()).unwrap();
     for path_res in files {
         if let Ok(path) = path_res {
-            if path.file_name().to_str().unwrap().ends_with("changes") {
+            if path.file_name().to_str().unwrap().ends_with(".changes") {
                 remove_file(path.path()).unwrap();
             }
         }
@@ -105,13 +105,12 @@ fn run_cargo_rustc() {
 
     let mut args = std::env::args().skip(2);
 
-    // Now we run `cargo rustc $FLAGS $ARGS`, giving the user the
+    // Now we run `cargo build $FLAGS $ARGS`, giving the user the
     // chance to add additional arguments. `FLAGS` is set to identify
     // this target.  The user gets to control what gets actually passed to rustyrts.
     let mut cmd = cargo();
-    cmd.arg("rustc");
-    cmd.arg("--profile");
-    cmd.arg("test");
+    cmd.arg("build");
+    cmd.arg("--tests");
 
     // Add cargo args until first `--`.
     while let Some(arg) = args.next() {
