@@ -15,7 +15,7 @@ use crate::paths::{
 };
 
 use super::checksums::Checksums;
-use super::util::def_path_debug_str_custom;
+use super::util::{def_path_debug_str_custom, load_ctxt};
 
 static BASE_PATH: RwLock<String> = RwLock::new(String::new());
 
@@ -130,20 +130,6 @@ impl Callbacks for RustyRTSCallbacks {
         load_ctxt(queries, |tcx| self.run_analysis(compiler, tcx));
         Compilation::Continue
     }
-}
-
-#[rustversion::since(1.68.0)]
-fn load_ctxt<'tcx, F: FnOnce(TyCtxt<'tcx>)>(queries: &'tcx Queries<'tcx>, f: F) {
-    queries.global_ctxt().unwrap().enter(|tcx| f(tcx));
-}
-
-#[rustversion::before(1.68.0)]
-fn load_ctxt(queries: &Queries) {
-    queries
-        .global_ctxt()
-        .unwrap()
-        .peek_mut() // Apparently peek_mut() has been removed since version 1.68.0
-        .enter(|tcx| f(tcx));
 }
 
 fn write_to_file<F>(content: String, path_buf_init: F)

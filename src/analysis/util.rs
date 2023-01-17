@@ -2,11 +2,26 @@ use crate::rustc_data_structures::stable_hasher::HashStable;
 use regex::Regex;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_interface::Queries;
 use rustc_middle::{
     mir::Body,
     ty::{List, TyCtxt},
 };
 use rustc_session::config::UnstableOptions;
+
+#[rustversion::since(1.68.0)]
+pub fn load_ctxt<'tcx, F: FnOnce(TyCtxt<'tcx>)>(queries: &'tcx Queries<'tcx>, f: F) {
+    queries.global_ctxt().unwrap().enter(|tcx| f(tcx));
+}
+
+#[rustversion::before(1.68.0)]
+pub fn load_ctxt(queries: &Queries) {
+    queries
+        .global_ctxt()
+        .unwrap()
+        .peek_mut() // Apparently peek_mut() has been removed since version 1.68.0
+        .enter(|tcx| f(tcx));
+}
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub fn def_path_debug_str_custom<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {

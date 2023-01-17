@@ -248,6 +248,7 @@ mod test {
     use rustc_span::source_map;
 
     use crate::analysis::checksums::Checksums;
+    use crate::analysis::util::load_ctxt;
     use crate::graph::graph::DependencyGraph;
     use crate::graph::graph::EdgeType;
 
@@ -295,7 +296,7 @@ mod test {
 
         rustc_interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
-                queries.global_ctxt().unwrap().take().enter(|tcx| {
+                load_ctxt(queries, |tcx| {
                     let mut visitor = GraphVisitor::new(tcx, &mut graph, Checksums::new());
 
                     for def_id in tcx.iter_local_def_id() {
