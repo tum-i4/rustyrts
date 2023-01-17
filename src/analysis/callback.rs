@@ -1,18 +1,12 @@
 use std::fs::{read_to_string, File};
 use std::io::Write;
-use std::mem::transmute;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicU64;
-use std::sync::atomic::Ordering::SeqCst;
 use std::sync::RwLock;
 
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
-
-use rustc_data_structures::steal::Steal;
-use rustc_middle::ty::query::query_keys::mir_built;
 
 use crate::analysis::visitor::GraphVisitor;
 use crate::graph::graph::DependencyGraph;
@@ -22,6 +16,8 @@ use crate::paths::{
 
 use super::checksums::Checksums;
 use super::util::def_path_debug_str_custom;
+
+static BASE_PATH: RwLock<String> = RwLock::new(String::new());
 
 pub struct RustyRTSCallbacks {
     graph: DependencyGraph<String>,
@@ -123,38 +119,7 @@ impl RustyRTSCallbacks {
     }
 }
 
-static OLD_FUNCTION_PTR: AtomicU64 = AtomicU64::new(0);
-static BASE_PATH: RwLock<String> = RwLock::new(String::new());
-
-/// This function is executed instead of mir_built() in the compiler
-fn custom_mir_built<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: mir_built<'tcx>,
-) -> &'tcx Steal<rustc_middle::mir::Body<'tcx>> {
-    let content = OLD_FUNCTION_PTR.load(SeqCst);
-    let old_function = unsafe {
-        transmute::<
-            u64,
-            fn(_: TyCtxt<'tcx>, _: mir_built<'tcx>) -> &'tcx Steal<rustc_middle::mir::Body<'tcx>>,
-        >(content)
-    };
-
-    let result = old_function(tcx, def);
-
-    return result;
-}
-
 impl Callbacks for RustyRTSCallbacks {
-    /// Called before creating the compiler instance
-    fn config(&mut self, config: &mut interface::Config) {
-        config.override_queries = Some(|_sess, providers, _external_providers| {
-            // inject custom mir_built query
-            let old_mir_built = providers.mir_built;
-            OLD_FUNCTION_PTR.store(old_mir_built as u64, SeqCst);
-            providers.mir_built = custom_mir_built;
-        });
-    }
-
     /// Called after analysis. Return value instructs the compiler whether to
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_analysis<'compiler, 'tcx>(
@@ -162,12 +127,23 @@ impl Callbacks for RustyRTSCallbacks {
         compiler: &'compiler interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
-            self.run_analysis(compiler, tcx);
-        });
-
+        load_ctxt(queries, |tcx| self.run_analysis(compiler, tcx));
         Compilation::Continue
     }
+}
+
+#[rustversion::since(1.68.0)]
+fn load_ctxt<'tcx, F: FnOnce(TyCtxt<'tcx>)>(queries: &'tcx Queries<'tcx>, f: F) {
+    queries.global_ctxt().unwrap().enter(|tcx| f(tcx));
+}
+
+#[rustversion::before(1.68.0)]
+fn load_ctxt(queries: &Queries) {
+    queries
+        .global_ctxt()
+        .unwrap()
+        .peek_mut() // Apparently peek_mut() has been removed since version 1.68.0
+        .enter(|tcx| f(tcx));
 }
 
 fn write_to_file<F>(content: String, path_buf_init: F)
