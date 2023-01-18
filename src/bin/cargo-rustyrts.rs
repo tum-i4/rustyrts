@@ -5,7 +5,9 @@ use rustyrts::utils;
 use serde_json;
 use std::collections::HashSet;
 use std::ffi::OsString;
-use std::fs::{create_dir_all, read_dir, read_to_string, remove_file, DirEntry, OpenOptions};
+use std::fs::{
+    create_dir_all, read_dir, read_to_string, remove_dir_all, remove_file, DirEntry, OpenOptions,
+};
 use std::hash::Hash;
 use std::io::Write;
 use std::process::Command;
@@ -32,6 +34,28 @@ fn show_version() {
 fn show_error(msg: String) -> ! {
     eprintln!("fatal error: {}", msg);
     std::process::exit(1)
+}
+
+fn clean() {
+    let project_dir = std::env::current_dir().unwrap();
+    let path_buf = get_base_path(project_dir.to_str().unwrap());
+
+    if path_buf.exists() {
+        remove_dir_all(path_buf).expect("Failed to remove .rts directory");
+    }
+
+    let mut cmd = cargo();
+    cmd.arg("clean");
+
+    // Execute cmd
+    match cmd.status() {
+        Ok(exit) => {
+            if !exit.success() {
+                std::process::exit(exit.code().unwrap_or(42));
+            }
+        }
+        Err(ref e) => panic!("error during rustyrts run: {:?}", e),
+    }
 }
 
 // Determines whether a flag `name` is present before `--`.
@@ -63,11 +87,15 @@ fn main() {
     }
 
     if let Some("rustyrts") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        // This arm is for when `cargo rustyrts` is called. We call `cargo build`,
-        // but with the `RUSTC` env var set to the `cargo-rustyrts` binary so that we come back in the other branch,
-        // and dispatch the invocations to `rustyrts`, respectively.
-        run_cargo_rustc();
-        select_and_execute_tests();
+        if let Some("clean") = std::env::args().nth(2).as_ref().map(AsRef::as_ref) {
+            clean();
+        } else {
+            // This arm is for when `cargo rustyrts` is called. We call `cargo build`,
+            // but with the `RUSTC` env var set to the `cargo-rustyrts` binary so that we come back in the other branch,
+            // and dispatch the invocations to `rustyrts`, respectively.
+            run_cargo_rustc();
+            select_and_execute_tests();
+        }
     } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // This arm is executed when `cargo-rustyrts` runs `cargo build` with the `RUSTC_WRAPPER` env var set to itself.
         run_rustyrts();
