@@ -116,7 +116,9 @@ impl DependencyGraph<String> {
     {
         // Parse edges
         for line in lines {
-            let (edge_str, edge_types_str) = line.split_once(" //").unwrap();
+            let messageFn = || format!("Found malformed edge line: {})", line);
+
+            let (edge_str, edge_types_str) = line.split_once(" //").expect(&messageFn());
 
             if let Some(edge_types) = edge_types_str
                 .strip_prefix(" {")
@@ -124,14 +126,14 @@ impl DependencyGraph<String> {
                 .and_then(|s| Some(s.split(", ")))
             {
                 let (start_str, end_str) = edge_str.split_once("\" -> \"").unwrap();
-                let start = start_str.strip_prefix("\"").unwrap();
-                let end = end_str.strip_suffix("\"").unwrap();
+                let start = start_str.strip_prefix("\"").expect(&messageFn());
+                let end = end_str.strip_suffix("\"").expect(&messageFn());
 
                 for edge_type in edge_types {
                     self.add_edge(
                         start.to_string(),
                         end.to_string(),
-                        edge_type.parse().unwrap(),
+                        edge_type.parse().expect(&messageFn()),
                     );
                 }
             }

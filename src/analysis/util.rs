@@ -49,7 +49,7 @@ pub fn def_path_debug_str_custom<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Stri
     let regex: Regex = Regex::new(r"(![^:]*::)").unwrap();
     def_path_str = regex.replace_all(&def_path_str, "").to_string();
 
-    def_path_str
+    def_path_str.replace("\n", "")
 }
 
 pub fn get_hash<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
@@ -59,7 +59,7 @@ pub fn get_hash<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
     // We store its old value and restore it later on
     unsafe {
         // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
-        // We just write a boolean value to a boolean attributes
+        // We just write a boolean value to a boolean attribute
         let u_opts =
             (&tcx.sess.opts.unstable_opts as *const UnstableOptions) as *mut UnstableOptions;
         incremental_ignore_spans_before = (*u_opts).incremental_ignore_spans;
@@ -77,7 +77,7 @@ pub fn get_hash<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
     // We restore the old value of 'incremental_ignore_spans'
     unsafe {
         // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
-        // We just write a boolean value to a boolean attributes
+        // We just write a boolean value to a boolean attribute
         let u_opts =
             (&tcx.sess.opts.unstable_opts as *const UnstableOptions) as *mut UnstableOptions;
         (*u_opts).incremental_ignore_spans = incremental_ignore_spans_before;

@@ -203,7 +203,12 @@ fn select_and_execute_tests() {
 
     // Read graphs
     let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
-    let edges = read_lines(&files, "dot", |line| line.contains("\" -> \""), |line| line);
+    let edges = read_lines(
+        &files,
+        "dot",
+        |line| !line.trim_start().starts_with("\\") && line.contains("\" -> \""),
+        |line| line,
+    );
     dependency_graph.import_edges(edges);
 
     if verbose {
