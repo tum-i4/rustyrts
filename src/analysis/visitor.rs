@@ -280,7 +280,6 @@ mod test {
                 name: source_map::FileName::Custom("main.rs".into()),
                 input: test_code,
             },
-            input_path: None,
             output_dir: None,
             output_file: None,
             file_loader: None,

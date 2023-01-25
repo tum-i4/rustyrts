@@ -25,10 +25,12 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly
+        toolchain: nightly-2023-01-20
         override: true
     - name: Install Rust components
       run: rustup component add rustc-dev llvm-tools-preview
+    - name: Check Rust version
+      run: cargo --version && rustc --version
     - name: Build
       run: cargo build --verbose
     - name: Run tests
