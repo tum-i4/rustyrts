@@ -23,6 +23,9 @@ Usage:
     cargo rustyrts
 "#;
 
+//######################################################################################################################
+// Utility functions
+
 fn show_help() {
     println!("{}", CARGO_RUSTYRTS_HELP);
 }
@@ -36,34 +39,15 @@ fn show_error(msg: String) -> ! {
     std::process::exit(1)
 }
 
-fn clean() {
-    let project_dir = std::env::current_dir().unwrap();
-    let path_buf = get_base_path(project_dir.to_str().unwrap());
-
-    if path_buf.exists() {
-        remove_dir_all(path_buf).expect("Failed to remove .rts directory");
-    }
-
-    let mut cmd = cargo();
-    cmd.arg("clean");
-
-    // Execute cmd
-    match cmd.status() {
-        Ok(exit) => {
-            if !exit.success() {
-                std::process::exit(exit.code().unwrap_or(42));
-            }
-        }
-        Err(ref e) => panic!("error during rustyrts run: {:?}", e),
-    }
-}
-
 // Determines whether a flag `name` is present before `--`.
 // For example, has_arg_flag("-v")
 fn has_arg_flag(name: &str) -> bool {
     let mut args = std::env::args().take_while(|val| val != "--");
     args.any(|val| val == name)
 }
+
+//######################################################################################################################
+// Command constants
 
 fn rustyrts() -> Command {
     let mut path = std::env::current_exe().expect("current executable path invalid");
@@ -74,6 +58,9 @@ fn rustyrts() -> Command {
 fn cargo() -> Command {
     Command::new(std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
 }
+
+//######################################################################################################################
+// Main function
 
 fn main() {
     // Check for version and help flags even when invoked as `cargo-rustyrts`.
@@ -104,6 +91,31 @@ fn main() {
             "`cargo-rustyrts` must be called with either `rustyrts` or `rustc` as first argument."
                 .to_string(),
         )
+    }
+}
+
+//######################################################################################################################
+// Actually important functions...
+
+fn clean() {
+    let project_dir = std::env::current_dir().unwrap();
+    let path_buf = get_base_path(project_dir.to_str().unwrap());
+
+    if path_buf.exists() {
+        remove_dir_all(path_buf).expect("Failed to remove .rts directory");
+    }
+
+    let mut cmd = cargo();
+    cmd.arg("clean");
+
+    // Execute cmd
+    match cmd.status() {
+        Ok(exit) => {
+            if !exit.success() {
+                std::process::exit(exit.code().unwrap_or(42));
+            }
+        }
+        Err(ref e) => panic!("error during rustyrts run: {:?}", e),
     }
 }
 
@@ -214,6 +226,9 @@ fn run_rustyrts() {
     }
 }
 
+// This will construct command line like:
+// either   `cargo test --no-fail-fast -- --exact test_1 test_2 ...` (If some tests are affected)
+// or       `cargo test --no-fail-fast --no-run` (If no tests are affected)
 fn select_and_execute_tests() {
     let really_verbose = has_arg_flag("-vv");
     let verbose = really_verbose || has_arg_flag("-v");
@@ -259,7 +274,7 @@ fn select_and_execute_tests() {
     }
 
     // Read changed nodes
-    let changed_nodes: HashSet<&String> = read_lines(
+    let changed_nodes = read_lines(
         &files,
         "changes",
         |line| line != "" && dependency_graph.get_node(&line).is_some(),

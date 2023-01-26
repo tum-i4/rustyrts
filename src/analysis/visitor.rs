@@ -6,27 +6,23 @@ use rustc_middle::mir::ConstantKind;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{Ty, TyCtxt, TyKind};
 
-use std::cell::RefCell;
-
 use crate::graph::graph::{DependencyGraph, EdgeType};
 
 use super::checksums::Checksums;
-use super::util::{def_path_debug_str_custom, get_hash};
+use super::util::{def_id_name, get_checksum};
 
-thread_local! {
-    static PROCESSED_BODY: RefCell<Option<DefId>>  = RefCell::new(None);
-}
-
+/// MIR Visitor responsible for creating the dependency graph and comparing checksums
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
     old_checksums: Checksums,
     new_checksums: Checksums,
     changed_nodes: Vec<String>,
+    processed_body: Option<DefId>,
 }
 
 impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
-    pub fn new(
+    pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         graph: &'g mut DependencyGraph<String>,
         old_checksums: Checksums,
@@ -37,10 +33,11 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             old_checksums,
             new_checksums: Checksums::new(),
             changed_nodes: Vec::new(),
+            processed_body: None,
         }
     }
 
-    pub fn terminate(self) -> (Checksums, Vec<String>) {
+    pub(crate) fn finalize(self) -> (Checksums, Vec<String>) {
         (self.new_checksums, self.changed_nodes)
     }
 
@@ -56,14 +53,18 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             if let Some(ConstContext::ConstFn) | None =
                 self.tcx.hir().body_const_context(def_id.expect_local())
             {
-                let body = self.tcx.optimized_mir(def_id);
+                let body = self.tcx.optimized_mir(def_id); // 1) See comment above
+
+                //##########################################################################################################
+                // Visit body
+
                 self.visit_body(body);
 
-                //##################################################################################################################
+                //##########################################################################################################
                 // Check if checksum changed
 
                 let name = self.tcx.def_path_debug_str(def_id);
-                let checksum = get_hash(self.tcx, body);
+                let checksum = get_checksum(self.tcx, body);
 
                 let maybe_old = self.old_checksums.inner().get(&name);
 
@@ -73,22 +74,21 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                 };
 
                 if changed {
-                    self.changed_nodes
-                        .push(def_path_debug_str_custom(self.tcx, def_id));
+                    self.changed_nodes.push(def_id_name(self.tcx, def_id));
                 }
                 self.new_checksums.inner().insert(name, checksum);
             }
         }
     }
 
-    pub fn process_traits(&mut self) {
+    pub(crate) fn process_traits(&mut self) {
         for (_, impls) in self.tcx.all_local_trait_impls(()) {
             for def_id in impls {
                 let implementors = self.tcx.impl_item_implementor_ids(def_id.to_def_id());
                 for (&trait_fn, &impl_fn) in implementors {
                     self.graph.add_edge(
-                        def_path_debug_str_custom(self.tcx, trait_fn),
-                        def_path_debug_str_custom(self.tcx, impl_fn),
+                        def_id_name(self.tcx, trait_fn),
+                        def_id_name(self.tcx, impl_fn),
                         EdgeType::Impl,
                     );
                 }
@@ -101,136 +101,122 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let def_id = body.source.instance.def_id();
 
-        self.graph
-            .add_node(def_path_debug_str_custom(self.tcx, def_id));
+        self.graph.add_node(def_id_name(self.tcx, def_id));
 
-        PROCESSED_BODY.with(|processed| {
-            processed.replace(Some(def_id));
-            self.super_body(body);
-            processed.take();
-        });
+        let old_processed_body = self.processed_body.replace(def_id);
+        self.super_body(body);
+        self.processed_body = old_processed_body
     }
 
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
+        let Some(outer) = self.processed_body else {panic!("Cannot find currently analyzed body")};
 
-        let literal = constant.literal;
+        match constant.literal {
+            ConstantKind::Unevaluated(content, _ty) => {
+                // This takes care of borrows of e.g. "const var: u64"
+                let def_id = content.def.did;
 
-        PROCESSED_BODY.with(|processed| {
-            if let Some(outer) = *processed.borrow() {
-                match literal {
-                    ConstantKind::Unevaluated(content, _ty) => {
-                        // This takes care of borrows of e.g. "const var: u64"
-                        let def_id = content.def.did;
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer),
+                    def_id_name(self.tcx, def_id),
+                    EdgeType::Unevaluated,
+                );
+            }
+            ConstantKind::Val(cons, _ty) => {
+                match cons {
+                    ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
+                        match self.tcx.global_alloc(ptr.provenance) {
+                            GlobalAlloc::Static(def_id) => {
+                                // This takes care of borrows of e.g. "static var: u64"
+                                let (accessor, accessed) =
+                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
 
-                        self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, outer),
-                            def_path_debug_str_custom(self.tcx, def_id),
-                            EdgeType::Unevaluated,
-                        );
-                    }
-                    ConstantKind::Val(cons, _ty) => {
-                        match cons {
-                            ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
-                                match self.tcx.global_alloc(ptr.provenance) {
-                                    GlobalAlloc::Static(def_id) => {
-                                        // This takes care of borrows of e.g. "static var: u64"
-                                        let (accessor, accessed) = (
-                                            def_path_debug_str_custom(self.tcx, outer),
-                                            def_path_debug_str_custom(self.tcx, def_id),
-                                        );
+                                // // This is not necessary since for a node that writes into a variable,
+                                // // there nust exist a path from test to this node already
+                                //
+                                //if ty.is_mutable_ptr() {
+                                //    // If the borrow is mut, we also add an edge in the reverse direction
+                                //    self.graph.add_edge(
+                                //        accessed.clone(),
+                                //        accessor.clone(),
+                                //        EdgeType::Scalar,
+                                //    );
+                                //}
 
-                                        // // This is not necessary since for a node that writes into a variable,
-                                        // // there nust exist a path from test to this node already
-                                        //
-                                        //if ty.is_mutable_ptr() {
-                                        //    // If the borrow is mut, we also add an edge in the reverse direction
-                                        //    self.graph.add_edge(
-                                        //        accessed.clone(),
-                                        //        accessor.clone(),
-                                        //        EdgeType::Scalar,
-                                        //    );
-                                        //}
-
-                                        // Since we do not know if a (potentially mut) borrow is read, we always add an edge here
-                                        self.graph.add_edge(accessor, accessed, EdgeType::Scalar);
-                                    }
-                                    GlobalAlloc::Function(instance) => {
-                                        // TODO: I have not yet found out when this is usefull, but since there is a defId stored in here, it might be important
-                                        // Perhaps this refers to extern fns?
-                                        let def_id = instance.def_id();
-                                        let (accessor, accessed) = (
-                                            def_path_debug_str_custom(self.tcx, outer),
-                                            def_path_debug_str_custom(self.tcx, def_id),
-                                        );
-                                        // TODO: find out if this is useful at all
-                                        self.graph.add_edge(accessor, accessed, EdgeType::FnPtr);
-                                    }
-                                    _ => (),
-                                }
+                                // Since we assume that a borrow is actually read, we always add an edge here
+                                self.graph.add_edge(accessor, accessed, EdgeType::Scalar);
                             }
-                            _ => (),
+                            GlobalAlloc::Function(instance) => {
+                                // TODO: I have not yet found out when this is usefull, but since there is a defId stored in here, it might be important
+                                // Perhaps this refers to extern fns?
+                                let def_id = instance.def_id();
+                                let (accessor, accessed) =
+                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
+                                // TODO: find out if this is useful at all
+                                self.graph.add_edge(accessor, accessed, EdgeType::FnPtr);
+                            }
+                            _ => {}
                         }
                     }
-                    _ => (),
-                }
-            }
-        });
-    }
-
-    fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
-        PROCESSED_BODY.with(|processed| {
-            if let Some(outer) = *processed.borrow() {
-                match ty.kind() {
-                    TyKind::Closure(def_id, _) => {
-                        self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, outer),
-                            def_path_debug_str_custom(self.tcx, *def_id),
-                            EdgeType::Closure,
-                        );
-                    }
-                    TyKind::Generator(def_id, _, _) => {
-                        self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, outer),
-                            def_path_debug_str_custom(self.tcx, *def_id),
-                            EdgeType::Generator,
-                        );
-                    }
-                    TyKind::FnDef(def_id, _) => {
-                        self.graph.add_edge(
-                            def_path_debug_str_custom(self.tcx, outer),
-                            def_path_debug_str_custom(self.tcx, *def_id),
-                            EdgeType::FnDef,
-                        );
-                    }
-                    //TyKind::Foreign(def_id) => {
-                    //    // this has effectively no impact because we do not track modifications of external functions
-                    //    self.graph.add_edge(
-                    //        def_path_debug_str_custom(self.tcx, outer),
-                    //        def_path_debug_str_custom(self.tcx, *def_id),
-                    //        EdgeType::Foreign,
-                    //    );
-                    //}
-                    //TyKind::Opaque(def_id, _) => {
-                    //    // this has effectively no impact impact because traits have no mir body
-                    //    self.graph.add_edge(
-                    //        def_path_debug_str_custom(self.tcx, outer),
-                    //        def_path_debug_str_custom(self.tcx, *def_id),
-                    //        EdgeType::Opaque,
-                    //    );
-                    //}
-                    //TyKind::Adt(adt_def, _) => {
-                    //    // this has effectively no impact impact because adts (structs, eunms) have no mir body
-                    //    self.graph.add_edge(
-                    //        def_path_debug_str_custom(self.tcx, outer),
-                    //        def_path_debug_str_custom(self.tcx, adt_def.did()),
-                    //        EdgeType::Adt,
-                    //    );
-                    //}
                     _ => {}
                 }
             }
-        });
+            _ => (),
+        }
+    }
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
+        let Some(outer) = self.processed_body else {panic!("Cannot find currently analyzed body")};
+
+        match ty.kind() {
+            TyKind::Closure(def_id, _) => {
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer),
+                    def_id_name(self.tcx, *def_id),
+                    EdgeType::Closure,
+                );
+            }
+            TyKind::Generator(def_id, _, _) => {
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer),
+                    def_id_name(self.tcx, *def_id),
+                    EdgeType::Generator,
+                );
+            }
+            TyKind::FnDef(def_id, _) => {
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer),
+                    def_id_name(self.tcx, *def_id),
+                    EdgeType::FnDef,
+                );
+            }
+            //TyKind::Foreign(def_id) => {
+            //    // this has effectively no impact because we do not track modifications of external functions
+            //    self.graph.add_edge(
+            //        def_path_debug_str_custom(self.tcx, outer),
+            //        def_path_debug_str_custom(self.tcx, *def_id),
+            //        EdgeType::Foreign,
+            //    );
+            //}
+            //TyKind::Opaque(def_id, _) => {
+            //    // this has effectively no impact impact because traits have no mir body
+            //    self.graph.add_edge(
+            //        def_path_debug_str_custom(self.tcx, outer),
+            //        def_path_debug_str_custom(self.tcx, *def_id),
+            //        EdgeType::Opaque,
+            //    );
+            //}
+            //TyKind::Adt(adt_def, _) => {
+            //    // this has effectively no impact impact because adts (structs, eunms) have no mir body
+            //    self.graph.add_edge(
+            //        def_path_debug_str_custom(self.tcx, outer),
+            //        def_path_debug_str_custom(self.tcx, adt_def.did()),
+            //        EdgeType::Adt,
+            //    );
+            //}
+            _ => {}
+        }
     }
 }
 
@@ -248,7 +234,7 @@ mod test {
     use rustc_span::source_map;
 
     use crate::analysis::checksums::Checksums;
-    use crate::analysis::util::load_ctxt;
+    use crate::analysis::util::load_tcx;
     use crate::graph::graph::DependencyGraph;
     use crate::graph::graph::EdgeType;
 
@@ -267,15 +253,13 @@ mod test {
         let test_code = load_test_code(file_name).expect("Failed to load test code.");
 
         let config = rustc_interface::Config {
-            // Command line options
             opts: config::Options {
                 test: true,
                 optimize: OptLevel::No,
                 ..config::Options::default()
             },
-            // cfg! configuration in addition to the default ones
-            crate_cfg: FxHashSet::default(), // FxHashSet<(String, Option<String>)>
-            crate_check_cfg: CheckCfg::default(), // CheckCfg
+            crate_cfg: FxHashSet::default(),
+            crate_check_cfg: CheckCfg::default(),
             input: config::Input::Str {
                 name: source_map::FileName::Custom("main.rs".into()),
                 input: test_code,
@@ -295,7 +279,7 @@ mod test {
 
         rustc_interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
-                load_ctxt(queries, |tcx| {
+                load_tcx(queries, |tcx| {
                     let mut visitor = GraphVisitor::new(tcx, &mut graph, Checksums::new());
 
                     for def_id in tcx.iter_local_def_id() {

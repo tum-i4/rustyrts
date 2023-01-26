@@ -1,6 +1,7 @@
 use std::{collections::HashMap, str::FromStr};
 
-pub struct Checksums {
+/// Wrapper of HashMap to provide serialisation and deserialisation of checksums
+pub(crate) struct Checksums {
     inner: HashMap<String, (u64, u64)>,
 }
 

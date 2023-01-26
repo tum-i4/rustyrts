@@ -2,7 +2,7 @@
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(box_syntax)]
-//#![feature(vec_remove_item)]
+#![allow(mutable_transmutes)]
 
 extern crate rustc_ast;
 extern crate rustc_data_structures;
@@ -30,9 +30,7 @@ extern crate itertools;
 extern crate log;
 extern crate queues;
 
-// Modules for static analyses
 pub mod analysis {
-    // Definitions of callbacks for rustc
     pub mod callback;
     pub mod checksums;
     pub mod util;
@@ -43,6 +41,5 @@ pub mod graph {
     pub mod graph;
 }
 
-// Useful utilities
 pub mod paths;
 pub mod utils;
