@@ -96,4 +96,15 @@ mod teest {
 
         assert_eq!(checksums, deserialized);
     }
+
+    #[test]
+    pub fn test_checksum_deserialization_empty() {
+        let mut checksums = Checksums::new();
+        let inner = checksums.inner();
+
+        let serialized = checksums.to_string();
+        let deserialized = Checksums::from(serialized.as_bytes());
+
+        assert_eq!(checksums, deserialized);
+    }
 }
