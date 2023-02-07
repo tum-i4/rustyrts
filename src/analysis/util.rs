@@ -1,4 +1,5 @@
 use crate::rustc_data_structures::stable_hasher::HashStable;
+use lazy_static::lazy_static;
 use regex::Regex;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -37,18 +38,32 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     //      We are removing the crate prefix in the type that is casted to
     //      This prefix is present if the type is from a non-local crate
     //      We do not want to keep it
-    let regex: Regex = Regex::new(r"(<.* as )(.*::)(.*>)").unwrap();
-    def_path_str = regex.replace_all(&def_path_str, "$1$3").to_string();
+    lazy_static! {
+        static ref REGEX_CRATE_PREFIX: Regex = Regex::new(r"(<.* as )(.*::)(.*>)").unwrap();
+    }
+    def_path_str = REGEX_CRATE_PREFIX
+        .replace_all(&def_path_str, "$1$3")
+        .to_string();
 
     // This is a hack
     // See 1) above
     // If this is a non-local def_id:
     //      We are removing the part of the path that corresponds to the alias name of the extern crate
     //      In this extern crate itself, this part of the path is not present
-    let regex: Regex = Regex::new(r"(!)<").unwrap();
-    def_path_str = regex.replace_all(&def_path_str, "<").to_string();
-    let regex: Regex = Regex::new(r"(![^:]*?::)").unwrap();
-    def_path_str = regex.replace_all(&def_path_str, "").to_string();
+
+    lazy_static! {
+        static ref REGEX_LOCAL_ALIAS_1: Regex = Regex::new(r"(!)<").unwrap();
+    }
+    def_path_str = REGEX_LOCAL_ALIAS_1
+        .replace_all(&def_path_str, "<")
+        .to_string();
+
+    lazy_static! {
+        static ref REGEX_LOCAL_ALIAS_2: Regex = Regex::new(r"(![^:]*?::)").unwrap();
+    }
+    def_path_str = REGEX_LOCAL_ALIAS_2
+        .replace_all(&def_path_str, "")
+        .to_string();
 
     // Ocasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
