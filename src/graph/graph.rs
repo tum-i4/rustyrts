@@ -213,4 +213,30 @@ mod teest {
 
         assert_eq!(graph, deserialized);
     }
+
+    #[test]
+    pub fn test_graph_deserialization_edge_types() {
+        let mut graph: DependencyGraph<String> = DependencyGraph::new();
+
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::Unevaluated,
+        );
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Scalar);
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::Generator,
+        );
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnDef);
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnPtr);
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Impl);
+
+        let serialized = graph.to_string();
+        let deserialized = DependencyGraph::from_str(&serialized).unwrap();
+
+        assert_eq!(graph, deserialized);
+    }
 }
