@@ -71,13 +71,8 @@ impl From<&[u8]> for Checksums {
 
 #[cfg(test)]
 mod teest {
-    use regex::bytes::Regex;
-    use std::str::FromStr;
-    use test_log::test;
-
-    use log::debug;
-
     use super::Checksums;
+    use test_log::test;
 
     #[test]
     pub fn test_checksum_deserialization() {
@@ -99,8 +94,7 @@ mod teest {
 
     #[test]
     pub fn test_checksum_deserialization_empty() {
-        let mut checksums = Checksums::new();
-        let inner = checksums.inner();
+        let checksums = Checksums::new();
 
         let serialized = checksums.to_string();
         let deserialized = Checksums::from(serialized.as_bytes());
