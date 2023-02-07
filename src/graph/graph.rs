@@ -194,16 +194,23 @@ impl FromStr for DependencyGraph<String> {
     }
 }
 
-#[test]
-pub fn test_graph_deserialization() {
-    let mut graph: DependencyGraph<String> = DependencyGraph::new();
+#[cfg(test)]
+mod teest {
+    use std::str::FromStr;
 
-    graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
-    graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Closure);
-    graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Closure);
+    use crate::graph::graph::{DependencyGraph, EdgeType};
 
-    let serialized = graph.to_string();
-    let deserialized = DependencyGraph::from_str(&serialized).unwrap();
+    #[test]
+    pub fn test_graph_deserialization() {
+        let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
-    assert_eq!(graph, deserialized);
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
+        graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Closure);
+        graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Closure);
+
+        let serialized = graph.to_string();
+        let deserialized = DependencyGraph::from_str(&serialized).unwrap();
+
+        assert_eq!(graph, deserialized);
+    }
 }

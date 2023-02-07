@@ -1,4 +1,4 @@
-use std::fs::{read_to_string, File};
+use std::fs::{read, read_to_string, File};
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -50,11 +50,11 @@ impl RustyRTSCallbacks {
 
         let checksums_path_buf = get_checksums_path(path_buf.clone(), &crate_name, crate_id);
 
-        let maybe_checksums = read_to_string(checksums_path_buf);
+        let maybe_checksums = read(checksums_path_buf);
 
         let old_checksums = {
-            if let Ok(checksums_str) = maybe_checksums {
-                checksums_str.parse().expect("Failed to parse checksums")
+            if let Ok(checksums) = maybe_checksums {
+                Checksums::from(checksums.as_slice())
             } else {
                 Checksums::new()
             }
@@ -114,11 +114,19 @@ impl RustyRTSCallbacks {
     }
 }
 
-fn write_to_file<F>(content: String, path_buf: PathBuf, path_buf_init: F)
+/// Computes the location of a file from a closure
+/// and overwrites the content of this file
+///
+/// ## Arguments
+/// * `content` - new content of the file
+/// * `path_buf` - `PathBuf` that points to the parent directory
+/// * `initializer` - function that modifies path_buf - candidates: `get_graph_path`, `get_test_path`, `get_changes_path`
+///
+fn write_to_file<F>(content: String, path_buf: PathBuf, initializer: F)
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
-    let path_buf = path_buf_init(path_buf);
+    let path_buf = initializer(path_buf);
     let mut file = match File::create(path_buf.as_path()) {
         Ok(file) => file,
         Err(reason) => panic!("Failed to create file: {}", reason),
