@@ -1,15 +1,7 @@
 #![feature(rustc_private)]
 
-extern crate rustc_ast_pretty;
 extern crate rustc_driver;
-extern crate rustc_error_codes;
-extern crate rustc_errors;
-extern crate rustc_hash;
-extern crate rustc_hir;
-extern crate rustc_interface;
-extern crate rustc_middle;
 extern crate rustc_session;
-extern crate rustc_span;
 
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
