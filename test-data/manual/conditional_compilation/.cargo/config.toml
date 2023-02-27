@@ -1,0 +1,2 @@
+[build] # TODO: next line may be commented out
+rustflags = "--cfg foo"

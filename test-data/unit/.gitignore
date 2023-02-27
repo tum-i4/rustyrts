@@ -12,6 +12,4 @@ Cargo.lock
 
 # Added by cargo
 
-**/target
-/tmp
-**/.rts
+/target
