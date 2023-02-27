@@ -198,7 +198,7 @@ impl FromStr for DependencyGraph<String> {
 mod teest {
     use std::str::FromStr;
 
-    use crate::graph::graph::{DependencyGraph, EdgeType};
+    use crate::static_rts::graph::{DependencyGraph, EdgeType};
 
     #[test]
     pub fn test_graph_deserialization() {

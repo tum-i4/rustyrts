@@ -19,16 +19,20 @@ extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_span;
 
-pub mod analysis {
+pub mod static_rts {
     pub mod callback;
-    pub mod checksums;
-    pub mod util;
+    pub mod graph;
     pub mod visitor;
 }
 
-pub mod graph {
-    pub mod graph;
+pub mod dynamic_rts {
+    pub mod callback;
+    pub mod defid_util;
+    pub mod mir_util;
+    pub mod visitor;
 }
 
-pub mod paths;
+pub mod checksums;
+pub mod fs_utils;
+pub mod names;
 pub mod utils;

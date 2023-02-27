@@ -1,5 +1,9 @@
+use crate::rustc_data_structures::stable_hasher::HashStable;
 use lazy_static::lazy_static;
 use regex::bytes::Regex;
+use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_middle::{mir::Body, ty::TyCtxt};
+use rustc_session::config::UnstableOptions;
 use std::collections::HashMap;
 
 /// Wrapper of HashMap to provide serialisation and deserialisation of checksums
@@ -15,7 +19,11 @@ impl Checksums {
         }
     }
 
-    pub fn inner(&mut self) -> &mut HashMap<String, (u64, u64)> {
+    pub fn inner(&self) -> &HashMap<String, (u64, u64)> {
+        &self.inner
+    }
+
+    pub fn inner_mut(&mut self) -> &mut HashMap<String, (u64, u64)> {
         &mut self.inner
     }
 }
@@ -69,6 +77,43 @@ impl From<&[u8]> for Checksums {
     }
 }
 
+/// Function to obtain a stable checksum of a MIR body
+pub(crate) fn get_checksum<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
+    let incremental_ignore_spans_before: bool;
+
+    // We only temporarily overwrite 'incremental_ignore_spans'
+    // We store its old value and restore it later on
+    unsafe {
+        // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
+        // We only write a boolean value to a boolean attribute
+        let u_opts: &mut UnstableOptions = std::mem::transmute(&tcx.sess.opts.unstable_opts);
+
+        incremental_ignore_spans_before = u_opts.incremental_ignore_spans;
+        u_opts.incremental_ignore_spans = true;
+    }
+
+    let mut hash = (0, 0);
+    tcx.with_stable_hashing_context(|ref mut context| {
+        // We use the hashing mechanism provided by the compiler to obtain a hash of a MIR body,
+        // that is stable beyond the compiler session
+
+        let mut hasher = StableHasher::new();
+        body.hash_stable(context, &mut hasher);
+        hash = hasher.finalize();
+    });
+
+    // We restore the old value of 'incremental_ignore_spans'
+    unsafe {
+        // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
+        // We only write a boolean value to a boolean attribute
+        let u_opts: &mut UnstableOptions = std::mem::transmute(&tcx.sess.opts.unstable_opts);
+
+        u_opts.incremental_ignore_spans = incremental_ignore_spans_before;
+    }
+
+    hash
+}
+
 #[cfg(test)]
 mod teest {
     use super::Checksums;
@@ -77,7 +122,7 @@ mod teest {
     #[test]
     pub fn test_checksum_deserialization() {
         let mut checksums = Checksums::new();
-        let inner = checksums.inner();
+        let inner = checksums.inner_mut();
 
         inner.insert("node1".to_string(), (100000000000006, 0));
         inner.insert("node2".to_string(), (2, 100000000000005));

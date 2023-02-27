@@ -1,19 +1,7 @@
-use crate::rustc_data_structures::stable_hasher::HashStable;
 use lazy_static::lazy_static;
 use regex::Regex;
-use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
-use rustc_interface::Queries;
-use rustc_middle::{
-    mir::Body,
-    ty::{List, TyCtxt},
-};
-use rustc_session::config::UnstableOptions;
-
-/// Execute a callback function
-pub(crate) fn load_tcx<'tcx, F: FnOnce(TyCtxt<'tcx>)>(queries: &'tcx Queries<'tcx>, f: F) {
-    queries.global_ctxt().unwrap().enter(|tcx| f(tcx));
-}
+use rustc_middle::ty::{List, TyCtxt};
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
@@ -69,41 +57,4 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     def_path_str = def_path_str.replace("\n", "");
 
     def_path_str
-}
-
-/// Function to obtain a stable checksum of a MIR body
-pub(crate) fn get_checksum<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
-    let incremental_ignore_spans_before: bool;
-
-    // We only temporarily overwrite 'incremental_ignore_spans'
-    // We store its old value and restore it later on
-    unsafe {
-        // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
-        // We only write a boolean value to a boolean attribute
-        let u_opts: &mut UnstableOptions = std::mem::transmute(&tcx.sess.opts.unstable_opts);
-
-        incremental_ignore_spans_before = u_opts.incremental_ignore_spans;
-        u_opts.incremental_ignore_spans = true;
-    }
-
-    let mut hash = (0, 0);
-    tcx.with_stable_hashing_context(|ref mut context| {
-        // We use the hashing mechanism provided by the compiler to obtain a hash of a MIR body,
-        // that is stable beyond the compiler session
-
-        let mut hasher = StableHasher::new();
-        body.hash_stable(context, &mut hasher);
-        hash = hasher.finalize();
-    });
-
-    // We restore the old value of 'incremental_ignore_spans'
-    unsafe {
-        // SAFETY: We need to forcefully mutate 'incremental_ignore_spans'
-        // We only write a boolean value to a boolean attribute
-        let u_opts: &mut UnstableOptions = std::mem::transmute(&tcx.sess.opts.unstable_opts);
-
-        u_opts.incremental_ignore_spans = incremental_ignore_spans_before;
-    }
-
-    hash
 }

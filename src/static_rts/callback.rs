@@ -1,38 +1,40 @@
-use std::fs::{read, File};
-use std::io::Write;
-use std::path::PathBuf;
-
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
+use std::fs::read;
 
-use crate::analysis::visitor::GraphVisitor;
-use crate::graph::graph::DependencyGraph;
-use crate::paths::{
-    get_base_path, get_changes_path, get_checksums_path, get_graph_path, get_test_path,
+use crate::checksums::{get_checksum, Checksums};
+use crate::fs_utils::{
+    get_changes_path, get_checksums_path, get_graph_path, get_static_path, get_test_path,
+    write_to_file,
 };
+use crate::names::def_id_name;
 
-use super::checksums::Checksums;
-use super::util::{def_id_name, load_tcx};
+use super::graph::DependencyGraph;
+use super::visitor::GraphVisitor;
 
-pub struct RustyRTSCallbacks {
+pub struct StaticRTSCallbacks {
     graph: DependencyGraph<String>,
     source_path: String,
 }
 
-impl Callbacks for RustyRTSCallbacks {
+impl Callbacks for StaticRTSCallbacks {
     fn after_analysis<'compiler, 'tcx>(
         &mut self,
         compiler: &'compiler interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        load_tcx(queries, |tcx| self.run_analysis(compiler, tcx));
+        queries
+            .global_ctxt()
+            .unwrap()
+            .enter(|tcx| self.run_analysis(compiler, tcx));
         Compilation::Continue
     }
 }
 
-impl RustyRTSCallbacks {
+impl StaticRTSCallbacks {
     pub fn new(source_path: String) -> Self {
         Self {
             graph: DependencyGraph::new(),
@@ -41,12 +43,12 @@ impl RustyRTSCallbacks {
     }
 
     fn run_analysis(&mut self, _compiler: &interface::Compiler, tcx: TyCtxt) {
-        let path_buf = get_base_path(&self.source_path);
+        let path_buf = get_static_path(&self.source_path);
         let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
         let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
         //##################################################################################################################
-        // Import checksums
+        // 1. Import checksums
 
         let checksums_path_buf = get_checksums_path(path_buf.clone(), &crate_name, crate_id);
 
@@ -61,19 +63,19 @@ impl RustyRTSCallbacks {
         };
 
         //##############################################################################################################
-        // 1. Visit every def_id that has a MIR body and process traits
+        // 2. Visit every def_id that has a MIR body and process traits
         //      1) Creates the graph
         //      2) Computes checksums
         //      3) Calculates which nodes have changed
 
-        let mut visitor = GraphVisitor::new(tcx, &mut self.graph, old_checksums);
+        let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
         for def_id in tcx.mir_keys(()) {
-            visitor.visit(def_id.to_def_id());
+            graph_visitor.visit(def_id.to_def_id());
         }
-        visitor.process_traits();
+        graph_visitor.process_traits();
 
         //##############################################################################################################
-        // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
+        // 3. Determine which functions represent tests and store the names of those nodes on the filesystem
 
         let mut tests: Vec<String> = Vec::new();
         for def_id in tcx.mir_keys(()) {
@@ -91,13 +93,45 @@ impl RustyRTSCallbacks {
         }
 
         //##############################################################################################################
-        // 3. Write checksum mapping and names of changed nodes to filesystem
+        // 4. Write checksum mapping and names of changed nodes to filesystem
 
-        let (checksums, changed_nodes) = visitor.finalize();
+        let mut new_checksums = Checksums::new();
+        let mut changed_nodes = Vec::new();
 
-        write_to_file(checksums.to_string().to_string(), path_buf.clone(), |buf| {
-            get_checksums_path(buf, &crate_name, crate_id)
-        });
+        for def_id in tcx.mir_keys(()) {
+            let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
+
+            if has_body {
+                // Apparently optimized_mir() only works in these two cases
+                if let Some(ConstContext::ConstFn) | None = tcx.hir().body_const_context(*def_id) {
+                    let body = tcx.optimized_mir(*def_id); // 1) See comment above
+
+                    //##########################################################################################################
+                    // Check if checksum changed
+
+                    let name = tcx.def_path_debug_str(def_id.to_def_id());
+                    let checksum = get_checksum(tcx, body);
+
+                    let maybe_old = old_checksums.inner().get(&name);
+
+                    let changed = match maybe_old {
+                        Some(before) => *before != checksum,
+                        None => true,
+                    };
+
+                    if changed {
+                        changed_nodes.push(def_id_name(tcx, def_id.to_def_id()));
+                    }
+                    new_checksums.inner_mut().insert(name, checksum);
+                }
+            }
+        }
+
+        write_to_file(
+            new_checksums.to_string().to_string(),
+            path_buf.clone(),
+            |buf| get_checksums_path(buf, &crate_name, crate_id),
+        );
 
         write_to_file(
             changed_nodes.join("\n").to_string(),
@@ -106,34 +140,10 @@ impl RustyRTSCallbacks {
         );
 
         //##############################################################################################################
-        // Write graph to file
+        // 5. Write graph to file
 
         write_to_file(self.graph.to_string(), path_buf.clone(), |buf| {
             get_graph_path(buf, &crate_name, crate_id)
         });
     }
-}
-
-/// Computes the location of a file from a closure
-/// and overwrites the content of this file
-///
-/// ## Arguments
-/// * `content` - new content of the file
-/// * `path_buf` - `PathBuf` that points to the parent directory
-/// * `initializer` - function that modifies path_buf - candidates: `get_graph_path`, `get_test_path`, `get_changes_path`
-///
-fn write_to_file<F>(content: String, path_buf: PathBuf, initializer: F)
-where
-    F: FnOnce(PathBuf) -> PathBuf,
-{
-    let path_buf = initializer(path_buf);
-    let mut file = match File::create(path_buf.as_path()) {
-        Ok(file) => file,
-        Err(reason) => panic!("Failed to create file: {}", reason),
-    };
-
-    match file.write_all(content.as_bytes()) {
-        Ok(_) => {}
-        Err(reason) => panic!("Failed to write to file: {}", reason),
-    };
 }

@@ -10,7 +10,10 @@ rustc_private=true
 name = "cargo-rustyrts"
 
 [[bin]]
-name = "rustyrts"
+name = "rustyrts-static"
+
+[[bin]]
+name = "rustyrts-dynamic"
 
 [dependencies]
 log = "0.4"

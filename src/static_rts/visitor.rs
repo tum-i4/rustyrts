@@ -6,18 +6,14 @@ use rustc_middle::mir::ConstantKind;
 use rustc_middle::mir::{self, Body, Location};
 use rustc_middle::ty::{Ty, TyCtxt, TyKind};
 
-use crate::graph::graph::{DependencyGraph, EdgeType};
+use crate::names::def_id_name;
 
-use super::checksums::Checksums;
-use super::util::{def_id_name, get_checksum};
+use super::graph::{DependencyGraph, EdgeType};
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
-    old_checksums: Checksums,
-    new_checksums: Checksums,
-    changed_nodes: Vec<String>,
     processed_body: Option<DefId>,
 }
 
@@ -25,20 +21,12 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         graph: &'g mut DependencyGraph<String>,
-        old_checksums: Checksums,
     ) -> GraphVisitor<'tcx, 'g> {
         GraphVisitor {
             tcx,
             graph,
-            old_checksums,
-            new_checksums: Checksums::new(),
-            changed_nodes: Vec::new(),
             processed_body: None,
         }
-    }
-
-    pub(crate) fn finalize(self) -> (Checksums, Vec<String>) {
-        (self.new_checksums, self.changed_nodes)
     }
 
     pub fn visit(&mut self, def_id: DefId) {
@@ -59,24 +47,6 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                 // Visit body
 
                 self.visit_body(body);
-
-                //##########################################################################################################
-                // Check if checksum changed
-
-                let name = self.tcx.def_path_debug_str(def_id);
-                let checksum = get_checksum(self.tcx, body);
-
-                let maybe_old = self.old_checksums.inner().get(&name);
-
-                let changed = match maybe_old {
-                    Some(before) => *before != checksum,
-                    None => true,
-                };
-
-                if changed {
-                    self.changed_nodes.push(def_id_name(self.tcx, def_id));
-                }
-                self.new_checksums.inner().insert(name, checksum);
             }
         }
     }
@@ -233,14 +203,11 @@ mod test {
     use rustc_session::config::{self, CheckCfg, OptLevel};
     use rustc_span::source_map;
 
-    use crate::analysis::checksums::Checksums;
-    use crate::analysis::util::load_tcx;
-    use crate::graph::graph::DependencyGraph;
-    use crate::graph::graph::EdgeType;
+    use crate::static_rts::graph::{DependencyGraph, EdgeType};
 
     use super::GraphVisitor;
 
-    const TEST_DATA_PATH: &str = "test-data/unit/src";
+    const TEST_DATA_PATH: &str = "test-data/static/src";
     const CRATE_PREFIX: &str = "rust_out";
 
     fn load_test_code(file_name: &str) -> Result<String, Error> {
@@ -279,8 +246,8 @@ mod test {
 
         rustc_interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
-                load_tcx(queries, |tcx| {
-                    let mut visitor = GraphVisitor::new(tcx, &mut graph, Checksums::new());
+                queries.global_ctxt().unwrap().enter(|tcx| {
+                    let mut visitor = GraphVisitor::new(tcx, &mut graph);
 
                     for def_id in tcx.iter_local_def_id() {
                         visitor.visit(def_id.to_def_id());

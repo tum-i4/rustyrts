@@ -1,0 +1,426 @@
+use super::defid_util::{get_crate_by_name, get_def_id_exported};
+use rustc_hir::def_id::CrateNum;
+use rustc_middle::{
+    mir::{
+        interpret::{Allocation, ConstValue},
+        BasicBlockData, Constant, ConstantKind, Operand, Rvalue, SourceInfo, Statement,
+        StatementKind, Terminator, TerminatorKind,
+    },
+    ty::{List, Ty, TyCtxt},
+};
+use rustc_middle::{
+    mir::{Body, Local, LocalDecl, Place},
+    ty::{RegionKind, TyKind},
+};
+
+const PRE_FN_NAME: &str = "pre_processing";
+const POST_FN_NAME: &str = "post_processing";
+const TRACE_FN_NAME: &str = "trace";
+
+pub fn insert_local_ret<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Local {
+    let span = body.span;
+    let ty_empty = tcx.mk_tup([].iter());
+    let local_decl_1 = LocalDecl::new(ty_empty, span).immutable();
+    let local_decls = &mut body.local_decls;
+    let local_1 = local_decls.push(local_decl_1);
+    local_1
+}
+
+pub fn insert_locals_str<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+) -> (Local, Local, Ty<'tcx>) {
+    let span = body.span;
+
+    let ty_str = tcx.mk_ty(TyKind::Str);
+    let region = tcx.mk_region(RegionKind::ReErased);
+    let ty_ref = tcx.mk_imm_ref(region, ty_str);
+
+    let local_decl_2 = LocalDecl::new(ty_ref, span).immutable();
+    let local_decl_3 = LocalDecl::new(ty_ref, span).immutable();
+
+    let local_decls = &mut body.local_decls;
+
+    let local_2 = local_decls.push(local_decl_2);
+    let local_3 = local_decls.push(local_decl_3);
+
+    (local_2, local_3, ty_ref)
+}
+
+pub fn insert_locals_atomic_bool<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+) -> (Local, Local, Ty<'tcx>) {
+    let span = body.span;
+
+    let std_crate = get_crate_by_name(tcx, "std").unwrap();
+    let atomic_bool_def_id =
+        get_def_id_exported(tcx, std_crate, "std::sync::atomic::AtomicBool").unwrap();
+    let atomic_bool_adt_def = tcx.adt_def(atomic_bool_def_id);
+
+    let ty_str = tcx.mk_ty(TyKind::Adt(atomic_bool_adt_def, List::empty()));
+    let region = tcx.mk_region(RegionKind::ReErased);
+    let ty_ref = tcx.mk_imm_ref(region, ty_str);
+
+    let local_decl_2 = LocalDecl::new(ty_ref, span);
+    let local_decl_3 = LocalDecl::new(ty_ref, span);
+
+    let local_decls = &mut body.local_decls;
+
+    let local_2 = local_decls.push(local_decl_2);
+    let local_3 = local_decls.push(local_decl_3);
+
+    (local_2, local_3, ty_ref)
+}
+
+pub fn insert_trace<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    name: &str,
+    rlib_crate: CrateNum,
+) {
+    if let Some(def_id_trace_fn) = get_def_id_exported(
+        tcx,
+        rlib_crate,
+        format!("{}::{}", tcx.crate_name(rlib_crate), TRACE_FN_NAME).as_str(),
+    ) {
+        let local_ret = insert_local_ret(tcx, body);
+        let (local_1, local_2, ty_ref_str) = insert_locals_str(tcx, body);
+        //let (local_3, local_4, ty_ref_atomic_bool) = insert_locals_atomic_bool(tcx, body);
+
+        let content = name.as_bytes();
+        let span = body.span;
+
+        //*******************************************************
+        // Create assign statements
+
+        let place_elem_list = tcx.intern_place_elems(&[]);
+
+        let (const_assign_statement_str, ref_assign_statement_str) = {
+            let place_str = Place {
+                local: local_2,
+                projection: place_elem_list,
+            };
+
+            let new_allocation = Allocation::from_bytes_byte_aligned_immutable(content);
+            let interned_allocation = tcx.intern_const_alloc(new_allocation);
+            let new_const_value = ConstValue::Slice {
+                data: interned_allocation,
+                start: 0,
+                end: content.len(),
+            };
+            let new_literal = ConstantKind::Val(new_const_value, ty_ref_str);
+
+            let new_constant = Constant {
+                span,
+                user_ty: None,
+                literal: new_literal,
+            };
+
+            let new_operand = Operand::Constant(Box::new(new_constant));
+            let new_rvalue = Rvalue::Use(new_operand);
+
+            let const_assign_statement = Statement {
+                source_info: SourceInfo::outermost(body.span),
+                kind: StatementKind::Assign(Box::new((place_str, new_rvalue))),
+            };
+
+            let place_ref = Place {
+                local: local_1,
+                projection: place_elem_list,
+            };
+
+            let new_rvalue_ref = Rvalue::Use(Operand::Copy(place_str));
+
+            let ref_assign_statement = Statement {
+                source_info: SourceInfo::outermost(body.span),
+                kind: StatementKind::Assign(Box::new((place_ref, new_rvalue_ref))),
+            };
+
+            (const_assign_statement, ref_assign_statement)
+        };
+
+        //let const_assign_statement_atomic_bool = {
+        //    let place_str = Place {
+        //        local: local_4,
+        //        projection: place_elem_list,
+        //    };
+        //
+        //    let false_value = [1u8].as_slice();
+        //    let new_allocation = Allocation::from_bytes_byte_aligned_immutable(false_value);
+        //    let interned_allocation = tcx.intern_const_alloc(new_allocation);
+        //    let new_const_value = ConstValue::ByRef {
+        //        alloc: interned_allocation,
+        //        offset: Size::from_bytes(1),
+        //    };
+        //    let new_literal = ConstantKind::Val(new_const_value, ty_ref_atomic_bool);
+        //
+        //    let new_constant = Constant {
+        //        span,
+        //        user_ty: None,
+        //        literal: new_literal,
+        //    };
+        //
+        //    let new_operand = Operand::Constant(Box::new(new_constant));
+        //    let new_rvalue = Rvalue::Use(new_operand);
+        //
+        //    let const_assign_statement = Statement {
+        //        source_info: SourceInfo::outermost(body.span),
+        //        kind: StatementKind::Assign(Box::new((place_str, new_rvalue))),
+        //    };
+        //
+        //    const_assign_statement
+        //};
+
+        //*******************************************************
+        // Create new basic block
+
+        let index_vec = body.basic_blocks.as_mut();
+
+        let first_basic_block_data = index_vec.raw.get(0).unwrap();
+
+        // Clone former bb0
+        let basic_block = index_vec.push(first_basic_block_data.clone());
+
+        let func_subst = tcx.mk_substs([].iter());
+        let func_ty = tcx.mk_ty(TyKind::FnDef(def_id_trace_fn, func_subst));
+        let literal = ConstantKind::Val(ConstValue::ZeroSized, func_ty);
+
+        let func_constant = Constant {
+            span,
+            user_ty: None,
+            literal: literal,
+        };
+        let func_operand = Operand::Constant(Box::new(func_constant));
+
+        let place_ref_str = Place {
+            local: local_1,
+            projection: place_elem_list,
+        };
+
+        //let place_ref_atomic_bool = Place {
+        //    local: local_4,
+        //    projection: place_elem_list,
+        //};
+
+        let mut args_vec = Vec::new();
+        args_vec.push(Operand::Move(place_ref_str));
+        //args_vec.push(Operand::Move(place_ref_atomic_bool));
+
+        let place_ret = Place {
+            local: local_ret,
+            projection: place_elem_list,
+        };
+
+        let terminator_kind = TerminatorKind::Call {
+            func: func_operand,
+            args: args_vec,
+            destination: place_ret,
+            target: Some(basic_block),
+            cleanup: None,
+            from_hir_call: false,
+            fn_span: span,
+        };
+
+        let terminator = Terminator {
+            source_info: SourceInfo::outermost(span),
+            kind: terminator_kind,
+        };
+
+        let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+        new_basic_block_data
+            .statements
+            .push(const_assign_statement_str);
+        new_basic_block_data
+            .statements
+            .push(ref_assign_statement_str);
+        //new_basic_block_data
+        //    .statements
+        //    .push(const_assign_statement_atomic_bool);
+
+        *body.basic_blocks.as_mut().raw.get_mut(0).unwrap() = new_basic_block_data;
+    } else {
+        println!("Did not find trace() fn")
+    }
+}
+
+pub fn insert_pre<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, rlib_crate: CrateNum) {
+    if let Some(def_id_clear_fn) = get_def_id_exported(
+        tcx,
+        rlib_crate,
+        format!("{}::{}", tcx.crate_name(rlib_crate), PRE_FN_NAME).as_str(),
+    ) {
+        let local_ret = insert_local_ret(tcx, body);
+        let span = body.span;
+
+        let place_elem_list = tcx.intern_place_elems(&[]);
+
+        //*******************************************************
+        // Create new basic block
+
+        let index_vec = body.basic_blocks.as_mut();
+
+        let first_basic_block_data = index_vec.raw.get(0).unwrap();
+
+        // Clone former bb0
+        let basic_block = index_vec.push(first_basic_block_data.clone());
+
+        let func_subst = tcx.mk_substs([].iter());
+        let func_ty = tcx.mk_ty(TyKind::FnDef(def_id_clear_fn, func_subst));
+        let literal = ConstantKind::Val(ConstValue::ZeroSized, func_ty);
+
+        let func_constant = Constant {
+            span,
+            user_ty: None,
+            literal: literal,
+        };
+        let func_operand = Operand::Constant(Box::new(func_constant));
+
+        let args_vec = Vec::new();
+
+        let place_ret = Place {
+            local: local_ret,
+            projection: place_elem_list,
+        };
+
+        let terminator_kind = TerminatorKind::Call {
+            func: func_operand,
+            args: args_vec,
+            destination: place_ret,
+            target: Some(basic_block),
+            cleanup: None,
+            from_hir_call: false,
+            fn_span: span,
+        };
+
+        let terminator = Terminator {
+            source_info: SourceInfo::outermost(span),
+            kind: terminator_kind,
+        };
+
+        let new_basic_block_data = BasicBlockData::new(Some(terminator));
+
+        *body.basic_blocks.as_mut().raw.get_mut(0).unwrap() = new_basic_block_data;
+    } else {
+        println!("Did not find clear() fn")
+    }
+}
+
+pub fn insert_post<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    name: &str,
+    rlib_crate: CrateNum,
+) {
+    if let Some(def_id_clear_fn) = get_def_id_exported(
+        tcx,
+        rlib_crate,
+        format!("{}::{}", tcx.crate_name(rlib_crate), POST_FN_NAME).as_str(),
+    ) {
+        for i in 0..body.basic_blocks.raw.len() {
+            let terminator_kind = &body.basic_blocks.raw.get(i).unwrap().terminator().kind;
+            if let TerminatorKind::Return = terminator_kind {
+                let local_ret = insert_local_ret(tcx, body);
+                let (local_1, local_2, ty_ref_str) = insert_locals_str(tcx, body);
+
+                let content = name.as_bytes();
+                let span = body.span;
+
+                //*******************************************************
+                // Create assign statements
+
+                let place_elem_list = tcx.intern_place_elems(&[]);
+                let place_str = Place {
+                    local: local_2,
+                    projection: place_elem_list,
+                };
+
+                let new_allocation = Allocation::from_bytes_byte_aligned_immutable(content);
+                let interned_allocation = tcx.intern_const_alloc(new_allocation);
+                let new_const_value = ConstValue::Slice {
+                    data: interned_allocation,
+                    start: 0,
+                    end: content.len(),
+                };
+                let new_literal = ConstantKind::Val(new_const_value, ty_ref_str);
+
+                let new_constant = Constant {
+                    span,
+                    user_ty: None,
+                    literal: new_literal,
+                };
+
+                let new_operand = Operand::Constant(Box::new(new_constant));
+                let new_rvalue = Rvalue::Use(new_operand);
+
+                let const_assign_statement = Statement {
+                    source_info: SourceInfo::outermost(body.span),
+                    kind: StatementKind::Assign(Box::new((place_str, new_rvalue))),
+                };
+
+                let place_ref = Place {
+                    local: local_1,
+                    projection: place_elem_list,
+                };
+
+                let new_rvalue_ref = Rvalue::Use(Operand::Copy(place_str));
+
+                let ref_assign_statement = Statement {
+                    source_info: SourceInfo::outermost(body.span),
+                    kind: StatementKind::Assign(Box::new((place_ref, new_rvalue_ref))),
+                };
+
+                //*******************************************************
+                // Create new basic block
+
+                let index_vec = body.basic_blocks.as_mut();
+                let old_basic_block = index_vec.raw.get(i).unwrap();
+
+                // Clone former basic_block
+                let basic_block = index_vec.push(old_basic_block.clone());
+
+                let func_subst = tcx.mk_substs([].iter());
+                let func_ty = tcx.mk_ty(TyKind::FnDef(def_id_clear_fn, func_subst));
+                let literal = ConstantKind::Val(ConstValue::ZeroSized, func_ty);
+
+                let func_constant = Constant {
+                    span,
+                    user_ty: None,
+                    literal: literal,
+                };
+                let func_operand = Operand::Constant(Box::new(func_constant));
+
+                let mut args_vec = Vec::new();
+                args_vec.push(Operand::Move(place_ref));
+
+                let place_ret = Place {
+                    local: local_ret,
+                    projection: place_elem_list,
+                };
+
+                let terminator_kind = TerminatorKind::Call {
+                    func: func_operand,
+                    args: args_vec,
+                    destination: place_ret,
+                    target: Some(basic_block),
+                    cleanup: None,
+                    from_hir_call: false,
+                    fn_span: span,
+                };
+
+                let terminator = Terminator {
+                    source_info: SourceInfo::outermost(span),
+                    kind: terminator_kind,
+                };
+
+                let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+                new_basic_block_data.statements.push(const_assign_statement);
+                new_basic_block_data.statements.push(ref_assign_statement);
+
+                *body.basic_blocks.as_mut().raw.get_mut(i).unwrap() = new_basic_block_data;
+            }
+        }
+    } else {
+        println!("Did not find clear() fn")
+    }
+}

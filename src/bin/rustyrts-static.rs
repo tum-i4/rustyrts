@@ -5,7 +5,7 @@ extern crate rustc_session;
 
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
-use rustyrts::analysis::callback::RustyRTSCallbacks;
+use rustyrts::static_rts::callback::StaticRTSCallbacks;
 use rustyrts::utils;
 use std::env;
 use std::process;
@@ -45,7 +45,7 @@ fn main() {
         }
 
         let source_path = env::var("PROJECT_DIR").unwrap();
-        let mut callbacks = RustyRTSCallbacks::new(source_path);
+        let mut callbacks = StaticRTSCallbacks::new(source_path);
 
         let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
         run_compiler.run()
