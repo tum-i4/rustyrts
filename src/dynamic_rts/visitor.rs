@@ -2,7 +2,6 @@ use std::mem::transmute;
 use std::sync::atomic::AtomicUsize;
 
 use rustc_data_structures::sync::Ordering::SeqCst;
-use rustc_hir::def_id::CrateNum;
 use rustc_hir::AttributeMap;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::{
@@ -12,31 +11,18 @@ use rustc_middle::{
 
 use crate::names::def_id_name;
 
-use super::defid_util::get_rlib_crate;
 use super::mir_util::{insert_post, insert_pre, insert_trace};
-
-static mut RLIB_CRATE: Option<CrateNum> = None;
 
 pub struct MirManipulatorVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    rlib_crate: CrateNum,
     processed: Option<AtomicUsize>,
 }
 
 impl<'tcx> MirManipulatorVisitor<'tcx> {
-    pub fn try_new(tcx: TyCtxt<'tcx>) -> Option<MirManipulatorVisitor<'tcx>> {
-        if let None = unsafe { RLIB_CRATE } {
-            unsafe { RLIB_CRATE = get_rlib_crate(tcx) };
-        }
-
-        if let Some(krate) = unsafe { RLIB_CRATE } {
-            Some(Self {
-                tcx,
-                rlib_crate: krate,
-                processed: None,
-            })
-        } else {
-            None
+    pub fn new(tcx: TyCtxt<'tcx>) -> MirManipulatorVisitor<'tcx> {
+        Self {
+            tcx,
+            processed: None,
         }
     }
 }
@@ -46,7 +32,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         let def_id = body.source.instance.def_id();
         let def_path = def_id_name(self.tcx, def_id);
 
-        insert_trace(self.tcx, body, &def_path, self.rlib_crate);
+        insert_trace(self.tcx, body, &def_path);
 
         self.processed = Some(AtomicUsize::new(unsafe { transmute(body as &Body<'tcx>) }));
 
@@ -65,10 +51,10 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         for (_, list) in attrs.iter() {
             for attr in *list {
                 if attr.name_or_empty().to_ident_string() == "rustc_test_marker" {
-                    insert_pre(self.tcx, body, self.rlib_crate);
+                    insert_pre(self.tcx, body);
 
                     let def_path_test = &def_path[0..def_path.len() - 13];
-                    insert_post(self.tcx, body, def_path_test, self.rlib_crate);
+                    insert_post(self.tcx, body, def_path_test);
                     break;
                 }
             }
@@ -88,7 +74,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
                             GlobalAlloc::Static(def_id) => {
                                 let def_path = def_id_name(self.tcx, def_id);
                                 let body = unsafe { transmute(outer.load(SeqCst)) };
-                                insert_trace(self.tcx, body, &def_path, self.rlib_crate);
+                                insert_trace(self.tcx, body, &def_path);
                             }
                             _ => (),
                         }

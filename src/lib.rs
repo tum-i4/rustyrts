@@ -32,6 +32,7 @@ pub mod dynamic_rts {
     pub mod visitor;
 }
 
+pub mod callbacks_shared;
 pub mod checksums;
 pub mod fs_utils;
 pub mod names;

@@ -36,6 +36,7 @@ impl ToString for Checksums {
             output += &format!(
                 "{} - {}{}\n",
                 name,
+                // SAFETY: This is intentional. Checksums are not necessarily valid utf8.
                 unsafe { String::from_utf8_unchecked(Vec::from(first.to_ne_bytes())) },
                 unsafe { String::from_utf8_unchecked(Vec::from(second.to_ne_bytes())) },
             );
