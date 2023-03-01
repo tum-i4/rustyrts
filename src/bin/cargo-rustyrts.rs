@@ -493,9 +493,20 @@ fn select_and_execute_tests_dynamic() {
     cmd.arg("test");
     cmd.arg("--no-fail-fast"); // Do not stop if a test fails, execute all included tests
 
+    let mut args = std::env::args().skip(3);
+
     // Store directory of the project, such that rustyrts knows where to store information about tests, changes
     // and the graph
     cmd.env("PROJECT_DIR", project_dir.to_str().unwrap());
+
+    // Serialize the remaining args into a special environemt variable.
+    // This will be read by `inside_cargo_rustc` when we go to invoke
+    // our actual target crate.
+    let args_vec: Vec<String> = args.collect();
+    cmd.env(
+        "rustyrts_args",
+        serde_json::to_string(&args_vec).expect("failed to serialize args"),
+    );
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
@@ -617,7 +628,7 @@ fn select_and_execute_tests_dynamic() {
         })
         .peekable();
     if let None = affected_tests_iter.peek() {
-        cmd.arg("--no-run");
+        //cmd.arg("--no-run");
     } else {
         cmd.arg("--");
         cmd.arg("--exact");

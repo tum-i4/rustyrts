@@ -28,8 +28,13 @@ impl FileLoader for FileLoaderProxy {
         let content = self.delegate.read_file(path)?;
         if !EXTERN_CRATE_INSERTED.load(SeqCst) {
             EXTERN_CRATE_INSERTED.store(true, SeqCst);
-            let extended_content =
-                format!("{}\nextern crate rustyrts_dynamic_rlib;", content).to_string();
+
+            let extended_content = format!(
+                "#![feature(test)]\n#![feature(custom_test_frameworks)]\n#![test_runner(runner_wrapper)]{}\nextern crate rustyrts_dynamic_rlib;\nextern crate test; #[link(name = \"rustyrts_dynamic_runner\")] extern {{ fn runner(tests: &[&test::TestDescAndFn]); }} fn runner_wrapper(tests: &[&test::TestDescAndFn]) {{ unsafe {{ runner(tests); }} }}",
+                content
+            )
+            .to_string();
+
             Ok(extended_content)
         } else {
             Ok(content)

@@ -37,7 +37,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         self.processed = Some(AtomicUsize::new(unsafe { transmute(body as &Body<'tcx>) }));
 
         // TODO: fix this
-        //self.super_body(body);
+        self.super_body(body);
 
         let attrs = &self.tcx.hir_crate(()).owners[self
             .tcx

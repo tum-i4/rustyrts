@@ -1,4 +1,5 @@
 use super::defid_util::{get_def_id_post_fn, get_def_id_pre_fn, get_def_id_trace_fn};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::{
     mir::{
         interpret::{Allocation, ConstValue},
@@ -39,7 +40,10 @@ pub fn insert_locals_str<'tcx>(
 }
 
 pub fn insert_trace<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
-    let def_id_trace_fn = get_def_id_trace_fn(tcx);
+    let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
+        eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+        return;
+    };
 
     let local_ret = insert_local_ret(tcx, body);
     let (local_1, local_2, ty_ref_str) = insert_locals_str(tcx, body);
@@ -157,7 +161,10 @@ pub fn insert_trace<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) 
 }
 
 pub fn insert_pre<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let def_id_pre_fn = get_def_id_pre_fn(tcx);
+    let Some(def_id_pre_fn) = get_def_id_pre_fn(tcx) else {
+        eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+        return;
+    };
 
     let local_ret = insert_local_ret(tcx, body);
     let span = body.span;
@@ -213,7 +220,9 @@ pub fn insert_pre<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 }
 
 pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
-    let def_id_post_fn = get_def_id_post_fn(tcx);
+    let Some(def_id_post_fn) = get_def_id_post_fn(tcx) else {
+        return;
+    };
 
     for i in 0..body.basic_blocks.raw.len() {
         let terminator_kind = &body.basic_blocks.raw.get(i).unwrap().terminator().kind;
