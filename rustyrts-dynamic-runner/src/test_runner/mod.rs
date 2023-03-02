@@ -1,6 +1,6 @@
-use nix::libc::write;
+use nix::libc::{fflush, write, EOF};
 use nix::sys::wait::waitpid;
-use nix::unistd::{dup2, execvp, fork, pipe2, ForkResult, Pid};
+use nix::unistd::{close, dup2, execvp, fork, pipe2, ForkResult, Pid};
 use std::any::Any;
 use std::fs::{self, read, read_to_string, File};
 use std::io::{self, Read, Write};
@@ -8,7 +8,9 @@ use std::os::fd::FromRawFd;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
+use std::thread;
 use test::{StaticTestFn, TestDescAndFn};
+use threadpool::ThreadPool;
 
 //######################################################################################################################
 // This file is inspired by coppers
@@ -17,6 +19,8 @@ use test::{StaticTestFn, TestDescAndFn};
 // Modifications:
 // * removed sensor-related code
 // * removed repetition of tests
+// * use threadpool to execute tests in parallel
+// * fork for every single test
 
 #[no_mangle]
 pub fn runner(tests: &[&test::TestDescAndFn]) {
@@ -24,57 +28,78 @@ pub fn runner(tests: &[&test::TestDescAndFn]) {
 
     println!("\nRunning {} tests", tests.len());
 
-    let mut ignored = 0;
+    let ignored: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
     //let mut filtered = 0;
 
-    let mut passed_tests = Vec::new();
-    let mut failed_tests = Vec::new();
+    let passed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
+    let failed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
+
+    let n_workers = thread::available_parallelism().unwrap().get();
+    let pool = ThreadPool::new(n_workers);
 
     for test in tests {
-        let (p_out, p_in) = pipe2(nix::fcntl::OFlag::empty()).unwrap();
+        let passed_tests = passed_tests.clone();
+        let failed_tests = failed_tests.clone();
+        let ignored = ignored.clone();
 
-        println!("Forking for {}", test.desc.name);
+        pool.execute(move || {
+            let (p_out, p_in) = pipe2(nix::fcntl::OFlag::empty()).unwrap();
 
-        match unsafe { fork() } {
-            Ok(ForkResult::Parent { child, .. }) => {
-                let mut f_out = unsafe { File::from_raw_fd(p_out) };
+            match unsafe { fork() } {
+                Ok(ForkResult::Parent { child, .. }) => {
+                    close(p_in).unwrap();
 
-                waitpid(child, None).expect("waitpid() failed");
+                    let mut f_out = unsafe { File::from_raw_fd(p_out) };
 
-                println!("Waited for {}", test.desc.name);
+                    waitpid(child, None).expect("waitpid() failed");
 
-                let mut result_str = String::new();
-                f_out.read_to_string(&mut result_str).unwrap();
+                    let mut result_str = String::new();
+                    f_out.read_to_string(&mut result_str).unwrap();
 
-                println!("Result: {}", result_str);
+                    let result: CompletedTest = serde_json::from_str(&result_str).unwrap();
+                    print_test_result(&result);
 
-                let result: CompletedTest = serde_json::from_str(&result_str).unwrap();
-
-                match result.state {
-                    TestResult::Passed => {
-                        passed_tests.push(result);
+                    match result.state {
+                        TestResult::Passed => {
+                            passed_tests.lock().unwrap().push(result);
+                        }
+                        TestResult::Failed(_) => failed_tests.lock().unwrap().push(result),
+                        TestResult::Ignored => *ignored.lock().unwrap() += 1,
+                        //TestResult::Filtered => filtered += 1,
                     }
-                    TestResult::Failed(_) => failed_tests.push(result),
-                    TestResult::Ignored => ignored += 1,
-                    //TestResult::Filtered => filtered += 1,
                 }
-            }
-            Ok(ForkResult::Child) => {
-                let result = run_test(test);
-                print_test_result(&result);
+                Ok(ForkResult::Child) => {
+                    close(p_out).unwrap();
 
-                let result_json = serde_json::to_string(&result).unwrap();
-                {
-                    let mut f_in = unsafe { File::from_raw_fd(p_in) };
-                    write!(&mut f_in, "{}", result_json).unwrap();
+                    let result = run_test(test);
 
-                    println!("Wrote result");
+                    let result_json = serde_json::to_string(&result).unwrap();
+                    {
+                        let mut f_in = unsafe { File::from_raw_fd(p_in) };
+                        f_in.write_all(result_json.as_bytes()).unwrap();
+                    }
+
+                    exit(0);
                 }
-                exit(0);
+                Err(_) => println!("Fork failed"),
             }
-            Err(_) => println!("Fork failed"),
-        }
+        });
     }
+
+    pool.join();
+
+    let failed_tests = Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(failed_tests)
+        .unwrap()
+        .into_inner()
+        .unwrap();
+    let passed_tests = Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(passed_tests)
+        .unwrap()
+        .into_inner()
+        .unwrap();
+    let ignored = Arc::<Mutex<i32>>::try_unwrap(ignored)
+        .unwrap()
+        .into_inner()
+        .unwrap();
 
     print_failures(&failed_tests).unwrap();
 
