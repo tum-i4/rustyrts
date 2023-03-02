@@ -1,5 +1,8 @@
 use itertools::Itertools;
-use rustyrts::fs_utils::{get_dynamic_path, get_static_path, read_lines, read_lines_filter_map};
+use rustyrts::fs_utils::{
+    get_affected_path, get_dynamic_path, get_static_path, read_lines, read_lines_filter_map,
+    write_to_file,
+};
 use rustyrts::static_rts::graph::DependencyGraph;
 use rustyrts::utils;
 use serde_json;
@@ -620,6 +623,15 @@ fn select_and_execute_tests_dynamic() {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
+    write_to_file(
+        affected_tests
+            .iter()
+            .map(|test| test.split_once("::").unwrap().1)
+            .join("\n"),
+        path_buf,
+        |buf| get_affected_path(buf),
+    );
+
     let mut affected_tests_iter = affected_tests
         .iter()
         .map(|line| {
@@ -628,13 +640,9 @@ fn select_and_execute_tests_dynamic() {
         })
         .peekable();
     if let None = affected_tests_iter.peek() {
-        //cmd.arg("--no-run");
+        cmd.arg("--no-run");
     } else {
-        cmd.arg("--");
-        cmd.arg("--exact");
-        for test in affected_tests_iter {
-            cmd.arg(test);
-        }
+        cmd.arg("--all-targets");
     }
 
     if verbose {

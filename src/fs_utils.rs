@@ -42,6 +42,11 @@ pub fn get_traces_path(mut path_buf: PathBuf, test_name: &str) -> PathBuf {
     path_buf
 }
 
+pub fn get_affected_path(mut path_buf: PathBuf) -> PathBuf {
+    path_buf.push("affected");
+    path_buf
+}
+
 pub fn read_lines(files: &Vec<DirEntry>, file_ending: &str) -> HashSet<String>
 where {
     read_lines_filter_map(files, file_ending, |_x| true, |x| x)

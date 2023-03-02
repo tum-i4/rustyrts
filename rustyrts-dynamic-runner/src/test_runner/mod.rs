@@ -1,16 +1,18 @@
-use nix::libc::{fflush, write, EOF};
+use ipc_channel::ipc;
 use nix::sys::wait::waitpid;
-use nix::unistd::{close, dup2, execvp, fork, pipe2, ForkResult, Pid};
+use nix::sys::wait::WaitPidFlag;
+use nix::unistd::{fork, ForkResult};
 use std::any::Any;
-use std::fs::{self, read, read_to_string, File};
-use std::io::{self, Read, Write};
-use std::os::fd::FromRawFd;
+use std::io::{self, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::process::{exit, Command};
-use std::sync::{Arc, Mutex};
+use std::process::exit;
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread;
+use std::time::Duration;
 use test::{StaticTestFn, TestDescAndFn};
 use threadpool::ThreadPool;
+
+use crate::util::{get_affected_path, get_dynamic_path, read_lines};
 
 //######################################################################################################################
 // This file is inspired by coppers
@@ -23,18 +25,35 @@ use threadpool::ThreadPool;
 // * fork for every single test
 
 #[no_mangle]
-pub fn runner(tests: &[&test::TestDescAndFn]) {
-    let tests: Vec<_> = tests.iter().map(make_owned_test).collect();
+pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
+    let project_dir = std::env::var("PROJECT_DIR").unwrap();
+    let path_buf = get_affected_path(get_dynamic_path(&project_dir));
+    let affected_tests = Arc::new(RwLock::new(read_lines(path_buf)));
+
+    let all_tests: Vec<_> = tests.iter().map(make_owned_test).collect();
+    let mut tests: Vec<TestDescAndFn> = Vec::new();
+
+    let mut filtered: i32 = 0;
+    for test in all_tests {
+        if affected_tests
+            .read()
+            .unwrap()
+            .contains(test.desc.name.as_slice())
+        {
+            tests.push(test);
+        } else {
+            filtered += 1;
+        }
+    }
 
     println!("\nRunning {} tests", tests.len());
 
     let ignored: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
-    //let mut filtered = 0;
 
     let passed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
     let failed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
 
-    let n_workers = thread::available_parallelism().unwrap().get();
+    let n_workers = 1; // thread::available_parallelism().unwrap().get();
     let pool = ThreadPool::new(n_workers);
 
     for test in tests {
@@ -42,46 +61,51 @@ pub fn runner(tests: &[&test::TestDescAndFn]) {
         let failed_tests = failed_tests.clone();
         let ignored = ignored.clone();
 
+        let affected_tests = affected_tests.clone();
+
         pool.execute(move || {
-            let (p_out, p_in) = pipe2(nix::fcntl::OFlag::empty()).unwrap();
+            if affected_tests
+                .read()
+                .unwrap()
+                .contains(test.desc.name.as_slice())
+            {
+                let result = {
+                    let (tx, rx) = ipc::channel().unwrap();
 
-            match unsafe { fork() } {
-                Ok(ForkResult::Parent { child, .. }) => {
-                    close(p_in).unwrap();
+                    match unsafe { fork() } {
+                        Ok(ForkResult::Parent { child, .. }) => {
+                            let name = test.desc.name.as_slice().to_string();
 
-                    let mut f_out = unsafe { File::from_raw_fd(p_out) };
+                            //println!("Waiting for {}", name);
 
-                    waitpid(child, None).expect("waitpid() failed");
+                            waitpid(child, Some(WaitPidFlag::__WALL)).expect("waitpid() failed");
 
-                    let mut result_str = String::new();
-                    f_out.read_to_string(&mut result_str).unwrap();
+                            //println!("Completed {}", name);
 
-                    let result: CompletedTest = serde_json::from_str(&result_str).unwrap();
-                    print_test_result(&result);
+                            let maybe_result = rx.try_recv_timeout(Duration::ZERO);
 
-                    match result.state {
-                        TestResult::Passed => {
-                            passed_tests.lock().unwrap().push(result);
+                            //println!("Received result for {}", name);
+
+                            let result: CompletedTest =
+                                maybe_result.unwrap_or(CompletedTest::failed(name));
+                            result
                         }
-                        TestResult::Failed(_) => failed_tests.lock().unwrap().push(result),
-                        TestResult::Ignored => *ignored.lock().unwrap() += 1,
-                        //TestResult::Filtered => filtered += 1,
+                        Ok(ForkResult::Child) => {
+                            let result = run_test(test);
+                            tx.send(result).unwrap();
+                            exit(0);
+                        }
+                        Err(_) => panic!("Fork failed"),
                     }
+                };
+
+                print_test_result(&result);
+
+                match result.state {
+                    TestResult::Passed => passed_tests.lock().unwrap().push(result),
+                    TestResult::Failed(_) => failed_tests.lock().unwrap().push(result),
+                    TestResult::Ignored => *ignored.lock().unwrap() += 1,
                 }
-                Ok(ForkResult::Child) => {
-                    close(p_out).unwrap();
-
-                    let result = run_test(test);
-
-                    let result_json = serde_json::to_string(&result).unwrap();
-                    {
-                        let mut f_in = unsafe { File::from_raw_fd(p_in) };
-                        f_in.write_all(result_json.as_bytes()).unwrap();
-                    }
-
-                    exit(0);
-                }
-                Err(_) => println!("Fork failed"),
             }
         });
     }
@@ -104,7 +128,7 @@ pub fn runner(tests: &[&test::TestDescAndFn]) {
     print_failures(&failed_tests).unwrap();
 
     println!(
-        "test result: {}.\t{} passed;\t{} failed;\t{ignored} ignored;",
+        "test result: {}. {} passed; {} failed; {ignored} ignored; {filtered} filtered;",
         passed(failed_tests.is_empty()),
         passed_tests.len(),
         failed_tests.len()
@@ -212,7 +236,6 @@ enum TestResult {
     Passed,
     Failed(Option<String>),
     Ignored,
-    // TODO: add Filtered
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
@@ -228,6 +251,15 @@ impl CompletedTest {
         CompletedTest {
             name,
             state: TestResult::Ignored,
+            //us: None,
+            stdout: None,
+        }
+    }
+
+    fn failed(name: String) -> Self {
+        CompletedTest {
+            name,
+            state: TestResult::Failed(Some("Test aborted unexpectedly".to_string())),
             //us: None,
             stdout: None,
         }

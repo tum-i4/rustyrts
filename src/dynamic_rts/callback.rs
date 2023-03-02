@@ -1,3 +1,4 @@
+use regex::Regex;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -30,12 +31,14 @@ impl FileLoader for FileLoaderProxy {
             EXTERN_CRATE_INSERTED.store(true, SeqCst);
 
             let extended_content = format!(
-                "#![feature(test)]\n#![feature(custom_test_frameworks)]\n#![test_runner(runner_wrapper)]{}\nextern crate rustyrts_dynamic_rlib;\nextern crate test; #[link(name = \"rustyrts_dynamic_runner\")] extern {{ fn runner(tests: &[&test::TestDescAndFn]); }} fn runner_wrapper(tests: &[&test::TestDescAndFn]) {{ unsafe {{ runner(tests); }} }}",
+                "#![feature(test)]\n#![feature(custom_test_frameworks)]\n#![test_runner(rustyrts_runner_wrapper)]{}\nextern crate rustyrts_dynamic_rlib;\nextern crate test as rustyrts_test; #[link(name = \"rustyrts_dynamic_runner\")] extern {{ fn rustyrts_runner(tests: &[&rustyrts_test::TestDescAndFn]); }} fn rustyrts_runner_wrapper(tests: &[&rustyrts_test::TestDescAndFn]) {{ unsafe {{ rustyrts_runner(tests); }} }}",
                 content
             )
             .to_string();
 
-            Ok(extended_content)
+            let forbid_regex = Regex::new(r"#!\[.*?forbid\(.*?\)\]").unwrap();
+            let filtered_content = forbid_regex.replace_all(&extended_content, "").to_string();
+            Ok(filtered_content)
         } else {
             Ok(content)
         }

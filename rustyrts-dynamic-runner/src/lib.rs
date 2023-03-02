@@ -6,4 +6,4 @@ extern crate test;
 mod test_runner;
 mod util;
 
-pub use crate::test_runner::runner;
+pub use crate::test_runner::rustyrts_runner;
