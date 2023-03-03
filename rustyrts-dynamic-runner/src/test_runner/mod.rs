@@ -53,7 +53,7 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     let passed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
     let failed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
 
-    let n_workers = 1; // thread::available_parallelism().unwrap().get();
+    let n_workers = thread::available_parallelism().unwrap().get();
     let pool = ThreadPool::new(n_workers);
 
     for test in tests {
@@ -84,7 +84,7 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
 
                             let maybe_result = rx.try_recv_timeout(Duration::ZERO);
 
-                            //println!("Received result for {}", name);
+                            //println!("Received result for {}: {:?}", name, maybe_result);
 
                             let result: CompletedTest =
                                 maybe_result.unwrap_or(CompletedTest::failed(name));

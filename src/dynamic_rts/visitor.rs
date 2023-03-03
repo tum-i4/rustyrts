@@ -32,12 +32,10 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         let def_id = body.source.instance.def_id();
         let def_path = def_id_name(self.tcx, def_id);
 
-        insert_trace(self.tcx, body, &def_path);
-
         self.processed = Some(AtomicUsize::new(unsafe { transmute(body as &Body<'tcx>) }));
 
-        // TODO: fix this
-        self.super_body(body);
+        // IMPORTANT: The order in which insert_post, insert_pre and insert_trace are called is critical here
+        // 1. insert_post 2. insert_pre 3. insert_trace
 
         let attrs = &self.tcx.hir_crate(()).owners[self
             .tcx
@@ -51,14 +49,17 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         for (_, list) in attrs.iter() {
             for attr in *list {
                 if attr.name_or_empty().to_ident_string() == "rustc_test_marker" {
-                    insert_pre(self.tcx, body);
-
                     let def_path_test = &def_path[0..def_path.len() - 13];
+
                     insert_post(self.tcx, body, def_path_test);
+                    insert_pre(self.tcx, body);
                     break;
                 }
             }
         }
+
+        insert_trace(self.tcx, body, &def_path);
+        self.super_body(body);
     }
 
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
