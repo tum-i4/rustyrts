@@ -20,18 +20,18 @@ fn build_library(dir_name: &str) {
 
     let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
-    let mut cmd = cargo();
-    cmd.current_dir(&format!("{}/{}", dir, dir_name));
-    cmd.arg("clean");
-
-    match cmd.status() {
-        Ok(exit) => {
-            if !exit.success() {
-                std::process::exit(exit.code().unwrap_or(42));
-            }
-        }
-        Err(ref e) => panic!("error while cleaning {}: {:?}", dir_name, e),
-    }
+    //let mut cmd = cargo();
+    //cmd.current_dir(&format!("{}/{}", dir, dir_name));
+    //cmd.arg("clean");
+    //
+    //match cmd.status() {
+    //    Ok(exit) => {
+    //        if !exit.success() {
+    //            std::process::exit(exit.code().unwrap_or(42));
+    //        }
+    //    }
+    //    Err(ref e) => panic!("error while cleaning {}: {:?}", dir_name, e),
+    //}
 
     let mut cmd = cargo();
     cmd.current_dir(&format!("{}/{}", dir, dir_name));

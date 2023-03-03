@@ -31,7 +31,27 @@ impl FileLoader for FileLoaderProxy {
             EXTERN_CRATE_INSERTED.store(true, SeqCst);
 
             let extended_content = format!(
-                "#![feature(test)]\n#![feature(custom_test_frameworks)]\n#![test_runner(rustyrts_runner_wrapper)]{}\nextern crate rustyrts_dynamic_rlib;\nextern crate test as rustyrts_test; #[link(name = \"rustyrts_dynamic_runner\")] extern {{ fn rustyrts_runner(tests: &[&rustyrts_test::TestDescAndFn]); }} fn rustyrts_runner_wrapper(tests: &[&rustyrts_test::TestDescAndFn]) {{ unsafe {{ rustyrts_runner(tests); }} }}",
+                "#![feature(test)]
+                #![feature(custom_test_frameworks)]
+                #![test_runner(rustyrts_runner_wrapper)]
+                
+                {}
+
+                extern crate rustyrts_dynamic_rlib;
+                extern crate test as rustyrts_test;
+                
+                #[link(name = \"rustyrts_dynamic_runner\")]
+                #[allow(improper_ctypes)]
+                #[allow(dead_code)]
+                extern {{
+                    fn rustyrts_runner(tests: &[&rustyrts_test::TestDescAndFn]);
+                }}
+                
+                #[allow(dead_code)]
+                fn rustyrts_runner_wrapper(tests: &[&rustyrts_test::TestDescAndFn]) 
+                {{ 
+                    unsafe {{ rustyrts_runner(tests); }}
+                }}",
                 content
             )
             .to_string();
