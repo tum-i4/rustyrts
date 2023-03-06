@@ -20,7 +20,7 @@ impl<T> Fifo<T> {
         let mut bytes = Vec::with_capacity(slice.len() + 1);
         bytes.extend_from_slice(slice);
         bytes.push(0);
-        std::fs::remove_file(&path).unwrap();
+        std::fs::remove_file(&path).unwrap_or_default();
         if unsafe { mkfifo((&bytes[0]) as *const u8 as *const c_char, 0o644) } != 0 {
             Err(Error::last_os_error())
         } else {

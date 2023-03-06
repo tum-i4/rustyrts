@@ -13,9 +13,10 @@ const EXCLUDED_CRATES: &[&str] = &["build_script_build"];
 pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
 
 pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
+    let local_crate_name = tcx.crate_name(LOCAL_CRATE);
     EXCLUDED_CRATES
         .iter()
-        .any(|krate| *krate == tcx.crate_name(LOCAL_CRATE).as_str())
+        .any(|krate| *krate == local_crate_name.as_str())
 }
 
 pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
