@@ -1,4 +1,3 @@
-use regex::Regex;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -8,7 +7,7 @@ use rustc_span::source_map::{FileLoader, RealFileLoader};
 use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 
-use crate::callbacks_shared::run_analysis_shared;
+use crate::callbacks_shared::{excluded, run_analysis_shared};
 use crate::fs_utils::get_dynamic_path;
 
 use super::visitor::MirManipulatorVisitor;
@@ -37,7 +36,10 @@ impl FileLoader for FileLoaderProxy {
                 
                 {}
 
+                #[allow(unused_extern_crates)]
                 extern crate rustyrts_dynamic_rlib;
+
+                #[allow(unused_extern_crates)]
                 extern crate test as rustyrts_test;
                 
                 #[link(name = \"rustyrts_dynamic_runner\")]
@@ -56,9 +58,7 @@ impl FileLoader for FileLoaderProxy {
             )
             .to_string();
 
-            let forbid_regex = Regex::new(r"#!\[.*?forbid\(.*?\)\]").unwrap();
-            let filtered_content = forbid_regex.replace_all(&extended_content, "").to_string();
-            Ok(filtered_content)
+            Ok(extended_content)
         } else {
             Ok(content)
         }
@@ -99,6 +99,7 @@ impl Callbacks for DynamicRTSCallbacks {
             .global_ctxt()
             .unwrap()
             .enter(|tcx| self.run_analysis(tcx));
+
         Compilation::Continue
     }
 }
@@ -127,19 +128,24 @@ fn custom_optimized_mir<'tcx>(
     //##############################################################
     // 1. Here the MIR is modified to trace this function at runtime
 
-    let mut visitor = MirManipulatorVisitor::new(tcx);
-    visitor.visit_body(&mut result);
+    if !excluded(tcx) {
+        let mut visitor = MirManipulatorVisitor::new(tcx);
+        visitor.visit_body(&mut result);
+    }
+
     result
 }
 
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        let path_buf = get_dynamic_path(&self.source_path);
+        if !excluded(tcx) {
+            let path_buf = get_dynamic_path(&self.source_path);
 
-        //##############################################################################################################
-        // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
-        // 3. Import checksums
-        // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
-        run_analysis_shared(tcx, path_buf);
+            //##############################################################################################################
+            // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
+            // 3. Import checksums
+            // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
+            run_analysis_shared(tcx, path_buf);
+        }
     }
 }

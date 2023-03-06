@@ -49,6 +49,9 @@ fn main() {
         rustc_args.push("-L".to_string());
         rustc_args.push(format!("{}/bin", cargo_home).to_string());
 
+        rustc_args.push("--cap-lints".to_string());
+        rustc_args.push("allow".to_string());
+
         if let Some(sysroot) = utils::compile_time_sysroot() {
             let sysroot_flag = "--sysroot";
             if !rustc_args.iter().any(|e| e == sysroot_flag) {

@@ -9,6 +9,7 @@ use rustc_middle::{
     ty::TyCtxt,
 };
 
+use crate::callbacks_shared::TEST_MARKER;
 use crate::names::def_id_name;
 
 use super::mir_util::{insert_post, insert_pre, insert_trace};
@@ -34,9 +35,6 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
 
         self.processed = Some(AtomicUsize::new(unsafe { transmute(body as &Body<'tcx>) }));
 
-        // IMPORTANT: The order in which insert_post, insert_pre and insert_trace are called is critical here
-        // 1. insert_post 2. insert_pre 3. insert_trace
-
         let attrs = &self.tcx.hir_crate(()).owners[self
             .tcx
             .local_def_id_to_hir_id(def_id.expect_local())
@@ -46,20 +44,27 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
             .map_or(AttributeMap::EMPTY, |o| &o.attrs)
             .map;
 
+        let mut found_test_harness = false;
         for (_, list) in attrs.iter() {
             for attr in *list {
-                if attr.name_or_empty().to_ident_string() == "rustc_test_marker" {
+                if attr.name_or_empty().to_ident_string() == TEST_MARKER {
                     let def_path_test = &def_path[0..def_path.len() - 13];
+
+                    // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
+                    // 1. insert_post 2. insert_pre
 
                     insert_post(self.tcx, body, def_path_test);
                     insert_pre(self.tcx, body);
+                    found_test_harness = true;
                     break;
                 }
             }
         }
 
-        insert_trace(self.tcx, body, &def_path);
-        self.super_body(body);
+        if !found_test_harness {
+            insert_trace(self.tcx, body, &def_path);
+            self.super_body(body);
+        }
     }
 
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {

@@ -1,18 +1,17 @@
-use ipc_channel::ipc;
-use nix::sys::wait::waitpid;
-use nix::sys::wait::WaitPidFlag;
-use nix::unistd::{fork, ForkResult};
+use fork::{fork, Fork};
+use libc::c_int;
 use std::any::Any;
 use std::io::{self, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::PathBuf;
 use std::process::exit;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 use test::{StaticTestFn, TestDescAndFn};
 use threadpool::ThreadPool;
 
-use crate::util::{get_affected_path, get_dynamic_path, read_lines};
+use crate::fifo::{Fifo, FifoWriteHandle};
+use crate::util::{get_affected_path, get_dynamic_path, read_lines, waitpid_wrapper};
 
 //######################################################################################################################
 // This file is inspired by coppers
@@ -24,22 +23,21 @@ use crate::util::{get_affected_path, get_dynamic_path, read_lines};
 // * use threadpool to execute tests in parallel
 // * fork for every single test
 
+const UNUSUAL_EXIT_CODE: c_int = 15;
+
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     let project_dir = std::env::var("PROJECT_DIR").unwrap();
     let path_buf = get_affected_path(get_dynamic_path(&project_dir));
-    let affected_tests = Arc::new(RwLock::new(read_lines(path_buf)));
+    let affected_tests = read_lines(path_buf);
 
     let all_tests: Vec<_> = tests.iter().map(make_owned_test).collect();
     let mut tests: Vec<TestDescAndFn> = Vec::new();
 
     let mut filtered: i32 = 0;
     for test in all_tests {
-        if affected_tests
-            .read()
-            .unwrap()
-            .contains(test.desc.name.as_slice())
-        {
+        if affected_tests.contains(test.desc.name.as_slice()) {
+            //if test.desc.name.as_slice() == "test_factor::test_parallel" {
             tests.push(test);
         } else {
             filtered += 1;
@@ -48,90 +46,75 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
 
     println!("\nRunning {} tests", tests.len());
 
-    let ignored: Arc<Mutex<i32>> = Arc::new(Mutex::new(0));
-
-    let passed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
-    let failed_tests: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
+    let results: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
 
     let n_workers = thread::available_parallelism().unwrap().get();
-    let pool = ThreadPool::new(n_workers);
+    let pool = ThreadPool::with_name("rustyrts_test_thread".to_string(), n_workers);
 
     for test in tests {
-        let passed_tests = passed_tests.clone();
-        let failed_tests = failed_tests.clone();
-        let ignored = ignored.clone();
-
-        let affected_tests = affected_tests.clone();
+        let results = results.clone();
 
         pool.execute(move || {
-            if affected_tests
-                .read()
-                .unwrap()
-                .contains(test.desc.name.as_slice())
-            {
-                let result = {
-                    let (tx, rx) = ipc::channel().unwrap();
+            let result = {
+                let name = test.desc.name.as_slice().to_string();
+                let path = PathBuf::from(&format!("/tmp/{}", name));
 
-                    match unsafe { fork() } {
-                        Ok(ForkResult::Parent { child, .. }) => {
-                            let name = test.desc.name.as_slice().to_string();
+                let fifo = Fifo::new(path.clone()).unwrap();
 
-                            //println!("Waiting for {}", name);
+                match fork().expect("Fork failed") {
+                    Fork::Parent(child) => {
+                        let mut rx = fifo.open().unwrap();
 
-                            waitpid(child, Some(WaitPidFlag::__WALL)).expect("waitpid() failed");
+                        let maybe_result = rx.recv();
 
-                            //println!("Completed {}", name);
-
-                            let maybe_result = rx.try_recv_timeout(Duration::ZERO);
-
-                            //println!("Received result for {}: {:?}", name, maybe_result);
-
-                            let result: CompletedTest =
-                                maybe_result.unwrap_or(CompletedTest::failed(name));
-                            result
+                        match waitpid_wrapper(child) {
+                            Ok(status) if status == UNUSUAL_EXIT_CODE => {
+                                maybe_result.unwrap_or(CompletedTest::failed(name))
+                            }
+                            _ => CompletedTest::failed(name),
                         }
-                        Ok(ForkResult::Child) => {
-                            let result = run_test(test);
-                            tx.send(result).unwrap();
-                            exit(0);
-                        }
-                        Err(_) => panic!("Fork failed"),
                     }
-                };
+                    Fork::Child => {
+                        let mut tx = FifoWriteHandle::open(path).unwrap();
 
-                print_test_result(&result);
-
-                match result.state {
-                    TestResult::Passed => passed_tests.lock().unwrap().push(result),
-                    TestResult::Failed(_) => failed_tests.lock().unwrap().push(result),
-                    TestResult::Ignored => *ignored.lock().unwrap() += 1,
+                        let result = run_test(test);
+                        tx.send(&result).unwrap();
+                        exit(UNUSUAL_EXIT_CODE);
+                    }
                 }
-            }
+            };
+
+            assert_eq!(test.desc.name.as_slice(), result.name);
+            print_test_result(&result);
+            results.lock().unwrap().push(result);
         });
     }
 
     pool.join();
 
-    let failed_tests = Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(failed_tests)
+    let results = Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(results)
         .unwrap()
         .into_inner()
         .unwrap();
-    let passed_tests = Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(passed_tests)
-        .unwrap()
-        .into_inner()
-        .unwrap();
-    let ignored = Arc::<Mutex<i32>>::try_unwrap(ignored)
-        .unwrap()
-        .into_inner()
-        .unwrap();
+
+    let (mut passed_tests, mut failed_tests, mut ignored) = (Vec::new(), Vec::new(), Vec::new());
+
+    for result in results.into_iter() {
+        match result.state {
+            TestResult::Passed => passed_tests.push(result),
+            TestResult::Failed(_) => failed_tests.push(result),
+            TestResult::Ignored => ignored.push(result),
+        }
+    }
 
     print_failures(&failed_tests).unwrap();
 
     println!(
-        "test result: {}. {} passed; {} failed; {ignored} ignored; {filtered} filtered;",
+        "test result: {}. {} passed; {} failed; {} ignored; {filtered} filtered;",
         passed(failed_tests.is_empty()),
         passed_tests.len(),
-        failed_tests.len()
+        failed_tests.len(),
+        ignored.len()
     );
 }
 
@@ -150,7 +133,7 @@ fn run_test(test: test::TestDescAndFn) -> CompletedTest {
         let state = match test.testfn {
             test::TestFn::StaticTestFn(f) => {
                 let result = catch_unwind(AssertUnwindSafe(|| {
-                    f();
+                    f().unwrap();
                 }));
                 //us += sensor.get_elapsed_time_us();
 

@@ -26,8 +26,6 @@ fn test() {
         // Wait for the thread to finish. Returns a result.
         let _ = child.join();
     }
-
-    panic!();
 }
 
 #[test]

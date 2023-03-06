@@ -8,6 +8,16 @@ use crate::{
     names::def_id_name,
 };
 
+const EXCLUDED_CRATES: &[&str] = &["build_script_build"];
+
+pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
+
+pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
+    EXCLUDED_CRATES
+        .iter()
+        .any(|krate| *krate == tcx.crate_name(LOCAL_CRATE).as_str())
+}
+
 pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
     let crate_id = tcx.sess.local_stable_crate_id().to_u64();
@@ -18,7 +28,7 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
     let mut tests: Vec<String> = Vec::new();
     for def_id in tcx.mir_keys(()) {
         for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
-            if attr.name_or_empty().to_ident_string() == "rustc_test_marker" {
+            if attr.name_or_empty().to_ident_string() == TEST_MARKER {
                 tests.push(def_id_name(tcx, def_id.to_def_id()));
             }
         }

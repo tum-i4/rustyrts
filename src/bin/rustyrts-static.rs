@@ -44,6 +44,9 @@ fn main() {
             }
         }
 
+        rustc_args.push("--cap-lints".to_string());
+        rustc_args.push("allow".to_string());
+
         let source_path = env::var("PROJECT_DIR").unwrap();
         let mut callbacks = StaticRTSCallbacks::new(source_path);
 
