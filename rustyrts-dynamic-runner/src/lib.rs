@@ -3,7 +3,7 @@
 
 extern crate test;
 
-mod fifo;
+mod pipe;
 mod test_runner;
 mod util;
 

@@ -3,14 +3,13 @@ use libc::c_int;
 use std::any::Any;
 use std::io::{self, Write};
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::path::PathBuf;
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use test::{StaticTestFn, TestDescAndFn};
 use threadpool::ThreadPool;
 
-use crate::fifo::{Fifo, FifoWriteHandle};
+use crate::pipe::create_pipes;
 use crate::util::{get_affected_path, get_dynamic_path, read_lines, waitpid_wrapper};
 
 //######################################################################################################################
@@ -20,6 +19,7 @@ use crate::util::{get_affected_path, get_dynamic_path, read_lines, waitpid_wrapp
 // Modifications:
 // * removed sensor-related code
 // * removed repetition of tests
+// * added logic for ignored tests
 // * use threadpool to execute tests in parallel
 // * fork for every single test
 
@@ -57,14 +57,12 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         pool.execute(move || {
             let result = {
                 let name = test.desc.name.as_slice().to_string();
-                let path = PathBuf::from(&format!("/tmp/{}", name));
 
-                let fifo = Fifo::new(path.clone()).unwrap();
+                let (mut rx, mut tx) = create_pipes().unwrap();
 
                 match fork().expect("Fork failed") {
                     Fork::Parent(child) => {
-                        let mut rx = fifo.open().unwrap();
-
+                        drop(tx);
                         let maybe_result = rx.recv();
 
                         match waitpid_wrapper(child) {
@@ -75,16 +73,14 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
                         }
                     }
                     Fork::Child => {
-                        let mut tx = FifoWriteHandle::open(path).unwrap();
-
+                        drop(rx);
                         let result = run_test(test);
-                        tx.send(&result).unwrap();
+                        tx.send(result).unwrap();
                         exit(UNUSUAL_EXIT_CODE);
                     }
                 }
             };
 
-            assert_eq!(test.desc.name.as_slice(), result.name);
             print_test_result(&result);
             results.lock().unwrap().push(result);
         });
@@ -191,6 +187,9 @@ fn print_test_result(test: &CompletedTest) {
         }
         TestResult::Failed(_) => {
             println!("test {} ... {}", test.name, passed(false))
+        }
+        TestResult::Ignored => {
+            println!("test {} ... {}", test.name, "ignored")
         }
         _ => {}
     }
