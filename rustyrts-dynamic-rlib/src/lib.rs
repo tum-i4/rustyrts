@@ -53,13 +53,14 @@ pub fn pre_processing() {
 pub fn post_processing(test_name: &str) {
     let handle = unsafe { NODES.read() }.unwrap();
     if let Some(ref set) = *handle {
-        let source_path = env::var("PROJECT_DIR").unwrap();
-        let mut path_buf = PathBuf::from_str(&source_path).unwrap();
-        path_buf.push(".rts_dynamic");
-        let vec: Vec<&'static str> = set.iter().cloned().collect();
-        write_to_file(vec.join("\n").to_string(), path_buf, |buf| {
-            get_traces_path(buf, &test_name)
-        });
+        if let Ok(source_path) = env::var("PROJECT_DIR") {
+            let mut path_buf = PathBuf::from_str(&source_path).unwrap();
+            path_buf.push(".rts_dynamic");
+            let vec: Vec<&'static str> = set.iter().cloned().collect();
+            write_to_file(vec.join("\n").to_string(), path_buf, |buf| {
+                get_traces_path(buf, &test_name)
+            });
+        }
     }
 }
 
