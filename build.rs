@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::fs::{copy, read_dir, DirEntry};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn cargo() -> Command {
@@ -21,7 +21,10 @@ fn build_library(dir_name: &str) {
     let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
     //let mut cmd = cargo();
-    //cmd.current_dir(&format!("{}/{}", dir, dir_name));
+    //let mut path = PathBuf::new();
+    //path.push(dir);
+    //path.push(dir_name);
+    //cmd.current_dir(path);
     //cmd.arg("clean");
     //
     //match cmd.status() {
@@ -34,7 +37,10 @@ fn build_library(dir_name: &str) {
     //}
 
     let mut cmd = cargo();
-    cmd.current_dir(&format!("{}/{}", dir, dir_name));
+    let mut path = PathBuf::new();
+    path.push(dir);
+    path.push(dir_name);
+    cmd.current_dir(path);
     cmd.arg("build");
 
     match cmd.status() {
@@ -54,7 +60,14 @@ fn install_rlib(name: &str, dir_name: &str) {
 
     let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
-    let files: Vec<DirEntry> = read_dir(format!("{}/{}/target/debug/deps", dir, dir_name))
+    let mut path = PathBuf::new();
+    path.push(dir);
+    path.push(dir_name);
+    path.push("target");
+    path.push("debug");
+    path.push("deps");
+
+    let files: Vec<DirEntry> = read_dir(path)
         .unwrap()
         .filter(|res| res.is_ok())
         .map(|res| res.unwrap())
@@ -64,26 +77,38 @@ fn install_rlib(name: &str, dir_name: &str) {
     let rmeta_file = find_file(&format!("lib{}", name), ".rmeta", &files);
     let d_file = find_file(name, ".d", &files);
 
-    let cargo_home = std::env::var("CARGO_HOME").unwrap_or("~/.cargo".to_string());
+    let mut cargo_home = {
+        let maybe_cargo_home = std::env::var("CARGO_HOME");
+        if let Ok(cargo_home) = maybe_cargo_home {
+            PathBuf::from(cargo_home)
+        } else {
+            let home = std::env::var("HOME").expect("Unable to find HOME environment variable");
+            let mut path = PathBuf::new();
+            path.push(home);
+            path.push(".cargo");
+            path
+        }
+    };
+    cargo_home.push("bin");
 
     if let Some(entry) = rlib_file {
         let src = entry.path();
-        let dst_str = format!("{}/bin/lib{}.rlib", cargo_home, name);
-        let dst = Path::new(&dst_str);
+        let mut dst = cargo_home.clone();
+        dst.push(format!("lib{}.rlib", name));
         copy(src, dst).expect(&format!("Error while installing {}", name));
     }
 
     if let Some(entry) = rmeta_file {
         let src = entry.path();
-        let dst_str = format!("{}/bin/lib{}.rmeta", cargo_home, name);
-        let dst = Path::new(&dst_str);
+        let mut dst = cargo_home.clone();
+        dst.push(format!("lib{}.rmeta", name));
         copy(src, dst).expect(&format!("Error while installing {}", name));
     }
 
     if let Some(entry) = d_file {
         let src = entry.path();
-        let dst_str = format!("{}/bin/{}.d", cargo_home, name);
-        let dst = Path::new(&dst_str);
+        let mut dst = cargo_home.clone();
+        dst.push(format!("{}.d", name));
         copy(src, dst).expect(&format!("Error while installing {}", name));
     }
 }
@@ -91,9 +116,13 @@ fn install_rlib(name: &str, dir_name: &str) {
 fn install_staticlib(name: &str, dir_name: &str) {
     println!("cargo:warning=Installing {}", name);
 
-    let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let mut dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    dir.push(dir_name);
+    dir.push("target");
+    dir.push("debug");
+    dir.push("deps");
 
-    let files: Vec<DirEntry> = read_dir(format!("{}/{}/target/debug/deps", dir, dir_name))
+    let files: Vec<DirEntry> = read_dir(dir)
         .unwrap()
         .filter(|res| res.is_ok())
         .map(|res| res.unwrap())
@@ -102,19 +131,31 @@ fn install_staticlib(name: &str, dir_name: &str) {
     let a_file = find_file(&format!("lib{}", name), ".a", &files);
     let d_file = find_file(name, ".d", &files);
 
-    let cargo_home = std::env::var("CARGO_HOME").unwrap_or("~/.cargo".to_string());
+    let mut cargo_home = {
+        let maybe_cargo_home = std::env::var("CARGO_HOME");
+        if let Ok(cargo_home) = maybe_cargo_home {
+            PathBuf::from(cargo_home)
+        } else {
+            let home = std::env::var("HOME").expect("Unable to find HOME environment variable");
+            let mut path = PathBuf::new();
+            path.push(home);
+            path.push(".cargo");
+            path
+        }
+    };
+    cargo_home.push("bin");
 
     if let Some(entry) = a_file {
         let src = entry.path();
-        let dst_str = format!("{}/bin/lib{}.a", cargo_home, name);
-        let dst = Path::new(&dst_str);
+        let mut dst = cargo_home.clone();
+        dst.push(format!("lib{}.a", name));
         copy(src, dst).expect(&format!("Error while installing {}", name));
     }
 
     if let Some(entry) = d_file {
         let src = entry.path();
-        let dst_str = format!("{}/bin/{}.d", cargo_home, name);
-        let dst = Path::new(&dst_str);
+        let mut dst = cargo_home.clone();
+        dst.push(format!("{}.d", name));
         copy(src, dst).expect(&format!("Error while installing {}", name));
     }
 }

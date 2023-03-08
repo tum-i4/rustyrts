@@ -22,9 +22,7 @@ pub fn trace(input: &'static str, bit: &'static u8) {
         // SAFETY: RwLock ensures thread safety
         let mut handle = unsafe { NODES.write() }.unwrap();
         if let Some(ref mut set) = *handle {
-            if set.get(input).is_none() {
-                set.insert(input);
-            }
+            set.insert(input);
         }
     }
 }
