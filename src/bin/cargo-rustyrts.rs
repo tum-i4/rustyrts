@@ -460,8 +460,8 @@ fn select_and_execute_tests_static() {
     if let None = affected_tests_iter.peek() {
         cmd.arg("--no-run");
     } else {
-        cmd.arg("--lib");
-        cmd.arg("--bins");
+        //cmd.arg("--lib");
+        //cmd.arg("--bins");
         cmd.arg("--tests");
         cmd.arg("--examples");
 
@@ -642,8 +642,8 @@ fn select_and_execute_tests_dynamic() {
     if let None = affected_tests_iter.peek() {
         cmd.arg("--no-run");
     } else {
-        cmd.arg("--lib");
-        cmd.arg("--bins");
+        //cmd.arg("--lib");
+        //cmd.arg("--bins");
         cmd.arg("--tests");
         cmd.arg("--examples");
 
