@@ -28,6 +28,14 @@ const ENV_PROJECT_DIR: &str = "PROJECT_DIR";
 
 const UNUSUAL_EXIT_CODE: c_int = 15;
 
+// Determines whether a parameter `name` is present before `--`.
+// For example, has_arg_param("--test-threads=10")
+fn has_arg_param(name: &str) -> Option<String> {
+    let mut found = std::env::args().skip_while(|val| val != name);
+    found.next()?;
+    found.next()
+}
+
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     let instant = Instant::now();
@@ -50,59 +58,76 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
 
     println!("\nRunning {} tests", tests.len());
 
-    let results: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
+    let n_workers = has_arg_param("--test-threads")
+        .map(|num| num.parse().unwrap())
+        .unwrap_or_else(|| thread::available_parallelism().unwrap().get());
 
-    let n_workers = thread::available_parallelism().unwrap().get();
-    let pool = ThreadPool::with_name("rustyrts_test_thread".to_string(), n_workers);
+    let results = if n_workers > 1 {
+        let results: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
 
-    for test in tests {
-        let results = results.clone();
+        let pool = ThreadPool::with_name("rustyrts_test_thread".to_string(), n_workers);
 
-        pool.execute(move || {
-            let result = {
-                let name = test.desc.name.as_slice().to_string();
+        for test in tests {
+            let results = results.clone();
 
-                let (mut rx, mut tx) = create_pipes().unwrap();
+            pool.execute(move || {
+                let result = {
+                    let name = test.desc.name.as_slice().to_string();
 
-                match fork().expect("Fork failed") {
-                    Fork::Parent(child) => {
-                        drop(tx);
-                        let maybe_result = rx.recv();
+                    let (mut rx, mut tx) = create_pipes().unwrap();
 
-                        match waitpid_wrapper(child) {
-                            Ok(exit) if exit == UNUSUAL_EXIT_CODE => match maybe_result {
-                                Ok(t) => t,
-                                Err(e) => CompletedTest::failed(
+                    match fork().expect("Fork failed") {
+                        Fork::Parent(child) => {
+                            drop(tx);
+                            let maybe_result = rx.recv();
+
+                            match waitpid_wrapper(child) {
+                                Ok(exit) if exit == UNUSUAL_EXIT_CODE => match maybe_result {
+                                    Ok(t) => t,
+                                    Err(e) => CompletedTest::failed(
+                                        name,
+                                        format!("Failed to receive test result: {}", e),
+                                    ),
+                                },
+                                Ok(exit) => CompletedTest::failed(
                                     name,
-                                    format!("Failed to receive test result: {}", e),
+                                    format!("Wrong exit code: {}", exit),
                                 ),
-                            },
-                            Ok(exit) => {
-                                CompletedTest::failed(name, format!("Wrong exit code: {}", exit))
+                                Err(cause) => CompletedTest::failed(name, cause),
                             }
-                            Err(cause) => CompletedTest::failed(name, cause),
+                        }
+                        Fork::Child => {
+                            drop(rx);
+                            let result = run_test(test);
+                            tx.send(result).unwrap();
+                            exit(UNUSUAL_EXIT_CODE);
                         }
                     }
-                    Fork::Child => {
-                        drop(rx);
-                        let result = run_test(test);
-                        tx.send(result).unwrap();
-                        exit(UNUSUAL_EXIT_CODE);
-                    }
-                }
-            };
+                };
 
+                print_test_result(&result);
+                results.lock().unwrap().push(result);
+            });
+        }
+
+        pool.join();
+
+        Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(results)
+            .unwrap()
+            .into_inner()
+            .unwrap()
+    } else {
+        println!("... single-threaded");
+
+        let mut results: Vec<CompletedTest> = Vec::new();
+
+        for test in tests {
+            let result = run_test(test);
             print_test_result(&result);
-            results.lock().unwrap().push(result);
-        });
-    }
-
-    pool.join();
-
-    let results = Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(results)
-        .unwrap()
-        .into_inner()
-        .unwrap();
+            results.push(result);
+        }
+        results
+    };
 
     let (mut passed_tests, mut failed_tests, mut ignored) = (Vec::new(), Vec::new(), Vec::new());
 
@@ -203,7 +228,6 @@ fn print_test_result(test: &CompletedTest) {
         TestResult::Ignored => {
             println!("test {} ... {}", test.name, "ignored")
         }
-        _ => {}
     }
 }
 

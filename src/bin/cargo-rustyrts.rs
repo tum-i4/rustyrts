@@ -55,6 +55,15 @@ fn has_arg_flag(name: &str) -> bool {
     args.any(|val| val == name)
 }
 
+// Determines whether a parameter `name` is present before `--`.
+// For example, has_arg_param("--test-threads=10")
+fn has_arg_param(name: &str) -> Option<String> {
+    let args = std::env::args().take_while(|val| val != "--");
+    let mut found = args.skip_while(|val| val != name);
+    found.next()?;
+    found.next()
+}
+
 //######################################################################################################################
 // Command helpers
 
@@ -120,7 +129,12 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     cmd.arg("build");
     cmd.arg("--tests");
 
-    // Add cargo args until first `--`.
+    // Add cargo args between first and second `--`.
+    while let Some(arg) = args.next() {
+        if arg == "--" {
+            break;
+        }
+    }
     while let Some(arg) = args.next() {
         if arg == "--" {
             break;
@@ -165,7 +179,12 @@ fn cargo_test(project_dir: PathBuf, mode: Mode) -> Command {
     cmd.arg("test");
     cmd.arg("--no-fail-fast"); // Do not stop if a test fails, execute all included tests
 
-    // Skip cargo args until first `--`.
+    // Skip cargo args until second `--`.
+    while let Some(arg) = args.next() {
+        if arg == "--" {
+            break;
+        }
+    }
     while let Some(arg) = args.next() {
         if arg == "--" {
             break;
@@ -483,6 +502,12 @@ fn select_and_execute_tests_static() {
         //cmd.arg("--benches");
 
         cmd.arg("--");
+
+        if let Some(num) = has_arg_param("--test-threads") {
+            cmd.arg("--test-threads");
+            cmd.arg(num);
+        }
+
         cmd.arg("--exact");
         for test in affected_tests_iter {
             cmd.arg(test);
@@ -666,6 +691,13 @@ fn select_and_execute_tests_dynamic() {
         // we do not want to execute benches,
         // because they do not rely on the test harness and are not recognized aas tests
         //cmd.arg("--benches");
+
+        cmd.arg("--");
+
+        if let Some(num) = has_arg_param("--test-threads") {
+            cmd.arg("--test-threads");
+            cmd.arg(num);
+        }
     }
 
     execute(cmd);

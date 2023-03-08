@@ -1,3 +1,4 @@
+use core::panic;
 use std::collections::HashSet;
 use std::env;
 use std::fs::File;
@@ -8,7 +9,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::RwLock;
 
-static mut NODES: RwLock<Option<HashSet<&'static str>>> = RwLock::new(None);
+static NODES: RwLock<Option<HashSet<(&'static str, &'static u8)>>> = RwLock::new(None);
 
 //######################################################################################################################
 // Functions for tracing
@@ -17,36 +18,36 @@ static mut NODES: RwLock<Option<HashSet<&'static str>>> = RwLock::new(None);
 pub fn trace(input: &'static str, bit: &'static u8) {
     // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
     // and therefore also AtomicBool.
-    let bit: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
-    if !bit.fetch_or(true, SeqCst) {
-        // SAFETY: RwLock ensures thread safety
-        let mut handle = unsafe { NODES.write() }.unwrap();
+    let flag: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
+    if !flag.fetch_or(true, SeqCst) {
+        let mut handle = NODES.write().unwrap();
         if let Some(ref mut set) = *handle {
-            set.insert(input);
+            set.insert((input, bit));
         }
     }
 }
 
 #[no_mangle]
 pub fn pre_processing() {
-    // SAFETY: RwLock ensures thread safety
-    let mut handle = unsafe { NODES.write() }.unwrap();
-    if let Some(ref mut set) = *handle {
-        set.clear();
-    } else {
-        *handle = Some(HashSet::new());
+    let mut handle = NODES.write().unwrap();
+    if let Some(set) = handle.replace(HashSet::new()) {
+        set.into_iter().for_each(|(_, bit)| {
+            // Reset bitflag
+            let flag: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
+            flag.store(false, SeqCst);
+        });
     }
 }
 
 #[no_mangle]
 pub fn post_processing(test_name: &str) {
-    // SAFETY: RwLock ensures thread safety
-    let handle = unsafe { NODES.read() }.unwrap();
+    let handle = NODES.read().unwrap();
     if let Some(ref set) = *handle {
         if let Ok(source_path) = env::var(ENV_PROJECT_DIR) {
             let mut path_buf = PathBuf::from_str(&source_path).unwrap();
             path_buf.push(DIR_DYNAMIC);
-            let output = set.iter().fold(String::new(), |mut acc, node| {
+            let output = set.iter().fold(String::new(), |mut acc, (node, _)| {
+                // Append node to acc
                 acc.push_str(node);
                 acc.push_str("\n");
                 acc

@@ -9,7 +9,7 @@ pub const DIR_DYNAMIC: &str = ".rts_dynamic";
 
 pub fn get_dynamic_path(str: &str) -> PathBuf {
     let mut path_buf = PathBuf::from_str(str).unwrap();
-    path_buf.push(".rts_dynamic");
+    path_buf.push(DIR_DYNAMIC);
     path_buf
 }
 
