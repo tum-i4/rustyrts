@@ -14,7 +14,7 @@ use super::graph::{DependencyGraph, EdgeType};
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
-    processed_body: Option<DefId>,
+    processed_def_id: Option<DefId>,
 }
 
 impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
@@ -25,7 +25,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
         GraphVisitor {
             tcx,
             graph,
-            processed_body: None,
+            processed_def_id: None,
         }
     }
 
@@ -73,14 +73,14 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         self.graph.add_node(def_id_name(self.tcx, def_id));
 
-        let old_processed_body = self.processed_body.replace(def_id);
+        let old_processed_body = self.processed_def_id.replace(def_id);
         self.super_body(body);
-        self.processed_body = old_processed_body
+        self.processed_def_id = old_processed_body
     }
 
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        let Some(outer) = self.processed_body else {panic!("Cannot find currently analyzed body")};
+        let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
 
         match constant.literal {
             ConstantKind::Unevaluated(content, _ty) => {
@@ -103,7 +103,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                     (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
 
                                 // // This is not necessary since for a node that writes into a variable,
-                                // // there nust exist a path from test to this node already
+                                // // there must exist a path from test to this node already
                                 //
                                 //if ty.is_mutable_ptr() {
                                 //    // If the borrow is mut, we also add an edge in the reverse direction
@@ -137,7 +137,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
-        let Some(outer) = self.processed_body else {panic!("Cannot find currently analyzed body")};
+        let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
 
         match ty.kind() {
             TyKind::Closure(def_id, _) => {

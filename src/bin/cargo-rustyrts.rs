@@ -460,6 +460,15 @@ fn select_and_execute_tests_static() {
     if let None = affected_tests_iter.peek() {
         cmd.arg("--no-run");
     } else {
+        cmd.arg("--lib");
+        cmd.arg("--bins");
+        cmd.arg("--tests");
+        cmd.arg("--examples");
+
+        // we do not want to execute benches,
+        // because they do not rely on the test harness and are not recognized aas tests
+        //cmd.arg("--benches");
+
         cmd.arg("--");
         cmd.arg("--exact");
         for test in affected_tests_iter {
@@ -588,6 +597,7 @@ fn select_and_execute_tests_dynamic() {
         let traced_nodes: HashSet<String> = read_to_string(file.path())
             .unwrap()
             .split("\n")
+            .filter(|s| !s.is_empty())
             .map(|s| s.to_string())
             .collect();
 
@@ -632,7 +642,14 @@ fn select_and_execute_tests_dynamic() {
     if let None = affected_tests_iter.peek() {
         cmd.arg("--no-run");
     } else {
-        cmd.arg("--all-targets");
+        cmd.arg("--lib");
+        cmd.arg("--bins");
+        cmd.arg("--tests");
+        cmd.arg("--examples");
+
+        // we do not want to execute benches,
+        // because they do not rely on the test harness and are not recognized aas tests
+        //cmd.arg("--benches");
     }
 
     execute(cmd);

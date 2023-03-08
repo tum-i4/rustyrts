@@ -290,6 +290,7 @@ pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
     let bb_calling_test_fn = body.basic_blocks.raw.get(0).unwrap();
 
     let terminator_kind: &mut TerminatorKind =
+        // SAFETY: We need to forcefully mutate this TerminatorKind to change its cleanup attribute
         unsafe { transmute(&bb_calling_test_fn.terminator().kind) };
 
     if let TerminatorKind::Call {
@@ -310,6 +311,7 @@ pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
 
         //*******************************************************
         // Determine next bb in unwinding
+        // (If not present, we insert a new one containing a Resume terminator)
 
         let resume_bb = cleanup.take().unwrap_or_else(|| {
             let terminator = Terminator {

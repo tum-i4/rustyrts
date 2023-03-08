@@ -1,5 +1,4 @@
-use std::mem::transmute;
-use std::sync::atomic::AtomicUsize;
+use std::sync::atomic::AtomicPtr;
 
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_hir::AttributeMap;
@@ -16,7 +15,7 @@ use super::mir_util::{insert_post, insert_pre, insert_trace};
 
 pub struct MirManipulatorVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    processed: Option<AtomicUsize>,
+    processed: Option<AtomicPtr<Body<'tcx>>>,
 }
 
 impl<'tcx> MirManipulatorVisitor<'tcx> {
@@ -33,7 +32,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         let def_id = body.source.instance.def_id();
         let def_path = def_id_name(self.tcx, def_id);
 
-        self.processed = Some(AtomicUsize::new(unsafe { transmute(body as &Body<'tcx>) }));
+        self.processed = Some(AtomicPtr::new(body as *mut Body<'tcx>));
 
         let attrs = &self.tcx.hir_crate(()).owners[self
             .tcx
@@ -79,7 +78,8 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
                         match self.tcx.global_alloc(ptr.provenance) {
                             GlobalAlloc::Static(def_id) => {
                                 let def_path = def_id_name(self.tcx, def_id);
-                                let body = unsafe { transmute(outer.load(SeqCst)) };
+                                // SAFETY: We stored the currently processed body here before
+                                let body = unsafe { &mut *outer.load(SeqCst) };
                                 insert_trace(self.tcx, body, &def_path);
                             }
                             _ => (),

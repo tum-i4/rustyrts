@@ -15,8 +15,11 @@ static mut NODES: RwLock<Option<HashSet<&'static str>>> = RwLock::new(None);
 
 #[no_mangle]
 pub fn trace(input: &'static str, bit: &'static u8) {
+    // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
+    // and therefore also AtomicBool.
     let bit: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
     if !bit.fetch_or(true, SeqCst) {
+        // SAFETY: RwLock ensures thread safety
         let mut handle = unsafe { NODES.write() }.unwrap();
         if let Some(ref mut set) = *handle {
             if set.get(input).is_none() {
@@ -28,6 +31,7 @@ pub fn trace(input: &'static str, bit: &'static u8) {
 
 #[no_mangle]
 pub fn pre_processing() {
+    // SAFETY: RwLock ensures thread safety
     let mut handle = unsafe { NODES.write() }.unwrap();
     if let Some(ref mut set) = *handle {
         set.clear();
@@ -38,6 +42,7 @@ pub fn pre_processing() {
 
 #[no_mangle]
 pub fn post_processing(test_name: &str) {
+    // SAFETY: RwLock ensures thread safety
     let handle = unsafe { NODES.read() }.unwrap();
     if let Some(ref set) = *handle {
         if let Ok(source_path) = env::var("PROJECT_DIR") {

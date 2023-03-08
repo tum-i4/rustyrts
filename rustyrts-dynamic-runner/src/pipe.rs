@@ -12,6 +12,7 @@ where
     T: DeserializeOwned + Serialize,
 {
     let fds: [c_int; 2] = [0, 0];
+    // SAFETY: Just a call to libc
     if unsafe { pipe(&fds[0] as *const c_int as *mut c_int) } == 0 {
         Ok((ReadHandle::new(fds[0]), WriteHandle::new(fds[1])))
     } else {
@@ -30,6 +31,7 @@ where
 {
     pub fn new(fd: c_int) -> Self {
         Self {
+            // SAFETY: fd has been created by pipe() and is a valid file descriptor
             read: unsafe { File::from_raw_fd(fd) },
             _phantom: marker::PhantomData,
         }
@@ -53,6 +55,7 @@ where
 {
     pub fn new(fd: c_int) -> Self {
         Self {
+            // SAFETY: fd has been created by pipe() and is a valid file descriptor
             write: unsafe { File::from_raw_fd(fd) },
             _phantom: marker::PhantomData,
         }
