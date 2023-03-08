@@ -23,5 +23,6 @@ $ rustup override set nightly-2023-01-20 # (to use this toolchain in current dir
 # Usage
 | Command  | Explanation |
 | -------- | ----------- |
-| `cargo rustyrts` | perform regression test selection and execute tests |
+| `cargo rustyrts static` | perform static regression test selection and execute tests |
+| `cargo rustyrts dynamic` | perform dynamic regression test selection and execute tests |
 | `cargo rustyrts clean` | clean temporary directories |
