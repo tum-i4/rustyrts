@@ -1,4 +1,8 @@
 use itertools::Itertools;
+use rustyrts::constants::{
+    ENDING_CHANGES, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, ENV_PROJECT_DIR, ENV_RUSTC_WRAPPER,
+    ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE, FILE_COMPLETE_GRAPH,
+};
 use rustyrts::fs_utils::{
     get_affected_path, get_dynamic_path, get_static_path, read_lines, read_lines_filter_map,
     write_to_file,
@@ -102,10 +106,10 @@ impl FromStr for Mode {
 /// This will create a command `cargo build --tests`
 ///
 /// And set the following environment variables:
-/// * `RUSTYRTS_MODE` is set to either "dynamic" or "static"
-/// * `PROJECT_DIR` is set to the directory of the cargo project
-/// * `rustyrts_args` is set to the user-provided arguments for `rustyrts`
-/// * `RUSTC_WRAPPER` is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
+/// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
+/// * [`ENV_PROJECT_DIR`] is set to the directory of the cargo project
+/// * [`ENV_RUSTYRTS_ARGS`] is set to the user-provided arguments for `rustc`
+/// * [`ENV_RUSTC_WRAPPER`] is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
 fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     let mut args = std::env::args().skip(3);
 
@@ -125,24 +129,24 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     }
 
     // Store mode in env variable
-    cmd.env("RUSTYRTS_MODE", mode.to_string());
+    cmd.env(ENV_RUSTYRTS_MODE, mode.to_string());
 
     // Store directory of the project, such that rustyrts knows where to store information about tests, changes
     // and the graph
-    cmd.env("PROJECT_DIR", project_dir.to_str().unwrap());
+    cmd.env(ENV_PROJECT_DIR, project_dir.to_str().unwrap());
 
     // Serialize the remaining args into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
     let args_vec: Vec<String> = args.collect();
     cmd.env(
-        "rustyrts_args",
+        ENV_RUSTYRTS_ARGS,
         serde_json::to_string(&args_vec).expect("failed to serialize args"),
     );
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
-    cmd.env("RUSTC_WRAPPER", path);
+    cmd.env(ENV_RUSTC_WRAPPER, path);
 
     cmd
 }
@@ -150,10 +154,10 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
 /// This will create a command `cargo test --no-fail-fast`
 ///
 /// And set the following environment variables:
-/// * `RUSTYRTS_MODE` is set to either "dynamic" or "static"
-/// * `PROJECT_DIR` is set to the directory of the cargo project
-/// * `rustyrts_args` is set to the user-provided arguments for `rustyrts`
-/// * `RUSTC_WRAPPER` is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
+/// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
+/// * [`ENV_PROJECT_DIR`] is set to the directory of the cargo project
+/// * [`ENV_RUSTYRTS_ARGS`] is set to the user-provided arguments for `rustc`
+/// * [`ENV_RUSTC_WRAPPER`] is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
 fn cargo_test(project_dir: PathBuf, mode: Mode) -> Command {
     let mut args = std::env::args().skip(3);
 
@@ -170,23 +174,23 @@ fn cargo_test(project_dir: PathBuf, mode: Mode) -> Command {
 
     // Store directory of the project, such that rustyrts knows where to store information about tests, changes
     // graph or traces
-    cmd.env("PROJECT_DIR", project_dir.to_str().unwrap());
+    cmd.env(ENV_PROJECT_DIR, project_dir.to_str().unwrap());
 
     // Serialize the remaining args into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
     let args_vec: Vec<String> = args.collect();
     cmd.env(
-        "rustyrts_args",
+        ENV_RUSTYRTS_ARGS,
         serde_json::to_string(&args_vec).expect("failed to serialize args"),
     );
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
-    cmd.env("RUSTC_WRAPPER", path);
+    cmd.env(ENV_RUSTC_WRAPPER, path);
 
     // Store mode in env variable
-    cmd.env("RUSTYRTS_MODE", mode.to_string());
+    cmd.env(ENV_RUSTYRTS_MODE, mode.to_string());
 
     cmd
 }
@@ -197,7 +201,7 @@ fn cargo_test(project_dir: PathBuf, mode: Mode) -> Command {
 /// * `RUSTYRTS_VERBOSE` is set if `-v` is provided
 fn execute(mut cmd: Command) {
     if has_arg_flag("-v") {
-        cmd.env("RUSTYRTS_VERBOSE", ""); // this makes `inside_cargo_rustc` verbose.
+        cmd.env(ENV_RUSTYRTS_VERBOSE, ""); // this makes `inside_cargo_rustc` verbose.
         eprintln!("+ {:?}", cmd);
     }
 
@@ -274,12 +278,18 @@ fn clean() {
 
     let path_buf_static = get_static_path(project_dir.to_str().unwrap());
     if path_buf_static.exists() {
-        remove_dir_all(path_buf_static).expect("Failed to remove .rts_static directory");
+        remove_dir_all(path_buf_static.clone()).expect(&format!(
+            "Failed to remove directory {}",
+            path_buf_static.display()
+        ));
     }
 
     let path_buf_dynamic = get_dynamic_path(project_dir.to_str().unwrap());
     if path_buf_dynamic.exists() {
-        remove_dir_all(path_buf_dynamic).expect("Failed to remove .rts_dynamic directory");
+        remove_dir_all(path_buf_dynamic.clone()).expect(&format!(
+            "Failed to remove directory {}",
+            path_buf_dynamic.display()
+        ));
     }
 
     let mut cmd = cargo();
@@ -290,7 +300,7 @@ fn clean() {
 /// This will construct and execute a command like:
 /// `rustyrts --crate-name some_crate_name --edition=2018 src/lib.rs --crate-type lib --domain interval`
 fn run_rustyrts() {
-    let mode_string = std::env::var("RUSTYRTS_MODE").unwrap_or("".to_string());
+    let mode_string = std::env::var(ENV_RUSTYRTS_MODE).unwrap_or("".to_string());
     let mode = FromStr::from_str(&mode_string).ok();
 
     let mut cmd = match mode {
@@ -307,12 +317,12 @@ fn run_rustyrts() {
     cmd.arg(sysroot);
 
     // Add args for `rustyrts`
-    let magic = std::env::var("rustyrts_args").expect("missing rustyrts_args");
-    let rustyrts_args: Vec<String> =
-        serde_json::from_str(&magic).expect("failed to deserialize rustyrts_args");
+    let magic = std::env::var(ENV_RUSTYRTS_ARGS).expect(&format!("missing {}", ENV_RUSTYRTS_ARGS));
+    let rustyrts_args: Vec<String> = serde_json::from_str(&magic)
+        .expect(&format!("failed to deserialize {}", ENV_RUSTYRTS_ARGS));
     cmd.args(rustyrts_args);
 
-    let verbose = std::env::var_os("RUSTYRTS_VERBOSE").is_some();
+    let verbose = std::env::var_os(ENV_RUSTYRTS_VERBOSE).is_some();
     if verbose {
         eprintln!("+ {:?}", cmd);
     }
@@ -336,12 +346,15 @@ fn run_rustyrts() {
 fn run_cargo_rustc_static() {
     let project_dir = std::env::current_dir().unwrap();
     let path_buf = get_static_path(project_dir.to_str().unwrap());
-    create_dir_all(path_buf.as_path()).expect("Failed to create .rts_static directory");
+    create_dir_all(path_buf.as_path()).expect(&format!(
+        "Failed to create directory {}",
+        path_buf.display()
+    ));
 
     let files = read_dir(path_buf.as_path()).unwrap();
     for path_res in files {
         if let Ok(path) = path_res {
-            if path.file_name().to_str().unwrap().ends_with(".changes") {
+            if path.file_name().to_str().unwrap().ends_with(ENDING_CHANGES) {
                 remove_file(path.path()).unwrap();
             }
         }
@@ -371,7 +384,7 @@ fn select_and_execute_tests_static() {
     let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
     let edges = read_lines_filter_map(
         &files,
-        "dot",
+        ENDING_GRAPH,
         |line| !line.trim_start().starts_with("\\") && line.contains("\" -> \""),
         |line| line,
     );
@@ -379,7 +392,7 @@ fn select_and_execute_tests_static() {
 
     if verbose {
         let mut complete_graph_path = path_buf.clone();
-        complete_graph_path.push("!complete_graph.dot");
+        complete_graph_path.push(FILE_COMPLETE_GRAPH);
         let mut file = match OpenOptions::new()
             .create(true)
             .write(true)
@@ -399,7 +412,7 @@ fn select_and_execute_tests_static() {
     // Read changed nodes
     let changed_nodes = read_lines_filter_map(
         &files,
-        "changes",
+        ENDING_CHANGES,
         |line| line != "" && dependency_graph.get_node(&line).is_some(),
         |line| dependency_graph.get_node(&line).unwrap(),
     );
@@ -488,12 +501,15 @@ fn select_and_execute_tests_static() {
 fn run_cargo_rustc_dynamic() {
     let project_dir = std::env::current_dir().unwrap();
     let path_buf = get_dynamic_path(project_dir.to_str().unwrap());
-    create_dir_all(path_buf.as_path()).expect("Failed to create .rts_dynamic directory");
+    create_dir_all(path_buf.as_path()).expect(&format!(
+        "Failed to create directory {}",
+        path_buf.display()
+    ));
 
     let files = read_dir(path_buf.as_path()).unwrap();
     for path_res in files {
         if let Ok(path) = path_res {
-            if path.file_name().to_str().unwrap().ends_with(".changes") {
+            if path.file_name().to_str().unwrap().ends_with(ENDING_CHANGES) {
                 remove_file(path.path()).unwrap();
             }
         }
@@ -523,7 +539,7 @@ fn select_and_execute_tests_dynamic() {
         .collect();
 
     // Read tests
-    let tests = read_lines(&files, "test");
+    let tests = read_lines(&files, ENDING_TEST);
 
     if verbose {
         println!("Tests that have been found:\n{}\n", tests.iter().join(", "));
@@ -532,7 +548,7 @@ fn select_and_execute_tests_dynamic() {
     }
 
     // Read changed nodes
-    let changed_nodes = read_lines(&files, "changes");
+    let changed_nodes = read_lines(&files, ENDING_CHANGES);
 
     if verbose {
         println!(
@@ -556,7 +572,7 @@ fn select_and_execute_tests_dynamic() {
                 .to_os_string()
                 .into_string()
                 .unwrap()
-                .ends_with(".trace")
+                .ends_with(ENDING_TRACE)
         })
         .collect();
 

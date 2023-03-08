@@ -5,6 +5,7 @@ extern crate rustc_session;
 
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
+use rustyrts::constants::ENV_PROJECT_DIR;
 use rustyrts::static_rts::callback::StaticRTSCallbacks;
 use rustyrts::utils;
 use std::env;
@@ -47,7 +48,7 @@ fn main() {
         rustc_args.push("--cap-lints".to_string());
         rustc_args.push("allow".to_string());
 
-        let source_path = env::var("PROJECT_DIR").unwrap();
+        let source_path = env::var(ENV_PROJECT_DIR).unwrap();
         let mut callbacks = StaticRTSCallbacks::new(source_path);
 
         let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);

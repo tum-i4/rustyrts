@@ -1,6 +1,6 @@
 use std::ffi::OsString;
 use std::fs::{copy, read_dir, DirEntry};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 
 fn cargo() -> Command {

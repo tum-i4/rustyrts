@@ -24,13 +24,15 @@ use crate::util::{get_affected_path, get_dynamic_path, read_lines, waitpid_wrapp
 // * use threadpool to execute tests in parallel
 // * fork for every single test
 
+const ENV_PROJECT_DIR: &str = "PROJECT_DIR";
+
 const UNUSUAL_EXIT_CODE: c_int = 15;
 
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     let instant = Instant::now();
 
-    let project_dir = std::env::var("PROJECT_DIR").unwrap();
+    let project_dir = std::env::var(ENV_PROJECT_DIR).unwrap();
     let path_buf = get_affected_path(get_dynamic_path(&project_dir));
     let affected_tests = read_lines(path_buf);
 
@@ -115,12 +117,12 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     print_failures(&failed_tests).unwrap();
 
     println!(
-        "test result: {}. {} passed; {} failed; {} ignored; {filtered} filtered; finished in {}s",
+        "test result: {}. {} passed; {} failed; {} ignored; {filtered} filtered; finished in {:.2}s",
         passed(failed_tests.is_empty()),
         passed_tests.len(),
         failed_tests.len(),
         ignored.len(),
-        instant.elapsed().as_secs()
+        instant.elapsed().as_secs_f32()
     );
 }
 

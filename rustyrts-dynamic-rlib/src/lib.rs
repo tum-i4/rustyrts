@@ -8,6 +8,8 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
 use std::sync::RwLock;
 
+pub const ENV_PROJECT_DIR: &str = "PROJECT_DIR";
+
 static mut NODES: RwLock<Option<HashSet<&'static str>>> = RwLock::new(None);
 
 //######################################################################################################################
@@ -43,7 +45,7 @@ pub fn post_processing(test_name: &str) {
     // SAFETY: RwLock ensures thread safety
     let handle = unsafe { NODES.read() }.unwrap();
     if let Some(ref set) = *handle {
-        if let Ok(source_path) = env::var("PROJECT_DIR") {
+        if let Ok(source_path) = env::var(ENV_PROJECT_DIR) {
             let mut path_buf = PathBuf::from_str(&source_path).unwrap();
             path_buf.push(".rts_dynamic");
             let output = set.iter().fold(String::new(), |mut acc, node| {
@@ -61,8 +63,10 @@ pub fn post_processing(test_name: &str) {
 
 // TODO: This is copied code:
 
+pub const ENDING_TRACE: &str = ".trace";
+
 pub fn get_traces_path(mut path_buf: PathBuf, test_name: &str) -> PathBuf {
-    path_buf.push(format!("{}.trace", test_name));
+    path_buf.push(format!("{}{}", test_name, ENDING_TRACE));
     path_buf
 }
 

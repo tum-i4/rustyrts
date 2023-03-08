@@ -5,6 +5,10 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use crate::constants::{
+    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, FILE_AFFECTED,
+};
+
 pub fn get_static_path(str: &str) -> PathBuf {
     let mut path_buf = PathBuf::from_str(str).unwrap();
     path_buf.push(".rts_static");
@@ -18,32 +22,32 @@ pub fn get_dynamic_path(str: &str) -> PathBuf {
 }
 
 pub fn get_graph_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}].dot", crate_name, id,));
+    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_GRAPH));
     path_buf
 }
 
 pub fn get_test_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}].test", crate_name, id,));
+    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_TEST));
     path_buf
 }
 
 pub fn get_changes_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}].changes", crate_name, id,));
+    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_CHANGES));
     path_buf
 }
 
 pub fn get_checksums_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}].checksum", crate_name, id,));
+    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_CHECKSUM));
     path_buf
 }
 
 pub fn get_traces_path(mut path_buf: PathBuf, test_name: &str) -> PathBuf {
-    path_buf.push(format!("{}.trace", test_name));
+    path_buf.push(format!("{}{}", test_name, ENDING_TRACE));
     path_buf
 }
 
 pub fn get_affected_path(mut path_buf: PathBuf) -> PathBuf {
-    path_buf.push("affected");
+    path_buf.push(FILE_AFFECTED);
     path_buf
 }
 
