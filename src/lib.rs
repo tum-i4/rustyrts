@@ -10,7 +10,9 @@ extern crate rustc_data_structures;
 extern crate rustc_hash;
 extern crate rustc_session;
 
-// required for analyzing the MIR
+// required for analyzing and modifying the MIR
+extern crate rustc_abi;
+extern crate rustc_ast;
 extern crate rustc_hir;
 extern crate rustc_middle;
 

@@ -118,7 +118,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                 self.graph.add_edge(accessor, accessed, EdgeType::Scalar);
                             }
                             GlobalAlloc::Function(instance) => {
-                                // TODO: I have not yet found out when this is usefull, but since there is a defId stored in here, it might be important
+                                // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                                 // Perhaps this refers to extern fns?
                                 let def_id = instance.def_id();
                                 let (accessor, accessed) =

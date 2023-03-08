@@ -6,6 +6,7 @@ use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Instant;
 use test::{StaticTestFn, TestDescAndFn};
 use threadpool::ThreadPool;
 
@@ -27,6 +28,8 @@ const UNUSUAL_EXIT_CODE: c_int = 15;
 
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
+    let instant = Instant::now();
+
     let project_dir = std::env::var("PROJECT_DIR").unwrap();
     let path_buf = get_affected_path(get_dynamic_path(&project_dir));
     let affected_tests = read_lines(path_buf);
@@ -37,7 +40,6 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     let mut filtered: i32 = 0;
     for test in all_tests {
         if affected_tests.contains(test.desc.name.as_slice()) {
-            //if test.desc.name.as_slice() == "test_factor::test_parallel" {
             tests.push(test);
         } else {
             filtered += 1;
@@ -66,10 +68,17 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
                         let maybe_result = rx.recv();
 
                         match waitpid_wrapper(child) {
-                            Ok(status) if status == UNUSUAL_EXIT_CODE => {
-                                maybe_result.unwrap_or(CompletedTest::failed(name))
+                            Ok(exit) if exit == UNUSUAL_EXIT_CODE => match maybe_result {
+                                Ok(t) => t,
+                                Err(e) => CompletedTest::failed(
+                                    name,
+                                    format!("Failed to receive test result: {}", e),
+                                ),
+                            },
+                            Ok(exit) => {
+                                CompletedTest::failed(name, format!("Wrong exit code: {}", exit))
                             }
-                            _ => CompletedTest::failed(name),
+                            Err(cause) => CompletedTest::failed(name, cause),
                         }
                     }
                     Fork::Child => {
@@ -106,11 +115,12 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     print_failures(&failed_tests).unwrap();
 
     println!(
-        "test result: {}. {} passed; {} failed; {} ignored; {filtered} filtered;",
+        "test result: {}. {} passed; {} failed; {} ignored; {filtered} filtered; finished in {}s",
         passed(failed_tests.is_empty()),
         passed_tests.len(),
         failed_tests.len(),
-        ignored.len()
+        ignored.len(),
+        instant.elapsed().as_secs()
     );
 }
 
@@ -238,10 +248,10 @@ impl CompletedTest {
         }
     }
 
-    fn failed(name: String) -> Self {
+    fn failed(name: String, cause: String) -> Self {
         CompletedTest {
             name,
-            state: TestResult::Failed(Some("Test aborted unexpectedly".to_string())),
+            state: TestResult::Failed(Some(cause)),
             //us: None,
             stdout: None,
         }

@@ -11,23 +11,12 @@ use std::sync::RwLock;
 static mut NODES: RwLock<Option<HashSet<&'static str>>> = RwLock::new(None);
 
 //######################################################################################################################
-// Functions for tracing during RTS
+// Functions for tracing
 
 #[no_mangle]
-#[inline]
-pub fn trace(input: &'static str) {
-    let mut handle = unsafe { NODES.write() }.unwrap();
-    if let Some(ref mut set) = *handle {
-        if set.get(input).is_none() {
-            set.insert(input);
-        }
-    }
-}
-
-#[no_mangle]
-#[inline]
-pub fn trace_atomic(input: &'static str, bit: &'static AtomicBool) {
-    if bit.fetch_or(false, SeqCst) {
+pub fn trace(input: &'static str, bit: &'static u8) {
+    let bit: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
+    if !bit.fetch_or(true, SeqCst) {
         let mut handle = unsafe { NODES.write() }.unwrap();
         if let Some(ref mut set) = *handle {
             if set.get(input).is_none() {
@@ -38,7 +27,6 @@ pub fn trace_atomic(input: &'static str, bit: &'static AtomicBool) {
 }
 
 #[no_mangle]
-#[inline]
 pub fn pre_processing() {
     let mut handle = unsafe { NODES.write() }.unwrap();
     if let Some(ref mut set) = *handle {
@@ -49,17 +37,18 @@ pub fn pre_processing() {
 }
 
 #[no_mangle]
-#[inline]
 pub fn post_processing(test_name: &str) {
     let handle = unsafe { NODES.read() }.unwrap();
     if let Some(ref set) = *handle {
         if let Ok(source_path) = env::var("PROJECT_DIR") {
             let mut path_buf = PathBuf::from_str(&source_path).unwrap();
             path_buf.push(".rts_dynamic");
-            let vec: Vec<&'static str> = set.iter().cloned().collect();
-            write_to_file(vec.join("\n").to_string(), path_buf, |buf| {
-                get_traces_path(buf, &test_name)
+            let output = set.iter().fold(String::new(), |mut acc, node| {
+                acc.push_str(node);
+                acc.push_str("\n");
+                acc
             });
+            write_to_file(output, path_buf, |buf| get_traces_path(buf, &test_name));
         }
     }
 }
