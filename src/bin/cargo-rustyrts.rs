@@ -172,7 +172,10 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
 /// * [`ENV_PROJECT_DIR`] is set to the directory of the cargo project
 /// * [`ENV_RUSTYRTS_ARGS`] is set to the user-provided arguments for `rustc`
 /// * [`ENV_RUSTC_WRAPPER`] is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
-fn cargo_test(project_dir: PathBuf, mode: Mode) -> Command {
+fn cargo_test<'a, I>(project_dir: PathBuf, mode: Mode, affected_tests: I) -> Command
+where
+    I: Iterator<Item = &'a String>,
+{
     let mut args = std::env::args().skip(3);
 
     let mut cmd = cargo();
@@ -210,6 +213,37 @@ fn cargo_test(project_dir: PathBuf, mode: Mode) -> Command {
 
     // Store mode in env variable
     cmd.env(ENV_RUSTYRTS_MODE, mode.to_string());
+
+    let mut affected_tests_iter = affected_tests
+        .map(|line| {
+            let (_, test) = line.split_once("::").unwrap();
+            test.to_string()
+        })
+        .peekable();
+    if let None = affected_tests_iter.peek() {
+        cmd.arg("--no-run");
+    } else {
+        //cmd.arg("--lib");
+        //cmd.arg("--bins");
+        cmd.arg("--tests");
+        cmd.arg("--examples");
+
+        // we do not want to execute benches,
+        // because they do not rely on the test harness and are not recognized aas tests
+        //cmd.arg("--benches");
+
+        cmd.arg("--");
+
+        if let Some(num) = has_arg_param("--test-threads") {
+            cmd.arg("--test-threads");
+            cmd.arg(num);
+        }
+
+        cmd.arg("--exact");
+        for test in affected_tests_iter {
+            cmd.arg(test);
+        }
+    }
 
     cmd
 }
@@ -438,7 +472,7 @@ fn select_and_execute_tests_static() {
     if verbose {
         println!(
             "Nodes that have changed:\n{}\n",
-            changed_nodes.iter().join(", ")
+            changed_nodes.iter().sorted().join(", ")
         );
     } else {
         println!(
@@ -455,7 +489,10 @@ fn select_and_execute_tests_static() {
         |line| dependency_graph.get_node(&line).unwrap(),
     );
     if verbose {
-        println!("Tests that have been found:\n{}\n", tests.iter().join(", "));
+        println!(
+            "Tests that have been found:\n{}\n",
+            tests.iter().sorted().join(", ")
+        );
     } else {
         println!("#Tests that have been found: {}\n", tests.iter().count());
     }
@@ -464,7 +501,7 @@ fn select_and_execute_tests_static() {
     if verbose {
         println!(
             "Nodes that reach any changed node in the graph:\n{}\n",
-            reached_nodes.iter().join(", ")
+            reached_nodes.iter().sorted().join(", ")
         );
     } else {
         println!(
@@ -475,44 +512,19 @@ fn select_and_execute_tests_static() {
 
     let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
     if verbose {
-        println!("Affected tests:\n{}\n", affected_tests.iter().join(", "));
+        println!(
+            "Affected tests:\n{}\n",
+            affected_tests.iter().sorted().join(", ")
+        );
     } else {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    let mut cmd = cargo_test(project_dir, Mode::Static);
-
-    let mut affected_tests_iter = affected_tests
-        .iter()
-        .map(|line| {
-            let (_, test) = line.split_once("::").unwrap();
-            test.to_string()
-        })
-        .peekable();
-    if let None = affected_tests_iter.peek() {
-        cmd.arg("--no-run");
-    } else {
-        //cmd.arg("--lib");
-        //cmd.arg("--bins");
-        cmd.arg("--tests");
-        cmd.arg("--examples");
-
-        // we do not want to execute benches,
-        // because they do not rely on the test harness and are not recognized aas tests
-        //cmd.arg("--benches");
-
-        cmd.arg("--");
-
-        if let Some(num) = has_arg_param("--test-threads") {
-            cmd.arg("--test-threads");
-            cmd.arg(num);
-        }
-
-        cmd.arg("--exact");
-        for test in affected_tests_iter {
-            cmd.arg(test);
-        }
-    }
+    let cmd = cargo_test(
+        project_dir,
+        Mode::Static,
+        affected_tests.into_iter().map(|test| *test),
+    );
 
     execute(cmd);
 }
@@ -567,7 +579,10 @@ fn select_and_execute_tests_dynamic() {
     let tests = read_lines(&files, ENDING_TEST);
 
     if verbose {
-        println!("Tests that have been found:\n{}\n", tests.iter().join(", "));
+        println!(
+            "Tests that have been found:\n{}\n",
+            tests.iter().sorted().join(", ")
+        );
     } else {
         println!("#Tests that have been found: {}\n", tests.iter().count());
     }
@@ -578,7 +593,7 @@ fn select_and_execute_tests_dynamic() {
     if verbose {
         println!(
             "Nodes that have changed:\n{}\n",
-            changed_nodes.iter().join(", ")
+            changed_nodes.iter().sorted().join(", ")
         );
     } else {
         println!(
@@ -618,7 +633,7 @@ fn select_and_execute_tests_dynamic() {
     if verbose {
         println!(
             "Tests with traces:\n{}\n",
-            traced_tests_names.iter().join(", ")
+            traced_tests_names.iter().sorted().join(", ")
         );
     } else {
         println!(
@@ -657,48 +672,14 @@ fn select_and_execute_tests_dynamic() {
     }
 
     if verbose {
-        println!("Affected tests:\n{}\n", affected_tests.iter().join(", "));
+        println!(
+            "Affected tests:\n{}\n",
+            affected_tests.iter().sorted().join(", ")
+        );
     } else {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    write_to_file(
-        affected_tests
-            .iter()
-            .map(|test| test.split_once("::").unwrap().1)
-            .join("\n"),
-        path_buf,
-        |buf| get_affected_path(buf),
-    );
-
-    let mut cmd = cargo_test(project_dir, Mode::Dynamic);
-
-    let mut affected_tests_iter = affected_tests
-        .iter()
-        .map(|line| {
-            let (_, test) = line.split_once("::").unwrap();
-            test.to_string()
-        })
-        .peekable();
-    if let None = affected_tests_iter.peek() {
-        cmd.arg("--no-run");
-    } else {
-        //cmd.arg("--lib");
-        //cmd.arg("--bins");
-        cmd.arg("--tests");
-        cmd.arg("--examples");
-
-        // we do not want to execute benches,
-        // because they do not rely on the test harness and are not recognized aas tests
-        //cmd.arg("--benches");
-
-        cmd.arg("--");
-
-        if let Some(num) = has_arg_param("--test-threads") {
-            cmd.arg("--test-threads");
-            cmd.arg(num);
-        }
-    }
-
+    let cmd = cargo_test(project_dir, Mode::Dynamic, affected_tests.iter());
     execute(cmd);
 }

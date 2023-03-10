@@ -11,7 +11,7 @@ use test::{StaticTestFn, TestDescAndFn};
 use threadpool::ThreadPool;
 
 use crate::pipe::create_pipes;
-use crate::util::{get_affected_path, get_dynamic_path, read_lines, waitpid_wrapper};
+use crate::util::waitpid_wrapper;
 
 //######################################################################################################################
 // This file is inspired by coppers
@@ -23,8 +23,6 @@ use crate::util::{get_affected_path, get_dynamic_path, read_lines, waitpid_wrapp
 // * added logic for ignored tests
 // * use threadpool to execute tests in parallel
 // * fork for every single test
-
-const ENV_PROJECT_DIR: &str = "PROJECT_DIR";
 
 const UNUSUAL_EXIT_CODE: c_int = 15;
 
@@ -40,16 +38,17 @@ fn has_arg_param(name: &str) -> Option<String> {
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     let instant = Instant::now();
 
-    let project_dir = std::env::var(ENV_PROJECT_DIR).unwrap();
-    let path_buf = get_affected_path(get_dynamic_path(&project_dir));
-    let affected_tests = read_lines(path_buf);
+    let affected_tests: Vec<String> = std::env::args()
+        .skip_while(|val| val != "--exact")
+        .skip(1)
+        .collect();
 
     let all_tests: Vec<_> = tests.iter().map(make_owned_test).collect();
     let mut tests: Vec<TestDescAndFn> = Vec::new();
 
     let mut filtered: i32 = 0;
     for test in all_tests {
-        if affected_tests.contains(test.desc.name.as_slice()) {
+        if affected_tests.contains(&test.desc.name.as_slice().to_string()) {
             tests.push(test);
         } else {
             filtered += 1;
