@@ -1,78 +1,121 @@
 use fork::{fork, Fork};
 use libc::c_int;
-use std::any::Any;
-use std::io::{self, Write};
+use std::io::{self, stdout};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process::exit;
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Instant;
-use test::{StaticTestFn, TestDescAndFn};
+use std::time::{Duration, Instant};
+use test::test::{parse_opts, TestExecTime, TestTimeOptions};
+use test::{OutputFormat, ShouldPanic, TestDesc, TestDescAndFn, TestOpts};
 use threadpool::ThreadPool;
 
+use crate::libtest::{
+    calc_result, len_if_padded, make_owned_test, ConsoleTestState, JsonFormatter, OutputFormatter,
+    OutputLocation, PrettyFormatter, TestResult, TestSuiteExecTime,
+};
 use crate::pipe::create_pipes;
 use crate::util::waitpid_wrapper;
 
-//######################################################################################################################
-// This file is inspired by coppers
-// Source: https://github.com/ThijsRay/coppers/blob/add2a7d56301137b339d8d791e1426ceb9022c7e/src/test_runner/mod.rs
-
-// Modifications:
-// * removed sensor-related code
-// * removed repetition of tests
-// * added logic for ignored tests
-// * use threadpool to execute tests in parallel
-// * fork for every single test
-
 const UNUSUAL_EXIT_CODE: c_int = 15;
-
-// Determines whether a parameter `name` is present before `--`.
-// For example, has_arg_param("--test-threads=10")
-fn has_arg_param(name: &str) -> Option<String> {
-    let mut found = std::env::args().skip_while(|val| val != name);
-    found.next()?;
-    found.next()
-}
 
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
-    let instant = Instant::now();
+    let args: &Vec<String> = &std::env::args().collect::<Vec<_>>();
+    let opts: TestOpts = parse_opts(args).unwrap().unwrap();
 
-    let affected_tests: Vec<String> = std::env::args()
-        .skip_while(|val| val != "--exact")
-        .skip(1)
-        .collect();
+    // Exclude some options that just do not fit into RTS
+    assert!(opts.run_tests);
+    assert!(opts.filter_exact);
+    assert!(!opts.fail_fast);
+    assert!(!opts.bench_benchmarks);
+    assert!(opts.skip.is_empty());
+    assert!(!opts.shuffle);
+
+    let affected_tests: &Vec<String> = &opts.filters;
 
     let all_tests: Vec<_> = tests.iter().map(make_owned_test).collect();
     let mut tests: Vec<TestDescAndFn> = Vec::new();
 
-    let mut filtered: i32 = 0;
+    let mut state = ConsoleTestState::new(&opts).unwrap();
+
+    let is_instant_supported = !cfg!(target_family = "wasm") && !cfg!(miri);
+    let start_time = is_instant_supported.then(Instant::now);
+
     for test in all_tests {
-        if affected_tests.contains(&test.desc.name.as_slice().to_string()) {
-            tests.push(test);
+        if opts.exclude_should_panic && test.desc.should_panic != ShouldPanic::No {
+            // 1. filter tests that should panic if specified so
+            state.filtered_out += 1;
         } else {
-            filtered += 1;
+            // 2. Check if test is affected
+            if affected_tests.contains(&test.desc.name.as_slice().to_string()) {
+                // 3. Check if test is not ignored (or specified to run ignored test)
+                match opts.run_ignored {
+                    test::RunIgnored::Yes => tests.push(test),
+                    test::RunIgnored::No => {
+                        if test.desc.ignore {
+                            state.ignored += 1;
+                        } else {
+                            tests.push(test);
+                        }
+                    }
+                    test::RunIgnored::Only => panic!("Running only ignored tests is not supported"),
+                }
+            } else {
+                state.filtered_out += 1;
+            }
         }
     }
 
-    println!("\nRunning {} tests", tests.len());
-
-    let n_workers = has_arg_param("--test-threads")
-        .map(|num| num.parse().unwrap())
+    let n_workers = opts
+        .test_threads
         .unwrap_or_else(|| thread::available_parallelism().unwrap().get());
 
-    let results = if n_workers > 1 {
-        let results: Arc<Mutex<Vec<CompletedTest>>> = Arc::new(Mutex::new(Vec::new()));
+    let mut formatter: Box<dyn OutputFormatter + Send> = match opts.format {
+        OutputFormat::Pretty => {
+            let max_name_len = tests
+                .iter()
+                .max_by_key(|t| len_if_padded(*t))
+                .map(|t| t.desc.name.as_slice().len())
+                .unwrap_or(0);
+
+            Box::new(PrettyFormatter::new(
+                OutputLocation::Raw(stdout()),
+                max_name_len,
+                n_workers != 1,
+                opts.time_options,
+            ))
+        }
+        OutputFormat::Json => Box::new(JsonFormatter::new(OutputLocation::Raw(stdout()))),
+        OutputFormat::Terse => todo!(),
+        OutputFormat::Junit => todo!(),
+    };
+
+    let (mut formatter, mut state) = if n_workers > 1 {
+        let formatter = Arc::new(Mutex::new(formatter));
+
+        let state = Arc::new(Mutex::new(state));
+
+        formatter
+            .lock()
+            .unwrap()
+            .write_run_start(tests.len(), None)
+            .unwrap();
 
         let pool = ThreadPool::with_name("rustyrts_test_thread".to_string(), n_workers);
 
         for test in tests {
-            let results = results.clone();
+            let state = state.clone();
+            let formatter = formatter.clone();
 
             pool.execute(move || {
-                let result = {
-                    let name = test.desc.name.as_slice().to_string();
+                formatter
+                    .lock()
+                    .unwrap()
+                    .write_test_start(&test.desc)
+                    .unwrap();
 
+                let completed_test = {
                     let (mut rx, mut tx) = create_pipes().unwrap();
 
                     match fork().expect("Fork failed") {
@@ -83,384 +126,174 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
                             match waitpid_wrapper(child) {
                                 Ok(exit) if exit == UNUSUAL_EXIT_CODE => match maybe_result {
                                     Ok(t) => t,
-                                    Err(e) => CompletedTest::failed(
-                                        name,
-                                        format!("Failed to receive test result: {}", e),
-                                    ),
+                                    Err(e) => CompletedTest::failed(format!(
+                                        "Failed to receive test result: {}",
+                                        e
+                                    )),
                                 },
-                                Ok(exit) => CompletedTest::failed(
-                                    name,
-                                    format!("Wrong exit code: {}", exit),
-                                ),
-                                Err(cause) => CompletedTest::failed(name, cause),
+                                Ok(exit) => {
+                                    CompletedTest::failed(format!("Wrong exit code: {}", exit))
+                                }
+                                Err(cause) => CompletedTest::failed(cause),
                             }
                         }
                         Fork::Child => {
                             drop(rx);
-                            let result = run_test(test);
-                            tx.send(result).unwrap();
+                            let completed_test = run_test(
+                                &test,
+                                opts.nocapture,
+                                opts.time_options.is_some(),
+                                opts.time_options,
+                            );
+                            tx.send(completed_test).unwrap();
                             exit(UNUSUAL_EXIT_CODE);
                         }
                     }
                 };
 
-                print_test_result(&result);
-                results.lock().unwrap().push(result);
+                let exec_time = completed_test.time.map(|time| TestExecTime(time));
+                formatter
+                    .lock()
+                    .unwrap()
+                    .write_result(
+                        &test.desc,
+                        &completed_test.result,
+                        exec_time.as_ref(),
+                        &completed_test.stdout,
+                        &state.lock().unwrap(),
+                    )
+                    .unwrap();
+                completed_test.evaluate_result(
+                    test.desc,
+                    exec_time.as_ref(),
+                    &mut state.lock().unwrap(),
+                );
             });
         }
 
         pool.join();
 
-        Arc::<Mutex<Vec<CompletedTest>>>::try_unwrap(results)
-            .unwrap()
-            .into_inner()
-            .unwrap()
-    } else {
-        println!("... single-threaded");
-
-        let mut results: Vec<CompletedTest> = Vec::new();
-
-        for test in tests {
-            let result = run_test(test);
-            print_test_result(&result);
-            results.push(result);
-        }
-        results
-    };
-
-    let (mut passed_tests, mut failed_tests, mut ignored) = (Vec::new(), Vec::new(), Vec::new());
-
-    for result in results.into_iter() {
-        match result.state {
-            TestResult::Passed => passed_tests.push(result),
-            TestResult::Failed(_) => failed_tests.push(result),
-            TestResult::Ignored => ignored.push(result),
-        }
-    }
-
-    print_failures(&failed_tests).unwrap();
-
-    println!(
-        "test result: {}. {} passed; {} failed; {} ignored; {filtered} filtered; finished in {:.2}s",
-        passed(failed_tests.is_empty()),
-        passed_tests.len(),
-        failed_tests.len(),
-        ignored.len(),
-        instant.elapsed().as_secs_f32()
-    );
-}
-
-fn run_test(test: test::TestDescAndFn) -> CompletedTest {
-    // If a test is marked with #[ignore], it should not be executed
-    if test.desc.ignore {
-        CompletedTest::empty(test.desc.name.to_string())
-    } else {
-        // Use internal compiler function `set_output_capture` to capture the output of the
-        // tests.
-        let data = Arc::new(Mutex::new(Vec::new()));
-        io::set_output_capture(Some(data.clone()));
-
-        //let mut us = 0;
-
-        let state = match test.testfn {
-            test::TestFn::StaticTestFn(f) => {
-                let result = catch_unwind(AssertUnwindSafe(|| {
-                    f().unwrap();
-                }));
-                //us += sensor.get_elapsed_time_us();
-
-                test_state(&test.desc, result)
-            }
-            _ => unimplemented!("Only StaticTestFns are supported right now"),
+        let formatter = unsafe {
+            Arc::<_>::try_unwrap(formatter)
+                .unwrap_unchecked()
+                .into_inner()
+                .unwrap()
+        };
+        let state = unsafe {
+            Arc::<_>::try_unwrap(state)
+                .unwrap_unchecked()
+                .into_inner()
+                .unwrap()
         };
 
-        // Reset the output capturing to the default behavior and transform the captured output
-        // to a vector of bytes.
-        io::set_output_capture(None);
-        let stdout = Some(data.lock().unwrap_or_else(|e| e.into_inner()).to_vec());
-
-        CompletedTest {
-            name: test.desc.name.to_string(),
-            state,
-            //us: Some(us),
-            stdout,
-        }
-    }
-}
-
-fn print_failures(tests: &Vec<CompletedTest>) -> std::io::Result<()> {
-    if !tests.is_empty() {
-        let stdout = io::stdout();
-        let mut handle = stdout.lock();
-        for test in tests {
-            if let Some(captured) = &test.stdout {
-                handle.write_fmt(format_args!("\n---- {} stdout ----\n", test.name))?;
-                handle.write_all(captured)?;
-                handle.write_all(b"\n")?;
-            }
-        }
-        handle.write_all(b"\nfailures:\n")?;
-        for test in tests {
-            handle.write_fmt(format_args!("\t{}", test.name))?;
-            if let TestResult::Failed(Some(msg)) = &test.state {
-                handle.write_fmt(format_args!(": {}\n", msg))?;
-            }
-        }
-        handle.write_all(b"\n")?;
-    }
-    Ok(())
-}
-
-fn print_test_result(test: &CompletedTest) {
-    match test.state {
-        TestResult::Passed => {
-            //            let us = test.us.unwrap();
-            println!(
-                "test {} ... {}", // - [in {us} μs]",
-                test.name,
-                passed(true)
-            )
-        }
-        TestResult::Failed(_) => {
-            println!("test {} ... {}", test.name, passed(false))
-        }
-        TestResult::Ignored => {
-            println!("test {} ... {}", test.name, "ignored")
-        }
-    }
-}
-
-fn passed(condition: bool) -> &'static str {
-    if condition {
-        "ok"
+        (formatter, state)
     } else {
-        "FAILED"
-    }
+        formatter.write_run_start(tests.len(), None).unwrap();
+
+        for test in tests {
+            formatter.write_test_start(&test.desc).unwrap();
+
+            let completed_test = run_test(
+                &test,
+                opts.nocapture,
+                opts.time_options.is_some(),
+                opts.time_options,
+            );
+
+            let exec_time = completed_test.time.map(|time| TestExecTime(time));
+            formatter
+                .write_result(
+                    &test.desc,
+                    &completed_test.result,
+                    exec_time.as_ref(),
+                    &completed_test.stdout,
+                    &state,
+                )
+                .unwrap();
+
+            completed_test.evaluate_result(test.desc, exec_time.as_ref(), &mut state);
+        }
+        (formatter, state)
+    };
+
+    state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
+    formatter.write_run_finish(&state).unwrap();
 }
 
-fn make_owned_test(test: &&TestDescAndFn) -> TestDescAndFn {
-    match test.testfn {
-        StaticTestFn(f) => TestDescAndFn {
-            testfn: StaticTestFn(f),
-            desc: test.desc.clone(),
-        },
-        _ => panic!("non-static tests passed to test::test_main_static"),
+fn run_test(
+    test: &test::TestDescAndFn,
+    nocapture: bool,
+    report_time: bool,
+    time_opts: Option<TestTimeOptions>,
+) -> CompletedTest {
+    let data = Arc::new(Mutex::new(Vec::new()));
+    if !nocapture {
+        io::set_output_capture(Some(data.clone()));
     }
-}
+    let (result, time) = match test.testfn {
+        test::TestFn::StaticTestFn(f) => {
+            let start = report_time.then(Instant::now);
+            let result = catch_unwind(AssertUnwindSafe(|| {
+                f().unwrap();
+            }));
+            let time = start.map(|start| start.elapsed());
+            let exec_time = time.map(|time| TestExecTime(time));
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
-enum TestResult {
-    Passed,
-    Failed(Option<String>),
-    Ignored,
+            let test_result = match result {
+                Ok(()) => calc_result(&test.desc, Ok(()), &time_opts, &exec_time),
+                Err(e) => calc_result(&test.desc, Err(e.as_ref()), &time_opts, &exec_time),
+            };
+
+            (test_result, time)
+        }
+        _ => unimplemented!("Only StaticTestFns are supported right now"),
+    };
+    io::set_output_capture(None);
+    let stdout = data.lock().unwrap_or_else(|e| e.into_inner()).to_vec();
+
+    CompletedTest {
+        result,
+        stdout,
+        time,
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq)]
 pub(crate) struct CompletedTest {
-    name: String,
-    state: TestResult,
-    //    us: Option<u128>,
-    stdout: Option<Vec<u8>>,
+    result: TestResult,
+    stdout: Vec<u8>,
+    time: Option<Duration>,
 }
 
 impl CompletedTest {
-    fn empty(name: String) -> Self {
+    fn failed(cause: String) -> Self {
         CompletedTest {
-            name,
-            state: TestResult::Ignored,
-            //us: None,
-            stdout: None,
+            result: TestResult::TrFailedMsg(cause),
+            stdout: Vec::default(),
+            time: None,
         }
     }
 
-    fn failed(name: String, cause: String) -> Self {
-        CompletedTest {
-            name,
-            state: TestResult::Failed(Some(cause)),
-            //us: None,
-            stdout: None,
-        }
-    }
-}
-
-fn test_state(desc: &test::TestDesc, result: Result<(), Box<dyn Any + Send>>) -> TestResult {
-    use test::ShouldPanic;
-
-    let result = match (desc.should_panic, result) {
-        (ShouldPanic::No, Ok(())) | (ShouldPanic::Yes, Err(_)) => TestResult::Passed,
-        (ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
-            let maybe_panic_str = err
-                .downcast_ref::<String>()
-                .map(|e| &**e)
-                .or_else(|| err.downcast_ref::<&'static str>().copied());
-
-            if maybe_panic_str.map(|e| e.contains(msg)).unwrap_or(false) {
-                TestResult::Passed
-            } else if let Some(panic_str) = maybe_panic_str {
-                TestResult::Failed(Some(format!(
-                    r#"panic did not contain expected string
-      panic message: `{:?}`,
- expected substring: `{:?}`"#,
-                    panic_str, msg
-                )))
-            } else {
-                TestResult::Failed(Some(format!(
-                    r#"expected panic with string value,
- found non-string value: `{:?}`
-     expected substring: `{:?}`"#,
-                    (**err).type_id(),
-                    msg
-                )))
+    fn evaluate_result(
+        self,
+        desc: TestDesc,
+        exec_time: Option<&TestExecTime>,
+        state: &mut ConsoleTestState,
+    ) {
+        state
+            .write_log_result(&desc, &self.result, exec_time)
+            .unwrap();
+        match self.result {
+            TestResult::TrOk => state.passed += 1,
+            TestResult::TrFailedMsg(_) | TestResult::TrFailed => {
+                state.failed += 1;
+                state.failures.push((desc, self.stdout))
             }
-        }
-        (ShouldPanic::Yes, Ok(())) | (ShouldPanic::YesWithMessage(_), Ok(())) => {
-            TestResult::Failed(Some("test did not panic as expected".to_string()))
-        }
-        _ => TestResult::Failed(None),
-    };
-
-    result
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::panic;
-    use test::TestDesc;
-
-    fn default_test_desc() -> TestDesc {
-        TestDesc {
-            name: test::StaticTestName("Test"),
-            ignore: false,
-            ignore_message: None,
-            should_panic: test::ShouldPanic::No,
-            compile_fail: false,
-            no_run: false,
-            test_type: test::TestType::UnitTest,
-        }
-    }
-
-    fn generate_panic_info(message: &'static str) -> Box<dyn Any + Send> {
-        catch_unwind(|| {
-            panic::panic_any(message);
-        })
-        .unwrap_err()
-    }
-
-    #[test]
-    fn test_succeeded_succeeds_without_panic() {
-        let desc = default_test_desc();
-        let result = Ok(());
-        assert_eq!(test_state(&desc, result), TestResult::Passed)
-    }
-
-    #[test]
-    fn test_succeeded_unexpected_panic() {
-        let desc = default_test_desc();
-        let panic_str = "Assertion failed";
-        let result = Err(generate_panic_info(panic_str));
-        let test_result = test_state(&desc, result);
-        if TestResult::Failed(None) != test_result {
-            panic!("Result was {:?}", test_result)
-        }
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_and_did_panic() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::Yes;
-        let result = Err(generate_panic_info("Assertion failed"));
-        let test_result = test_state(&desc, result);
-        assert_eq!(test_result, TestResult::Passed)
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_but_did_not_panic() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::Yes;
-        let result = Ok(());
-        let test_result = test_state(&desc, result);
-        match test_result {
-            TestResult::Failed(Some(msg)) => assert!(msg.contains("test did not panic")),
-            _ => panic!("Result was {:?}", test_result),
-        }
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_with_str_message() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::YesWithMessage("This is a message");
-        let result = Err(generate_panic_info("This is a message"));
-        assert_eq!(test_state(&desc, result), TestResult::Passed)
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_with_string_message() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::YesWithMessage("This is a message");
-        let result = Err(catch_unwind(|| {
-            panic::panic_any(String::from("This is a message"));
-        })
-        .unwrap_err());
-        assert_eq!(test_state(&desc, result), TestResult::Passed)
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_with_string_message_but_got_no_string() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::YesWithMessage("This is a message");
-        let result = Err(catch_unwind(|| {
-            panic::panic_any(123);
-        })
-        .unwrap_err());
-        let test_result = test_state(&desc, result);
-        match test_result {
-            TestResult::Failed(Some(msg)) => {
-                assert!(msg.contains("expected panic with string value"))
+            TestResult::TrIgnored => state.ignored += 1,
+            TestResult::TrTimedFail => {
+                state.failed += 1;
+                state.time_failures.push((desc, self.stdout))
             }
-            _ => panic!("Result is {:?}", test_result),
-        }
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_with_wrong_message() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::YesWithMessage("This is a message");
-        let result = Err(generate_panic_info("This is another message"));
-        let test_result = test_state(&desc, result);
-        match test_result {
-            TestResult::Failed(Some(msg)) => {
-                assert!(msg.contains("panic did not contain expected string"))
-            }
-            _ => panic!("Result is {:?}", test_result),
-        }
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_with_message_but_with_no_message() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::YesWithMessage("This is a message");
-        let result = Err(generate_panic_info(""));
-        let test_result = test_state(&desc, result);
-        match test_result {
-            TestResult::Failed(Some(msg)) => {
-                assert!(msg.contains("panic did not contain expected string"))
-            }
-            _ => panic!("Result is {:?}", test_result),
-        }
-    }
-
-    #[test]
-    fn test_succeeded_expected_panic_with_message_but_did_not_panic() {
-        let mut desc = default_test_desc();
-        desc.should_panic = test::ShouldPanic::YesWithMessage("This is a message");
-        let result = Ok(());
-        let test_result = test_state(&desc, result);
-        match test_result {
-            TestResult::Failed(Some(msg)) => {
-                assert!(msg.contains("test did not panic as expected"))
-            }
-            _ => panic!("Result is {:?}", test_result),
         }
     }
 }

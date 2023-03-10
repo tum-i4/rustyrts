@@ -3,6 +3,7 @@
 
 extern crate test;
 
+mod libtest;
 mod pipe;
 mod test_runner;
 mod util;

@@ -3,10 +3,7 @@ use rustyrts::constants::{
     ENDING_CHANGES, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, ENV_PROJECT_DIR, ENV_RUSTC_WRAPPER,
     ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE, FILE_COMPLETE_GRAPH,
 };
-use rustyrts::fs_utils::{
-    get_affected_path, get_dynamic_path, get_static_path, read_lines, read_lines_filter_map,
-    write_to_file,
-};
+use rustyrts::fs_utils::{get_dynamic_path, get_static_path, read_lines, read_lines_filter_map};
 use rustyrts::static_rts::graph::DependencyGraph;
 use rustyrts::utils;
 use serde_json;
@@ -55,13 +52,29 @@ fn has_arg_flag(name: &str) -> bool {
     args.any(|val| val == name)
 }
 
-// Determines whether a parameter `name` is present before `--`.
-// For example, has_arg_param("--test-threads=10")
-fn has_arg_param(name: &str) -> Option<String> {
-    let args = std::env::args().take_while(|val| val != "--");
-    let mut found = args.skip_while(|val| val != name);
-    found.next()?;
-    found.next()
+fn get_args_rustc() -> impl Iterator<Item = String> {
+    let args = std::env::args().skip_while(|val| val != "--").skip(1);
+    args.take_while(|val| val != "--")
+}
+
+fn get_args_build() -> impl Iterator<Item = String> {
+    let args = std::env::args()
+        .skip_while(|val| val != "--")
+        .skip(1)
+        .skip_while(|val| val != "--")
+        .skip(1);
+    args.take_while(|val| val != "--")
+}
+
+fn get_args_test() -> impl Iterator<Item = String> {
+    let args = std::env::args()
+        .skip_while(|val| val != "--")
+        .skip(1)
+        .skip_while(|val| val != "--")
+        .skip(1)
+        .skip_while(|val| val != "--")
+        .skip(1);
+    args
 }
 
 //######################################################################################################################
@@ -120,8 +133,6 @@ impl FromStr for Mode {
 /// * [`ENV_RUSTYRTS_ARGS`] is set to the user-provided arguments for `rustc`
 /// * [`ENV_RUSTC_WRAPPER`] is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
 fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
-    let mut args = std::env::args().skip(3);
-
     // Now we run `cargo build $FLAGS $ARGS`, giving the user the
     // chance to add additional arguments. `FLAGS` is set to identify
     // this target.  The user gets to control what gets actually passed to rustyrts.
@@ -129,16 +140,7 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     cmd.arg("build");
     cmd.arg("--tests");
 
-    // Add cargo args between first and second `--`.
-    while let Some(arg) = args.next() {
-        if arg == "--" {
-            break;
-        }
-    }
-    while let Some(arg) = args.next() {
-        if arg == "--" {
-            break;
-        }
+    for arg in get_args_build() {
         cmd.arg(arg);
     }
 
@@ -152,7 +154,7 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     // Serialize the remaining args into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
-    let args_vec: Vec<String> = args.collect();
+    let args_vec: Vec<String> = get_args_rustc().collect();
     cmd.env(
         ENV_RUSTYRTS_ARGS,
         serde_json::to_string(&args_vec).expect("failed to serialize args"),
@@ -176,32 +178,18 @@ fn cargo_test<'a, I>(project_dir: PathBuf, mode: Mode, affected_tests: I) -> Com
 where
     I: Iterator<Item = &'a String>,
 {
-    let mut args = std::env::args().skip(3);
-
     let mut cmd = cargo();
     cmd.arg("test");
     cmd.arg("--no-fail-fast"); // Do not stop if a test fails, execute all included tests
-
-    // Skip cargo args until second `--`.
-    while let Some(arg) = args.next() {
-        if arg == "--" {
-            break;
-        }
-    }
-    while let Some(arg) = args.next() {
-        if arg == "--" {
-            break;
-        }
-    }
 
     // Store directory of the project, such that rustyrts knows where to store information about tests, changes
     // graph or traces
     cmd.env(ENV_PROJECT_DIR, project_dir.to_str().unwrap());
 
-    // Serialize the remaining args into a special environemt variable.
+    // Serialize the args for rust_c into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
-    let args_vec: Vec<String> = args.collect();
+    let args_vec: Vec<String> = get_args_rustc().collect();
     cmd.env(
         ENV_RUSTYRTS_ARGS,
         serde_json::to_string(&args_vec).expect("failed to serialize args"),
@@ -234,9 +222,8 @@ where
 
         cmd.arg("--");
 
-        if let Some(num) = has_arg_param("--test-threads") {
-            cmd.arg("--test-threads");
-            cmd.arg(num);
+        for arg in get_args_test() {
+            cmd.arg(arg);
         }
 
         cmd.arg("--exact");
