@@ -72,14 +72,27 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         if let Some(ref outer) = self.processed {
             let literal = constant.literal;
 
+            // SAFETY: We stored the currently processed body here before
+            let body = unsafe { &mut *outer.load(SeqCst) };
+
             match literal {
+                ConstantKind::Unevaluated(content, _ty) => {
+                    // This takes care of borrows of e.g. "const var: u64"
+                    let def_path = def_id_name(self.tcx, content.def.did);
+                    insert_trace(self.tcx, body, &def_path);
+                }
                 ConstantKind::Val(cons, _ty) => match cons {
                     ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
                         match self.tcx.global_alloc(ptr.provenance) {
                             GlobalAlloc::Static(def_id) => {
+                                // This takes care of borrows of e.g. "static var: u64"
                                 let def_path = def_id_name(self.tcx, def_id);
-                                // SAFETY: We stored the currently processed body here before
-                                let body = unsafe { &mut *outer.load(SeqCst) };
+                                insert_trace(self.tcx, body, &def_path);
+                            }
+                            GlobalAlloc::Function(instance) => {
+                                // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
+                                // Perhaps this refers to extern fns?
+                                let def_path = def_id_name(self.tcx, instance.def_id());
                                 insert_trace(self.tcx, body, &def_path);
                             }
                             _ => (),

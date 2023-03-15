@@ -7,7 +7,7 @@ use rustc_span::source_map::{FileLoader, RealFileLoader};
 use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 
-use crate::callbacks_shared::{excluded, run_analysis_shared};
+use crate::callbacks_shared::{excluded, prepare_analysis, run_analysis_shared};
 use crate::fs_utils::get_dynamic_path;
 
 use super::visitor::MirManipulatorVisitor;
@@ -88,6 +88,9 @@ impl Callbacks for DynamicRTSCallbacks {
 
             providers.optimized_mir = custom_optimized_mir;
         });
+
+        let path_buf = get_dynamic_path(&self.source_path);
+        prepare_analysis(path_buf.clone());
     }
 
     fn after_analysis<'compiler, 'tcx>(

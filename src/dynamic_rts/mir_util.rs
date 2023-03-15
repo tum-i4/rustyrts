@@ -55,7 +55,7 @@ fn insert_assign_str<'tcx>(
     tcx: TyCtxt<'tcx>,
     local_str: Local,
     place_elem_list: &'tcx List<ProjectionElem<Local, Ty<'tcx>>>,
-    content: &[u8],
+    content: &str,
     ty_ref_str: Ty<'tcx>,
     span: Span,
 ) -> (Statement<'tcx>, Place<'tcx>) {
@@ -65,7 +65,7 @@ fn insert_assign_str<'tcx>(
             projection: place_elem_list,
         };
 
-        let new_allocation = Allocation::from_bytes_byte_aligned_immutable(content);
+        let new_allocation = Allocation::from_bytes_byte_aligned_immutable(content.as_bytes());
         let interned_allocation = tcx.intern_const_alloc(new_allocation);
         let new_const_value = ConstValue::Slice {
             data: interned_allocation,
@@ -205,7 +205,6 @@ pub fn insert_trace<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) 
     let (local_str, ty_ref_str) = insert_local_str(tcx, body);
     let (local_u8, ty_ref_u8) = insert_local_u8(tcx, body);
 
-    let content = name.as_bytes();
     let span = body.span;
 
     //*******************************************************
@@ -214,7 +213,7 @@ pub fn insert_trace<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) 
     let place_elem_list = tcx.intern_place_elems(&[]);
 
     let (assign_statement_str, place_ref_str) =
-        insert_assign_str(tcx, local_str, place_elem_list, content, ty_ref_str, span);
+        insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
 
     let (assign_statement_u8, place_ref_u8) =
         insert_assign_u8(tcx, local_u8, place_elem_list, 0u8, ty_ref_u8, span);
@@ -306,7 +305,6 @@ pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
         let local_ret = insert_local_ret(tcx, body);
         let (local_str, ty_ref_str) = insert_local_str(tcx, body);
 
-        let content = name.as_bytes();
         let span = body.span;
 
         //*******************************************************
@@ -331,7 +329,7 @@ pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
 
         let place_elem_list = tcx.intern_place_elems(&[]);
         let (assign_statement_str, place_ref_str) =
-            insert_assign_str(tcx, local_str, place_elem_list, content, ty_ref_str, span);
+            insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
 
         //*******************************************************
         // Create new basic block
@@ -366,7 +364,6 @@ pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
             let local_ret = insert_local_ret(tcx, body);
             let (local_str, ty_ref_str) = insert_local_str(tcx, body);
 
-            let content = name.as_bytes();
             let span = body.span;
 
             //*******************************************************
@@ -374,7 +371,7 @@ pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
 
             let place_elem_list = tcx.intern_place_elems(&[]);
             let (assign_statement_str, place_ref_str) =
-                insert_assign_str(tcx, local_str, place_elem_list, content, ty_ref_str, span);
+                insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
 
             //*******************************************************
             // Create new basic block

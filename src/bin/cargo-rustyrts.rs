@@ -52,12 +52,12 @@ fn has_arg_flag(name: &str) -> bool {
     args.any(|val| val == name)
 }
 
-fn get_args_rustc() -> impl Iterator<Item = String> {
+fn get_args_build() -> impl Iterator<Item = String> {
     let args = std::env::args().skip_while(|val| val != "--").skip(1);
     args.take_while(|val| val != "--")
 }
 
-fn get_args_build() -> impl Iterator<Item = String> {
+fn get_args_rustc() -> impl Iterator<Item = String> {
     let args = std::env::args()
         .skip_while(|val| val != "--")
         .skip(1)
@@ -220,10 +220,14 @@ where
         // because they do not rely on the test harness and are not recognized aas tests
         //cmd.arg("--benches");
 
-        cmd.arg("--");
-
+        let mut delimiter_found = false;
         for arg in get_args_test() {
+            delimiter_found |= arg == "--";
             cmd.arg(arg);
+        }
+
+        if !delimiter_found {
+            cmd.arg("--");
         }
 
         cmd.arg("--exact");

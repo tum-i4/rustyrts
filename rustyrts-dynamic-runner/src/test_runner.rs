@@ -1,8 +1,8 @@
 use fork::{fork, Fork};
-use libc::c_int;
+use libc::{c_int, EXIT_SUCCESS};
 use std::io::{self, stdout};
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::process::exit;
+use std::process::{self, exit};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -12,7 +12,7 @@ use threadpool::ThreadPool;
 
 use crate::libtest::{
     calc_result, len_if_padded, make_owned_test, ConsoleTestState, JsonFormatter, OutputFormatter,
-    OutputLocation, PrettyFormatter, TestResult, TestSuiteExecTime,
+    OutputLocation, PrettyFormatter, TestResult, TestSuiteExecTime, ERROR_EXIT_CODE,
 };
 use crate::pipe::create_pipes;
 use crate::util::waitpid_wrapper;
@@ -217,7 +217,11 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     };
 
     state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
-    formatter.write_run_finish(&state).unwrap();
+    let is_success = formatter.write_run_finish(&state).unwrap();
+
+    if !is_success {
+        process::exit(ERROR_EXIT_CODE);
+    }
 }
 
 fn run_test(

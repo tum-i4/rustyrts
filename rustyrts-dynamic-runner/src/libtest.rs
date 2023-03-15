@@ -26,6 +26,9 @@ use test::{NamePadding, Options, ShouldPanic, TestDescAndFn, TestOpts};
 // Source: https://github.com/rust-lang/rust/blob/104f4300cfddbd956e32820ef202a732f06ec848/library/test/src/lib.rs#L198
 // Changes: access modifier set to crate
 
+// Process exit code to be used to indicate test failures.
+pub(crate) const ERROR_EXIT_CODE: i32 = 101;
+
 /// Clones static values for putting into a dynamic vector, which test_main()
 /// needs to hand out ownership of tests to parallel test runners.
 ///

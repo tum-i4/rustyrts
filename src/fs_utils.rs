@@ -6,7 +6,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::constants::{
-    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, FILE_AFFECTED,
+    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_REEXPORTS, ENDING_TEST, ENDING_TRACE,
+    FILE_AFFECTED,
 };
 
 pub fn get_static_path(str: &str) -> PathBuf {
@@ -43,6 +44,11 @@ pub fn get_checksums_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> P
 
 pub fn get_traces_path(mut path_buf: PathBuf, test_name: &str) -> PathBuf {
     path_buf.push(format!("{}{}", test_name, ENDING_TRACE));
+    path_buf
+}
+
+pub fn get_reexports_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
+    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_REEXPORTS));
     path_buf
 }
 

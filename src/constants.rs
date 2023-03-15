@@ -31,3 +31,4 @@ pub const ENDING_CHANGES: &str = ".changes";
 pub const ENDING_CHECKSUM: &str = ".checksum";
 pub const ENDING_TEST: &str = ".test";
 pub const ENDING_GRAPH: &str = ".dot";
+pub const ENDING_REEXPORTS: &str = ".exp";

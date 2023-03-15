@@ -3,7 +3,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
 
-use crate::callbacks_shared::{excluded, run_analysis_shared};
+use crate::callbacks_shared::{excluded, prepare_analysis, run_analysis_shared};
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
 
 use super::graph::DependencyGraph;
@@ -41,6 +41,8 @@ impl StaticRTSCallbacks {
             let path_buf = get_static_path(&self.source_path);
             let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
             let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+
+            prepare_analysis(path_buf.clone());
 
             //##############################################################################################################
             // 1. Visit every def_id that has a MIR body and process traits

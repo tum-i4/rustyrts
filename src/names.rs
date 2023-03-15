@@ -1,7 +1,13 @@
+use std::collections::HashSet;
+
 use lazy_static::lazy_static;
+use once_cell::sync::OnceCell;
 use regex::Regex;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::{List, TyCtxt};
+use rustc_span::Symbol;
+
+pub(crate) static REEXPORTS: OnceCell<HashSet<(String, String)>> = OnceCell::new();
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
@@ -53,8 +59,37 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
         .replace_all(&def_path_str, "")
         .to_string();
 
-    // Ocasionally, there is a newline which we do not want to keep
+    // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
 
+    if !def_id.is_local() {
+        // If this def_id is not local, we check whether it corresponds to a name reexported by another crate
+        // If this is the case, we replace the deviating part of the name by its counterpart in the other crate
+        if let Some(reexports) = REEXPORTS.get() {
+            let fns = reexports.iter().filter(|(n, _)| !n.ends_with("::"));
+            let non_fns = reexports.iter().filter(|(n, _)| n.ends_with("::"));
+
+            for (name, replacement) in fns {
+                if def_path_str == *name {
+                    return replacement.to_string();
+                }
+            }
+            for (name, replacement) in non_fns {
+                if name.ends_with("::") {
+                    if def_path_str.starts_with(name) {
+                        return def_path_str.replace(name, &replacement);
+                    }
+                }
+            }
+        }
+    }
+
+    def_path_str
+}
+
+pub(crate) fn exported_name<'tcx>(tcx: TyCtxt<'tcx>, symbol: Symbol) -> String {
+    let crate_name = format!("{}::", tcx.crate_name(LOCAL_CRATE));
+
+    let def_path_str = format!("{}{}", crate_name, symbol.as_str());
     def_path_str
 }

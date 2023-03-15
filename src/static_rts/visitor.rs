@@ -1,14 +1,12 @@
+use super::graph::{DependencyGraph, EdgeType};
+use crate::names::def_id_name;
 use rustc_hir::def_id::DefId;
 use rustc_hir::ConstContext;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::ConstantKind;
 use rustc_middle::mir::{self, Body, Location};
-use rustc_middle::ty::{Ty, TyCtxt, TyKind};
-
-use crate::names::def_id_name;
-
-use super::graph::{DependencyGraph, EdgeType};
+use rustc_middle::ty::{GenericArgKind, ImplSubject, Ty, TyCtxt, TyKind};
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
 pub(crate) struct GraphVisitor<'tcx, 'g> {
@@ -37,17 +35,16 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             .is_some();
 
         if has_body {
-            // Apparently optimized_mir() only works in these two cases
-            if let Some(ConstContext::ConstFn) | None =
-                self.tcx.hir().body_const_context(def_id.expect_local())
-            {
-                let body = self.tcx.optimized_mir(def_id); // 1) See comment above
+            let body = match self.tcx.hir().body_const_context(def_id.expect_local()) {
+                Some(ConstContext::ConstFn) | None => self.tcx.optimized_mir(def_id),
+                Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
+                    self.tcx.mir_for_ctfe(def_id)
+                }
+            };
 
-                //##########################################################################################################
-                // Visit body
-
-                self.visit_body(body);
-            }
+            //##########################################################################################################
+            // Visit body
+            self.visit_body(body);
         }
     }
 
@@ -55,6 +52,23 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
         for (_, impls) in self.tcx.all_local_trait_impls(()) {
             for def_id in impls {
                 let implementors = self.tcx.impl_item_implementor_ids(def_id.to_def_id());
+
+                if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(def_id.to_def_id()) {
+                    for subst in trait_ref.substs {
+                        if let GenericArgKind::Type(ty) = subst.unpack() {
+                            if let TyKind::Adt(adt_def, _) = ty.kind() {
+                                for (_, &impl_fn) in implementors {
+                                    self.graph.add_edge(
+                                        def_id_name(self.tcx, adt_def.did()),
+                                        def_id_name(self.tcx, impl_fn),
+                                        EdgeType::Impl,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
                 for (&trait_fn, &impl_fn) in implementors {
                     self.graph.add_edge(
                         def_id_name(self.tcx, trait_fn),
@@ -75,7 +89,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         let old_processed_body = self.processed_def_id.replace(def_id);
         self.super_body(body);
-        self.processed_def_id = old_processed_body
+        self.processed_def_id = old_processed_body;
     }
 
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
@@ -123,7 +137,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                 let def_id = instance.def_id();
                                 let (accessor, accessed) =
                                     (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
-                                // TODO: find out if this is useful at all
                                 self.graph.add_edge(accessor, accessed, EdgeType::FnPtr);
                             }
                             _ => {}
@@ -137,6 +150,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
+        self.super_ty(ty);
         let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
 
         match ty.kind() {
@@ -161,28 +175,19 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     EdgeType::FnDef,
                 );
             }
+            TyKind::Adt(adt_def, _) => {
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer),
+                    def_id_name(self.tcx, adt_def.did()),
+                    EdgeType::Adt,
+                );
+            }
             //TyKind::Foreign(def_id) => {
-            //    // this has effectively no impact because we do not track modifications of external functions
+            //    // this has effectively no impact because we do not track modifications of extern types
             //    self.graph.add_edge(
             //        def_path_debug_str_custom(self.tcx, outer),
             //        def_path_debug_str_custom(self.tcx, *def_id),
             //        EdgeType::Foreign,
-            //    );
-            //}
-            //TyKind::Opaque(def_id, _) => {
-            //    // this has effectively no impact impact because traits have no mir body
-            //    self.graph.add_edge(
-            //        def_path_debug_str_custom(self.tcx, outer),
-            //        def_path_debug_str_custom(self.tcx, *def_id),
-            //        EdgeType::Opaque,
-            //    );
-            //}
-            //TyKind::Adt(adt_def, _) => {
-            //    // this has effectively no impact impact because adts (structs, eunms) have no mir body
-            //    self.graph.add_edge(
-            //        def_path_debug_str_custom(self.tcx, outer),
-            //        def_path_debug_str_custom(self.tcx, adt_def.did()),
-            //        EdgeType::Adt,
             //    );
             //}
             _ => {}

@@ -13,7 +13,7 @@ pub enum EdgeType {
     FnDef,
     FnPtr, // TODO: not sure if this is necessary
     Impl,
-    //Adt,
+    Adt,
     //Foreign,
     //Opaque,
 }
@@ -30,7 +30,7 @@ impl FromStr for EdgeType {
             "FnDef" => Ok(Self::FnDef),
             "FnPtr" => Ok(Self::FnPtr),
             "Impl" => Ok(Self::Impl),
-            //"Adt" => Ok(Self::Adt),
+            "Adt" => Ok(Self::Adt),
             //"Foreign" => Ok(Self::Foreign),
             //"Opaque" => Ok(Self::Opaque),
             _ => Err(()),
