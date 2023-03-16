@@ -59,8 +59,8 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                             if let TyKind::Adt(adt_def, _) = ty.kind() {
                                 for (_, &impl_fn) in implementors {
                                     self.graph.add_edge(
-                                        def_id_name(self.tcx, adt_def.did()),
-                                        def_id_name(self.tcx, impl_fn),
+                                        def_id_name(self.tcx, adt_def.did()).expect_one(),
+                                        def_id_name(self.tcx, impl_fn).expect_one(),
                                         EdgeType::Impl,
                                     );
                                 }
@@ -71,8 +71,8 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
 
                 for (&trait_fn, &impl_fn) in implementors {
                     self.graph.add_edge(
-                        def_id_name(self.tcx, trait_fn),
-                        def_id_name(self.tcx, impl_fn),
+                        def_id_name(self.tcx, trait_fn).expect_one(),
+                        def_id_name(self.tcx, impl_fn).expect_one(),
                         EdgeType::Impl,
                     );
                 }
@@ -85,7 +85,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let def_id = body.source.instance.def_id();
 
-        self.graph.add_node(def_id_name(self.tcx, def_id));
+        self.graph
+            .add_node(def_id_name(self.tcx, def_id).expect_one());
 
         let old_processed_body = self.processed_def_id.replace(def_id);
         self.super_body(body);
@@ -101,11 +102,13 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 // This takes care of borrows of e.g. "const var: u64"
                 let def_id = content.def.did;
 
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, def_id),
-                    EdgeType::Unevaluated,
-                );
+                for accessed in def_id_name(self.tcx, def_id) {
+                    self.graph.add_edge(
+                        def_id_name(self.tcx, outer).expect_one(),
+                        accessed,
+                        EdgeType::Unevaluated,
+                    );
+                }
             }
             ConstantKind::Val(cons, _ty) => {
                 match cons {
@@ -113,8 +116,10 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         match self.tcx.global_alloc(ptr.provenance) {
                             GlobalAlloc::Static(def_id) => {
                                 // This takes care of borrows of e.g. "static var: u64"
-                                let (accessor, accessed) =
-                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
+                                let (accessor, accessed_maybe_more) = (
+                                    def_id_name(self.tcx, outer).expect_one(),
+                                    def_id_name(self.tcx, def_id),
+                                );
 
                                 // // This is not necessary since for a node that writes into a variable,
                                 // // there must exist a path from test to this node already
@@ -128,16 +133,30 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                 //    );
                                 //}
 
-                                // Since we assume that a borrow is actually read, we always add an edge here
-                                self.graph.add_edge(accessor, accessed, EdgeType::Scalar);
+                                for accessed in accessed_maybe_more {
+                                    // Since we assume that a borrow is actually read, we always add an edge here
+                                    self.graph.add_edge(
+                                        accessor.clone(),
+                                        accessed,
+                                        EdgeType::Scalar,
+                                    );
+                                }
                             }
                             GlobalAlloc::Function(instance) => {
                                 // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                                 // Perhaps this refers to extern fns?
                                 let def_id = instance.def_id();
-                                let (accessor, accessed) =
-                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
-                                self.graph.add_edge(accessor, accessed, EdgeType::FnPtr);
+                                let (accessor, accessed_maybe_more) = (
+                                    def_id_name(self.tcx, outer).expect_one(),
+                                    def_id_name(self.tcx, def_id),
+                                );
+                                for accessed in accessed_maybe_more {
+                                    self.graph.add_edge(
+                                        accessor.clone(),
+                                        accessed,
+                                        EdgeType::FnPtr,
+                                    );
+                                }
                             }
                             _ => {}
                         }
@@ -155,32 +174,40 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         match ty.kind() {
             TyKind::Closure(def_id, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::Closure,
-                );
+                for inner in def_id_name(self.tcx, *def_id) {
+                    self.graph.add_edge(
+                        def_id_name(self.tcx, outer).expect_one(),
+                        inner,
+                        EdgeType::Closure,
+                    );
+                }
             }
             TyKind::Generator(def_id, _, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::Generator,
-                );
+                for inner in def_id_name(self.tcx, *def_id) {
+                    self.graph.add_edge(
+                        def_id_name(self.tcx, outer).expect_one(),
+                        inner,
+                        EdgeType::Generator,
+                    );
+                }
             }
             TyKind::FnDef(def_id, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::FnDef,
-                );
+                for inner in def_id_name(self.tcx, *def_id) {
+                    self.graph.add_edge(
+                        def_id_name(self.tcx, outer).expect_one(),
+                        inner,
+                        EdgeType::FnDef,
+                    );
+                }
             }
             TyKind::Adt(adt_def, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, adt_def.did()),
-                    EdgeType::Adt,
-                );
+                for inner in def_id_name(self.tcx, adt_def.did()) {
+                    self.graph.add_edge(
+                        def_id_name(self.tcx, outer).expect_one(),
+                        inner,
+                        EdgeType::Adt,
+                    );
+                }
             }
             //TyKind::Foreign(def_id) => {
             //    // this has effectively no impact because we do not track modifications of extern types
@@ -426,15 +453,17 @@ mod test {
     fn test_traits() {
         let graph = compile_and_visit("traits.rs");
 
+        println!("{}", graph.to_string());
+
         {
-            let end = format!("{CRATE_PREFIX}::<Self as Animal>::sound");
+            let end = format!("{CRATE_PREFIX}::Animal::sound");
             let edge_type = EdgeType::FnDef;
 
             let start = format!("{CRATE_PREFIX}::test::test_direct");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start = format!("{CRATE_PREFIX}::sound_generic::<T>");
+            let start = format!("{CRATE_PREFIX}::sound_generic");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
@@ -444,14 +473,14 @@ mod test {
         }
 
         {
-            let end = format!("{CRATE_PREFIX}::<Self as Animal>::set_treat");
+            let end = format!("{CRATE_PREFIX}::Animal::set_treat");
             let edge_type = EdgeType::FnDef;
 
             let start = format!("{CRATE_PREFIX}::test::test_mut_direct");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start = format!("{CRATE_PREFIX}::set_treat_generic::<T>");
+            let start = format!("{CRATE_PREFIX}::set_treat_generic");
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
@@ -461,7 +490,7 @@ mod test {
         }
 
         {
-            let start = format!("{CRATE_PREFIX}::<Self as Animal>::set_treat");
+            let start = format!("{CRATE_PREFIX}::Animal::set_treat");
             let edge_type = EdgeType::Impl;
 
             let end = format!("{CRATE_PREFIX}::<Lion as Animal>::set_treat");
@@ -474,7 +503,7 @@ mod test {
         }
 
         {
-            let start = format!("{CRATE_PREFIX}::<Self as Animal>::sound");
+            let start = format!("{CRATE_PREFIX}::Animal::sound");
             let edge_type = EdgeType::Impl;
 
             let end = format!("{CRATE_PREFIX}::<Lion as Animal>::sound");

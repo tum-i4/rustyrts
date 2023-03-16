@@ -58,7 +58,7 @@ pub(crate) fn get_def_id_exported(tcx: TyCtxt, krate: CrateNum, name: &str) -> O
         };
 
         if let Some(def_id) = maybe_def_id {
-            let def_path_str = def_id_name(tcx, def_id);
+            let def_path_str = def_id_name(tcx, def_id).expect_one();
             if def_path_str == name {
                 return Some(def_id);
             }

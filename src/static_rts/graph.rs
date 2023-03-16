@@ -151,14 +151,19 @@ impl ToString for DependencyGraph<String> {
             result.push_str(format!("\"{}\"\n", node).as_str())
         }
 
-        for (end, edge) in self
-            .backwards_edges
-            .iter()
-            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0))
-        {
-            for (start, types) in edge.iter().sorted_by(|a, b| Ord::cmp(&b.0, &a.0)) {
-                result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", start, end, types).as_str())
+        let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
+
+        for (end, edge) in self.backwards_edges.iter() {
+            for (start, types) in edge.iter() {
+                unsorted.push((start, end, types));
             }
+        }
+
+        for (start, end, types) in unsorted
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0).then(Ord::cmp(&b.1, &a.1)))
+        {
+            result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", start, end, types).as_str())
         }
 
         result.push_str("}\n");

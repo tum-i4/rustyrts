@@ -30,7 +30,7 @@ impl<'tcx> MirManipulatorVisitor<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
     fn visit_body(&mut self, body: &mut Body<'tcx>) {
         let def_id = body.source.instance.def_id();
-        let def_path = def_id_name(self.tcx, def_id);
+        let outer = def_id_name(self.tcx, def_id).expect_one();
 
         self.processed = Some(AtomicPtr::new(body as *mut Body<'tcx>));
 
@@ -47,7 +47,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         for (_, list) in attrs.iter() {
             for attr in *list {
                 if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                    let def_path_test = &def_path[0..def_path.len() - 13];
+                    let def_path_test = &outer[0..outer.len() - 13];
 
                     // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
                     // 1. insert_post 2. insert_pre
@@ -61,7 +61,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         }
 
         if !found_test_harness {
-            insert_trace(self.tcx, body, &def_path);
+            insert_trace(self.tcx, body, &outer);
             self.super_body(body);
         }
     }
@@ -78,22 +78,25 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
             match literal {
                 ConstantKind::Unevaluated(content, _ty) => {
                     // This takes care of borrows of e.g. "const var: u64"
-                    let def_path = def_id_name(self.tcx, content.def.did);
-                    insert_trace(self.tcx, body, &def_path);
+                    for def_path in def_id_name(self.tcx, content.def.did) {
+                        insert_trace(self.tcx, body, &def_path);
+                    }
                 }
                 ConstantKind::Val(cons, _ty) => match cons {
                     ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
                         match self.tcx.global_alloc(ptr.provenance) {
                             GlobalAlloc::Static(def_id) => {
                                 // This takes care of borrows of e.g. "static var: u64"
-                                let def_path = def_id_name(self.tcx, def_id);
-                                insert_trace(self.tcx, body, &def_path);
+                                for def_path in def_id_name(self.tcx, def_id) {
+                                    insert_trace(self.tcx, body, &def_path);
+                                }
                             }
                             GlobalAlloc::Function(instance) => {
                                 // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                                 // Perhaps this refers to extern fns?
-                                let def_path = def_id_name(self.tcx, instance.def_id());
-                                insert_trace(self.tcx, body, &def_path);
+                                for def_path in def_id_name(self.tcx, instance.def_id()) {
+                                    insert_trace(self.tcx, body, &def_path);
+                                }
                             }
                             _ => (),
                         }
