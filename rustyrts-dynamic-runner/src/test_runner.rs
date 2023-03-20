@@ -1,5 +1,4 @@
 use fork::{fork, Fork};
-use libc::{c_int, EXIT_SUCCESS};
 use std::io::{self, stdout};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process::{self, exit};
@@ -14,7 +13,14 @@ use crate::libtest::{
     calc_result, len_if_padded, make_owned_test, ConsoleTestState, JsonFormatter, OutputFormatter,
     OutputLocation, PrettyFormatter, TestResult, TestSuiteExecTime, ERROR_EXIT_CODE,
 };
+
+#[cfg(target_family = "unix")]
+use libc::c_int;
+
+#[cfg(target_family = "unix")]
 use crate::pipe::create_pipes;
+
+#[cfg(target_family = "unix")]
 use crate::util::waitpid_wrapper;
 
 const UNUSUAL_EXIT_CODE: c_int = 15;
@@ -71,7 +77,7 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         .test_threads
         .unwrap_or_else(|| thread::available_parallelism().unwrap().get());
 
-    let mut formatter: Box<dyn OutputFormatter + Send> = match opts.format {
+    let formatter: Box<dyn OutputFormatter + Send> = match opts.format {
         OutputFormat::Pretty => {
             let max_name_len = tests
                 .iter()
@@ -91,7 +97,29 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         OutputFormat::Junit => todo!(),
     };
 
-    let (mut formatter, mut state) = if n_workers > 1 {
+    let (mut formatter, mut state) = if cfg!(unix) {
+        execute_tests_unix(opts, n_workers, tests, formatter, state)
+    } else {
+        execute_tests_single_threaded(opts, tests, formatter, state)
+    };
+
+    state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
+    let is_success = formatter.write_run_finish(&state).unwrap();
+
+    if !is_success {
+        process::exit(ERROR_EXIT_CODE);
+    }
+}
+
+#[cfg(target_family = "unix")]
+fn execute_tests_unix(
+    opts: TestOpts,
+    n_workers: usize,
+    tests: Vec<TestDescAndFn>,
+    formatter: Box<dyn OutputFormatter + Send>,
+    state: ConsoleTestState,
+) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
+    if n_workers > 1 {
         let formatter = Arc::new(Mutex::new(formatter));
 
         let state = Arc::new(Mutex::new(state));
@@ -188,40 +216,42 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
 
         (formatter, state)
     } else {
-        formatter.write_run_start(tests.len(), None).unwrap();
-
-        for test in tests {
-            formatter.write_test_start(&test.desc).unwrap();
-
-            let completed_test = run_test(
-                &test,
-                opts.nocapture,
-                opts.time_options.is_some(),
-                opts.time_options,
-            );
-
-            let exec_time = completed_test.time.map(|time| TestExecTime(time));
-            formatter
-                .write_result(
-                    &test.desc,
-                    &completed_test.result,
-                    exec_time.as_ref(),
-                    &completed_test.stdout,
-                    &state,
-                )
-                .unwrap();
-
-            completed_test.evaluate_result(test.desc, exec_time.as_ref(), &mut state);
-        }
-        (formatter, state)
-    };
-
-    state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
-    let is_success = formatter.write_run_finish(&state).unwrap();
-
-    if !is_success {
-        process::exit(ERROR_EXIT_CODE);
+        execute_tests_single_threaded(opts, tests, formatter, state)
     }
+}
+
+fn execute_tests_single_threaded(
+    opts: TestOpts,
+    tests: Vec<TestDescAndFn>,
+    mut formatter: Box<dyn OutputFormatter + Send>,
+    mut state: ConsoleTestState,
+) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
+    formatter.write_run_start(tests.len(), None).unwrap();
+
+    for test in tests {
+        formatter.write_test_start(&test.desc).unwrap();
+
+        let completed_test = run_test(
+            &test,
+            opts.nocapture,
+            opts.time_options.is_some(),
+            opts.time_options,
+        );
+
+        let exec_time = completed_test.time.map(|time| TestExecTime(time));
+        formatter
+            .write_result(
+                &test.desc,
+                &completed_test.result,
+                exec_time.as_ref(),
+                &completed_test.stdout,
+                &state,
+            )
+            .unwrap();
+
+        completed_test.evaluate_result(test.desc, exec_time.as_ref(), &mut state);
+    }
+    (formatter, state)
 }
 
 fn run_test(

@@ -9,15 +9,28 @@ use rustc_span::def_id::CrateNum;
 
 const RLIB_CRATE_NAME: &str = "rustyrts_dynamic_rlib";
 
-const PRE_FN_NAME: &str = "pre_processing";
-const POST_FN_NAME: &str = "post_processing";
+const PRE_TEST_FN_NAME: &str = "pre_test";
+const POST_TEST_FN_NAME: &str = "post_test";
 const TRACE_FN_NAME: &str = "trace";
+
+#[cfg(target_family = "unix")]
+const POST_MAIN_FN_NAME: &str = "post_main";
+
+#[cfg(target_family = "unix")]
+const PRE_MAIN_FN_NAME: &str = "pre_main";
 
 static RLIB_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
 
-static PRE_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
+#[cfg(target_family = "unix")]
+static PRE_FN_TEST_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
+
+#[cfg(target_family = "unix")]
+static PRE_FN_MAIN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
+
 static TRACE_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
-static POST_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
+
+static POST_FN_TEST_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
+static POST_FN_MAIN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
 pub(crate) fn get_crate_by_name(tcx: TyCtxt, name: &str) -> Option<CrateNum> {
     let crates = tcx.crates(());
@@ -82,14 +95,24 @@ pub(crate) fn get_def_id_from_rlib_crate(tcx: TyCtxt, name: &str) -> Option<DefI
     def_id
 }
 
-pub(crate) fn get_def_id_pre_fn(tcx: TyCtxt) -> Option<DefId> {
-    *PRE_FN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, PRE_FN_NAME))
-}
-
 pub(crate) fn get_def_id_trace_fn(tcx: TyCtxt) -> Option<DefId> {
     *TRACE_FN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, TRACE_FN_NAME))
 }
 
-pub(crate) fn get_def_id_post_fn(tcx: TyCtxt) -> Option<DefId> {
-    *POST_FN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, POST_FN_NAME))
+pub(crate) fn get_def_id_pre_test_fn(tcx: TyCtxt) -> Option<DefId> {
+    *PRE_FN_TEST_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, PRE_TEST_FN_NAME))
+}
+
+#[cfg(target_family = "unix")]
+pub(crate) fn get_def_id_pre_main_fn(tcx: TyCtxt) -> Option<DefId> {
+    *PRE_FN_MAIN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, PRE_MAIN_FN_NAME))
+}
+
+pub(crate) fn get_def_id_post_test_fn(tcx: TyCtxt) -> Option<DefId> {
+    *POST_FN_TEST_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, POST_TEST_FN_NAME))
+}
+
+#[cfg(target_family = "unix")]
+pub(crate) fn get_def_id_post_main_fn(tcx: TyCtxt) -> Option<DefId> {
+    *POST_FN_MAIN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, POST_MAIN_FN_NAME))
 }

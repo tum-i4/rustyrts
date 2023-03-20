@@ -1,3 +1,5 @@
+#![cfg(target_family = "unix")]
+
 use libc::{c_int, waitpid, WEXITSTATUS, WIFEXITED};
 
 pub fn waitpid_wrapper(pid: libc::pid_t) -> Result<c_int, String> {

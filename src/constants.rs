@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //######################################################################################################################
 // Environment variables
 
@@ -32,3 +34,6 @@ pub const ENDING_CHECKSUM: &str = ".checksum";
 pub const ENDING_TEST: &str = ".test";
 pub const ENDING_GRAPH: &str = ".dot";
 pub const ENDING_REEXPORTS: &str = ".exp";
+
+#[cfg(target_family = "unix")]
+pub const ENDING_PROCESS_TRACE: &str = ".process_trace";

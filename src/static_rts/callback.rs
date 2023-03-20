@@ -55,9 +55,12 @@ impl StaticRTSCallbacks {
             }
             graph_visitor.process_traits();
 
-            write_to_file(self.graph.to_string(), path_buf.clone(), |buf| {
-                get_graph_path(buf, &crate_name, crate_id)
-            });
+            write_to_file(
+                self.graph.to_string(),
+                path_buf.clone(),
+                |buf| get_graph_path(buf, &crate_name, crate_id),
+                false,
+            );
 
             //##############################################################################################################
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem

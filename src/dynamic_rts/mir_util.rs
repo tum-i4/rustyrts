@@ -1,6 +1,8 @@
 use std::mem::transmute;
 
-use super::defid_util::{get_def_id_post_fn, get_def_id_pre_fn, get_def_id_trace_fn};
+use super::defid_util::{
+    get_def_id_post_test_fn, get_def_id_pre_main_fn, get_def_id_pre_test_fn, get_def_id_trace_fn,
+};
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -13,6 +15,9 @@ use rustc_middle::{
     ty::{List, RegionKind, Ty, TyCtxt, TyKind, UintTy},
 };
 use rustc_span::Span;
+
+#[cfg(target_family = "unix")]
+use super::defid_util::get_def_id_post_main_fn;
 
 //######################################################################################################################
 // Functions for inserting locals
@@ -195,22 +200,33 @@ fn create_call<'tcx>(
 //######################################################################################################################
 // Functions for inserting calls to rustyrts_dynamic_rlib
 
-pub fn insert_trace<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
+pub fn insert_trace<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    name: &str,
+    cache_str: &mut Option<(Local, Ty<'tcx>)>,
+    cache_u8: &mut Option<(Local, Ty<'tcx>)>,
+    cache_ret: &mut Option<Local>,
+) {
     let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
         eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
         return;
     };
 
-    let local_ret = insert_local_ret(tcx, body);
-    let (local_str, ty_ref_str) = insert_local_str(tcx, body);
-    let (local_u8, ty_ref_u8) = insert_local_u8(tcx, body);
+    cache_str.get_or_insert_with(|| insert_local_str(tcx, body));
+    cache_u8.get_or_insert_with(|| insert_local_u8(tcx, body));
+    cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+
+    let local_ret = cache_ret.unwrap();
+    let (local_str, ty_ref_str) = cache_str.unwrap();
+    let (local_u8, ty_ref_u8) = cache_u8.unwrap();
 
     let span = body.span;
 
     //*******************************************************
     // Create assign statements
 
-    let place_elem_list = tcx.intern_place_elems(&[]);
+    let place_elem_list = tcx.mk_place_elems([].iter());
 
     let (assign_statement_str, place_ref_str) =
         insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
@@ -246,16 +262,19 @@ pub fn insert_trace<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) 
     *body.basic_blocks.as_mut().raw.get_mut(0).unwrap() = new_basic_block_data;
 }
 
-pub fn insert_pre<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let Some(def_id_pre_fn) = get_def_id_pre_fn(tcx) else {
-        eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+pub fn insert_pre_test<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, cache_ret: &mut Option<Local>) {
+    let Some(def_id_pre_fn) = get_def_id_pre_test_fn(tcx) else {
+        eprintln!("Crate {} will cache_ret: &mut Option<Local>cache_ret: &mut Option<Local>not be traced.", tcx.crate_name(LOCAL_CRATE));
         return;
     };
 
-    let local_ret = insert_local_ret(tcx, body);
+    cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+
+    let local_ret = cache_ret.unwrap();
+    
     let span = body.span;
 
-    let place_elem_list = tcx.intern_place_elems(&[]);
+    let place_elem_list = tcx.mk_place_elems([].iter());
 
     //*******************************************************
     // Create new basic block
@@ -281,122 +300,334 @@ pub fn insert_pre<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     *body.basic_blocks.as_mut().raw.get_mut(0).unwrap() = new_basic_block_data;
 }
 
-pub fn insert_post<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str) {
-    let Some(def_id_post_fn) = get_def_id_post_fn(tcx) else {
+pub fn insert_pre_main<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, cache_ret: &mut Option<Local>) {
+    let Some(def_id_pre_fn) = get_def_id_pre_main_fn(tcx) else {
+        eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
         return;
     };
 
-    let bb_calling_test_fn = body.basic_blocks.raw.get(0).unwrap();
+    cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
 
-    let terminator_kind: &mut TerminatorKind =
-        // SAFETY: We need to forcefully mutate this TerminatorKind to change its cleanup attribute
-        unsafe { transmute(&bb_calling_test_fn.terminator().kind) };
+    let local_ret = cache_ret.unwrap();
 
-    if let TerminatorKind::Call {
-        func: _,
-        args: _,
-        destination: _,
-        target: _,
-        cleanup,
-        from_hir_call: _,
-        fn_span: _,
-    } = terminator_kind
-    {
-        let local_ret = insert_local_ret(tcx, body);
-        let (local_str, ty_ref_str) = insert_local_str(tcx, body);
+    let span = body.span;
 
-        let span = body.span;
+    let place_elem_list = tcx.mk_place_elems([].iter());
 
-        //*******************************************************
-        // Determine next bb in unwinding
-        // (If not present, we insert a new one containing a Resume terminator)
+    //*******************************************************
+    // Create new basic block
 
-        let resume_bb = cleanup.take().unwrap_or_else(|| {
-            let terminator = Terminator {
-                source_info: SourceInfo::outermost(span),
-                kind: TerminatorKind::Resume,
-            };
+    // Clone former bb0
+    let index_vec = body.basic_blocks.as_mut();
+    let first_basic_block_data = index_vec.raw.get(0).unwrap();
+    let basic_block = index_vec.push(first_basic_block_data.clone());
 
-            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-            new_basic_block_data.is_cleanup = true;
+    let args_vec = Vec::new();
+    let terminator = create_call(
+        tcx,
+        def_id_pre_fn,
+        span,
+        args_vec,
+        local_ret,
+        place_elem_list,
+        Some(basic_block),
+    );
 
-            let new_bb = body.basic_blocks.as_mut().push(new_basic_block_data);
-            new_bb
-        });
+    let new_basic_block_data = BasicBlockData::new(Some(terminator));
 
-        //*******************************************************
-        // Create assign statements
+    *body.basic_blocks.as_mut().raw.get_mut(0).unwrap() = new_basic_block_data;
+}
 
-        let place_elem_list = tcx.intern_place_elems(&[]);
-        let (assign_statement_str, place_ref_str) =
-            insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
-
-        //*******************************************************
-        // Create new basic block
-
-        let mut args_vec = Vec::new();
-        args_vec.push(Operand::Move(place_ref_str));
-        let terminator = create_call(
-            tcx,
-            def_id_post_fn,
-            span,
-            args_vec,
-            local_ret,
-            place_elem_list,
-            Some(resume_bb), // the next cleanup bb is inserted here
-        );
-
-        let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-        new_basic_block_data.is_cleanup = true;
-        new_basic_block_data.statements.push(assign_statement_str);
-
-        let new_bb = body.basic_blocks.as_mut().push(new_basic_block_data);
-
-        // here we insert the call to rustyrts_post_fn() into cleanup
-        *cleanup = Some(new_bb);
-    }
+pub fn insert_post_test<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, name: &str, cache_str: &mut Option<(Local, Ty<'tcx>)>,cache_ret: &mut Option<Local>,) {
+    let Some(def_id_post_fn) = get_def_id_post_test_fn(tcx) else {
+        return;
+    };
 
     let len = body.basic_blocks.raw.len();
-    for i in 1..len {
-        let terminator_kind = &body.basic_blocks.raw.get(i).unwrap().terminator().kind;
+    for i in 0..len {
+        let terminator_kind: &mut TerminatorKind =
+        // SAFETY: We need to forcefully mutate this TerminatorKind to change its cleanup attribute
+        unsafe { transmute(&body.basic_blocks.raw.get(i).unwrap().terminator().kind) };
 
-        if let TerminatorKind::Return = terminator_kind {
-            let local_ret = insert_local_ret(tcx, body);
-            let (local_str, ty_ref_str) = insert_local_str(tcx, body);
+        match terminator_kind {
+            TerminatorKind::Return => {
+                cache_str.get_or_insert_with(|| insert_local_str(tcx, body));
+                cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+            
+                let local_ret = cache_ret.unwrap();
+                let (local_str, ty_ref_str) = cache_str.unwrap();
 
-            let span = body.span;
+                let span = body.span;
 
-            //*******************************************************
-            // Create assign statements
+                //*******************************************************
+                // Create assign statements
 
-            let place_elem_list = tcx.intern_place_elems(&[]);
-            let (assign_statement_str, place_ref_str) =
-                insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
+                let place_elem_list = tcx.mk_place_elems([].iter());
+                let (assign_statement_str, place_ref_str) =
+                    insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
 
-            //*******************************************************
-            // Create new basic block
+                //*******************************************************
+                // Create new basic block
 
-            // Clone former basic_block
-            let index_vec = body.basic_blocks.as_mut();
-            let old_basic_block = index_vec.raw.get(i).unwrap();
-            let basic_block = index_vec.push(old_basic_block.clone());
+                // Clone former basic_block
+                let index_vec = body.basic_blocks.as_mut();
+                let old_basic_block = index_vec.raw.get(i).unwrap();
+                let basic_block = index_vec.push(old_basic_block.clone());
 
-            let mut args_vec = Vec::new();
-            args_vec.push(Operand::Move(place_ref_str));
-            let terminator = create_call(
-                tcx,
-                def_id_post_fn,
-                span,
-                args_vec,
-                local_ret,
-                place_elem_list,
-                Some(basic_block),
-            );
+                let mut args_vec = Vec::new();
+                args_vec.push(Operand::Move(place_ref_str));
+                let terminator = create_call(
+                    tcx,
+                    def_id_post_fn,
+                    span,
+                    args_vec,
+                    local_ret,
+                    place_elem_list,
+                    Some(basic_block),
+                );
 
-            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-            new_basic_block_data.statements.push(assign_statement_str);
+                let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+                new_basic_block_data.statements.push(assign_statement_str);
 
-            *body.basic_blocks.as_mut().raw.get_mut(i).unwrap() = new_basic_block_data;
+                *body.basic_blocks.as_mut().raw.get_mut(i).unwrap() = new_basic_block_data;
+            }
+            TerminatorKind::Resume => {
+                cache_str.get_or_insert_with(|| insert_local_str(tcx, body));
+                cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+            
+                let local_ret = cache_ret.unwrap();
+                let (local_str, ty_ref_str) = cache_str.unwrap();
+
+                let span = body.span;
+
+                //*******************************************************
+                // Create assign statements
+
+                let place_elem_list = tcx.mk_place_elems([].iter());
+                let (assign_statement_str, place_ref_str) =
+                    insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
+
+                //*******************************************************
+                // Create new basic block
+
+                // Clone former basic_block
+                let index_vec = body.basic_blocks.as_mut();
+                let old_basic_block = index_vec.raw.get(i).unwrap();
+                let basic_block = index_vec.push(old_basic_block.clone());
+
+                let mut args_vec = Vec::new();
+                args_vec.push(Operand::Move(place_ref_str));
+                let terminator = create_call(
+                    tcx,
+                    def_id_post_fn,
+                    span,
+                    args_vec,
+                    local_ret,
+                    place_elem_list,
+                    Some(basic_block),
+                );
+
+                let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+                new_basic_block_data.statements.push(assign_statement_str);
+                new_basic_block_data.is_cleanup = true;
+
+                *body.basic_blocks.as_mut().raw.get_mut(i).unwrap() = new_basic_block_data;
+            }
+            TerminatorKind::Call { cleanup, .. }
+            | TerminatorKind::Assert { cleanup, .. }
+            | TerminatorKind::InlineAsm { cleanup, .. }
+                /*if cleanup.is_none()*/ =>
+            {
+                cache_str.get_or_insert_with(|| insert_local_str(tcx, body));
+                cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+            
+                let local_ret = cache_ret.unwrap();
+                let (local_str, ty_ref_str) = cache_str.unwrap();
+
+                let span = body.span;
+
+                //*******************************************************
+                // Insert new bb to resume
+
+                let resume_bb = cleanup.take().unwrap_or_else(|| {
+                    let terminator = Terminator {
+                        source_info: SourceInfo::outermost(span),
+                        kind: TerminatorKind::Resume,
+                    };
+
+                    let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+                    new_basic_block_data.is_cleanup = true;
+
+                    let new_bb = body.basic_blocks.as_mut().push(new_basic_block_data);
+                    new_bb
+                });
+
+                //*******************************************************
+                // Create assign statements
+
+                let place_elem_list = tcx.mk_place_elems([].iter());
+                let (assign_statement_str, place_ref_str) =
+                    insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
+
+                //*******************************************************
+                // Create new basic block
+
+                let mut args_vec = Vec::new();
+                args_vec.push(Operand::Move(place_ref_str));
+                let terminator = create_call(
+                    tcx,
+                    def_id_post_fn,
+                    span,
+                    args_vec,
+                    local_ret,
+                    place_elem_list,
+                    Some(resume_bb), // the next cleanup bb is inserted here
+                );
+
+                let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+                new_basic_block_data.statements.push(assign_statement_str);
+                new_basic_block_data.is_cleanup = true;
+
+                let new_bb = body.basic_blocks.as_mut().push(new_basic_block_data);
+
+                // here we insert the call to rustyrts_post_main() into cleanup
+                *cleanup = Some(new_bb);
+            }
+            _ => (),
+        }
+    }
+}
+
+#[cfg(target_family = "unix")]
+pub fn insert_post_main<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, cache_ret: &mut Option<Local>) {
+    let Some(def_id_post_fn) = get_def_id_post_main_fn(tcx) else {
+        return;
+    };
+
+    let len = body.basic_blocks.raw.len();
+    for i in 0..len {
+        let terminator_kind: &mut TerminatorKind =
+        // SAFETY: We need to forcefully mutate this TerminatorKind to change its cleanup attribute
+        unsafe { transmute(&body.basic_blocks.raw.get(i).unwrap().terminator().kind) };
+
+        match terminator_kind {
+            TerminatorKind::Return => {
+                cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+            
+                let local_ret = cache_ret.unwrap();
+
+                let span = body.span;
+
+                let place_elem_list = tcx.mk_place_elems([].iter());
+
+                //*******************************************************
+                // Create new basic block
+
+                // Clone former basic_block
+                let index_vec = body.basic_blocks.as_mut();
+                let old_basic_block = index_vec.raw.get(i).unwrap();
+                let basic_block = index_vec.push(old_basic_block.clone());
+
+                let args_vec = Vec::new();
+                let terminator = create_call(
+                    tcx,
+                    def_id_post_fn,
+                    span,
+                    args_vec,
+                    local_ret,
+                    place_elem_list,
+                    Some(basic_block),
+                );
+
+                let new_basic_block_data = BasicBlockData::new(Some(terminator));
+
+                *body.basic_blocks.as_mut().raw.get_mut(i).unwrap() = new_basic_block_data;
+            }
+            //TerminatorKind::Resume => {
+            //    cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+            //
+            //    let local_ret = cache_ret.unwrap();
+//
+            //    let span = body.span;
+//
+            //    let place_elem_list = tcx.mk_place_elems([].iter());
+//
+            //    //*******************************************************
+            //    // Create new basic block
+//
+            //    // Clone former basic_block
+            //    let index_vec = body.basic_blocks.as_mut();
+            //    let old_basic_block = index_vec.raw.get(i).unwrap();
+            //    let basic_block = index_vec.push(old_basic_block.clone());
+//
+            //    let args_vec = Vec::new();
+            //    let terminator = create_call(
+            //        tcx,
+            //        def_id_post_fn,
+            //        span,
+            //        args_vec,
+            //        local_ret,
+            //        place_elem_list,
+            //        Some(basic_block),
+            //    );
+//
+            //    let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+            //    new_basic_block_data.is_cleanup = true;
+//
+            //    *body.basic_blocks.as_mut().raw.get_mut(i).unwrap() = new_basic_block_data;
+            //}
+            //TerminatorKind::Call { cleanup, .. }
+            //| TerminatorKind::Assert { cleanup, .. }
+            //| TerminatorKind::InlineAsm { cleanup, .. }
+            //    /*if cleanup.is_none()*/ =>
+            //{
+            //    cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+            //
+            //    let local_ret = cache_ret.unwrap();
+//
+            //    let span = body.span;
+//
+            //    //*******************************************************
+            //    // Insert new bb to resume
+//
+            //    let resume_bb = cleanup.take().unwrap_or_else(|| {
+            //        let terminator = Terminator {
+            //            source_info: SourceInfo::outermost(span),
+            //            kind: TerminatorKind::Resume,
+            //        };
+//
+            //        let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+            //        new_basic_block_data.is_cleanup = true;
+//
+            //        let new_bb = body.basic_blocks.as_mut().push(new_basic_block_data);
+            //        new_bb
+            //    });
+//
+            //    //*******************************************************
+            //    // Create new basic block
+//
+            //    let place_elem_list = tcx.mk_place_elems([].iter());
+//
+            //    let args_vec = Vec::new();
+            //    let terminator = create_call(
+            //        tcx,
+            //        def_id_post_fn,
+            //        span,
+            //        args_vec,
+            //        local_ret,
+            //        place_elem_list,
+            //        Some(resume_bb), // the next cleanup bb is inserted here
+            //    );
+//
+            //    let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+            //    new_basic_block_data.is_cleanup = true;
+//
+            //    let new_bb = body.basic_blocks.as_mut().push(new_basic_block_data);
+//
+            //    // here we insert the call to rustyrts_post_main() into cleanup
+            //    *cleanup = Some(new_bb);
+            //}
+            _ => (),
         }
     }
 }

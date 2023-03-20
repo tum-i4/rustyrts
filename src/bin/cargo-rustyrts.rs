@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use rustyrts::constants::{
-    ENDING_CHANGES, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, ENV_PROJECT_DIR, ENV_RUSTC_WRAPPER,
-    ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE, FILE_COMPLETE_GRAPH,
+    ENDING_CHANGES, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST, ENDING_TRACE, ENV_PROJECT_DIR,
+    ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
+    FILE_COMPLETE_GRAPH,
 };
 use rustyrts::fs_utils::{get_dynamic_path, get_static_path, read_lines, read_lines_filter_map};
 use rustyrts::static_rts::graph::DependencyGraph;
@@ -138,7 +139,9 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     // this target.  The user gets to control what gets actually passed to rustyrts.
     let mut cmd = cargo();
     cmd.arg("build");
-    cmd.arg("--tests");
+    //cmd.arg("--tests");
+
+    cmd.arg("--all-targets");
 
     for arg in get_args_build() {
         cmd.arg(arg);
@@ -537,7 +540,13 @@ fn run_cargo_rustc_dynamic() {
     let files = read_dir(path_buf.as_path()).unwrap();
     for path_res in files {
         if let Ok(path) = path_res {
-            if path.file_name().to_str().unwrap().ends_with(ENDING_CHANGES) {
+            let file_name = path.file_name();
+            if file_name.to_str().unwrap().ends_with(ENDING_CHANGES) {
+                remove_file(path.path()).unwrap();
+            }
+
+            #[cfg(target_family = "unix")]
+            if file_name.to_str().unwrap().ends_with(ENDING_PROCESS_TRACE) {
                 remove_file(path.path()).unwrap();
             }
         }

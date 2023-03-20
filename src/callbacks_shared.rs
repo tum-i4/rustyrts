@@ -115,9 +115,12 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
     }
 
     if tests.len() > 0 {
-        write_to_file(tests.join("\n").to_string(), path_buf.clone(), |buf| {
-            get_test_path(buf, &crate_name, crate_id)
-        });
+        write_to_file(
+            tests.join("\n").to_string(),
+            path_buf.clone(),
+            |buf| get_test_path(buf, &crate_name, crate_id),
+            false,
+        );
     }
 
     //##################################################################################################################
@@ -176,12 +179,14 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
         new_checksums.to_string().to_string(),
         path_buf.clone(),
         |buf| get_checksums_path(buf, &crate_name, crate_id),
+        false,
     );
 
     write_to_file(
         changed_nodes.join("\n").to_string(),
         path_buf.clone(),
         |buf| get_changes_path(buf, &crate_name, crate_id),
+        false,
     );
 
     //##################################################################################################################
@@ -256,5 +261,6 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
             .join("\n"),
         path_buf,
         |path_buf| get_reexports_path(path_buf, crate_name, crate_id),
+        false,
     );
 }

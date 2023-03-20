@@ -1,3 +1,5 @@
+#![cfg(target_family = "unix")]
+
 use libc::{c_int, pipe};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
