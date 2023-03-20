@@ -111,6 +111,7 @@ where
     let mut file = match OpenOptions::new()
         .write(true)
         .append(append)
+        .truncate(!append)
         .create(true)
         .open(path_buf.as_path())
     {

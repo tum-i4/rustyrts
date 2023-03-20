@@ -94,8 +94,6 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
 
             insert_pre_main(self.tcx, body, &mut self.cache_ret);
 
-            //println!("Inserted into {:?}", def_id);
-
             return;
         }
 
@@ -117,7 +115,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
             let literal = constant.literal;
 
             // SAFETY: We stored the currently processed body here before
-            let body = unsafe { &mut *outer.load(SeqCst) };
+            let body = unsafe { outer.load(SeqCst).as_mut().unwrap() };
 
             match literal {
                 ConstantKind::Unevaluated(content, _ty) => {
