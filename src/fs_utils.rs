@@ -88,6 +88,7 @@ where
             let lines: Vec<String> = content.split("\n").map(|s| s.to_string()).collect();
             lines
         })
+        .filter(|line| !line.is_empty())
         .filter(filter)
         .map(mapper)
         .collect();
