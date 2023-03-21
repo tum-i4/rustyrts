@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use log::{debug, info, trace};
 use rustc_hir::{
     def::{DefKind, Res},
     def_id::LOCAL_CRATE,
@@ -123,6 +124,8 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
         );
     }
 
+    debug!("Exported tests for {}", crate_name);
+
     //##################################################################################################################
     // 3. Import checksums
 
@@ -137,6 +140,8 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
             Checksums::new()
         }
     };
+
+    debug!("Imported checksums for {}", crate_name);
 
     //##################################################################################################################
     // 4. Calculate new checksums and names of changed nodes and write this information to filesystem
@@ -189,6 +194,8 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
         false,
     );
 
+    debug!("Exported changes for {}", crate_name);
+
     //##################################################################################################################
     // 5. Write a mapping of reexports to file for subsequent crates
 
@@ -202,50 +209,46 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
     let mut mapping = vec![];
 
     for (mod_def_id, reexports) in reexport_map {
-        if mod_def_id.to_def_id().is_top_level_module() {
-            for mod_child in reexports {
-                if let Visibility::Public = mod_child.vis {
-                    if let Res::Def(kind, def_id) = mod_child.res {
-                        if let DefKind::Mod
-                        | DefKind::Fn
-                        | DefKind::Struct
-                        | DefKind::Enum
-                        | DefKind::Trait
-                        | DefKind::Ctor(..) = kind
-                        {
-                            let (exported_name, local_name) = match kind {
-                                DefKind::Mod => {
-                                    let local_name = format!(
-                                        "{}::{}",
-                                        tcx.crate_name(def_id.krate),
-                                        tcx.def_path_str(def_id)
-                                    );
-                                    let exported_name = exported_name(tcx, mod_child.ident.name);
-                                    (exported_name, local_name)
-                                }
-                                _ => {
-                                    let local_name = def_id_name(tcx, def_id).expect_one();
-                                    let exported_name = exported_name(tcx, mod_child.ident.name);
-                                    (exported_name, local_name)
-                                }
-                            };
+        for mod_child in reexports {
+            if let Visibility::Public = mod_child.vis {
+                if let Res::Def(kind, def_id) = mod_child.res {
+                    if let DefKind::Mod
+                    | DefKind::Fn
+                    | DefKind::Struct
+                    | DefKind::Enum
+                    | DefKind::Trait
+                    | DefKind::Ctor(..) = kind
+                    {
+                        let (exported_name, local_name) = match kind {
+                            DefKind::Mod => {
+                                let local_name = format!(
+                                    "{}::{}",
+                                    tcx.crate_name(def_id.krate),
+                                    tcx.def_path_str(def_id)
+                                );
+                                let exported_name =
+                                    exported_name(tcx, *mod_def_id, mod_child.ident.name);
+                                (exported_name, local_name)
+                            }
+                            _ => {
+                                let local_name = def_id_name(tcx, def_id).expect_one();
+                                let exported_name =
+                                    exported_name(tcx, *mod_def_id, mod_child.ident.name);
+                                (exported_name, local_name)
+                            }
+                        };
 
-                            // TODO: remove this:
-                            //if exported_name.contains("spin::RwLockReadGuard") {
-                            //    println!("Exporting {} - {:?}", local_name, mod_child);
-                            //}
+                        trace!("Found reexport: {} as {:?}", local_name, exported_name);
 
-                            match kind {
-                                DefKind::Fn | DefKind::Ctor(..) => {
-                                    mapping.push((exported_name, local_name));
-                                }
-                                DefKind::Struct | DefKind::Enum | DefKind::Trait => {
-                                    mapping
-                                        .push((exported_name.clone() + "!adt", local_name.clone()));
-                                }
-                                _ => {
-                                    mapping.push((exported_name + "::", local_name + "::"));
-                                }
+                        match kind {
+                            DefKind::Fn | DefKind::Ctor(..) => {
+                                mapping.push((exported_name, local_name));
+                            }
+                            DefKind::Struct | DefKind::Enum | DefKind::Trait => {
+                                mapping.push((exported_name.clone() + "!adt", local_name.clone()));
+                            }
+                            _ => {
+                                mapping.push((exported_name + "::", local_name + "::"));
                             }
                         }
                     }

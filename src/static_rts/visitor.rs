@@ -58,11 +58,13 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                         if let GenericArgKind::Type(ty) = subst.unpack() {
                             if let TyKind::Adt(adt_def, _) = ty.kind() {
                                 for (_, &impl_fn) in implementors {
-                                    self.graph.add_edge(
-                                        def_id_name(self.tcx, adt_def.did()).expect_one(),
-                                        def_id_name(self.tcx, impl_fn).expect_one(),
-                                        EdgeType::Impl,
-                                    );
+                                    for name in def_id_name(self.tcx, adt_def.did()) {
+                                        self.graph.add_edge(
+                                            name,
+                                            def_id_name(self.tcx, impl_fn).expect_one(),
+                                            EdgeType::Impl,
+                                        );
+                                    }
                                 }
                             }
                         }
@@ -70,11 +72,13 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                 }
 
                 for (&trait_fn, &impl_fn) in implementors {
-                    self.graph.add_edge(
-                        def_id_name(self.tcx, trait_fn).expect_one(),
-                        def_id_name(self.tcx, impl_fn).expect_one(),
-                        EdgeType::Impl,
-                    );
+                    for name in def_id_name(self.tcx, trait_fn) {
+                        self.graph.add_edge(
+                            name,
+                            def_id_name(self.tcx, impl_fn).expect_one(),
+                            EdgeType::Impl,
+                        );
+                    }
                 }
             }
         }

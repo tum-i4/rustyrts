@@ -1,9 +1,7 @@
-use std::sync::atomic::AtomicPtr;
-
 use super::mir_util::{insert_post_test, insert_pre_main, insert_pre_test, insert_trace};
 use crate::callbacks_shared::TEST_MARKER;
 use crate::names::def_id_name;
-use rustc_data_structures::sync::Ordering::SeqCst;
+use log::trace;
 use rustc_hir::AttributeMap;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::ty::Ty;
@@ -17,7 +15,7 @@ use super::mir_util::insert_post_main;
 
 pub struct MirManipulatorVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    processed: Option<AtomicPtr<Body<'tcx>>>,
+    acc: Vec<String>,
     cache_str: Option<(Local, Ty<'tcx>)>,
     cache_u8: Option<(Local, Ty<'tcx>)>,
     cache_ret: Option<Local>,
@@ -27,7 +25,7 @@ impl<'tcx> MirManipulatorVisitor<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> MirManipulatorVisitor<'tcx> {
         Self {
             tcx,
-            processed: None,
+            acc: Vec::new(),
             cache_str: None,
             cache_u8: None,
             cache_ret: None,
@@ -40,10 +38,12 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         let def_id = body.source.instance.def_id();
         let outer = def_id_name(self.tcx, def_id).expect_one();
 
+        trace!("Visiting {}", outer);
+
         self.cache_str = None;
         self.cache_u8 = None;
         self.cache_ret = None;
-        self.processed = Some(AtomicPtr::new(body as *mut Body<'tcx>));
+        self.acc = Vec::new();
 
         let attrs = &self.tcx.hir_crate(()).owners[self
             .tcx
@@ -70,10 +70,16 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
                         &mut self.cache_ret,
                     );
                     insert_pre_test(self.tcx, body, &mut self.cache_ret);
+
+                    trace!("Finished {}", outer);
                     return;
                 }
             }
         }
+
+        // We collect all relevant nodes in a vec, in order to not modify/move elements while visiting them
+        self.acc.push(outer.clone());
+        self.super_body(body);
 
         #[cfg(target_family = "unix")]
         if outer.ends_with("::main") {
@@ -81,94 +87,62 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
             // 1. insert_post 2. insert_pre
 
             insert_post_main(self.tcx, body, &mut self.cache_ret);
+        }
 
+        for def_path in &self.acc {
             insert_trace(
                 self.tcx,
                 body,
-                &outer,
+                def_path,
                 &mut self.cache_str,
                 &mut self.cache_u8,
                 &mut self.cache_ret,
             );
-            self.super_body(body);
-
-            insert_pre_main(self.tcx, body, &mut self.cache_ret);
-
-            return;
         }
 
-        insert_trace(
-            self.tcx,
-            body,
-            &outer,
-            &mut self.cache_str,
-            &mut self.cache_u8,
-            &mut self.cache_ret,
-        );
-        self.super_body(body);
+        #[cfg(target_family = "unix")]
+        if outer.ends_with("::main") {
+            insert_pre_main(self.tcx, body, &mut self.cache_ret);
+        }
+
+        trace!("Finished {}", outer);
     }
 
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
 
-        if let Some(ref outer) = self.processed {
-            let literal = constant.literal;
+        let literal = constant.literal;
 
-            // SAFETY: We stored the currently processed body here before
-            let body = unsafe { outer.load(SeqCst).as_mut().unwrap() };
-
-            match literal {
-                ConstantKind::Unevaluated(content, _ty) => {
-                    // This takes care of borrows of e.g. "const var: u64"
-                    for def_path in def_id_name(self.tcx, content.def.did) {
-                        insert_trace(
-                            self.tcx,
-                            body,
-                            &def_path,
-                            &mut self.cache_str,
-                            &mut self.cache_u8,
-                            &mut self.cache_ret,
-                        );
+        match literal {
+            ConstantKind::Unevaluated(content, _ty) => {
+                // This takes care of borrows of e.g. "const var: u64"
+                for def_path in def_id_name(self.tcx, content.def.did) {
+                    self.acc.push(def_path);
+                }
+            }
+            ConstantKind::Val(cons, _ty) => match cons {
+                ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
+                    match self.tcx.global_alloc(ptr.provenance) {
+                        GlobalAlloc::Static(def_id) => {
+                            // This takes care of borrows of e.g. "static var: u64"
+                            for def_path in def_id_name(self.tcx, def_id) {
+                                self.acc.push(def_path);
+                            }
+                        }
+                        GlobalAlloc::Function(instance) => {
+                            // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
+                            // Perhaps this refers to extern fns?
+                            for def_path in def_id_name(self.tcx, instance.def_id()) {
+                                self.acc.push(def_path);
+                            }
+                        }
+                        _ => (),
                     }
                 }
-                ConstantKind::Val(cons, _ty) => match cons {
-                    ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
-                        match self.tcx.global_alloc(ptr.provenance) {
-                            GlobalAlloc::Static(def_id) => {
-                                // This takes care of borrows of e.g. "static var: u64"
-                                for def_path in def_id_name(self.tcx, def_id) {
-                                    insert_trace(
-                                        self.tcx,
-                                        body,
-                                        &def_path,
-                                        &mut self.cache_str,
-                                        &mut self.cache_u8,
-                                        &mut self.cache_ret,
-                                    );
-                                }
-                            }
-                            GlobalAlloc::Function(instance) => {
-                                // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
-                                // Perhaps this refers to extern fns?
-                                for def_path in def_id_name(self.tcx, instance.def_id()) {
-                                    insert_trace(
-                                        self.tcx,
-                                        body,
-                                        &def_path,
-                                        &mut self.cache_str,
-                                        &mut self.cache_u8,
-                                        &mut self.cache_ret,
-                                    );
-                                }
-                            }
-                            _ => (),
-                        }
-                    }
-                    _ => (),
-                },
                 _ => (),
-            };
-        }
+            },
+            _ => (),
+        };
     }
 
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {

@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 
 extern crate rustc_driver;
+extern crate rustc_log;
 extern crate rustc_session;
 
 use rustc_session::config::ErrorOutputType;
@@ -23,6 +24,9 @@ pub const EXIT_SUCCESS: i32 = 0;
 pub const EXIT_FAILURE: i32 = 1;
 
 fn main() {
+    rustc_log::init_rustc_env_logger().unwrap();
+    env_logger::init();
+
     let result = rustc_driver::catch_fatal_errors(move || {
         let mut rustc_args = env::args_os()
             .enumerate()

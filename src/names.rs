@@ -6,7 +6,7 @@ use once_cell::sync::OnceCell;
 use regex::Regex;
 use rustc_hir::{
     def::DefKind,
-    def_id::{DefId, LOCAL_CRATE},
+    def_id::{DefId, LocalDefId, LOCAL_CRATE},
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
@@ -180,9 +180,17 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> OneOrMore<S
     OneOrMore::One(def_path_str)
 }
 
-pub(crate) fn exported_name<'tcx>(tcx: TyCtxt<'tcx>, symbol: Symbol) -> String {
-    let crate_name = format!("{}::", tcx.crate_name(LOCAL_CRATE));
+pub(crate) fn exported_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mod_def_id: LocalDefId,
+    symbol: Symbol,
+) -> String {
+    let mut mod_name = def_id_name(tcx, mod_def_id.to_def_id()).expect_one();
 
-    let def_path_str = format!("{}{}", crate_name, symbol.as_str());
+    if !mod_name.ends_with("::") {
+        mod_name += "::";
+    }
+
+    let def_path_str = format!("{}{}", mod_name, symbol.as_str());
     def_path_str
 }
