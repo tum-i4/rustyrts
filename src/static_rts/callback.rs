@@ -1,3 +1,4 @@
+use log::debug;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
@@ -61,6 +62,8 @@ impl StaticRTSCallbacks {
                 |buf| get_graph_path(buf, &crate_name, crate_id),
                 false,
             );
+
+            debug!("Generated dependency graph for {}", crate_name);
 
             //##############################################################################################################
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem

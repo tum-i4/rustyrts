@@ -1,12 +1,14 @@
+use std::collections::HashSet;
+
 use super::mir_util::{insert_post_test, insert_pre_main, insert_pre_test, insert_trace};
 use crate::callbacks_shared::TEST_MARKER;
 use crate::names::def_id_name;
 use log::trace;
 use rustc_hir::AttributeMap;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
-use rustc_middle::ty::Ty;
+
 use rustc_middle::{
-    mir::{visit::MutVisitor, Body, Constant, ConstantKind, Local, Location},
+    mir::{visit::MutVisitor, Body, Constant, ConstantKind, Location},
     ty::TyCtxt,
 };
 
@@ -15,20 +17,14 @@ use super::mir_util::insert_post_main;
 
 pub struct MirManipulatorVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    acc: Vec<String>,
-    cache_str: Option<(Local, Ty<'tcx>)>,
-    cache_u8: Option<(Local, Ty<'tcx>)>,
-    cache_ret: Option<Local>,
+    acc: HashSet<String>,
 }
 
 impl<'tcx> MirManipulatorVisitor<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> MirManipulatorVisitor<'tcx> {
         Self {
             tcx,
-            acc: Vec::new(),
-            cache_str: None,
-            cache_u8: None,
-            cache_ret: None,
+            acc: HashSet::new(),
         }
     }
 }
@@ -40,10 +36,11 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
 
         trace!("Visiting {}", outer);
 
-        self.cache_str = None;
-        self.cache_u8 = None;
-        self.cache_ret = None;
-        self.acc = Vec::new();
+        self.acc.clear();
+
+        let mut cache_str = None;
+        let mut cache_u8 = None;
+        let mut cache_ret = None;
 
         let attrs = &self.tcx.hir_crate(()).owners[self
             .tcx
@@ -66,46 +63,44 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
                         self.tcx,
                         body,
                         def_path_test,
-                        &mut self.cache_str,
-                        &mut self.cache_ret,
+                        &mut cache_str,
+                        &mut cache_ret,
+                        &mut None,
                     );
-                    insert_pre_test(self.tcx, body, &mut self.cache_ret);
-
-                    trace!("Finished {}", outer);
+                    insert_pre_test(self.tcx, body, &mut cache_ret);
                     return;
                 }
             }
         }
 
         // We collect all relevant nodes in a vec, in order to not modify/move elements while visiting them
-        self.acc.push(outer.clone());
+        self.acc.insert(outer.clone());
         self.super_body(body);
 
         #[cfg(target_family = "unix")]
         if outer.ends_with("::main") {
-            // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
-            // 1. insert_post 2. insert_pre
+            // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
+            // 1. insert_post, 2. trace, 3. insert_pre
 
-            insert_post_main(self.tcx, body, &mut self.cache_ret);
+            insert_post_main(self.tcx, body, &mut cache_ret, &mut None);
         }
 
         for def_path in &self.acc {
+            trace!("Inserting call to trace(\"{}\") into {}", def_path, outer);
             insert_trace(
                 self.tcx,
                 body,
                 def_path,
-                &mut self.cache_str,
-                &mut self.cache_u8,
-                &mut self.cache_ret,
+                &mut cache_str,
+                &mut cache_u8,
+                &mut cache_ret,
             );
         }
 
         #[cfg(target_family = "unix")]
         if outer.ends_with("::main") {
-            insert_pre_main(self.tcx, body, &mut self.cache_ret);
+            insert_pre_main(self.tcx, body, &mut cache_ret);
         }
-
-        trace!("Finished {}", outer);
     }
 
     fn visit_constant(&mut self, constant: &mut Constant<'tcx>, location: Location) {
@@ -117,7 +112,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
             ConstantKind::Unevaluated(content, _ty) => {
                 // This takes care of borrows of e.g. "const var: u64"
                 for def_path in def_id_name(self.tcx, content.def.did) {
-                    self.acc.push(def_path);
+                    self.acc.insert(def_path);
                 }
             }
             ConstantKind::Val(cons, _ty) => match cons {
@@ -126,14 +121,14 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
                         GlobalAlloc::Static(def_id) => {
                             // This takes care of borrows of e.g. "static var: u64"
                             for def_path in def_id_name(self.tcx, def_id) {
-                                self.acc.push(def_path);
+                                self.acc.insert(def_path);
                             }
                         }
                         GlobalAlloc::Function(instance) => {
                             // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                             // Perhaps this refers to extern fns?
                             for def_path in def_id_name(self.tcx, instance.def_id()) {
-                                self.acc.push(def_path);
+                                self.acc.insert(def_path);
                             }
                         }
                         _ => (),

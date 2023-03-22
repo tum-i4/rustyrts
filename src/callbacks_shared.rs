@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::{debug, info, trace};
+use log::{debug, trace};
 use rustc_hir::{
     def::{DefKind, Res},
     def_id::LOCAL_CRATE,

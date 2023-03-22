@@ -37,3 +37,5 @@ pub const ENDING_REEXPORTS: &str = ".exp";
 
 #[cfg(target_family = "unix")]
 pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
+
+pub const EDGE_CASE_FROM_RESIDUAL: &str = "core::ops::FromResidual::from_residual";
