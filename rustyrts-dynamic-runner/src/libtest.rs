@@ -22,6 +22,85 @@ use test::{test::TestExecTime, TestDesc, TestName};
 use test::{NamePadding, Options, ShouldPanic, TestDescAndFn, TestOpts};
 
 //######################################################################################################################
+// From types.rs
+// Source: https://github.com/rust-lang/rust/blob/f421586eed77de266a3f99ffa8a5687b7d2d893c/library/test/src/types.rs#L15
+// Changes: prefix Custom , derive Serialize and Deserialize
+
+/// Type of the test according to the [rust book](https://doc.rust-lang.org/cargo/guide/tests.html)
+/// conventions.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CustomTestType {
+    /// Unit-tests are expected to be in the `src` folder of the crate.
+    UnitTest,
+    /// Integration-style tests are expected to be in the `tests` folder of the crate.
+    IntegrationTest,
+    /// Doctests are created by the `librustdoc` manually, so it's a different type of test.
+    DocTest,
+    /// Tests for the sources that don't follow the project layout convention
+    /// (e.g. tests in raw `main.rs` compiled by calling `rustc --test` directly).
+    Unknown,
+}
+
+// Source: https://github.com/rust-lang/rust/blob/f421586eed77de266a3f99ffa8a5687b7d2d893c/library/test/src/types.rs#L28
+// Changes: prefix Custom , derive Serialize and Deserialize
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+pub enum CustomNamePadding {
+    PadNone,
+    PadOnRight,
+}
+
+// The name of a test. By convention this follows the rules for rust
+// paths; i.e., it should be a series of identifiers separated by double
+// colons. This way if some test runner wants to arrange the tests
+// hierarchically it may.
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+pub enum CustomTestName {
+    StaticTestName(&'static str),
+    DynTestName(String),
+    AlignedTestName(Cow<'static, str>, CustomNamePadding),
+}
+
+// Source: https://github.com/rust-lang/rust/blob/f421586eed77de266a3f99ffa8a5687b7d2d893c/library/test/src/types.rs#L82
+// Changes: prefix Custom , derive Serialize and Deserialize, commented out some fields
+
+// The definition of a single test. A test runner will run a list of
+// these.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct CustomTestDesc {
+    pub name: CustomTestName,
+    pub ignore: bool,
+    pub ignore_message: Option<&'static str>,
+    //    #[cfg(not(bootstrap))]
+    //    pub source_file: &'static str,
+    //    #[cfg(not(bootstrap))]
+    //    pub start_line: usize,
+    //    #[cfg(not(bootstrap))]
+    //    pub start_col: usize,
+    //    #[cfg(not(bootstrap))]
+    //    pub end_line: usize,
+    //    #[cfg(not(bootstrap))]
+    //    pub end_col: usize,
+    pub should_panic: CustomShouldPanic,
+    pub compile_fail: bool,
+    pub no_run: bool,
+    pub test_type: CustomTestType,
+}
+
+//######################################################################################################################
+// From options.rs
+// Source: https://github.com/rust-lang/rust/blob/f421586eed77de266a3f99ffa8a5687b7d2d893c/library/test/src/types.rs#L115
+// Changes: derive Serailize
+
+/// Whether test is expected to panic or not
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum CustomShouldPanic {
+    No,
+    Yes,
+    YesWithMessage(&'static str),
+}
+
+//######################################################################################################################
 // From lib.rs
 // Source: https://github.com/rust-lang/rust/blob/104f4300cfddbd956e32820ef202a732f06ec848/library/test/src/lib.rs#L198
 // Changes: access modifier set to crate

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use rustyrts::constants::{
-    ENDING_CHANGES, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST, ENDING_TRACE, ENV_PROJECT_DIR,
-    ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
+    DESC_FLAG, ENDING_CHANGES, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST, ENDING_TRACE,
+    ENV_PROJECT_DIR, ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
     FILE_COMPLETE_GRAPH,
 };
 use rustyrts::fs_utils::{get_dynamic_path, get_static_path, read_lines, read_lines_filter_map};
@@ -68,14 +68,24 @@ fn get_args_rustc() -> impl Iterator<Item = String> {
 }
 
 fn get_args_test() -> impl Iterator<Item = String> {
-    let args = std::env::args()
+    let mut args: Vec<String> = std::env::args()
         .skip_while(|val| val != "--")
         .skip(1)
         .skip_while(|val| val != "--")
         .skip(1)
         .skip_while(|val| val != "--")
-        .skip(1);
-    args
+        .skip(1)
+        .collect();
+
+    if has_arg_flag("--json") {
+        for arg in ["--", "-Zunstable-options", "--format=json", "--report-time"] {
+            if !args.iter().any(|s| s == arg) {
+                args.push(arg.to_string());
+            }
+        }
+    }
+
+    args.into_iter()
 }
 
 //######################################################################################################################
@@ -97,6 +107,7 @@ fn cargo() -> Command {
     Command::new(std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
 }
 
+#[derive(PartialEq)]
 enum Mode {
     Clean,
     Dynamic,
@@ -211,7 +222,7 @@ where
             test.to_string()
         })
         .peekable();
-    if let None = affected_tests_iter.peek() {
+    if affected_tests_iter.peek().is_none() && mode == Mode::Static {
         cmd.arg("--no-run");
     } else {
         //cmd.arg("--lib");
@@ -237,6 +248,11 @@ where
         for test in affected_tests_iter {
             cmd.arg(test);
         }
+
+        if mode == Mode::Dynamic && has_arg_flag(DESC_FLAG) {
+            cmd.arg("--");
+            cmd.arg(DESC_FLAG);
+        }
     }
 
     cmd
@@ -247,7 +263,7 @@ where
 /// And set the following environment variables:
 /// * `RUSTYRTS_VERBOSE` is set if `-v` is provided
 fn execute(mut cmd: Command) {
-    if has_arg_flag("-v") {
+    if has_arg_flag("-vv") {
         cmd.env(ENV_RUSTYRTS_VERBOSE, ""); // this makes `inside_cargo_rustc` verbose.
         eprintln!("+ {:?}", cmd);
     }

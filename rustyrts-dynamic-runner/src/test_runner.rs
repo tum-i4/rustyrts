@@ -9,9 +9,11 @@ use test::test::{parse_opts, TestExecTime, TestTimeOptions};
 use test::{OutputFormat, ShouldPanic, TestDesc, TestDescAndFn, TestOpts};
 use threadpool::ThreadPool;
 
+use crate::constants::DESC_FLAG;
 use crate::libtest::{
-    calc_result, len_if_padded, make_owned_test, ConsoleTestState, JsonFormatter, OutputFormatter,
-    OutputLocation, PrettyFormatter, TestResult, TestSuiteExecTime, ERROR_EXIT_CODE,
+    calc_result, len_if_padded, make_owned_test, ConsoleTestState, CustomTestDesc, JsonFormatter,
+    OutputFormatter, OutputLocation, PrettyFormatter, TestResult, TestSuiteExecTime,
+    ERROR_EXIT_CODE,
 };
 
 #[cfg(target_family = "unix")]
@@ -27,8 +29,25 @@ const UNUSUAL_EXIT_CODE: c_int = 15;
 
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
-    let args: &Vec<String> = &std::env::args().collect::<Vec<_>>();
-    let opts: TestOpts = parse_opts(args).unwrap().unwrap();
+    let mut args: Vec<String> = std::env::args().collect::<Vec<_>>();
+
+    if args
+        .iter()
+        .skip_while(|arg| *arg != "--")
+        .any(|arg| arg == DESC_FLAG)
+    {
+        let test_descriptions: Vec<CustomTestDesc> = tests
+            .iter()
+            .map(|t| t.desc.clone())
+            .map(|desc| unsafe { std::mem::transmute(desc) })
+            .collect();
+        println!(
+            "Test descriptions: {}",
+            serde_json::to_string(&test_descriptions).unwrap()
+        );
+    }
+
+    let opts: TestOpts = parse_opts(&args).unwrap().unwrap();
 
     // Exclude some options that just do not fit into RTS
     assert!(opts.run_tests);

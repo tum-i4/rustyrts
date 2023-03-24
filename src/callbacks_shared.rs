@@ -219,7 +219,7 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
                     | DefKind::Trait
                     | DefKind::Ctor(..) = kind
                     {
-                        let (exported_name, local_name) = match kind {
+                        let (exported_name, local_names) = match kind {
                             DefKind::Mod => {
                                 let local_name = format!(
                                     "{}::{}",
@@ -228,27 +228,35 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
                                 );
                                 let exported_name =
                                     exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, local_name)
+                                (exported_name, vec![local_name])
                             }
                             _ => {
-                                let local_name = def_id_name(tcx, def_id).expect_one();
+                                let local_names: Vec<String> =
+                                    def_id_name(tcx, def_id).into_iter().collect();
                                 let exported_name =
                                     exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, local_name)
+                                (exported_name, local_names)
                             }
                         };
 
-                        trace!("Found reexport: {} as {:?}", local_name, exported_name);
+                        for local_name in local_names {
+                            trace!(
+                                "Found reexport: {} as {:?}",
+                                local_name,
+                                exported_name.clone()
+                            );
 
-                        match kind {
-                            DefKind::Fn | DefKind::Ctor(..) => {
-                                mapping.push((exported_name, local_name));
-                            }
-                            DefKind::Struct | DefKind::Enum | DefKind::Trait => {
-                                mapping.push((exported_name.clone() + "!adt", local_name.clone()));
-                            }
-                            _ => {
-                                mapping.push((exported_name + "::", local_name + "::"));
+                            match kind {
+                                DefKind::Fn | DefKind::Ctor(..) => {
+                                    mapping.push((exported_name.clone(), local_name));
+                                }
+                                DefKind::Struct | DefKind::Enum | DefKind::Trait => {
+                                    mapping
+                                        .push((exported_name.clone() + "!adt", local_name.clone()));
+                                }
+                                _ => {
+                                    mapping.push((exported_name.clone() + "::", local_name + "::"));
+                                }
                             }
                         }
                     }
