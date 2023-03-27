@@ -8,4 +8,7 @@ edition = "2021"
 [[bin]]
 name = "foo"
 
+[[bin]]
+name = "bar"
+
 [dependencies]

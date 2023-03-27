@@ -487,6 +487,86 @@ pub fn insert_post_test<'tcx>(
 }
 
 #[cfg(target_family = "unix")]
+pub fn check_calls_to_exit<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &mut Body<'tcx>,
+    cache_ret: &mut Option<Local>,
+) {
+    use super::defid_util::get_def_id_exit_fn;
+
+    let Some(def_id_post_fn) = get_def_id_post_main_fn(tcx) else {
+        return;
+    };
+
+    let Some(def_id_exit) = get_def_id_exit_fn(tcx) else {
+        return;
+    };
+
+    let len = body.basic_blocks.len();
+    for i in 0..len {
+        let is_cleanup = body
+            .basic_blocks
+            .get(BasicBlock::from_usize(i))
+            .unwrap()
+            .is_cleanup;
+
+        let terminator_kind: &TerminatorKind = &body
+            .basic_blocks
+            .get(BasicBlock::from_usize(i))
+            .unwrap()
+            .terminator()
+            .kind;
+
+        if let TerminatorKind::Call { func, .. } = terminator_kind {
+            if let Operand::Constant(boxed_def_id) = func {
+                if let ConstantKind::Val(ConstValue::ZeroSized, func_ty) = boxed_def_id.literal {
+                    if let TyKind::FnDef(def_id, _) = func_ty.kind() {
+                        if *def_id == def_id_exit {
+                            // We found a call to std::process::exit()
+
+                            cache_ret.get_or_insert_with(|| insert_local_ret(tcx, body));
+
+                            let local_ret = cache_ret.unwrap();
+
+                            let span = body.span;
+
+                            let place_elem_list = tcx.mk_place_elems([].iter());
+
+                            //*******************************************************
+                            // Create new basic block
+
+                            let basic_blocks = body.basic_blocks.as_mut();
+
+                            let args_vec = Vec::with_capacity(0);
+                            let terminator = create_call(
+                                tcx,
+                                def_id_post_fn,
+                                span,
+                                args_vec,
+                                local_ret,
+                                place_elem_list,
+                                Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb_i
+                            );
+
+                            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+
+                            if is_cleanup {
+                                new_basic_block_data.is_cleanup = true;
+                            }
+
+                            let index = basic_blocks.push(new_basic_block_data);
+
+                            // Swap bb_i and the new basic block
+                            basic_blocks.swap(BasicBlock::from_usize(i), index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(target_family = "unix")]
 pub fn insert_post_main<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,

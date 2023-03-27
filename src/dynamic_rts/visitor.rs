@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use super::mir_util::{insert_post_test, insert_pre_main, insert_pre_test, insert_trace};
 use crate::callbacks_shared::TEST_MARKER;
+use crate::dynamic_rts::mir_util::check_calls_to_exit;
 use crate::names::def_id_name;
 use log::trace;
 use rustc_hir::AttributeMap;
@@ -96,6 +97,9 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
                 &mut cache_ret,
             );
         }
+
+        #[cfg(target_family = "unix")]
+        check_calls_to_exit(self.tcx, body, &mut cache_ret);
 
         #[cfg(target_family = "unix")]
         if outer.ends_with("::main") {

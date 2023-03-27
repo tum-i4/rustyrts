@@ -9,6 +9,9 @@ use rustc_span::def_id::CrateNum;
 
 const RLIB_CRATE_NAME: &str = "rustyrts_dynamic_rlib";
 
+#[cfg(target_family = "unix")]
+const STD_CRATE_NAME: &str = "std";
+
 const PRE_TEST_FN_NAME: &str = "pre_test";
 const POST_TEST_FN_NAME: &str = "post_test";
 const TRACE_FN_NAME: &str = "trace";
@@ -19,7 +22,13 @@ const POST_MAIN_FN_NAME: &str = "post_main";
 #[cfg(target_family = "unix")]
 const PRE_MAIN_FN_NAME: &str = "pre_main";
 
+#[cfg(target_family = "unix")]
+const EXIT_FN_NAME: &str = "process::exit";
+
 static RLIB_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
+
+#[cfg(target_family = "unix")]
+static STD_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
 
 #[cfg(target_family = "unix")]
 static PRE_FN_TEST_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
@@ -31,6 +40,9 @@ static TRACE_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
 static POST_FN_TEST_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 static POST_FN_MAIN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
+
+#[cfg(target_family = "unix")]
+static EXIT_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
 pub(crate) fn get_crate_by_name(tcx: TyCtxt, name: &str) -> Option<CrateNum> {
     let crates = tcx.crates(());
@@ -46,6 +58,12 @@ pub(crate) fn get_crate_by_name(tcx: TyCtxt, name: &str) -> Option<CrateNum> {
 pub(crate) fn get_rlib_crate(tcx: TyCtxt) -> Option<CrateNum> {
     let rlib_crate = RLIB_CRATE.get_or_init(|| get_crate_by_name(tcx, RLIB_CRATE_NAME));
     *rlib_crate
+}
+
+#[cfg(target_family = "unix")]
+pub(crate) fn get_std_crate(tcx: TyCtxt) -> Option<CrateNum> {
+    let std_crate = STD_CRATE.get_or_init(|| get_crate_by_name(tcx, STD_CRATE_NAME));
+    *std_crate
 }
 
 #[allow(dead_code)]
@@ -115,4 +133,21 @@ pub(crate) fn get_def_id_post_test_fn(tcx: TyCtxt) -> Option<DefId> {
 #[cfg(target_family = "unix")]
 pub(crate) fn get_def_id_post_main_fn(tcx: TyCtxt) -> Option<DefId> {
     *POST_FN_MAIN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, POST_MAIN_FN_NAME))
+}
+
+#[cfg(target_family = "unix")]
+pub(crate) fn get_def_id_exit_fn(tcx: TyCtxt) -> Option<DefId> {
+    *EXIT_FN_DEF_ID.get_or_init(|| {
+        let std_crate = get_std_crate(tcx)?;
+        let name = format!("{}::{}", tcx.crate_name(std_crate), EXIT_FN_NAME);
+        let def_id = get_def_id_exported(tcx, std_crate, name.as_str());
+        if def_id.is_none() {
+            eprintln!(
+                "Did not find {} function. Crate {} will not be traced properly.",
+                name,
+                tcx.crate_name(LOCAL_CRATE)
+            );
+        }
+        def_id
+    })
 }
