@@ -65,7 +65,7 @@ fn install_rlib(name: &str, dir_name: &str) {
     path.push(dir_name);
     path.push("target");
     path.push("debug");
-    path.push("deps");
+    //path.push("deps");
 
     let files: Vec<DirEntry> = read_dir(path)
         .unwrap()
@@ -74,7 +74,7 @@ fn install_rlib(name: &str, dir_name: &str) {
         .collect();
 
     let rlib_file = find_file(&format!("lib{}", name), ".rlib", &files);
-    let rmeta_file = find_file(&format!("lib{}", name), ".rmeta", &files);
+    //let rmeta_file = find_file(&format!("lib{}", name), ".rmeta", &files);
     let d_file = find_file(name, ".d", &files);
 
     let mut cargo_home = {
@@ -98,12 +98,12 @@ fn install_rlib(name: &str, dir_name: &str) {
         copy(src, dst).expect(&format!("Error while installing {}", name));
     }
 
-    if let Some(entry) = rmeta_file {
-        let src = entry.path();
-        let mut dst = cargo_home.clone();
-        dst.push(format!("lib{}.rmeta", name));
-        copy(src, dst).expect(&format!("Error while installing {}", name));
-    }
+    //if let Some(entry) = rmeta_file {
+    //    let src = entry.path();
+    //    let mut dst = cargo_home.clone();
+    //    dst.push(format!("lib{}.rmeta", name));
+    //    copy(src, dst).expect(&format!("Error while installing {}", name));
+    //}
 
     if let Some(entry) = d_file {
         let src = entry.path();
@@ -120,7 +120,7 @@ fn install_staticlib(name: &str, dir_name: &str) {
     dir.push(dir_name);
     dir.push("target");
     dir.push("debug");
-    dir.push("deps");
+    //dir.push("deps");
 
     let files: Vec<DirEntry> = read_dir(dir)
         .unwrap()

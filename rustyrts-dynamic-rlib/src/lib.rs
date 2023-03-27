@@ -1,18 +1,19 @@
+#![allow(mutable_transmutes)]
 use std::env;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::SeqCst;
 use std::sync::RwLock;
 use std::{collections::HashSet, fs::read_to_string};
 
 use constants::ENV_PROJECT_DIR;
 use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
 
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
+
 mod constants;
 mod fs_utils;
 
 static NODES: RwLock<Option<HashSet<(&'static str, &'static u8)>>> = RwLock::new(None);
-
 //######################################################################################################################
 // Functions for tracing
 
@@ -21,10 +22,13 @@ pub fn trace(input: &'static str, bit: &'static u8) {
     // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
     // and therefore also AtomicBool.
     let flag: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
-    if !flag.fetch_or(true, SeqCst) {
-        let mut handle = NODES.write().unwrap();
-        if let Some(ref mut set) = *handle {
-            set.insert((input, bit));
+
+    if !flag.load(Acquire) {
+        if !flag.fetch_or(true, AcqRel) {
+            let mut handle = NODES.write().unwrap();
+            if let Some(ref mut set) = *handle {
+                set.insert((input, bit));
+            }
         }
     }
 }
@@ -34,9 +38,12 @@ pub fn pre_test() {
     let mut handle = NODES.write().unwrap();
     if let Some(set) = handle.replace(HashSet::new()) {
         set.into_iter().for_each(|(_, bit)| {
-            // Reset bitflag
+            // Reset bit-flag
+
+            // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
+            // and therefore also AtomicBool.
             let flag: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
-            flag.store(false, SeqCst);
+            flag.store(false, Release);
         });
     }
 }

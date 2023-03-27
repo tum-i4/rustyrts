@@ -264,7 +264,7 @@ pub fn insert_pre_test<'tcx>(
     cache_ret: &mut Option<Local>,
 ) {
     let Some(def_id_pre_fn) = get_def_id_pre_test_fn(tcx) else {
-        eprintln!("Crate {} will cache_ret: &mut Option<Local>cache_ret: &mut Option<Local>not be traced.", tcx.crate_name(LOCAL_CRATE));
+        eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
         return;
     };
 
