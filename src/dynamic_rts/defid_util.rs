@@ -1,4 +1,5 @@
 use crate::names::def_id_name;
+use log::warn;
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::{
@@ -104,7 +105,7 @@ pub(crate) fn get_def_id_from_rlib_crate(tcx: TyCtxt, name: &str) -> Option<DefI
     let name = format!("{}::{}", tcx.crate_name(rlib_crate), name);
     let def_id = get_def_id_exported(tcx, rlib_crate, name.as_str());
     if def_id.is_none() {
-        eprintln!(
+        warn!(
             "Did not find {} function. Crate {} will not be traced properly.",
             name,
             tcx.crate_name(LOCAL_CRATE)
@@ -142,8 +143,8 @@ pub(crate) fn get_def_id_exit_fn(tcx: TyCtxt) -> Option<DefId> {
         let name = format!("{}::{}", tcx.crate_name(std_crate), EXIT_FN_NAME);
         let def_id = get_def_id_exported(tcx, std_crate, name.as_str());
         if def_id.is_none() {
-            eprintln!(
-                "Did not find {} function. Crate {} will not be traced properly.",
+            warn!(
+                "Did not find {} function. Crate {} may not be traced properly.",
                 name,
                 tcx.crate_name(LOCAL_CRATE)
             );

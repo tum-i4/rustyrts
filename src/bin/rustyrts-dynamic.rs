@@ -16,6 +16,7 @@ use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
 use rustyrts::constants::ENV_PROJECT_DIR;
 use rustyrts::dynamic_rts::callback::DynamicRTSCallbacks;
+use rustyrts::format::create_logger;
 use rustyrts::utils;
 use std::env;
 use std::process;
@@ -33,7 +34,7 @@ pub const EXIT_FAILURE: i32 = 1;
 
 fn main() {
     rustc_log::init_rustc_env_logger().unwrap();
-    env_logger::init();
+    create_logger().init();
 
     let result = rustc_driver::catch_fatal_errors(move || {
         let mut rustc_args = env::args_os()

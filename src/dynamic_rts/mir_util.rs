@@ -3,6 +3,7 @@ use std::mem::transmute;
 use super::defid_util::{
     get_def_id_post_test_fn, get_def_id_pre_main_fn, get_def_id_pre_test_fn, get_def_id_trace_fn,
 };
+use log::error;
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -246,7 +247,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         cache_ret: &mut Option<Local>,
     ) {
         let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
-            eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+            error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
         };
 
@@ -297,7 +298,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
     fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
         let Some(def_id_pre_fn) = get_def_id_pre_test_fn(tcx) else {
-            eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+            error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
         };
 
@@ -334,7 +335,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
     #[cfg(target_family = "unix")]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
         let Some(def_id_pre_fn) = get_def_id_pre_main_fn(tcx) else {
-            eprintln!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+            error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
         };
 

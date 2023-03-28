@@ -37,6 +37,7 @@ pub mod dynamic_rts {
 pub mod callbacks_shared;
 pub mod checksums;
 pub mod constants;
+pub mod format;
 pub mod fs_utils;
 pub mod names;
 pub mod utils;
