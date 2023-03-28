@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
-use super::mir_util::{insert_post_test, insert_pre_main, insert_pre_test, insert_trace};
+use super::mir_util::Traceable;
 use crate::callbacks_shared::TEST_MARKER;
-use crate::dynamic_rts::mir_util::check_calls_to_exit;
 use crate::names::def_id_name;
 use log::trace;
 use rustc_hir::AttributeMap;
@@ -12,9 +11,6 @@ use rustc_middle::{
     mir::{visit::MutVisitor, Body, Constant, ConstantKind, Location},
     ty::TyCtxt,
 };
-
-#[cfg(target_family = "unix")]
-use super::mir_util::insert_post_main;
 
 pub struct MirManipulatorVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -60,15 +56,14 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
                     // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
                     // 1. insert_post 2. insert_pre
 
-                    insert_post_test(
+                    body.insert_post_test(
                         self.tcx,
-                        body,
                         def_path_test,
                         &mut cache_str,
                         &mut cache_ret,
                         &mut None,
                     );
-                    insert_pre_test(self.tcx, body, &mut cache_ret);
+                    body.insert_pre_test(self.tcx, &mut cache_ret);
                     return;
                 }
             }
@@ -83,14 +78,13 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
             // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
             // 1. insert_post, 2. trace, 3. insert_pre
 
-            insert_post_main(self.tcx, body, &mut cache_ret, &mut None);
+            body.insert_post_main(self.tcx, &mut cache_ret, &mut None);
         }
 
         for def_path in &self.acc {
             trace!("Inserting call to trace(\"{}\") into {}", def_path, outer);
-            insert_trace(
+            body.insert_trace(
                 self.tcx,
-                body,
                 def_path,
                 &mut cache_str,
                 &mut cache_u8,
@@ -99,11 +93,11 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         }
 
         #[cfg(target_family = "unix")]
-        check_calls_to_exit(self.tcx, body, &mut cache_ret);
+        body.check_calls_to_exit(self.tcx, &mut cache_ret);
 
         #[cfg(target_family = "unix")]
         if outer.ends_with("::main") {
-            insert_pre_main(self.tcx, body, &mut cache_ret);
+            body.insert_pre_main(self.tcx, &mut cache_ret);
         }
     }
 

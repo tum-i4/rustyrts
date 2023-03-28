@@ -222,13 +222,10 @@ where
             test.to_string()
         })
         .peekable();
-    if affected_tests_iter.peek().is_none() && mode == Mode::Static {
+    if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
         cmd.arg("--no-run");
     } else {
-        //cmd.arg("--lib");
-        //cmd.arg("--bins");
-        cmd.arg("--tests");
-        cmd.arg("--examples");
+        cmd.arg("--all-targets");
 
         // we do not want to execute benches,
         // because they do not rely on the test harness and are not recognized aas tests
