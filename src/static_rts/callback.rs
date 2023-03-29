@@ -1,11 +1,14 @@
 use log::debug;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
 
-use crate::callbacks_shared::{excluded, prepare_analysis, run_analysis_shared};
+use crate::callbacks_shared::{excluded, insert_hashmap, prepare_analysis, run_analysis_shared};
+use crate::checksums::{get_checksum, Checksums};
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
+use crate::names::def_id_name;
 
 use super::graph::DependencyGraph;
 use super::visitor::GraphVisitor;
@@ -66,10 +69,39 @@ impl StaticRTSCallbacks {
             debug!("Generated dependency graph for {}", crate_name);
 
             //##############################################################################################################
+            // 2. Calculate checksum of every MIR body
+
+            let mut new_checksums = Checksums::new();
+            let mut new_checksums_ctfe = Checksums::new();
+
+            for def_id in tcx.mir_keys(()) {
+                let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
+
+                if has_body {
+                    match tcx.hir().body_const_context(*def_id) {
+                        Some(ConstContext::ConstFn) | None => {
+                            let body = tcx.optimized_mir(*def_id);
+                            let name = def_id_name(tcx, def_id.to_def_id()).expect_one();
+                            let checksum = get_checksum(tcx, body);
+
+                            insert_hashmap(new_checksums.inner_mut(), name, checksum)
+                        }
+                        Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
+                            let body = tcx.mir_for_ctfe(*def_id);
+                            let name = def_id_name(tcx, def_id.to_def_id()).expect_one();
+                            let checksum = get_checksum(tcx, body);
+
+                            insert_hashmap(new_checksums_ctfe.inner_mut(), name, checksum)
+                        }
+                    };
+                }
+            }
+
+            //##############################################################################################################
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
             // 3. Import checksums
             // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
-            run_analysis_shared(tcx, path_buf);
+            run_analysis_shared(tcx, path_buf, new_checksums, new_checksums_ctfe);
         }
     }
 }

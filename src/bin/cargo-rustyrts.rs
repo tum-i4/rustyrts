@@ -150,9 +150,11 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     // this target.  The user gets to control what gets actually passed to rustyrts.
     let mut cmd = cargo();
     cmd.arg("build");
-    //cmd.arg("--tests");
 
-    cmd.arg("--all-targets");
+    //cmd.arg("--libs");
+    //cmd.arg("--bins");
+    cmd.arg("--tests");
+    cmd.arg("--examples");
 
     for arg in get_args_build() {
         cmd.arg(arg);
@@ -165,7 +167,7 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     // and the graph
     cmd.env(ENV_PROJECT_DIR, project_dir.to_str().unwrap());
 
-    // Serialize the remaining args into a special environemt variable.
+    // Serialize the remaining args into a special environment variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
     let args_vec: Vec<String> = get_args_rustc().collect();
@@ -223,6 +225,11 @@ where
         })
         .peekable();
     if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
+        //cmd.arg("--libs");
+        //cmd.arg("--bins");
+        cmd.arg("--tests");
+        cmd.arg("--examples");
+
         cmd.arg("--no-run");
     } else {
         //cmd.arg("--libs");

@@ -8,8 +8,8 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::constants::{
-    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_REEXPORTS,
-    ENDING_TEST, ENDING_TRACE, FILE_AFFECTED,
+    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_CTFE, ENDING_GRAPH, ENDING_PROCESS_TRACE,
+    ENDING_REEXPORTS, ENDING_TEST, ENDING_TRACE, FILE_AFFECTED,
 };
 
 pub fn get_static_path(str: &str) -> PathBuf {
@@ -41,6 +41,14 @@ pub fn get_changes_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> Pat
 
 pub fn get_checksums_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
     path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_CHECKSUM));
+    path_buf
+}
+
+pub fn get_checksums_ctfe_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
+    path_buf.push(format!(
+        "{}[{:16x}]{}",
+        crate_name, id, ENDING_CHECKSUM_CTFE
+    ));
     path_buf
 }
 

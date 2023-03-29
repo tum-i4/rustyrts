@@ -15,11 +15,11 @@ use std::{
 };
 
 use crate::{
-    checksums::{get_checksum, Checksums},
+    checksums::Checksums,
     constants::ENDING_REEXPORTS,
     fs_utils::{
-        get_changes_path, get_checksums_path, get_reexports_path, get_test_path,
-        read_lines_filter_map, write_to_file,
+        get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_reexports_path,
+        get_test_path, read_lines_filter_map, write_to_file,
     },
     names::{def_id_name, exported_name, REEXPORTS},
 };
@@ -88,7 +88,7 @@ fn insert_btreemap<K: Ord + Clone + Display, V: Clone + Hash + Eq + Display>(
     map.get_mut(&key).unwrap().insert(value);
 }
 
-fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
+pub(crate) fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
     map: &mut HashMap<K, HashSet<V>>,
     key: K,
     value: V,
@@ -99,7 +99,12 @@ fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
     map.get_mut(&key).unwrap().insert(value);
 }
 
-pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
+pub(crate) fn run_analysis_shared<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    path_buf: PathBuf,
+    mut new_checksums: Checksums,
+    mut new_checksums_ctfe: Checksums,
+) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
     let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
@@ -129,11 +134,23 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
     //##################################################################################################################
     // 3. Import checksums
 
-    let checksums_path_buf = get_checksums_path(path_buf.clone(), &crate_name, crate_id);
-
-    let maybe_checksums = read(checksums_path_buf);
-
     let old_checksums = {
+        let checksums_path_buf = get_checksums_path(path_buf.clone(), &crate_name, crate_id);
+
+        let maybe_checksums = read(checksums_path_buf);
+
+        if let Ok(checksums) = maybe_checksums {
+            Checksums::from(checksums.as_slice())
+        } else {
+            Checksums::new()
+        }
+    };
+
+    let old_checksums_ctfe = {
+        let checksums_path_buf = get_checksums_ctfe_path(path_buf.clone(), &crate_name, crate_id);
+
+        let maybe_checksums = read(checksums_path_buf);
+
         if let Ok(checksums) = maybe_checksums {
             Checksums::from(checksums.as_slice())
         } else {
@@ -146,37 +163,51 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
     //##################################################################################################################
     // 4. Calculate new checksums and names of changed nodes and write this information to filesystem
 
-    let mut new_checksums = Checksums::new();
     let mut changed_nodes = Vec::new();
 
     for def_id in tcx.mir_keys(()) {
         let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
 
         if has_body {
-            let body = match tcx.hir().body_const_context(*def_id) {
-                Some(ConstContext::ConstFn) | None => tcx.optimized_mir(*def_id),
+            let name = def_id_name(tcx, def_id.to_def_id()).expect_one();
+            let changed = match tcx.hir().body_const_context(*def_id) {
+                Some(ConstContext::ConstFn) | None => {
+                    let maybe_new = new_checksums.inner().get(&name);
+                    let maybe_old = old_checksums.inner().get(&name);
+
+                    match (maybe_new, maybe_old) {
+                        (None, None) => unreachable!(),
+                        (None, Some(checksums)) => {
+                            new_checksums
+                                .inner_mut()
+                                .insert(name.clone(), checksums.clone());
+                            false
+                        }
+                        (Some(_), None) => true,
+                        (Some(new), Some(old)) => new != old,
+                    }
+                }
                 Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
-                    tcx.mir_for_ctfe(*def_id)
+                    let maybe_new = new_checksums_ctfe.inner().get(&name);
+                    let maybe_old = old_checksums_ctfe.inner().get(&name);
+
+                    match (maybe_new, maybe_old) {
+                        (None, None) => unreachable!(),
+                        (None, Some(checksums)) => {
+                            new_checksums_ctfe
+                                .inner_mut()
+                                .insert(name.clone(), checksums.clone());
+                            false
+                        }
+                        (Some(_), None) => true,
+                        (Some(new), Some(old)) => new != old,
+                    }
                 }
             };
 
-            //##########################################################################################################
-            // Check if checksum changed
-
-            let name = tcx.def_path_debug_str(def_id.to_def_id());
-            let checksum = get_checksum(tcx, body);
-
-            let maybe_old = old_checksums.inner().get(&name);
-
-            let changed = match maybe_old {
-                Some(before) => *before != checksum,
-                None => true,
-            };
-
             if changed {
-                changed_nodes.push(def_id_name(tcx, def_id.to_def_id()).expect_one());
+                changed_nodes.push(name.clone());
             }
-            new_checksums.inner_mut().insert(name, checksum);
         }
     }
 
@@ -184,6 +215,13 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>, path_buf: PathBuf) {
         new_checksums.to_string().to_string(),
         path_buf.clone(),
         |buf| get_checksums_path(buf, &crate_name, crate_id),
+        false,
+    );
+
+    write_to_file(
+        new_checksums_ctfe.to_string().to_string(),
+        path_buf.clone(),
+        |buf| get_checksums_ctfe_path(buf, &crate_name, crate_id),
         false,
     );
 

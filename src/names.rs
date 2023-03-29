@@ -62,8 +62,7 @@ where
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> OneOrMore<String> {
-    // TODO: check if this is problematic:
-    let substs = &[]; //  List::identity_for_item(tcx, def_id);
+    let substs = &[];
 
     let crate_name = if def_id.is_local() {
         format!("{}::", tcx.crate_name(LOCAL_CRATE))
