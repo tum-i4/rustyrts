@@ -110,6 +110,21 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
 }
 
 impl DependencyGraph<String> {
+    pub fn import_nodes<T>(&mut self, lines: T)
+    where
+        T: IntoIterator<Item = String>,
+    {
+        // Parse nodes
+        for line in lines {
+            let message_fn = || format!("Found malformed node line: {})", line);
+
+            let node = line.strip_prefix("\"").expect(&message_fn());
+            let node = node.strip_suffix("\"").expect(&message_fn());
+
+            self.add_node(node.to_string());
+        }
+    }
+
     pub fn import_edges<T>(&mut self, lines: T)
     where
         T: IntoIterator<Item = String>,
@@ -181,17 +196,16 @@ impl FromStr for DependencyGraph<String> {
             .strip_prefix("digraph {") // Filter beginning and ending
             .and_then(|s| s.strip_suffix("}"))
         {
-            let lines: Vec<String> = content
+            let (edges, nodes): (Vec<_>, Vec<_>) = content
                 .split("\n")
                 .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
-                .filter(|l| l.contains("\" -> \"")) // Ignore Nodes
                 .map(|s| s.to_string())
-                .collect();
+                .partition(|l| l.contains("\" -> \""));
 
             let mut result = Self::new();
 
-            // Parse edges
-            result.import_edges(lines);
+            result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
+            result.import_edges(edges);
 
             return Ok(result);
         }
@@ -200,7 +214,7 @@ impl FromStr for DependencyGraph<String> {
 }
 
 #[cfg(test)]
-mod teest {
+mod test {
     use std::str::FromStr;
 
     use crate::static_rts::graph::{DependencyGraph, EdgeType};
@@ -209,6 +223,7 @@ mod teest {
     pub fn test_graph_deserialization() {
         let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
+        graph.add_node("lonely_node".to_string());
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
         graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Closure);
         graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Closure);

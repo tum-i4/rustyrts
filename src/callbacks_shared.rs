@@ -206,7 +206,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
             };
 
             if changed {
-                changed_nodes.push(name.clone());
+                changed_nodes.push(name);
             }
         }
     }

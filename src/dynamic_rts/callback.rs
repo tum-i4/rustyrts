@@ -139,23 +139,23 @@ fn custom_optimized_mir<'tcx>(
 
     let mut result = orig_function(tcx, def);
 
-    //##############################################################
-    // 1. We compute the checksum before modifying the MIR
-
-    let name = def_id_name(tcx, result.source.def_id()).expect_one();
-    let checksum = get_checksum(tcx, result);
-
-    let new_checksums = unsafe { NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new())) };
-
-    {
-        let mut handle = new_checksums.lock().unwrap();
-        insert_hashmap(handle.inner_mut(), name, checksum);
-    }
-
-    //##############################################################
-    // 2. Here the MIR is modified to trace this function at runtime
-
     if !excluded(tcx) {
+        //##############################################################
+        // 1. We compute the checksum before modifying the MIR
+
+        let name = def_id_name(tcx, result.source.def_id()).expect_one();
+        let checksum = get_checksum(tcx, result);
+
+        let new_checksums = unsafe { NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new())) };
+
+        {
+            let mut handle = new_checksums.lock().unwrap();
+            insert_hashmap(handle.inner_mut(), name, checksum);
+        }
+
+        //##############################################################
+        // 2. Here the MIR is modified to trace this function at runtime
+
         let mut visitor = MirManipulatorVisitor::new(tcx);
         visitor.visit_body(&mut result);
     }
@@ -184,17 +184,20 @@ fn custom_mir_for_ctfe<'tcx>(
 
     let result = orig_function(tcx, def);
 
-    //##############################################################
-    // 1. We compute the checksum
+    if !excluded(tcx) {
+        //##############################################################
+        // 1. We compute the checksum
 
-    let name = def_id_name(tcx, result.source.def_id()).expect_one();
-    let checksum = get_checksum(tcx, result);
+        let name = def_id_name(tcx, result.source.def_id()).expect_one();
+        let checksum = get_checksum(tcx, result);
 
-    let new_checksums = unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(Checksums::new())) };
+        let new_checksums =
+            unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(Checksums::new())) };
 
-    {
-        let mut handle = new_checksums.lock().unwrap();
-        insert_hashmap(handle.inner_mut(), name, checksum);
+        {
+            let mut handle = new_checksums.lock().unwrap();
+            insert_hashmap(handle.inner_mut(), name, checksum);
+        }
     }
 
     result
@@ -206,7 +209,7 @@ impl DynamicRTSCallbacks {
             let path_buf = get_dynamic_path(&self.source_path);
 
             //##############################################################################################################
-            // 1. Invoke optimized_mir or mit_for_ctfe for every MIR body, to compute checksums
+            // 1. Invoke optimized_mir or mir_for_ctfe for every MIR body, to compute checksums
 
             for def_id in tcx.mir_keys(()) {
                 let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();

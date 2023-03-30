@@ -486,6 +486,7 @@ fn select_and_execute_tests_static() {
         |line| line != "" && dependency_graph.get_node(&line).is_some(),
         |line| dependency_graph.get_node(&line).unwrap(),
     );
+
     if verbose {
         println!(
             "Nodes that have changed:\n{}\n",
