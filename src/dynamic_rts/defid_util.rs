@@ -90,8 +90,8 @@ pub(crate) fn get_def_id_exported(tcx: TyCtxt, krate: CrateNum, name: &str) -> O
         };
 
         if let Some(def_id) = maybe_def_id {
-            let def_path_str = def_id_name(tcx, def_id).expect_one();
-            if def_path_str == name {
+            let def_path_str = def_id_name(tcx, def_id);
+            if def_path_str.ends_with(name) {
                 return Some(def_id);
             }
         }
@@ -102,8 +102,7 @@ pub(crate) fn get_def_id_exported(tcx: TyCtxt, krate: CrateNum, name: &str) -> O
 
 pub(crate) fn get_def_id_from_rlib_crate(tcx: TyCtxt, name: &str) -> Option<DefId> {
     let rlib_crate = get_rlib_crate(tcx)?;
-    let name = format!("{}::{}", tcx.crate_name(rlib_crate), name);
-    let def_id = get_def_id_exported(tcx, rlib_crate, name.as_str());
+    let def_id = get_def_id_exported(tcx, rlib_crate, name);
     if def_id.is_none() {
         warn!(
             "Did not find {} function. Crate {} will not be traced properly.",
@@ -140,12 +139,11 @@ pub(crate) fn get_def_id_post_main_fn(tcx: TyCtxt) -> Option<DefId> {
 pub(crate) fn get_def_id_exit_fn(tcx: TyCtxt) -> Option<DefId> {
     *EXIT_FN_DEF_ID.get_or_init(|| {
         let std_crate = get_std_crate(tcx)?;
-        let name = format!("{}::{}", tcx.crate_name(std_crate), EXIT_FN_NAME);
-        let def_id = get_def_id_exported(tcx, std_crate, name.as_str());
+        let def_id = get_def_id_exported(tcx, std_crate, EXIT_FN_NAME);
         if def_id.is_none() {
             warn!(
                 "Did not find {} function. Crate {} may not be traced properly.",
-                name,
+                EXIT_FN_NAME,
                 tcx.crate_name(LOCAL_CRATE)
             );
         }

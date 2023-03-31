@@ -1,15 +1,13 @@
 use itertools::Itertools;
-use log::{debug, trace};
+use log::{debug, error, trace};
 use rustc_hir::{
     def::{DefKind, Res},
     def_id::LOCAL_CRATE,
     ConstContext,
 };
 use rustc_middle::ty::{TyCtxt, Visibility};
-use std::fmt::Display;
-use std::hash::Hash;
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, HashMap},
     fs::{read, read_dir, DirEntry},
     path::PathBuf,
 };
@@ -59,44 +57,30 @@ pub(crate) fn prepare_analysis(path_buf: PathBuf) {
         .into_iter()
         .for_each(|(s1, s2)| {
             if s1.ends_with("::") {
-                insert_btreemap(&mut prefix_map, s1.clone(), s2.clone());
+                if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
+                    error!("{} overwritten by {}", x, s2.clone());
+                }
             } else {
                 if s1.ends_with("!adt") {
                     // If this is an Adt, insert in both adt_map and prefix_map
                     // Because either the Adt may be used (directly) or its associated functions (via prefix)
                     let s1 = s1.strip_suffix("!adt").unwrap().to_string();
 
-                    insert_btreemap(&mut prefix_map, s1.clone(), s2.clone());
-                    insert_hashmap(&mut adt_map, s1.clone(), s2.clone());
+                    if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
+                        error!("{} overwritten by {}", x, s2.clone());
+                    }
+                    if let Some(x) = adt_map.insert(s1.clone(), s2.clone()) {
+                        error!("{} overwritten by {}", x, s2.clone());
+                    }
                 } else {
-                    insert_hashmap(&mut fn_map, s1.clone(), s2.clone());
+                    if let Some(x) = fn_map.insert(s1.clone(), s2.clone()) {
+                        error!("{} overwritten by {}", x, s2.clone());
+                    }
                 }
             }
         });
         (prefix_map, fn_map, adt_map)
     });
-}
-
-fn insert_btreemap<K: Ord + Clone + Display, V: Clone + Hash + Eq + Display>(
-    map: &mut BTreeMap<K, HashSet<V>>,
-    key: K,
-    value: V,
-) {
-    if let None = map.get(&key) {
-        map.insert(key.clone(), HashSet::new()).unwrap_or_default();
-    }
-    map.get_mut(&key).unwrap().insert(value);
-}
-
-pub(crate) fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
-    map: &mut HashMap<K, HashSet<V>>,
-    key: K,
-    value: V,
-) {
-    if let None = map.get(&key) {
-        map.insert(key.clone(), HashSet::new()).unwrap_or_default();
-    }
-    map.get_mut(&key).unwrap().insert(value);
 }
 
 pub(crate) fn run_analysis_shared<'tcx>(
@@ -115,7 +99,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
     for def_id in tcx.mir_keys(()) {
         for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                tests.push(def_id_name(tcx, def_id.to_def_id()).expect_one());
+                tests.push(def_id_name(tcx, def_id.to_def_id()));
             }
         }
     }
@@ -169,7 +153,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
         let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
 
         if has_body {
-            let name = def_id_name(tcx, def_id.to_def_id()).expect_one();
+            let name = def_id_name(tcx, def_id.to_def_id());
             let changed = match tcx.hir().body_const_context(*def_id) {
                 Some(ConstContext::ConstFn) | None => {
                     let maybe_new = new_checksums.inner().get(&name);
@@ -257,7 +241,7 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
                     | DefKind::Trait
                     | DefKind::Ctor(..) = kind
                     {
-                        let (exported_name, local_names) = match kind {
+                        let (exported_name, local_name) = match kind {
                             DefKind::Mod => {
                                 let local_name = format!(
                                     "{}::{}",
@@ -266,35 +250,31 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
                                 );
                                 let exported_name =
                                     exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, vec![local_name])
+                                (exported_name, local_name)
                             }
                             _ => {
-                                let local_names: Vec<String> =
-                                    def_id_name(tcx, def_id).into_iter().collect();
+                                let local_name = def_id_name(tcx, def_id);
                                 let exported_name =
                                     exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, local_names)
+                                (exported_name, local_name)
                             }
                         };
 
-                        for local_name in local_names {
-                            trace!(
-                                "Found reexport: {} as {:?}",
-                                local_name,
-                                exported_name.clone()
-                            );
+                        trace!(
+                            "Found reexport: {} as {:?}",
+                            local_name,
+                            exported_name.clone()
+                        );
 
-                            match kind {
-                                DefKind::Fn | DefKind::Ctor(..) => {
-                                    mapping.push((exported_name.clone(), local_name));
-                                }
-                                DefKind::Struct | DefKind::Enum | DefKind::Trait => {
-                                    mapping
-                                        .push((exported_name.clone() + "!adt", local_name.clone()));
-                                }
-                                _ => {
-                                    mapping.push((exported_name.clone() + "::", local_name + "::"));
-                                }
+                        match kind {
+                            DefKind::Fn | DefKind::Ctor(..) => {
+                                mapping.push((exported_name, local_name));
+                            }
+                            DefKind::Struct | DefKind::Enum | DefKind::Trait => {
+                                mapping.push((exported_name + "!adt", local_name));
+                            }
+                            _ => {
+                                mapping.push((exported_name + "::", local_name + "::"));
                             }
                         }
                     }

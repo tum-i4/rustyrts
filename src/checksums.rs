@@ -1,9 +1,10 @@
-use crate::{callbacks_shared::insert_hashmap, rustc_data_structures::stable_hasher::HashStable};
+use crate::rustc_data_structures::stable_hasher::HashStable;
 use lazy_static::lazy_static;
 use regex::bytes::Regex;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_middle::{mir::Body, ty::TyCtxt};
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 
 /// Wrapper of HashMap to provide serialization and deserialization of checksums
 #[derive(Eq, PartialEq, Debug)]
@@ -104,9 +105,21 @@ pub(crate) fn get_checksum<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
     hash
 }
 
+pub(crate) fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
+    map: &mut HashMap<K, HashSet<V>>,
+    key: K,
+    value: V,
+) {
+    if let None = map.get(&key) {
+        map.insert(key.clone(), HashSet::new()).unwrap_or_default();
+    }
+    map.get_mut(&key).unwrap().insert(value);
+}
+
 #[cfg(test)]
 mod teest {
-    use crate::callbacks_shared::insert_hashmap;
+
+    use crate::checksums::insert_hashmap;
 
     use super::Checksums;
     use test_log::test;

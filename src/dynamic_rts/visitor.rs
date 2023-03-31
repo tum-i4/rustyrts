@@ -29,7 +29,7 @@ impl<'tcx> MirManipulatorVisitor<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
     fn visit_body(&mut self, body: &mut Body<'tcx>) {
         let def_id = body.source.instance.def_id();
-        let outer = def_id_name(self.tcx, def_id).expect_one();
+        let outer = def_id_name(self.tcx, def_id);
 
         trace!("Visiting {}", outer);
 
@@ -109,25 +109,19 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         match literal {
             ConstantKind::Unevaluated(content, _ty) => {
                 // This takes care of borrows of e.g. "const var: u64"
-                for def_path in def_id_name(self.tcx, content.def.did) {
-                    self.acc.insert(def_path);
-                }
+                self.acc.insert(def_id_name(self.tcx, content.def.did));
             }
             ConstantKind::Val(cons, _ty) => match cons {
                 ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
                     match self.tcx.global_alloc(ptr.provenance) {
                         GlobalAlloc::Static(def_id) => {
                             // This takes care of borrows of e.g. "static var: u64"
-                            for def_path in def_id_name(self.tcx, def_id) {
-                                self.acc.insert(def_path);
-                            }
+                            self.acc.insert(def_id_name(self.tcx, def_id));
                         }
                         GlobalAlloc::Function(instance) => {
                             // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                             // Perhaps this refers to extern fns?
-                            for def_path in def_id_name(self.tcx, instance.def_id()) {
-                                self.acc.insert(def_path);
-                            }
+                            self.acc.insert(def_id_name(self.tcx, instance.def_id()));
                         }
                         _ => (),
                     }

@@ -71,6 +71,10 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         types.insert(edge_type);
     }
 
+    pub fn get_nodes(&self) -> &HashSet<T> {
+        &self.nodes
+    }
+
     pub fn get_node(&self, node: &T) -> Option<&T> {
         self.nodes.get(node)
     }
