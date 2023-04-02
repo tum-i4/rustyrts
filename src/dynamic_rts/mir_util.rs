@@ -682,7 +682,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
                     if let TerminatorKind::Call { func, .. } = terminator_kind {
                         if def_id_name(tcx, func.const_fn_def().unwrap().0)
-                            == EDGE_CASE_FROM_RESIDUAL
+                            .ends_with(EDGE_CASE_FROM_RESIDUAL)
+                        // TODO: may be improved
                         {
                             // EDGE CASE: if the unwind attribute of a call to this function is inserted,
                             // llvm will throw an error and abort compilation

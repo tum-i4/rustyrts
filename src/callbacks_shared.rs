@@ -260,21 +260,23 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
                             }
                         };
 
-                        trace!(
-                            "Found reexport: {} as {:?}",
-                            local_name,
-                            exported_name.clone()
-                        );
+                        if !exported_name.ends_with("_") {
+                            trace!(
+                                "Found reexport: {} as {:?}",
+                                local_name,
+                                exported_name.clone()
+                            );
 
-                        match kind {
-                            DefKind::Fn | DefKind::Ctor(..) => {
-                                mapping.push((exported_name, local_name));
-                            }
-                            DefKind::Struct | DefKind::Enum | DefKind::Trait => {
-                                mapping.push((exported_name + "!adt", local_name));
-                            }
-                            _ => {
-                                mapping.push((exported_name + "::", local_name + "::"));
+                            match kind {
+                                DefKind::Fn | DefKind::Ctor(..) => {
+                                    mapping.push((exported_name, local_name));
+                                }
+                                DefKind::Struct | DefKind::Enum | DefKind::Trait => {
+                                    mapping.push((exported_name + "!adt", local_name));
+                                }
+                                _ => {
+                                    mapping.push((exported_name + "::", local_name + "::"));
+                                }
                             }
                         }
                     }
