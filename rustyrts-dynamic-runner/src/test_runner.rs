@@ -12,8 +12,8 @@ use threadpool::ThreadPool;
 use crate::constants::DESC_FLAG;
 use crate::libtest::{
     calc_result, len_if_padded, make_owned_test, ConsoleTestState, CustomTestDesc, JsonFormatter,
-    OutputFormatter, OutputLocation, PrettyFormatter, TestResult, TestSuiteExecTime,
-    ERROR_EXIT_CODE,
+    JunitFormatter, OutputFormatter, OutputLocation, PrettyFormatter, TerseFormatter, TestResult,
+    TestSuiteExecTime, ERROR_EXIT_CODE,
 };
 
 #[cfg(target_family = "unix")]
@@ -29,7 +29,7 @@ const UNUSUAL_EXIT_CODE: c_int = 15;
 
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
-    let mut args: Vec<String> = std::env::args().collect::<Vec<_>>();
+    let args: Vec<String> = std::env::args().collect::<Vec<_>>();
 
     if args
         .iter()
@@ -50,12 +50,24 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     let opts: TestOpts = parse_opts(&args).unwrap().unwrap();
 
     // Exclude some options that just do not fit into RTS
-    assert!(opts.run_tests);
-    assert!(opts.filter_exact);
-    assert!(!opts.fail_fast);
-    assert!(!opts.bench_benchmarks);
-    assert!(opts.skip.is_empty());
-    assert!(!opts.shuffle);
+    assert!(
+        opts.run_tests,
+        "WARNING: Running RustyRTS without executing any tests may result in unsafe behavior (i.e. some failing tests may be overseen)."
+    );
+    assert!(
+        opts.filter_exact,
+        "ERROR: RustyRTS is supposed to select tests using --exact."
+    );
+    assert!(!opts.fail_fast, "WARNING: Running RustyRTS without --no-fail-fast may result in unsafe behavior (i.e. some failing tests may be overseen).");
+    assert!(
+        !opts.bench_benchmarks,
+        "ERROR: RustyRTS is not supposed to run benchmarks."
+    );
+    assert!(opts.skip.is_empty(), "WARNING: RustyRTS does not support excluding tests from cli. Tests may be ignored using #[ignore].");
+    assert!(
+        !opts.shuffle,
+        "WARNING: RustyRTS does not support shuffling tests."
+    );
 
     let affected_tests: &Vec<String> = &opts.filters;
 
@@ -96,24 +108,27 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         .test_threads
         .unwrap_or_else(|| thread::available_parallelism().unwrap().get());
 
-    let formatter: Box<dyn OutputFormatter + Send> = match opts.format {
-        OutputFormat::Pretty => {
-            let max_name_len = tests
-                .iter()
-                .max_by_key(|t| len_if_padded(*t))
-                .map(|t| t.desc.name.as_slice().len())
-                .unwrap_or(0);
+    let max_name_len = tests
+        .iter()
+        .max_by_key(|t| len_if_padded(*t))
+        .map(|t| t.desc.name.as_slice().len())
+        .unwrap_or(0);
 
-            Box::new(PrettyFormatter::new(
-                OutputLocation::Raw(stdout()),
-                max_name_len,
-                n_workers != 1,
-                opts.time_options,
-            ))
-        }
+    let formatter: Box<dyn OutputFormatter + Send> = match opts.format {
+        OutputFormat::Pretty => Box::new(PrettyFormatter::new(
+            OutputLocation::Raw(stdout()),
+            max_name_len,
+            n_workers != 1,
+            opts.time_options,
+        )),
+        OutputFormat::Junit => Box::new(JunitFormatter::new(OutputLocation::Raw(stdout()))),
+        OutputFormat::Terse => Box::new(TerseFormatter::new(
+            OutputLocation::Raw(stdout()),
+            false,
+            max_name_len,
+            n_workers != 1,
+        )),
         OutputFormat::Json => Box::new(JsonFormatter::new(OutputLocation::Raw(stdout()))),
-        OutputFormat::Terse => todo!(),
-        OutputFormat::Junit => todo!(),
     };
 
     let (mut formatter, mut state) = if cfg!(unix) {
@@ -342,7 +357,10 @@ impl CompletedTest {
                 state.failed += 1;
                 state.failures.push((desc, self.stdout))
             }
-            TestResult::TrIgnored => state.ignored += 1,
+            TestResult::TrIgnored => {
+                state.ignored += 1;
+                state.ignores.push((desc, self.stdout));
+            }
             TestResult::TrTimedFail => {
                 state.failed += 1;
                 state.time_failures.push((desc, self.stdout))

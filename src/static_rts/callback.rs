@@ -15,7 +15,7 @@ use super::visitor::GraphVisitor;
 
 pub struct StaticRTSCallbacks {
     graph: DependencyGraph<String>,
-    source_path: String,
+    target_path: String,
 }
 
 impl Callbacks for StaticRTSCallbacks {
@@ -33,16 +33,16 @@ impl Callbacks for StaticRTSCallbacks {
 }
 
 impl StaticRTSCallbacks {
-    pub fn new(source_path: String) -> Self {
+    pub fn new(target_path: String) -> Self {
         Self {
             graph: DependencyGraph::new(),
-            source_path,
+            target_path,
         }
     }
 
     fn run_analysis(&mut self, tcx: TyCtxt) {
         if !excluded(tcx) {
-            let path_buf = get_static_path(&self.source_path);
+            let path_buf = get_static_path(&self.target_path);
             let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
             let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 

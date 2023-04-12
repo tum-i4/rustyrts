@@ -2,7 +2,7 @@ use itertools::Itertools;
 use rustyrts::constants::{
     DESC_FLAG, ENDING_CHANGES, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST, ENDING_TRACE,
     ENV_PROJECT_DIR, ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
-    FILE_COMPLETE_GRAPH,
+    ENV_TARGET_DIR, FILE_COMPLETE_GRAPH,
 };
 use rustyrts::fs_utils::{get_dynamic_path, get_static_path, read_lines, read_lines_filter_map};
 use rustyrts::static_rts::graph::DependencyGraph;
@@ -137,7 +137,7 @@ impl FromStr for Mode {
     }
 }
 
-/// This will create a command `cargo build --tests`
+/// This will create a command `cargo build --lib --bins --tests --examples`
 ///
 /// And set the following environment variables:
 /// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
@@ -151,8 +151,8 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     let mut cmd = cargo();
     cmd.arg("build");
 
-    //cmd.arg("--libs");
-    //cmd.arg("--bins");
+    cmd.arg("--lib");
+    cmd.arg("--bins");
     cmd.arg("--tests");
     cmd.arg("--examples");
 
@@ -225,15 +225,15 @@ where
         })
         .peekable();
     if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
-        //cmd.arg("--libs");
-        //cmd.arg("--bins");
+        cmd.arg("--lib");
+        cmd.arg("--bins");
         cmd.arg("--tests");
         cmd.arg("--examples");
 
         cmd.arg("--no-run");
     } else {
-        //cmd.arg("--libs");
-        //cmd.arg("--bins");
+        cmd.arg("--lib");
+        cmd.arg("--bins");
         cmd.arg("--tests");
         cmd.arg("--examples");
 
@@ -344,9 +344,9 @@ fn main() {
 // Actually important functions...
 
 fn clean() {
-    let project_dir = std::env::current_dir().unwrap();
+    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
 
-    let path_buf_static = get_static_path(project_dir.to_str().unwrap());
+    let path_buf_static = get_static_path(&target_dir);
     if path_buf_static.exists() {
         remove_dir_all(path_buf_static.clone()).expect(&format!(
             "Failed to remove directory {}",
@@ -354,7 +354,7 @@ fn clean() {
         ));
     }
 
-    let path_buf_dynamic = get_dynamic_path(project_dir.to_str().unwrap());
+    let path_buf_dynamic = get_dynamic_path(&target_dir);
     if path_buf_dynamic.exists() {
         remove_dir_all(path_buf_dynamic.clone()).expect(&format!(
             "Failed to remove directory {}",
@@ -414,8 +414,9 @@ fn run_rustyrts() {
 /// `cargo build --bin some_crate_name -v -- --top_crate_name some_top_crate_name --domain interval -v cargo-rustyrts-marker-end`
 /// using the rustc wrapper for static rustyrts
 fn run_cargo_rustc_static() {
-    let project_dir = std::env::current_dir().unwrap();
-    let path_buf = get_static_path(project_dir.to_str().unwrap());
+    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
+
+    let path_buf = get_static_path(&target_dir);
     create_dir_all(path_buf.as_path()).expect(&format!(
         "Failed to create directory {}",
         path_buf.display()
@@ -430,7 +431,10 @@ fn run_cargo_rustc_static() {
         }
     }
 
-    let cmd = cargo_build(project_dir, Mode::Static);
+    let cmd = cargo_build(
+        PathBuf::from(target_dir).canonicalize().unwrap(),
+        Mode::Static,
+    );
     execute(cmd);
 }
 
@@ -441,9 +445,8 @@ fn run_cargo_rustc_static() {
 fn select_and_execute_tests_static() {
     let verbose = has_arg_flag("-v");
 
-    let project_dir = std::env::current_dir().unwrap();
-
-    let path_buf = get_static_path(std::env::current_dir().unwrap().to_str().unwrap());
+    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
+    let path_buf = get_static_path(&target_dir);
 
     let files: Vec<DirEntry> = read_dir(path_buf.as_path())
         .unwrap()
@@ -539,7 +542,7 @@ fn select_and_execute_tests_static() {
     }
 
     let cmd = cargo_test(
-        project_dir,
+        PathBuf::from(target_dir).canonicalize().unwrap(),
         Mode::Static,
         affected_tests.into_iter().map(|test| *test),
     );
@@ -554,8 +557,8 @@ fn select_and_execute_tests_static() {
 /// `cargo build --bin some_crate_name -v -- cargo-rustyrts-marker-begin --top_crate_name some_top_crate_name --domain interval -v cargo-rustyrts-marker-end`
 /// using the rustc wrapper for dynamic rustyrts
 fn run_cargo_rustc_dynamic() {
-    let project_dir = std::env::current_dir().unwrap();
-    let path_buf = get_dynamic_path(project_dir.to_str().unwrap());
+    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
+    let path_buf = get_dynamic_path(&target_dir);
     create_dir_all(path_buf.as_path()).expect(&format!(
         "Failed to create directory {}",
         path_buf.display()
@@ -579,7 +582,10 @@ fn run_cargo_rustc_dynamic() {
     // Now we run `cargo build $FLAGS $ARGS`, giving the user the
     // chance to add additional arguments. `FLAGS` is set to identify
     // this target.  The user gets to control what gets actually passed to rustyrts.
-    let cmd = cargo_build(project_dir, Mode::Dynamic);
+    let cmd = cargo_build(
+        PathBuf::from(target_dir).canonicalize().unwrap(),
+        Mode::Dynamic,
+    );
     execute(cmd);
 }
 
@@ -590,9 +596,9 @@ fn run_cargo_rustc_dynamic() {
 fn select_and_execute_tests_dynamic() {
     let verbose = has_arg_flag("-v");
 
-    let project_dir = std::env::current_dir().unwrap();
+    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
 
-    let path_buf = get_dynamic_path(std::env::current_dir().unwrap().to_str().unwrap());
+    let path_buf = get_dynamic_path(&target_dir);
 
     let files: Vec<DirEntry> = read_dir(path_buf.as_path())
         .unwrap()
@@ -704,6 +710,10 @@ fn select_and_execute_tests_dynamic() {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    let cmd = cargo_test(project_dir, Mode::Dynamic, affected_tests.iter());
+    let cmd = cargo_test(
+        PathBuf::from(target_dir).canonicalize().unwrap(),
+        Mode::Dynamic,
+        affected_tests.iter(),
+    );
     execute(cmd);
 }

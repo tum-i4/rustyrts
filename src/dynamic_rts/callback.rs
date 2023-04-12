@@ -75,12 +75,12 @@ impl FileLoader for FileLoaderProxy {
 }
 
 pub struct DynamicRTSCallbacks {
-    source_path: String,
+    target_path: String,
 }
 
 impl DynamicRTSCallbacks {
-    pub fn new(source_path: String) -> Self {
-        Self { source_path }
+    pub fn new(target_path: String) -> Self {
+        Self { target_path }
     }
 }
 
@@ -100,7 +100,7 @@ impl Callbacks for DynamicRTSCallbacks {
             providers.mir_for_ctfe = custom_mir_for_ctfe;
         });
 
-        let path_buf = get_dynamic_path(&self.source_path);
+        let path_buf = get_dynamic_path(&self.target_path);
         prepare_analysis(path_buf.clone());
     }
 
@@ -206,7 +206,7 @@ fn custom_mir_for_ctfe<'tcx>(
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
         if !excluded(tcx) {
-            let path_buf = get_dynamic_path(&self.source_path);
+            let path_buf = get_dynamic_path(&self.target_path);
 
             //##############################################################################################################
             // 1. Invoke optimized_mir or mir_for_ctfe for every MIR body, to compute checksums

@@ -11,6 +11,9 @@ pub const ENV_RUSTYRTS_MODE: &str = "RUSTYRTS_MODE";
 /// Can be set to overwrite the executable that is used when rustc is invoked
 pub const ENV_RUSTC_WRAPPER: &str = "RUSTC_WRAPPER";
 
+/// Is set by cargo
+pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
+
 /// Used to transmit the directory of the current project
 /// that is not obvious when compiling dependencies
 pub const ENV_PROJECT_DIR: &str = "PROJECT_DIR";
