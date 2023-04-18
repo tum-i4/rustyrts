@@ -137,7 +137,7 @@ impl FromStr for Mode {
     }
 }
 
-/// This will create a command `cargo build --lib --bins --tests --examples`
+/// This will create a command `cargo build --profile test --lib --bins --tests --examples`
 ///
 /// And set the following environment variables:
 /// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
@@ -151,10 +151,17 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     let mut cmd = cargo();
     cmd.arg("build");
 
-    cmd.arg("--lib");
-    cmd.arg("--bins");
+    cmd.arg("--profile");
+    cmd.arg("test");
+
+    // cmd.arg("--lib");
+    // cmd.arg("--bins");
     cmd.arg("--tests");
     cmd.arg("--examples");
+
+    // we do not want to execute benches,
+    // because they do not rely on the test harness and are not recognized aas tests
+    //cmd.arg("--benches");
 
     for arg in get_args_build() {
         cmd.arg(arg);
@@ -224,23 +231,19 @@ where
             test.to_string()
         })
         .peekable();
-    if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
-        cmd.arg("--lib");
-        cmd.arg("--bins");
-        cmd.arg("--tests");
-        cmd.arg("--examples");
 
+    // cmd.arg("--lib");
+    // cmd.arg("--bins");
+    cmd.arg("--tests");
+    cmd.arg("--examples");
+
+    // we do not want to execute benches,
+    // because they do not rely on the test harness and are not recognized aas tests
+    //cmd.arg("--benches");
+
+    if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
         cmd.arg("--no-run");
     } else {
-        cmd.arg("--lib");
-        cmd.arg("--bins");
-        cmd.arg("--tests");
-        cmd.arg("--examples");
-
-        // we do not want to execute benches,
-        // because they do not rely on the test harness and are not recognized aas tests
-        //cmd.arg("--benches");
-
         let mut delimiter_found = false;
         for arg in get_args_test() {
             delimiter_found |= arg == "--";

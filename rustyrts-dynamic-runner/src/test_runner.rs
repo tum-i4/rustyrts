@@ -150,19 +150,14 @@ fn execute_tests_unix(
     opts: TestOpts,
     n_workers: usize,
     tests: Vec<TestDescAndFn>,
-    formatter: Box<dyn OutputFormatter + Send>,
+    mut formatter: Box<dyn OutputFormatter + Send>,
     state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
     if n_workers > 1 {
+        formatter.write_run_start(tests.len(), None).unwrap();
+
         let formatter = Arc::new(Mutex::new(formatter));
-
         let state = Arc::new(Mutex::new(state));
-
-        formatter
-            .lock()
-            .unwrap()
-            .write_run_start(tests.len(), None)
-            .unwrap();
 
         let pool = ThreadPool::with_name("rustyrts_test_thread".to_string(), n_workers);
 
