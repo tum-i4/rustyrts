@@ -2,6 +2,7 @@ import os
 from abc import ABC, abstractmethod
 from time import time
 from typing import Optional
+import tempfile
 
 from ..base import Hook
 from ...db.base import DBConnection
@@ -19,15 +20,15 @@ class CargoHook(Hook, ABC):
             self,
             repository: Repository,
             git_client: GitClient,
+            connection: DBConnection,
             report_name: Optional[str] = None,
             output_path: Optional[str] = None,
-            connection: Optional[DBConnection] = None
-    ) -> None:
+   ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
             self.cache_dir = os.path.join(self.output_path, ".cargo-hook")
         else:
-            self.cache_dir = os.path.join(self.repository.path, ".cargo-hook")
+            self.cache_dir = os.path.join(tempfile.gettempdir(), ".cargo-hook")
         self.report_name = report_name
         self.connection = connection
 
@@ -67,7 +68,6 @@ class CargoHook(Hook, ABC):
             ############################################################################################################
             # Prepare on parent commit
             if not has_failed:
-
                 # checkout parent commit
                 parent_commit = self.git_client.get_parent_commit(commit_sha=commit.commit_str)
                 self.git_client.git_repo.git.checkout(parent_commit, force=True)
@@ -83,7 +83,7 @@ class CargoHook(Hook, ABC):
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.clean_command(), output_filepath=cache_file_path
                 )
-                proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                proc.execute(capture_output=True, shell=True, timeout=100.0)
 
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(
@@ -95,19 +95,20 @@ class CargoHook(Hook, ABC):
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.build_command(), output_filepath=cache_file_path, env=self.env()
                 )
-                proc.execute(capture_output=True, shell=True, timeout=1000.0)
-                has_failed |= proc.exit_code != 0
+                proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                has_failed |= not (proc.exit_code == 0 or any(
+                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
                 # ******************************************************************************************************
                 # Parse result
 
                 # parse test_suites
-                loader = CargoTestTestReportLoader(proc.output)
+                loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
                 test_suites = loader.load()
 
                 # create test report object
                 test_report: TestReport = TestReport(
-                    name=self.report_name + "_parent",
+                    name=self.report_name + " - parent",
                     duration=proc.end_to_end_time,
                     suites=test_suites,
                     commit=commit,
@@ -122,7 +123,6 @@ class CargoHook(Hook, ABC):
             # Run on actual commit
 
             if not has_failed:
-
                 # checkout actual commit
                 self.git_client.git_repo.git.checkout(commit.commit_str, force=True)
                 self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
@@ -137,14 +137,15 @@ class CargoHook(Hook, ABC):
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.test_command(), output_filepath=cache_file_path, env=self.env()
                 )
-                proc.execute(capture_output=True, shell=True, timeout=1000.0)
-                has_failed |= (proc.exit_code != 0)
+                proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                has_failed |= not (proc.exit_code == 0 or any(
+                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
                 # ******************************************************************************************************
                 # Parse result
 
                 # parse test_suites
-                loader = CargoTestTestReportLoader(proc.output)
+                loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
                 test_suites = loader.load()
 
                 # create test report object

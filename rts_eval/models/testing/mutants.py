@@ -1,50 +1,36 @@
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union, Dict
 
-from ...models.scm.base import Commit
+from .base import TestSuite, TestCase, TestStatus, TestTarget
+from ..scm.base import Commit
 
 
-class TestStatus(str, Enum):
+class MutantsResult(str, Enum):
+    SUCCESS = "Success"
+    FAILURE = "Failure"
+
+
+class MutantsTestSuite:
     """
-    An enum for different statuses/results of test cases/suites.
-    """
+    A class for test suites executed when evaluating a mutant
 
-    PASSED = "ok"
-    FAILED = "failed"
-    IGNORED = "ignored"
-    MEASURED = "measured"
-    UNDEFINED = "UNDEFINED"
-
-
-class TestTarget(str, Enum):
-    """
-    An enum for different kinds of test targets
-    """
-
-    UNDEFINED = "UNDEFINED"
-    UNIT = "UNIT"
-    INTEGRATION = "INTEGRATION"
-
-
-class TestSuite:
-    """
     A test suite contains one or more test cases and is from an implementation perspective
     often a class with multiple test methods.
     """
 
     def __init__(
-        self,
-        name: str,
-        duration: float,
-        cases: List["TestCase"],
-        total_count: Optional[int] = None,
-        passed_count: Optional[int] = None,
-        failed_count: Optional[int] = None,
-        ignored_count: Optional[int] = None,
-        measured_count: Optional[int] = None,
-        filtered_out_count: Optional[int] = None,
-        meta_data: Optional[str] = None
-   ):
+            self,
+            name: str,
+            duration: float,
+            cases: List["MutantsTestCase"],
+            total_count: Optional[int] = None,
+            passed_count: Optional[int] = None,
+            failed_count: Optional[int] = None,
+            ignored_count: Optional[int] = None,
+            measured_count: Optional[int] = None,
+            filtered_out_count: Optional[int] = None,
+            meta_data: Optional[str] = None
+    ):
         """
         Constructor for test suites
 
@@ -109,14 +95,14 @@ class TestSuite:
     def get_setup_time(self) -> float:
         return self.duration - sum([tc.duration for tc in self.cases])
 
-    def get_filtered_cases(self, status: TestStatus) -> List["TestCase"]:
+    def get_filtered_cases(self, status: TestStatus) -> List["MutantsTestCase"]:
         return list(filter(lambda tc: tc.status == status, self.cases))
 
     @property
     def stdout(self) -> str:
         return ",".join([tc.stdout for tc in self.cases])
 
-    def __eq__(self, o: "TestSuite") -> bool:
+    def __eq__(self, o: "MutantsTestSuite") -> bool:
         """
         Equivalence check (within test report)
 
@@ -128,11 +114,11 @@ class TestSuite:
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def __lt__(self, other: "TestSuite") -> bool:
+    def __lt__(self, other: "MutantsTestSuite") -> bool:
         return self.name < other.name
 
     @classmethod
-    def from_dict(cls, test_suite: Dict) -> "TestSuite":
+    def from_dict(cls, test_suite: Dict) -> "MutantsTestSuite":
         # we support two different kinds of JSON schemas here (one from the `ttrace` project, one from `coop`)
         return cls(
             name=test_suite["testId" if "testId" in test_suite else "name"],
@@ -172,9 +158,24 @@ class TestSuite:
             ),
         )
 
+    @classmethod
+    def from_test_suite(cls, o: TestSuite):
+        return cls(name=o.name,
+                   duration=o.duration,
+                   cases=[MutantsTestCase.from_test_case(case) for case in o.cases],
+                   total_count=o.total_count,
+                   passed_count=o.passed_count,
+                   failed_count=o.failed_count,
+                   ignored_count=o.ignored_count,
+                   measured_count=o.measured_count,
+                   filtered_out_count=o.filtered_out_count,
+                   )
 
-class TestCase:
+
+class MutantsTestCase:
     """
+    A class for test cases executed when evaluating a mutant
+
     A test case is a single test and is from an implementation perspective
     often a test methods inside a class (suite) with multiple test cases.
     """
@@ -186,9 +187,9 @@ class TestCase:
             status: TestStatus = TestStatus.UNDEFINED,
             duration: float = 0.0,
             stdout: Optional[str] = None,
-   ):
+    ):
         """
-        Constructor for test cases
+        Constructor for mutant test cases
 
         :param name: Unique identifier for test case (e.g. the precise class name including the package + method name)
         :param target: Target of the test suite
@@ -202,7 +203,7 @@ class TestCase:
         self.duration = duration
         self.stdout = stdout
 
-    def __eq__(self, o: "TestCase") -> bool:
+    def __eq__(self, o: "MutantsTestCase") -> bool:
         """
         Equivalence check (within test suite)
 
@@ -228,56 +229,95 @@ class TestCase:
         return self.name
 
     @classmethod
-    def from_dict(cls, test_case: Dict) -> "TestCase":
-        return cls(
-            name=test_case["name"],
-            target=TestTarget[test_case["target"]] if "target" in test_case else TestTarget.UNDEFINED,
-            status=TestStatus(test_case["event"]),
-            duration=test_case["exec_time"] if "exec_time" in test_case else 0.0,
-            stdout=test_case["stdout"] if "stdout" in test_case else "",
-        )
+    def from_test_case(cls, o: TestCase):
+        return cls(name=o.name,
+                   target=o.target,
+                   status=o.status,
+                   duration=o.duration,
+                   stdout=o.stdout,
+                   )
 
 
-class TestReport:
+class Mutant:
+    def __init__(self,
+                 descr: str,
+                 diff: str,
+                 check_result: Optional[MutantsResult],
+                 check_duration: Optional[float],
+                 check_log: Optional[str],
+                 test_result: Optional[MutantsResult],
+                 test_duration: Optional[float],
+                 test_log: Optional[str],
+                 suites: List[MutantsTestSuite] = None,
+                 ):
+        """
+        Constructor for mutants
+
+        :param descr: Description of the mutant
+        :param diff: Diff of this mutant
+        :param check_result: Result of cargo check
+        :param check_duration: Duration of cargo check
+        :param check_log: Log of cargo check
+        :param test_result: Result of testing
+        :param test_duration: Duration of testing
+        :poram test_log: Log of testing
+        :param suites: List of test suites contained in report
+        """
+        self.descr = descr
+        self.diff = diff
+        self.check_result = check_result
+        self.check_duration = check_duration
+        self.check_log = check_log
+        self.test_result = test_result
+        self.test_duration = test_duration
+        self.test_log = test_log
+        self.suites = suites
+
+
+def get_filtered_cases(self, status: TestStatus) -> List[TestCase]:
+    cases = []
+    for suite in self.suites:
+        cases += suite.get_filtered_cases(status)
+    return cases
+
+
+def __eq__(self, o: "Mutant") -> bool:
+    return self.descr == o.descr and self.diff == o.diff
+
+
+class MutantsReport:
     """
-    A test report encapsulates the results of the execution of an entire test set.
-    It contains test suites, which in turn contain test cases.
+    A test report encapsulates the results of the execution of a mutation testing run.
+    It contains mutants, which in turn contain a list of test suites.
     """
 
     def __init__(
             self,
             name: str,
             duration: float,
-            suites: List[TestSuite] = None,
+            mutants: List[Mutant],
             commit_str: Union[Optional[str], Optional[int]] = None,
             commit: Commit = None,
             log: Optional[str] = None,
             has_failed: Optional[bool] = None,
-   ):
+    ):
         """
         Constructor for test reports
 
         :param name: Unique identifier for test report (e.g. the build id)
         :param duration: Duration of complete testing procedure in seconds
-        :param suites: List of test suites contained in report
+        :param mutants: List of Mutants tested
         :param commit: SCM revision of test report
         :param log: Execution log
         :param has_failed: Boolean flag if exit code != 0
         """
         self.name = name
         self.duration = duration
-        self.suites = suites
+        self.mutants = mutants
         self.commit_str = commit_str
         self.commit = commit
         self.log = log
         self.has_failed = has_failed
 
-    def get_filtered_cases(self, status: TestStatus) -> List[TestCase]:
-        cases = []
-        for suite in self.suites:
-            cases += suite.get_filtered_cases(status)
-        return cases
-
-    def __eq__(self, o: "TestReport") -> bool:
+    def __eq__(self, o: "MutantsReport") -> bool:
         return self.name == o.name and self.commit_str == o.commit_str
-

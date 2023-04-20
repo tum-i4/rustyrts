@@ -8,24 +8,27 @@ from ...models.scm.git import GitClient
 from ...models.scm.base import Repository
 
 
-class RustyRTSMode(Enum):
+class RustyRTSMode(str, Enum):
     DYNAMIC = "dynamic"
     STATIC = "static"
 
 
 class CargoRustyRTSHook(CargoHook):
 
-    def __init__(self, repository: Repository, git_client: GitClient, env_vars: Dict, mode: RustyRTSMode,
-                 build_options=None, test_options=None,
+    def __init__(self, repository: Repository,
+                 git_client: GitClient,
+                 mode: RustyRTSMode,
+                 connection: DBConnection,
+                 env_vars: Optional[Dict] = None,
+                 build_options=None, rustc_options=None, test_options=None,
                  report_name: Optional[str] = None,
-                 output_path: Optional[str] = None, connection: Optional[DBConnection] = None):
-        super().__init__(repository, git_client, report_name, output_path, connection)
+                 output_path: Optional[str] = None):
+        super().__init__(repository, git_client, connection, report_name, output_path)
 
         self.mode = mode
         self.env_vars = env_vars
         self.build_options = build_options if build_options else []
-        if "--" not in self.build_options:
-            self.build_options.append("--")
+        self.rustc_options = rustc_options if rustc_options else []
         self.test_options = test_options if test_options else []
 
     def env(self):
@@ -38,8 +41,9 @@ class CargoRustyRTSHook(CargoHook):
         return self.test_command()
 
     def test_command(self):
-        return "cargo rustyrts {0} -- {1} -- {2}".format(
+        return "cargo rustyrts {0} -- {1} -- {2} -- {1} -- {3}".format(
             self.mode,
             " ".join(self.build_options),
+            " ".join(self.rustc_options),
             " ".join(self.test_options),
         )

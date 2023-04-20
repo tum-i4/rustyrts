@@ -25,7 +25,7 @@ class ChangelistItemKind(Enum):
     DIR = "DIR"
 
 
-class Repository(object):
+class Repository:
     def __init__(self, path: str, repository_type: str) -> None:
         super().__init__()
         self.path = path
@@ -38,14 +38,14 @@ class Repository(object):
         return hash("{}_{}".format(self.path, self.repository_type))
 
 
-class ChangelistItem(object):
+class ChangelistItem:
     def __init__(
             self,
             filepath: str,
             action: ChangelistItemAction,
             kind: ChangelistItemKind,
             content: Optional[str] = None
-    ) -> None:
+   ):
         """
         A constructor for a ChangelistItem.
 
@@ -85,7 +85,7 @@ class ChangelistItem(object):
             content=json["content"]
         )
 
-class Commit(object):
+class Commit:
     def __init__(
         self,
         commit_str: str,
@@ -96,7 +96,7 @@ class Commit(object):
         repo: Optional[Repository] = None,
         nr_lines = None,
         nr_files = None,
-    ) -> None:
+   ):
         self.author = author
         self.commit_str = commit_str
         self.message = message

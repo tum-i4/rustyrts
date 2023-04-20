@@ -6,8 +6,9 @@ from git import Repo
 
 from rts_eval.db.base import DBConnection
 from rts_eval.evaluation.git_walker import GivenWalkerStrategy, RandomWalkerStrategy, GitWalker
-from rts_eval.evaluation.hooks.cargo_test import CargoTestHook
 from rts_eval.evaluation.hooks.scc import SccHook
+from rts_eval.evaluation.hooks.cargo_test import CargoTestHook
+from rts_eval.evaluation.hooks.cargo_rustyrts import CargoRustyRTSHook, RustyRTSMode
 from rts_eval.models.scm.base import Repository
 from rts_eval.models.scm.git import GitClient
 from rts_eval.util.logging.logger import configure_logging_verbosity
@@ -43,7 +44,6 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None):
     (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (
         RandomWalkerStrategy(repository, branch=branch), 20)
 
-    # create walkers
     walker = GitWalker(
         repository=repository,
         connection=connection,
@@ -58,15 +58,75 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None):
                 language="Rust",
             ),
 
+            #***********************************************************************************************************
+            # Multi threaded
+
             CargoTestHook(repository=repository,
                           connection=connection,
                           git_client=git_client,
                           report_name="cargo test",
                           env_vars={
                               "RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
-                          test_options=["-Z unstable-options", "--report-time", "--format", "json"])
+                          test_options=["-Z unstable-options", "--report-time", "--format", "json"]
+                          ),
+
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts dynamic",
+                              mode=RustyRTSMode.DYNAMIC,
+                              env_vars={
+                                  "RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
+                              test_options=["-Z unstable-options", "--report-time", "--format", "json"]
+                              ),
+
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts static",
+                              mode=RustyRTSMode.STATIC,
+                              env_vars={
+                                  "RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
+                              test_options=["-Z unstable-options", "--report-time", "--format", "json"]
+                              ),
+
+            # ***********************************************************************************************************
+            # Single threaded
+
+            CargoTestHook(repository=repository,
+                          connection=connection,
+                          git_client=git_client,
+                          report_name="cargo test single threaded",
+                          env_vars={
+                              "RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
+                          build_options=["--jobs 1"],
+                          test_options=["-Z unstable-options", "--report-time", "--format", "json", "--test-threads 1"]
+                          ),
+
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts dynamic single threaded",
+                              mode=RustyRTSMode.DYNAMIC,
+                              env_vars={
+                                  "RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
+                              build_options=["--jobs 1"],
+                              test_options=["-Z unstable-options", "--report-time", "--format", "json", "--test-threads 1"]
+                              ),
+
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts static single threaded",
+                              mode=RustyRTSMode.STATIC,
+                              env_vars={
+                                  "RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
+                              build_options=["--jobs 1"],
+                              test_options=["-Z unstable-options", "--report-time", "--format", "json", "--test-threads 1"]
+                              ),
         ],
     )
+    # create walker
 
     # start walking
     walker.walk()

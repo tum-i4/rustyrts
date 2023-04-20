@@ -64,7 +64,7 @@ def execute_command_as_subprocess(command: str, cwd: Optional[Path] = None) -> i
     return exit_code
 
 
-class SubprocessContainer(object):
+class SubprocessContainer:
     """
     Simple wrapper for subprocesses.
     """
@@ -77,7 +77,7 @@ class SubprocessContainer(object):
         self.exit_code: int = -1
         self.end_to_end_time: float = -1
 
-    def execute(self, capture_output: bool = False, timeout: Optional[float] = None, *args, **kwargs, ) -> None:
+    def execute(self, capture_output: bool = False, timeout: Optional[float] = None, *args, **kwargs,):
         # use `w+` to be able to read and write
         with open(self.output_filepath, "w+") as log_file:
             # pipe stdout/stderr into log file

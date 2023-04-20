@@ -62,7 +62,7 @@ class GitWalker(Walker):
             strategy: WalkerStrategy,
             num_commits: Optional[int] = 10,
             hooks: Optional[List[Hook]] = None,
-    ) -> None:
+   ):
         super().__init__(
             repository,
             strategy,

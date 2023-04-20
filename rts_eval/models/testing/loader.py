@@ -11,5 +11,5 @@ class TestReportLoader(ABC):
     """
 
     @abstractmethod
-    def load(self) -> Optional[TestReport]:
+    def load(self):
         pass

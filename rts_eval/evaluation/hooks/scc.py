@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 from typing import Optional
 from time import time
 
@@ -22,14 +23,14 @@ class SccHook(Hook):
             connection: DBConnection,
             language: str,
             output_path: Optional[str] = None,
-    ) -> None:
+   ):
         super().__init__(repository, None, git_client=GitClient(repository))
         self.connection = connection
         self.language = language
         if output_path:
             self.cache_dir = os.path.join(self.output_path, ".scc-hook")
         else:
-            self.cache_dir = os.path.join(self.repository.path, ".scc-hook")
+            self.cache_dir = os.path.join(tempfile.gettempdir(), ".scc-hook")
 
     def run(self, commit: Commit) -> bool:
 

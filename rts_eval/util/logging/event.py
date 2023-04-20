@@ -6,13 +6,13 @@ from typing import Optional, List, Dict
 JSON_INDENT: int = 2
 
 
-class LogEvent(object):
+class LogEvent:
     def __init__(
         self,
         name: str,
         value: Optional[str] = None,
         timestamp: datetime = datetime.now().isoformat(),
-    ) -> None:
+   ):
         self.name = name
         self.value = value
         self.timestamp = timestamp

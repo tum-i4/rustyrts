@@ -85,7 +85,8 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
     repo: Optional[DBRepository] = relationship(
         "DBRepository", back_populates="commits"
     )
-    reports = relationship("DBTestReport", back_populates="commit") # TODO
+    reports = relationship("DBTestReport", back_populates="commit")
+    mutants_reports = relationship("DBMutantsReport", back_populates="commit")
     nr_lines = Column(Integer, nullable=True)
     nr_files = Column(Integer, nullable=True)
 

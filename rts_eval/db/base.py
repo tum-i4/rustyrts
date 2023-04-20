@@ -12,7 +12,7 @@ _LOGGER = get_logger(__name__)
 
 
 @as_declarative()
-class Base(object):
+class Base:
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime(timezone=False), server_default=func.now())
     updated_at = Column(DateTime(timezone=False), onupdate=func.now())
@@ -24,10 +24,10 @@ class Base(object):
 
 
 # noinspection PyUnresolvedReferences
-from . import git, testing  # necessary to create schema
+from . import git, testing, mutants  # necessary to create schema
 
 
-class DBConnection(object):
+class DBConnection:
     def __init__(self, url: str, *args, **kwargs) -> None:
         super().__init__()
         self.url: str = url
