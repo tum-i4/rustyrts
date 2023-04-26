@@ -13,7 +13,7 @@ pub enum EdgeType {
     FnDef,
     FnPtr, // TODO: not sure if this is necessary
     Impl,
-    //Adt,
+    Adt,
     //Foreign,
     //Opaque,
 }
@@ -30,7 +30,7 @@ impl FromStr for EdgeType {
             "FnDef" => Ok(Self::FnDef),
             "FnPtr" => Ok(Self::FnPtr),
             "Impl" => Ok(Self::Impl),
-            //"Adt" => Ok(Self::Adt),
+            "Adt" => Ok(Self::Adt),
             //"Foreign" => Ok(Self::Foreign),
             //"Opaque" => Ok(Self::Opaque),
             _ => Err(()),
@@ -69,6 +69,10 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         }
         let types = ingoing.get_mut(&start).unwrap();
         types.insert(edge_type);
+    }
+
+    pub fn get_nodes(&self) -> &HashSet<T> {
+        &self.nodes
     }
 
     pub fn get_node(&self, node: &T) -> Option<&T> {
@@ -110,6 +114,21 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
 }
 
 impl DependencyGraph<String> {
+    pub fn import_nodes<T>(&mut self, lines: T)
+    where
+        T: IntoIterator<Item = String>,
+    {
+        // Parse nodes
+        for line in lines {
+            let message_fn = || format!("Found malformed node line: {})", line);
+
+            let node = line.strip_prefix("\"").expect(&message_fn());
+            let node = node.strip_suffix("\"").expect(&message_fn());
+
+            self.add_node(node.to_string());
+        }
+    }
+
     pub fn import_edges<T>(&mut self, lines: T)
     where
         T: IntoIterator<Item = String>,
@@ -151,14 +170,19 @@ impl ToString for DependencyGraph<String> {
             result.push_str(format!("\"{}\"\n", node).as_str())
         }
 
-        for (end, edge) in self
-            .backwards_edges
-            .iter()
-            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0))
-        {
-            for (start, types) in edge.iter().sorted_by(|a, b| Ord::cmp(&b.0, &a.0)) {
-                result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", start, end, types).as_str())
+        let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
+
+        for (end, edge) in self.backwards_edges.iter() {
+            for (start, types) in edge.iter() {
+                unsorted.push((start, end, types));
             }
+        }
+
+        for (start, end, types) in unsorted
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0).then(Ord::cmp(&b.1, &a.1)))
+        {
+            result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", start, end, types).as_str())
         }
 
         result.push_str("}\n");
@@ -176,17 +200,16 @@ impl FromStr for DependencyGraph<String> {
             .strip_prefix("digraph {") // Filter beginning and ending
             .and_then(|s| s.strip_suffix("}"))
         {
-            let lines: Vec<String> = content
+            let (edges, nodes): (Vec<_>, Vec<_>) = content
                 .split("\n")
                 .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
-                .filter(|l| l.contains("\" -> \"")) // Ignore Nodes
                 .map(|s| s.to_string())
-                .collect();
+                .partition(|l| l.contains("\" -> \""));
 
             let mut result = Self::new();
 
-            // Parse edges
-            result.import_edges(lines);
+            result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
+            result.import_edges(edges);
 
             return Ok(result);
         }
@@ -195,15 +218,16 @@ impl FromStr for DependencyGraph<String> {
 }
 
 #[cfg(test)]
-mod teest {
+mod test {
     use std::str::FromStr;
 
-    use crate::graph::graph::{DependencyGraph, EdgeType};
+    use crate::static_rts::graph::{DependencyGraph, EdgeType};
 
     #[test]
     pub fn test_graph_deserialization() {
         let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
+        graph.add_node("lonely_node".to_string());
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
         graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Closure);
         graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Closure);

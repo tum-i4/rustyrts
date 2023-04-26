@@ -10,7 +10,9 @@ extern crate rustc_data_structures;
 extern crate rustc_hash;
 extern crate rustc_session;
 
-// required for analyzing the MIR
+// required for analyzing and modifying the MIR
+extern crate rustc_abi;
+extern crate rustc_ast;
 extern crate rustc_hir;
 extern crate rustc_middle;
 
@@ -19,16 +21,23 @@ extern crate rustc_error_codes;
 extern crate rustc_errors;
 extern crate rustc_span;
 
-pub mod analysis {
+pub mod static_rts {
     pub mod callback;
-    pub mod checksums;
-    pub mod util;
+    pub mod graph;
     pub mod visitor;
 }
 
-pub mod graph {
-    pub mod graph;
+pub mod dynamic_rts {
+    pub mod callback;
+    pub mod defid_util;
+    pub mod mir_util;
+    pub mod visitor;
 }
 
-pub mod paths;
+pub mod callbacks_shared;
+pub mod checksums;
+pub mod constants;
+pub mod format;
+pub mod fs_utils;
+pub mod names;
 pub mod utils;
