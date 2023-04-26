@@ -1,0 +1,36 @@
+[submodule "projects/mutants/orion"]
+	path = projects/mutants/orion
+	url = https://github.com/orion-rs/orion.git
+[submodule "projects/mutants/pulldown-cmark"]
+	path = projects/mutants/pulldown-cmark
+	url = https://github.com/raphlinus/pulldown-cmark.git
+[submodule "projects/mutants/regex"]
+	path = projects/mutants/regex
+	url = https://github.com/rust-lang/regex.git
+[submodule "projects/mutants/ripgrep"]
+	path = projects/mutants/ripgrep
+	url = https://github.com/BurntSushi/ripgrep.git
+[submodule "projects/mutants/Rocket"]
+	path = projects/mutants/Rocket
+	url = https://github.com/SergioBenitez/Rocket.git
+[submodule "projects/mutants/rust-brotli"]
+	path = projects/mutants/rust-brotli
+	url = https://github.com/dropbox/rust-brotli.git
+[submodule "projects/mutants/rust-openssl"]
+	path = projects/mutants/rust-openssl
+	url = https://github.com/sfackler/rust-openssl.git
+[submodule "projects/mutants/rustls"]
+	path = projects/mutants/rustls
+	url = https://github.com/rustls/rustls.git
+[submodule "projects/mutants/tabled"]
+	path = projects/mutants/tabled
+	url = https://github.com/zhiburt/tabled.git
+[submodule "projects/mutants/tonic"]
+	path = projects/mutants/tonic
+	url = https://github.com/hyperium/tonic.git
+[submodule "projects/mutants/tracing"]
+	path = projects/mutants/tracing
+	url = https://github.com/tokio-rs/tracing
+[submodule "projects/mutants/trust-dns"]
+	path = projects/mutants/trust-dns
+	url = https://github.com/bluejekyll/trust-dns

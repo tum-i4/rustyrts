@@ -20,6 +20,7 @@ setup(
               'rts_eval.models',
               'rts_eval.models.scm',
               'rts_eval.models.testing',
+              'rts_eval.models.testing.loaders',
               'rts_eval.util',
               'rts_eval.util.logging',
               'rts_eval.util.os',

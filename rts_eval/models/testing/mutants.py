@@ -287,7 +287,7 @@ def __eq__(self, o: "Mutant") -> bool:
 
 class MutantsReport:
     """
-    A test report encapsulates the results of the execution of a mutation testing run.
+    A test report encapsulates the results of the execution of a mutants testing run.
     It contains mutants, which in turn contain a list of test suites.
     """
 
