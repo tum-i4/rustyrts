@@ -55,7 +55,7 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
     test_options += ["-Z unstable-options", "--report-time", "--format", "json"]
 
     env_vars = env_vars if env_vars else {}
-    env_vars |= {"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])}
+    env_vars |= {"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])}
 
     walker = GitWalker(
         repository=repository,
