@@ -14,7 +14,7 @@ from rts_eval.models.scm.base import Repository
 from rts_eval.models.scm.git import GitClient
 from rts_eval.util.logging.logger import configure_logging_verbosity
 
-db_url = "postgresql://postgres@localhost:5432/rustyrts"
+db_url = "postgresql://postgres:rustyrts@localhost:5432/git"
 
 
 def walk(path, branch="main", logging_level="DEBUG", commits=None,
