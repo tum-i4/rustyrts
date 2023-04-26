@@ -100,7 +100,7 @@ class CargoMutantsHook(Hook):
                 proc.output, re.M)
 
             mutants = []
-            if proc.exit_code == 0:
+            if not has_failed:
                 # parse mutants
                 loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out",
                                                   load_ignored=False)
