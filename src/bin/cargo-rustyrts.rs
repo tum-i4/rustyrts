@@ -137,7 +137,7 @@ impl FromStr for Mode {
     }
 }
 
-/// This will create a command `cargo build --profile test --lib --bins --tests --examples`
+/// This will create a command `cargo test --no-run --tests --examples`
 ///
 /// And set the following environment variables:
 /// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
@@ -149,10 +149,11 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     // chance to add additional arguments. `FLAGS` is set to identify
     // this target.  The user gets to control what gets actually passed to rustyrts.
     let mut cmd = cargo();
-    cmd.arg("build");
-
-    cmd.arg("--profile");
     cmd.arg("test");
+    cmd.arg("--no-run");
+
+    //cmd.arg("--profile");
+    //cmd.arg("test");
 
     // cmd.arg("--lib");
     // cmd.arg("--bins");
@@ -190,7 +191,7 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     cmd
 }
 
-/// This will create a command `cargo test --no-fail-fast`
+/// This will create a command `cargo test --no-fail-fast --tests --examples`
 ///
 /// And set the following environment variables:
 /// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
