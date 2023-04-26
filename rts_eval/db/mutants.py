@@ -52,6 +52,11 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
     commit: DBCommit = relationship("DBCommit", back_populates="mutants_reports")
     log = Column(Text)
     has_failed = Column(Boolean)
+    missed = Column(Integer)
+    caught = Column(Integer)
+    timeout = Column(Integer)
+    unviable = Column(Integer)
+    errored = Column(Integer)
 
     __table_args__ = tuple(
         [UniqueConstraint("name", "commit_str", name="_mutants_name_revision_uc")]
@@ -113,6 +118,11 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
             commit=DBCommit.from_domain(report.commit),
             log=report.log,
             has_failed=report.has_failed,
+            missed=report.missed,
+            caught=report.caught,
+            timeout=report.timeout,
+            unviable=report.unviable,
+            errored=report.errored,
         )
 
     def to_domain(self) -> MutantsReport:
@@ -124,6 +134,11 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
             commit=self.commit.to_domain(),
             log=self.log,
             has_failed=self.has_failed,
+            missed=self.missed,
+            caught=self.caught,
+            timeout=self.timeout,
+            unviable=self.unviable,
+            errored=self.errored,
         )
 
 

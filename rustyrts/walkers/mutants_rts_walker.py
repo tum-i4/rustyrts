@@ -1,6 +1,7 @@
 import logging
 import shutil
 import tempfile
+from typing import Optional
 
 from git import Repo
 
@@ -15,7 +16,9 @@ from rts_eval.util.logging.logger import configure_logging_verbosity
 db_url = "postgresql://postgres@localhost:5432/rustyrts"
 
 
-def walk(path, branch="main", logging_level="DEBUG", commits=None):
+def walk(path, branch="main", logging_level="DEBUG", commits=None,
+         env_vars: Optional[dict[str]] = None,
+         options: Optional[list[str]] = None):
     # set logging level
     numeric_level = getattr(logging, logging_level.upper(), None)
     if not isinstance(numeric_level, int):
@@ -43,6 +46,13 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None):
     (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (
         RandomWalkerStrategy(repository, branch=branch), 20)
 
+    options = options if options else []
+    options.append("--json")
+
+    env_vars = env_vars if env_vars else {}
+    env_vars.update({"RUSTFLAGS": " ".join(
+        ["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])})
+
     walker = GitWalker(
         repository=repository,
         connection=connection,
@@ -60,24 +70,24 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None):
             CargoMutantsHook(repository=repository,
                              git_client=git_client,
                              mode=RustyMutantsRTSMode.TEST,
-                             env_vars={"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
-                             options=["--json"],
+                             env_vars=env_vars,
+                             options=options,
                              connection=connection
                              ),
 
             CargoMutantsHook(repository=repository,
                              git_client=git_client,
                              mode=RustyMutantsRTSMode.DYNAMIC,
-                             env_vars={"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
-                             options=["--json"],
+                             env_vars=env_vars,
+                             options=options,
                              connection=connection
                              ),
 
             CargoMutantsHook(repository=repository,
                              git_client=git_client,
                              mode=RustyMutantsRTSMode.STATIC,
-                             env_vars={"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=mold"])},
-                             options=["--json"],
+                             env_vars=env_vars,
+                             options=options,
                              connection=connection
                              )
         ],

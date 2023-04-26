@@ -1,3 +1,4 @@
+import glob
 import os
 from abc import ABC, abstractmethod
 from time import time
@@ -73,6 +74,9 @@ class CargoHook(Hook, ABC):
                 self.git_client.git_repo.git.checkout(parent_commit, force=True)
                 self.git_client.git_repo.git.reset(parent_commit, hard=True)
 
+                for filename in glob.glob("rust-toolchain*"):
+                    os.remove(filename)
+
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(
                     int(time() * 1000)
@@ -126,6 +130,9 @@ class CargoHook(Hook, ABC):
                 # checkout actual commit
                 self.git_client.git_repo.git.checkout(commit.commit_str, force=True)
                 self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
+
+                for filename in glob.glob("rust-toolchain*"):
+                    os.remove(filename)
 
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(

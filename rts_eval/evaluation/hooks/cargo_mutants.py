@@ -1,4 +1,5 @@
 import os
+import re
 from enum import Enum
 from time import time
 from typing import Optional, Dict
@@ -94,27 +95,52 @@ class CargoMutantsHook(Hook):
             # ******************************************************************************************************
             # Parse result
 
+            result_matcher = re.search(
+                "^\d* mutants tested in .*:(?: (\d*) missed,?)?(?: (\d*) caught,?)?(?: (\d*) unviable,?)?(?: (\d*) timeouts,?)?(?: (\d*) failed,?)?(?: (\d*) errored,?)?",
+                proc.output, re.M)
+
             # parse mutants
-            loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out", load_ignored=False)
+            loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out",
+                                                  load_ignored=False)
             mutants = loader.load()
 
-            # create test report object
-            test_report: MutantsReport = MutantsReport(
-                name="mutants " + self.mode,
-                duration=proc.end_to_end_time,
-                mutants=mutants,
-                commit=commit,
-                commit_str=commit.commit_str,
-                log=proc.output,
-                has_failed=has_failed
-            )
+            missed = None
+            caught = None
+            timeout = None
+            unviable = None
+            errored = None
 
-            DBMutantsReport.create_or_update(report=test_report, session=session)
+            if result_matcher is not None:
+                missed = int(result_matcher.group(1)) if result_matcher.group(1) else 0
+                caught = int(result_matcher.group(2)) if result_matcher.group(2) else 0
+                timeout = int(result_matcher.group(3)) if result_matcher.group(3) else 0
+                unviable = int(result_matcher.group(4)) if result_matcher.group(4) else 0
+                errored = int(result_matcher.group(5)) if result_matcher.group(5) else 0
 
-            ############################################################################################################
-            session.commit()
+                # create test report object
+                test_report: MutantsReport = MutantsReport(
+                    name="mutants " + self.mode,
+                    duration=proc.end_to_end_time,
+                    mutants=mutants,
+                    commit=commit,
+                    commit_str=commit.commit_str,
+                    log=proc.output,
+                    has_failed=has_failed,
+                    missed=missed,
+                    caught=caught,
+                    timeout=timeout,
+                    unviable=unviable,
+                    errored=errored
+                )
 
-            # return to previous directory
-            os.chdir(tmp_path)
+                DBMutantsReport.create_or_update(report=test_report, session=session)
 
-        return not has_failed
+                ############################################################################################################
+                session.commit()
+
+                # return to previous directory
+                os.chdir(tmp_path)
+
+            self.git_client.clean(rm_dirs=True)
+
+            return not has_failed

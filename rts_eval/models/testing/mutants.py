@@ -300,6 +300,11 @@ class MutantsReport:
             commit: Commit = None,
             log: Optional[str] = None,
             has_failed: Optional[bool] = None,
+            missed: Optional[int] = None,
+            caught: Optional[int] = None,
+            timeout: Optional[int] = None,
+            unviable: Optional[int] = None,
+            errored: Optional[int] = None,
     ):
         """
         Constructor for test reports
@@ -318,6 +323,11 @@ class MutantsReport:
         self.commit = commit
         self.log = log
         self.has_failed = has_failed
+        self.missed = missed
+        self.caught = caught
+        self.timeout = timeout
+        self.unviable = unviable
+        self.errored = errored
 
     def __eq__(self, o: "MutantsReport") -> bool:
         return self.name == o.name and self.commit_str == o.commit_str
