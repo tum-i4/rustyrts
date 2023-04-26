@@ -99,10 +99,12 @@ class CargoMutantsHook(Hook):
                 "^\d* mutants tested in .*:(?: (\d*) missed,?)?(?: (\d*) caught,?)?(?: (\d*) unviable,?)?(?: (\d*) timeouts,?)?(?: (\d*) failed,?)?(?: (\d*) errored,?)?",
                 proc.output, re.M)
 
-            # parse mutants
-            loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out",
+            mutants = []
+            if proc.exit_code == 0:
+                # parse mutants
+                loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out",
                                                   load_ignored=False)
-            mutants = loader.load()
+                mutants = loader.load()
 
             missed = None
             caught = None
@@ -117,30 +119,30 @@ class CargoMutantsHook(Hook):
                 unviable = int(result_matcher.group(4)) if result_matcher.group(4) else 0
                 errored = int(result_matcher.group(5)) if result_matcher.group(5) else 0
 
-                # create test report object
-                test_report: MutantsReport = MutantsReport(
-                    name="mutants " + self.mode,
-                    duration=proc.end_to_end_time,
-                    mutants=mutants,
-                    commit=commit,
-                    commit_str=commit.commit_str,
-                    log=proc.output,
-                    has_failed=has_failed,
-                    missed=missed,
-                    caught=caught,
-                    timeout=timeout,
-                    unviable=unviable,
-                    errored=errored
-                )
+            # create test report object
+            test_report: MutantsReport = MutantsReport(
+                name="mutants " + self.mode,
+                duration=proc.end_to_end_time,
+                mutants=mutants,
+                commit=commit,
+                commit_str=commit.commit_str,
+                log=proc.output,
+                has_failed=has_failed,
+                missed=missed,
+                caught=caught,
+                timeout=timeout,
+                unviable=unviable,
+                errored=errored
+            )
 
-                DBMutantsReport.create_or_update(report=test_report, session=session)
+            DBMutantsReport.create_or_update(report=test_report, session=session)
 
-                ############################################################################################################
-                session.commit()
+            ############################################################################################################
+            session.commit()
 
-                # return to previous directory
-                os.chdir(tmp_path)
+            # return to previous directory
+            os.chdir(tmp_path)
 
-            self.git_client.clean(rm_dirs=True)
+        self.git_client.clean(rm_dirs=True)
 
-            return not has_failed
+        return not has_failed
