@@ -106,9 +106,16 @@ class CargoHook(Hook, ABC):
                 # ******************************************************************************************************
                 # Parse result
 
+                log = proc.output
+
                 # parse test_suites
                 loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
-                test_suites = loader.load()
+                try:
+                    test_suites = loader.load()
+                except:
+                    has_failed = True
+                    log = "Failed to parse testsuites\n" + log
+                    test_suites = []
 
                 # create test report object
                 test_report: TestReport = TestReport(
@@ -117,7 +124,7 @@ class CargoHook(Hook, ABC):
                     suites=test_suites,
                     commit=commit,
                     commit_str=commit.commit_str,
-                    log=proc.output,
+                    log=log,
                     has_failed=has_failed
                 )
 
@@ -151,9 +158,16 @@ class CargoHook(Hook, ABC):
                 # ******************************************************************************************************
                 # Parse result
 
+                log = proc.output
+
                 # parse test_suites
                 loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
-                test_suites = loader.load()
+                try:
+                    test_suites = loader.load()
+                except:
+                    has_failed = True
+                    log = "Failed to parse testsuites\n" + log
+                    test_suites = []
 
                 # create test report object
                 test_report: TestReport = TestReport(
@@ -162,7 +176,7 @@ class CargoHook(Hook, ABC):
                     suites=test_suites,
                     commit=commit,
                     commit_str=commit.commit_str,
-                    log=proc.output,
+                    log=log,
                     has_failed=has_failed
                 )
 
