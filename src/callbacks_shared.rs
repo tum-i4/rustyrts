@@ -1,25 +1,21 @@
 use itertools::Itertools;
-use log::{debug, error, trace};
+use log::{debug, trace};
 use rustc_hir::{
     def::{DefKind, Res},
     def_id::LOCAL_CRATE,
     ConstContext,
 };
 use rustc_middle::ty::{TyCtxt, Visibility};
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs::{read, read_dir, DirEntry},
-    path::PathBuf,
-};
+use std::{fs::read, path::PathBuf};
 
 use crate::{
     checksums::Checksums,
-    constants::ENDING_REEXPORTS,
     fs_utils::{
         get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_reexports_path,
-        get_test_path, read_lines_filter_map, write_to_file,
+        get_test_path, write_to_file,
     },
-    names::{def_id_name, exported_name, REEXPORTS},
+    names::{def_id_name, exported_name},
+    static_rts::callback::PATH_BUF,
 };
 
 const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
@@ -33,59 +29,8 @@ pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
         .any(|krate| *krate == local_crate_name.as_str())
 }
 
-pub(crate) fn prepare_analysis(path_buf: PathBuf) {
-    REEXPORTS.get_or_init(|| {
-        let files: Vec<DirEntry> = read_dir(path_buf.as_path())
-            .unwrap()
-            .map(|maybe_path| maybe_path.unwrap())
-            .collect();
-
-        let mut prefix_map = BTreeMap::new();
-        let mut fn_map = HashMap::new();
-        let mut adt_map = HashMap::new();
-
-        read_lines_filter_map(
-            &files,
-            ENDING_REEXPORTS,
-            |line| !line.is_empty(),
-            |line| {
-                line.split_once(" | ")
-                    .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
-                    .unwrap()
-            },
-        )
-        .into_iter()
-        .for_each(|(s1, s2)| {
-            if s1.ends_with("::") {
-                if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
-                    error!("{} overwritten by {}", x, s2.clone());
-                }
-            } else {
-                if s1.ends_with("!adt") {
-                    // If this is an Adt, insert in both adt_map and prefix_map
-                    // Because either the Adt may be used (directly) or its associated functions (via prefix)
-                    let s1 = s1.strip_suffix("!adt").unwrap().to_string();
-
-                    if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                    if let Some(x) = adt_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                } else {
-                    if let Some(x) = fn_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                }
-            }
-        });
-        (prefix_map, fn_map, adt_map)
-    });
-}
-
 pub(crate) fn run_analysis_shared<'tcx>(
     tcx: TyCtxt<'tcx>,
-    path_buf: PathBuf,
     mut new_checksums: Checksums,
     mut new_checksums_ctfe: Checksums,
 ) {
@@ -107,7 +52,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
     if tests.len() > 0 {
         write_to_file(
             tests.join("\n").to_string(),
-            path_buf.clone(),
+            PATH_BUF.get().unwrap().clone(),
             |buf| get_test_path(buf, &crate_name, crate_id),
             false,
         );
@@ -119,7 +64,8 @@ pub(crate) fn run_analysis_shared<'tcx>(
     // 3. Import checksums
 
     let old_checksums = {
-        let checksums_path_buf = get_checksums_path(path_buf.clone(), &crate_name, crate_id);
+        let checksums_path_buf =
+            get_checksums_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 
         let maybe_checksums = read(checksums_path_buf);
 
@@ -131,7 +77,8 @@ pub(crate) fn run_analysis_shared<'tcx>(
     };
 
     let old_checksums_ctfe = {
-        let checksums_path_buf = get_checksums_ctfe_path(path_buf.clone(), &crate_name, crate_id);
+        let checksums_path_buf =
+            get_checksums_ctfe_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 
         let maybe_checksums = read(checksums_path_buf);
 
@@ -197,21 +144,21 @@ pub(crate) fn run_analysis_shared<'tcx>(
 
     write_to_file(
         new_checksums.to_string().to_string(),
-        path_buf.clone(),
+        PATH_BUF.get().unwrap().clone(),
         |buf| get_checksums_path(buf, &crate_name, crate_id),
         false,
     );
 
     write_to_file(
         new_checksums_ctfe.to_string().to_string(),
-        path_buf.clone(),
+        PATH_BUF.get().unwrap().clone(),
         |buf| get_checksums_ctfe_path(buf, &crate_name, crate_id),
         false,
     );
 
     write_to_file(
         changed_nodes.join("\n").to_string(),
-        path_buf.clone(),
+        PATH_BUF.get().unwrap().clone(),
         |buf| get_changes_path(buf, &crate_name, crate_id),
         false,
     );
@@ -221,7 +168,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
     //##################################################################################################################
     // 5. Write a mapping of reexports to file for subsequent crates
 
-    process_reexports(tcx, path_buf.clone(), &crate_name, crate_id);
+    process_reexports(tcx, PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 }
 
 fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id: u64) {

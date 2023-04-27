@@ -6,14 +6,16 @@ use rustc_interface::{interface, Queries};
 use rustc_middle::ty::query::{query_keys, query_stored};
 use rustc_middle::{mir::visit::MutVisitor, ty::TyCtxt};
 use rustc_span::source_map::{FileLoader, RealFileLoader};
+use std::collections::HashMap;
 use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Mutex;
 
-use crate::callbacks_shared::{excluded, prepare_analysis, run_analysis_shared};
+use crate::callbacks_shared::{excluded, run_analysis_shared};
 use crate::checksums::{get_checksum, insert_hashmap, Checksums};
 use crate::fs_utils::get_dynamic_path;
-use crate::names::def_id_name;
+use crate::names::{def_id_name, REEXPORTS};
+use crate::static_rts::callback::PATH_BUF;
 
 use super::visitor::MirManipulatorVisitor;
 
@@ -74,13 +76,13 @@ impl FileLoader for FileLoaderProxy {
     }
 }
 
-pub struct DynamicRTSCallbacks {
-    target_path: String,
-}
+pub struct DynamicRTSCallbacks {}
 
 impl DynamicRTSCallbacks {
     pub fn new(target_path: String) -> Self {
-        Self { target_path }
+        PATH_BUF.get_or_init(|| get_dynamic_path(&target_path));
+        REEXPORTS.get_or_init(|| Mutex::new(HashMap::new()));
+        Self {}
     }
 }
 
@@ -99,9 +101,6 @@ impl Callbacks for DynamicRTSCallbacks {
             providers.optimized_mir = custom_optimized_mir;
             providers.mir_for_ctfe = custom_mir_for_ctfe;
         });
-
-        let path_buf = get_dynamic_path(&self.target_path);
-        prepare_analysis(path_buf.clone());
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -206,8 +205,6 @@ fn custom_mir_for_ctfe<'tcx>(
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
         if !excluded(tcx) {
-            let path_buf = get_dynamic_path(&self.target_path);
-
             //##############################################################################################################
             // 1. Invoke optimized_mir or mir_for_ctfe for every MIR body, to compute checksums
 
@@ -230,7 +227,6 @@ impl DynamicRTSCallbacks {
             // 4. Determine names of changed nodes and write this information to the filesystem
             run_analysis_shared(
                 tcx,
-                path_buf,
                 unsafe { NEW_CHECKSUMS.take() }
                     .map(|mutex| mutex.into_inner().unwrap())
                     .unwrap_or_else(|| Checksums::new()),

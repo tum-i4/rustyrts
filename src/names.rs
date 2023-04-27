@@ -1,6 +1,12 @@
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs::read_to_string,
+    path::PathBuf,
+    sync::Mutex,
+};
 
 use lazy_static::lazy_static;
+use log::{debug, error, trace};
 use once_cell::sync::OnceCell;
 use regex::Regex;
 use rustc_hir::{
@@ -10,11 +16,20 @@ use rustc_hir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
 
-pub(crate) static REEXPORTS: OnceCell<(
-    BTreeMap<String, String>, // Keys are prefixes that need to be replaced
-    HashMap<String, String>,  // For Functions
-    HashMap<String, String>,  // For Adts
-)> = OnceCell::new();
+use crate::{fs_utils::get_reexports_path, static_rts::callback::PATH_BUF};
+
+pub(crate) static REEXPORTS: OnceCell<
+    Mutex<
+        HashMap<
+            String,
+            Option<(
+                BTreeMap<String, String>, // Keys are prefixes that need to be replaced
+                HashMap<String, String>,  // For Functions
+                HashMap<String, String>,  // For Adts
+            )>,
+        >,
+    >,
+> = OnceCell::new();
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
@@ -30,7 +45,6 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
         let cstore = tcx.cstore_untracked();
 
         // 1) We introduce a ! here, to indicate that the element after it has to be deleted
-
         format!(
             "{}[{:04x}]::!",
             cstore.crate_name(def_id.krate),
@@ -79,43 +93,119 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     def_path_str = def_path_str.replace("\n", "");
 
     if !def_id.is_local() {
-        // If this def_id is not local, we check whether it corresponds to a name reexported by another crate
-        // If this is the case, we replace the deviating part of the name by its counterpart in the other crate
-        if let Some((prefix_map, fn_map, adt_map)) = REEXPORTS.get() {
-            let kind = tcx.def_kind(def_id);
+        let cstore = tcx.cstore_untracked();
 
-            if let DefKind::Fn = kind {
-                if let Some(replacement) = fn_map.get(&def_path_str) {
-                    //println!("Found Fn {} - replaced by {}", def_path_str, replacement);
-                    return replacement.clone();
+        let crate_name = format!("{}", cstore.crate_name(def_id.krate));
+        let crate_id = cstore.stable_crate_id(def_id.krate).to_u64();
+        let extended_crate_name = format!("{}[{:04x}]", crate_name, crate_id >> 8 * 6);
+
+        if let Some(mutex) = REEXPORTS.get() {
+            let mut reexports = mutex.lock().unwrap();
+
+            // Load exported symbols of this crate if not present
+            if !reexports.contains_key(&extended_crate_name) {
+                let path =
+                    get_reexports_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
+                let content = load_exported_symbols(path);
+
+                if let Some(_) = content {
+                    debug!("Loaded reexports of crate {}.", extended_crate_name);
                 }
+
+                reexports.insert(extended_crate_name.clone(), content);
             }
 
-            if let DefKind::Struct | DefKind::Enum | DefKind::Trait = kind {
-                if let Some(replacement) = adt_map.get(&def_path_str) {
-                    //println!("Found Adt {} - replaced by {}", def_path_str, replacement);
-                    return replacement.clone();
-                }
-            }
+            // If this def_id is not local, we check whether it corresponds to a name reexported by another crate
+            // If this is the case, we replace the deviating part of the name by its counterpart in the other crate
+            if let Some(maybe_maps) = reexports.get(&extended_crate_name) {
+                if let Some((prefix_map, fn_map, adt_map)) = maybe_maps {
+                    let kind = tcx.def_kind(def_id);
 
-            // If we did not return in the two branches above, we check whether we need to replace
-            //the prefix of the path of some other module
-            if let Some((maybe_prefix, replacement)) =
-                prefix_map.range(..def_path_str.clone()).next_back()
-            {
-                if def_path_str.starts_with(maybe_prefix) {
-                    //println!(
-                    //    "Found Mod {} - prefix {} replaced by {}",
-                    //    def_path_str, predecessor, replacement
-                    //);
+                    if let DefKind::Fn = kind {
+                        if let Some(replacement) = fn_map.get(&def_path_str) {
+                            trace!("Found Fn {} - replaced by {}", def_path_str, replacement);
+                            return replacement.clone();
+                        }
+                    }
 
-                    return def_path_str.replace(maybe_prefix, &replacement);
+                    if let DefKind::Struct | DefKind::Enum | DefKind::Trait = kind {
+                        if let Some(replacement) = adt_map.get(&def_path_str) {
+                            trace!("Found Adt {} - replaced by {}", def_path_str, replacement);
+                            return replacement.clone();
+                        }
+                    }
+
+                    // If we did not return in the two branches above, we check whether we need to replace
+                    //the prefix of the path of some other module
+                    if let Some((maybe_prefix, replacement)) =
+                        prefix_map.range(..def_path_str.clone()).next_back()
+                    {
+                        if def_path_str.starts_with(maybe_prefix) {
+                            trace!(
+                                "Found Mod {} - prefix {} replaced by {}",
+                                def_path_str,
+                                maybe_prefix,
+                                replacement
+                            );
+
+                            return def_path_str.replace(maybe_prefix, &replacement);
+                        }
+                    }
                 }
             }
         }
     }
 
     def_path_str
+}
+
+fn load_exported_symbols(
+    path: PathBuf,
+) -> Option<(
+    BTreeMap<String, String>,
+    HashMap<String, String>,
+    HashMap<String, String>,
+)> {
+    let mut prefix_map = BTreeMap::new();
+    let mut fn_map = HashMap::new();
+    let mut adt_map = HashMap::new();
+
+    read_to_string(path.as_path())
+        .ok()?
+        .split("\n")
+        .map(|s| s.to_string())
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            line.split_once(" | ")
+                .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
+                .unwrap()
+        })
+        .into_iter()
+        .for_each(|(s1, s2)| {
+            if s1.ends_with("::") {
+                if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
+                    error!("{} overwritten by {}", x, s2.clone());
+                }
+            } else {
+                if s1.ends_with("!adt") {
+                    // If this is an Adt, insert in both adt_map and prefix_map
+                    // Because either the Adt may be used (directly) or its associated functions (via prefix)
+                    let s1 = s1.strip_suffix("!adt").unwrap().to_string();
+
+                    if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
+                        error!("{} overwritten by {}", x, s2.clone());
+                    }
+                    if let Some(x) = adt_map.insert(s1.clone(), s2.clone()) {
+                        error!("{} overwritten by {}", x, s2.clone());
+                    }
+                } else {
+                    if let Some(x) = fn_map.insert(s1.clone(), s2.clone()) {
+                        error!("{} overwritten by {}", x, s2.clone());
+                    }
+                }
+            }
+        });
+    Some((prefix_map, fn_map, adt_map))
 }
 
 pub(crate) fn exported_name<'tcx>(
