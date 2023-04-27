@@ -125,6 +125,7 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
 class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
     name = Column(String, nullable=False)
     duration = Column(Float)
+    crashed = Column(Boolean)
     total_count = Column(Integer)
     passed_count = Column(Integer)
     failed_count = Column(Integer)
@@ -142,6 +143,7 @@ class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
         return cls(
             name=suite.name,
             duration=suite.duration,
+            crashed=suite.crashed,
             cases=[DBTestCase.from_domain(case) for case in suite.cases],
             total_count=suite.total_count,
             passed_count=suite.passed_count,
@@ -155,6 +157,7 @@ class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
         return TestSuite(
             name=self.name,
             duration=self.duration,
+            crashed=self.crashed,
             cases=[c.to_domain() for c in self.cases],
             total_count=self.total_count,
             passed_count=self.passed_count,

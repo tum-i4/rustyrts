@@ -25,11 +25,11 @@ class CargoTestTestReportLoader(TestReportLoader):
     def load(self) -> list[TestSuite]:
 
         names = re.findall(r"^ {5}Running (.*) ", self.input, re.MULTILINE)
-        all_test_events = [json.loads(line) for line in self.input.splitlines() if line.startswith("{") and line.endswith("}")]
+        all_test_events = [json.loads(line) for line in self.input.splitlines() if
+                           line.startswith("{") and line.endswith("}")]
         all_test_events = [event for event in all_test_events if
                            "type" in event
-                           and (event["type"] == "suite" or event["type"] == "test")
-                           and event["event"] != "started"]
+                           and (event["type"] == "suite" or (event["type"] == "test" and event["event"] != "started"))]
         if not self.load_ignored:
             all_test_events = [event for event in all_test_events if event["event"] != "ignored"]
 
@@ -40,13 +40,32 @@ class CargoTestTestReportLoader(TestReportLoader):
 
         event = next(all_tests_iter, None)
         while event is not None:
+            suite_dict = {"passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.0}
             suite_events = list()
+
+            if event is not None and event["event"] == "started":
+                event = next(all_tests_iter, None)
+
             while event is not None and event["type"] != "suite":
                 # take until started event
                 suite_events.append(event)
+
+                if "exec_time" in event:
+                    suite_dict["exec_time"] += event["exec_time"]
+                if "event" in event:
+                    if event["event"] == "ok":
+                        suite_dict["passed"] += 1
+                    if event["event"] == "failed":
+                        suite_dict["failed"] += 1
+
                 event = next(all_tests_iter, None)
 
-            suite_dict = event
+            if event is not None and event["event"] != "started":
+                # The test suite did not crash
+                suite_dict = event
+            else:
+                suite_dict["crashed"] = True
+
             case_dicts = suite_events
 
             name = names_iter.__next__()
@@ -69,4 +88,3 @@ class CargoTestTestReportLoader(TestReportLoader):
             event = next(all_tests_iter, None)
 
         return test_suites
-

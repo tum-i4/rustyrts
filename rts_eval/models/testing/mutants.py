@@ -23,6 +23,7 @@ class MutantsTestSuite:
             name: str,
             duration: float,
             cases: List["MutantsTestCase"],
+            crashed: bool = False,
             total_count: Optional[int] = None,
             passed_count: Optional[int] = None,
             failed_count: Optional[int] = None,
@@ -36,6 +37,7 @@ class MutantsTestSuite:
 
         :param name: Unique identifier for test suite (e.g. the precise class name including the package)
         :param duration: Duration of suite execution in seconds
+        :param crashed: Whether the suite has terminated with a segfault or not
         :param cases: List of test cases contained in suite
         :param total_count: Count of test cases
         :param passed_count: Count of passes
@@ -48,6 +50,7 @@ class MutantsTestSuite:
         self.name = name
         self.duration = duration
         self.cases = cases
+        self.crashed = crashed
         self._total_count = total_count
         self._passed_count = passed_count
         self._failed_count = failed_count
@@ -128,6 +131,7 @@ class MutantsTestSuite:
                 if "cases" in test_suite
                 else []
             ),
+            crashed=test_suite["crashed"] if "crashed" in test_suite else False,
             total_count=(
                 test_suite["test_count"] if "_total_count" in test_suite else len(test_suite["cases"])
             ),
@@ -163,6 +167,7 @@ class MutantsTestSuite:
         return cls(name=o.name,
                    duration=o.duration,
                    cases=[MutantsTestCase.from_test_case(case) for case in o.cases],
+                   crashed=o.crashed,
                    total_count=o.total_count,
                    passed_count=o.passed_count,
                    failed_count=o.failed_count,

@@ -33,23 +33,25 @@ class TestSuite:
     """
 
     def __init__(
-        self,
-        name: str,
-        duration: float,
-        cases: List["TestCase"],
-        total_count: Optional[int] = None,
-        passed_count: Optional[int] = None,
-        failed_count: Optional[int] = None,
-        ignored_count: Optional[int] = None,
-        measured_count: Optional[int] = None,
-        filtered_out_count: Optional[int] = None,
-        meta_data: Optional[str] = None
-   ):
+            self,
+            name: str,
+            duration: float,
+            cases: List["TestCase"],
+            crashed: bool = False,
+            total_count: Optional[int] = None,
+            passed_count: Optional[int] = None,
+            failed_count: Optional[int] = None,
+            ignored_count: Optional[int] = None,
+            measured_count: Optional[int] = None,
+            filtered_out_count: Optional[int] = None,
+            meta_data: Optional[str] = None
+    ):
         """
         Constructor for test suites
 
         :param name: Unique identifier for test suite (e.g. the precise class name including the package)
         :param duration: Duration of suite execution in seconds
+        :param crashed: Whether the suite has terminated with a segfault or not
         :param cases: List of test cases contained in suite
         :param total_count: Count of test cases
         :param passed_count: Count of passes
@@ -62,6 +64,7 @@ class TestSuite:
         self.name = name
         self.duration = duration
         self.cases = cases
+        self.crashed = crashed
         self._total_count = total_count
         self._passed_count = passed_count
         self._failed_count = failed_count
@@ -142,6 +145,7 @@ class TestSuite:
                 if "cases" in test_suite
                 else []
             ),
+            crashed=test_suite["crashed"] if "crashed" in test_suite else False,
             total_count=(
                 test_suite["test_count"] if "_total_count" in test_suite else len(test_suite["cases"])
             ),
@@ -186,7 +190,7 @@ class TestCase:
             status: TestStatus = TestStatus.UNDEFINED,
             duration: float = 0.0,
             stdout: Optional[str] = None,
-   ):
+    ):
         """
         Constructor for test cases
 
@@ -253,7 +257,7 @@ class TestReport:
             commit: Commit = None,
             log: Optional[str] = None,
             has_failed: Optional[bool] = None,
-   ):
+    ):
         """
         Constructor for test reports
 
@@ -280,4 +284,3 @@ class TestReport:
 
     def __eq__(self, o: "TestReport") -> bool:
         return self.name == o.name and self.commit_str == o.commit_str
-
