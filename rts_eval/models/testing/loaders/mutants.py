@@ -62,7 +62,10 @@ class CargoMutantsTestReportLoader(TestReportLoader):
 
             if test_log:
                 test_loader = CargoTestTestReportLoader(test_log)
-                suites = [MutantsTestSuite.from_test_suite(suite) for suite in test_loader.load()]
+                try:
+                    suites = [MutantsTestSuite.from_test_suite(suite) for suite in test_loader.load()]
+                except:
+                    test_log = "Failed to parse testsuites\n" + test_log
 
             mutant = Mutant(descr=descr,
                             diff=diff,
