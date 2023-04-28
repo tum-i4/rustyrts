@@ -54,9 +54,9 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
     has_failed = Column(Boolean)
     missed = Column(Integer)
     caught = Column(Integer)
-    timeout = Column(Integer)
     unviable = Column(Integer)
-    errored = Column(Integer)
+    timeout = Column(Integer)
+    failed = Column(Integer)
 
     __table_args__ = tuple(
         [UniqueConstraint("name", "commit_str", name="_mutants_name_revision_uc")]
@@ -120,9 +120,9 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
             has_failed=report.has_failed,
             missed=report.missed,
             caught=report.caught,
-            timeout=report.timeout,
             unviable=report.unviable,
-            errored=report.errored,
+            timeout=report.timeout,
+            failed=report.failed,
         )
 
     def to_domain(self) -> MutantsReport:
@@ -136,9 +136,9 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
             has_failed=self.has_failed,
             missed=self.missed,
             caught=self.caught,
-            timeout=self.timeout,
             unviable=self.unviable,
-            errored=self.errored,
+            timeout=self.timeout,
+            failed=self.failed,
         )
 
 

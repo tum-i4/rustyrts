@@ -8,6 +8,8 @@ from ..scm.base import Commit
 class MutantsResult(str, Enum):
     SUCCESS = "Success"
     FAILURE = "Failure"
+    TIMEOUT = "Timeout"
+    ERROR = "Error"
 
 
 class MutantsTestSuite:
@@ -307,9 +309,9 @@ class MutantsReport:
             has_failed: Optional[bool] = None,
             missed: Optional[int] = None,
             caught: Optional[int] = None,
-            timeout: Optional[int] = None,
             unviable: Optional[int] = None,
-            errored: Optional[int] = None,
+            timeout: Optional[int] = None,
+            failed: Optional[int] = None,
     ):
         """
         Constructor for test reports
@@ -330,9 +332,9 @@ class MutantsReport:
         self.has_failed = has_failed
         self.missed = missed
         self.caught = caught
-        self.timeout = timeout
         self.unviable = unviable
-        self.errored = errored
+        self.timeout = timeout
+        self.failed = failed
 
     def __eq__(self, o: "MutantsReport") -> bool:
         return self.name == o.name and self.commit_str == o.commit_str

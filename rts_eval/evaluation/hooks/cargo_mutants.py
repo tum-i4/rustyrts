@@ -96,7 +96,7 @@ class CargoMutantsHook(Hook):
             # Parse result
 
             result_matcher = re.search(
-                "^\d* mutants tested in .*:(?: (\d*) missed,?)?(?: (\d*) caught,?)?(?: (\d*) unviable,?)?(?: (\d*) timeouts,?)?(?: (\d*) failed,?)?(?: (\d*) errored,?)?",
+                "^\d* mutants tested in .*:(?: (\d*) missed,?)?(?: (\d*) caught,?)?(?: (\d*) unviable,?)?(?: (\d*) timeouts,?)?(?: (\d*) failed,?)?",
                 proc.output, re.M)
 
             mutants = []
@@ -108,18 +108,17 @@ class CargoMutantsHook(Hook):
 
             missed = None
             caught = None
-            timeout = None
             unviable = None
-            errored = None
+            timeout = None
+            failed = None
 
             if result_matcher is not None:
                 missed = int(result_matcher.group(1)) if result_matcher.group(1) else 0
                 caught = int(result_matcher.group(2)) if result_matcher.group(2) else 0
-                timeout = int(result_matcher.group(3)) if result_matcher.group(3) else 0
-                unviable = int(result_matcher.group(4)) if result_matcher.group(4) else 0
-                errored = int(result_matcher.group(5)) if result_matcher.group(5) else 0
+                unviable = int(result_matcher.group(4)) if result_matcher.group(3) else 0
+                timeout = int(result_matcher.group(3)) if result_matcher.group(4) else 0
+                failed = int(result_matcher.group(5)) if result_matcher.group(5) else 0
 
-            # create test report object
             test_report: MutantsReport = MutantsReport(
                 name="mutants " + self.mode,
                 duration=proc.end_to_end_time,
@@ -132,8 +131,9 @@ class CargoMutantsHook(Hook):
                 caught=caught,
                 timeout=timeout,
                 unviable=unviable,
-                errored=errored
+                failed=failed
             )
+            # create test report object
 
             DBMutantsReport.create_or_update(report=test_report, session=session)
 
