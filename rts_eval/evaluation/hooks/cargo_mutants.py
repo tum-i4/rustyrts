@@ -115,8 +115,8 @@ class CargoMutantsHook(Hook):
             if result_matcher is not None:
                 missed = int(result_matcher.group(1)) if result_matcher.group(1) else 0
                 caught = int(result_matcher.group(2)) if result_matcher.group(2) else 0
-                unviable = int(result_matcher.group(4)) if result_matcher.group(3) else 0
-                timeout = int(result_matcher.group(3)) if result_matcher.group(4) else 0
+                unviable = int(result_matcher.group(3)) if result_matcher.group(3) else 0
+                timeout = int(result_matcher.group(4)) if result_matcher.group(4) else 0
                 failed = int(result_matcher.group(5)) if result_matcher.group(5) else 0
 
             test_report: MutantsReport = MutantsReport(
