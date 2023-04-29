@@ -89,7 +89,7 @@ class CargoMutantsHook(Hook):
             proc: SubprocessContainer = SubprocessContainer(
                 command=self.mutants_command(), output_filepath=cache_file_path, env=self.env()
             )
-            proc.execute(capture_output=True, shell=True, timeout=10000.0)
+            proc.execute(capture_output=True, shell=True)
             has_failed |= not (proc.exit_code == 0 or proc.exit_code == 2 or proc.exit_code == 3)
 
             # ******************************************************************************************************
