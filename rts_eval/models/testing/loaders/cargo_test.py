@@ -5,6 +5,7 @@ from json import JSONDecodeError
 from ..base import TestSuite
 from ..loader import TestReportLoader
 
+IGNORE_TEST_EVENTS = ["started", "timeout"]
 
 class CargoTestTestReportLoader(TestReportLoader):
 
@@ -28,8 +29,9 @@ class CargoTestTestReportLoader(TestReportLoader):
         all_test_events = [json.loads(line) for line in self.input.splitlines() if
                            line.startswith("{") and line.endswith("}")]
         all_test_events = [event for event in all_test_events if
-                           "type" in event
-                           and (event["type"] == "suite" or (event["type"] == "test" and event["event"] != "started"))]
+                           ("type" in event and "event" in event)
+                           and (event["type"] == "suite" or (event["type"] == "test" and not any(
+                               event["event"] == ignored for ignored in IGNORE_TEST_EVENTS)))]
         if not self.load_ignored:
             all_test_events = [event for event in all_test_events if event["event"] != "ignored"]
 
