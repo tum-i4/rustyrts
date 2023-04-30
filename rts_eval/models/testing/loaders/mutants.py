@@ -53,12 +53,12 @@ class CargoMutantsTestReportLoader(TestReportLoader):
             if len(elements) > (2 + offset):
                 check_result = re.search(r"^cargo result: (.*) in ", elements[2 + offset], flags=re.MULTILINE).group(1)
                 check_duration = re.search(r"^cargo result: .* in (.*)s", elements[2 + offset], flags=re.MULTILINE).group(1)
-                check_log = elements[1 + offset]
+                check_log = elements[1 + offset].replace("\x00", "")
 
             if len(elements) > (4 + offset):
                 test_result = re.search(r"^cargo result: (.*) in ", elements[4 + offset], flags=re.MULTILINE).group(1)
                 test_duration = re.search(r"^cargo result: .* in (.*)s", elements[4 + offset], flags=re.MULTILINE).group(1)
-                test_log = elements[3 + offset]
+                test_log = elements[3 + offset].replace("\x00", "")
 
             if test_log:
                 test_loader = CargoTestTestReportLoader(test_log)

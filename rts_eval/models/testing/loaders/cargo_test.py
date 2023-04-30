@@ -68,21 +68,24 @@ class CargoTestTestReportLoader(TestReportLoader):
             else:
                 suite_dict["crashed"] = True
 
-            case_dicts = suite_events
+            # remove "\x00" if present
+            for suite_event in suite_events:
+                if "stdout" in suite_event:
+                    suite_event["stdout"] = suite_event["stdout"].replace("\x00", "")
 
             name = names_iter.__next__()
             is_unittest = name.startswith("unittests ")
             name = name.removeprefix("unittests ")
 
             if is_unittest:
-                for case in case_dicts:
+                for case in suite_events:
                     case["target"] = "UNIT"
             else:
-                for case in case_dicts:
+                for case in suite_events:
                     case["target"] = "INTEGRATION"
 
             suite_dict["name"] = name
-            suite_dict["cases"] = case_dicts
+            suite_dict["cases"] = suite_events
 
             suite = TestSuite.from_dict(suite_dict)
             test_suites.append(suite)
