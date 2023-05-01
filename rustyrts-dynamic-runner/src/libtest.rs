@@ -912,6 +912,8 @@ impl<T: Write> JsonFormatter<T> {
         assert!(!s.contains('\n'));
 
         self.out.write_all(s.as_ref())?;
+        self.out.flush()?;
+
         self.out.write_all(b"\n")?;
         self.out.flush()
     }
