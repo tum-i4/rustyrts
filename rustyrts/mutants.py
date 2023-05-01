@@ -81,8 +81,8 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/rust-openssl"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["e96addaa919e1f91c9dc143a9b13b218835f2356", "d85e2a293778d2a01d715060e7516a8828b0a5ac",
-           "a0b56c437803a08413755928040a0970a93a7b83"]
+commits = ["e96addaa919e1f91c9dc143a9b13b218835f2356", "e76289f6addb9e5e11f640c590ae13a0b87dc557",
+           "c2f6dcb6e3969fcc767290be6be925aa0ef1cb9a"]
 
 walk(path, branch=branch, commits=commits)
 
