@@ -77,6 +77,7 @@ walk(path, branch=branch, commits=commits)
 ## rust-openssl
 import os
 from walkers.mutants_rts_walker import walk
+from pathlib import Path
 
 path = "../projects/mutants/rust-openssl"
 path = os.path.abspath(path)
@@ -84,7 +85,28 @@ branch = "master"
 commits = ["e96addaa919e1f91c9dc143a9b13b218835f2356", "e76289f6addb9e5e11f640c590ae13a0b87dc557",
            "c2f6dcb6e3969fcc767290be6be925aa0ef1cb9a"]
 
-walk(path, branch=branch, commits=commits)
+
+# Using dynamic rts, this test just keeps failing on the remote machine, while succeeding locally
+# Apparently, the reason has something to do with the operating system and not RustyRTSS itself
+# This is why, we just ignore these tests
+def replace_problematic_tests():
+    project_dir = Path(path)
+
+    problematic_tests_indented = ["from_nid"]
+    problematic_tests = ["basic", "dynamic_data", "static_data"]
+
+    for file in project_dir.rglob("*.rs"):
+        input = file.read_text()
+        for test in problematic_tests:
+            sig = "#[test]\nfn " +test +  "() {"
+            input = input.replace(sig,  "#[ignore]\n" + sig)
+        for test in problematic_tests_indented:
+            sig = "    #[test]\n    fn " + test + "() {"
+            input = input.replace(sig, "    #[ignore]\n" + sig)
+        file.write_text(input)
+
+
+walk(path, branch=branch, commits=commits, pre_hook=replace_problematic_tests)
 
 # %%
 ## rustls
