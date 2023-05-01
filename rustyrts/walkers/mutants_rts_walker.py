@@ -1,7 +1,7 @@
 import logging
 import shutil
 import tempfile
-from typing import Optional
+from typing import Optional, Callable
 
 from git import Repo
 
@@ -18,7 +18,9 @@ db_url = "postgresql://postgres:rustyrts@localhost:5432/mutants"
 
 def walk(path, branch="main", logging_level="DEBUG", commits=None,
          env_vars: Optional[dict[str]] = None,
-         options: Optional[list[str]] = None):
+         options: Optional[list[str]] = None         ,
+         pre_hook: Optional[Callable] = None
+         ):
     # set logging level
     numeric_level = getattr(logging, logging_level.upper(), None)
     if not isinstance(numeric_level, int):
@@ -72,7 +74,8 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                              mode=RustyMutantsRTSMode.TEST,
                              env_vars=env_vars,
                              options=options,
-                             connection=connection
+                             connection=connection,
+                             pre_hook=pre_hook
                              ),
 
             CargoMutantsHook(repository=repository,
@@ -80,7 +83,8 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                              mode=RustyMutantsRTSMode.DYNAMIC,
                              env_vars=env_vars,
                              options=options,
-                             connection=connection
+                             connection=connection,
+                             pre_hook=pre_hook
                              ),
 
             CargoMutantsHook(repository=repository,
@@ -88,7 +92,8 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                              mode=RustyMutantsRTSMode.STATIC,
                              env_vars=env_vars,
                              options=options,
-                             connection=connection
+                             connection=connection,
+                             pre_hook=pre_hook
                              )
         ],
     )

@@ -2,7 +2,7 @@ import os
 import re
 from enum import Enum
 from time import time
-from typing import Optional, Dict
+from typing import Optional, Dict, Callable
 import tempfile
 
 from ..base import Hook
@@ -33,6 +33,7 @@ class CargoMutantsHook(Hook):
             options=None,
             test_options=None,
             output_path: Optional[str] = None,
+            pre_hook: Optional[Callable] = None
     ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
@@ -44,6 +45,7 @@ class CargoMutantsHook(Hook):
         self.options = options if options else []
         self.test_options = test_options if test_options else []
         self.connection = connection
+        self.pre_hook = pre_hook
 
     def mutants_command(self):
         return "cargo mutants-rts {0} {1} -- {2}".format(
@@ -78,6 +80,10 @@ class CargoMutantsHook(Hook):
             # checkout actual commit
             self.git_client.git_repo.git.checkout(commit.commit_str, force=True)
             self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
+
+            # run pre_hook if present
+            if self.pre_hook:
+                self.pre_hook()
 
             # prepare cache dir/file
             cache_file = "run_{}.log".format(
