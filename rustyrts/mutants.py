@@ -61,19 +61,6 @@ def replace_u0():
 walk(path, branch=branch, commits=commits, pre_hook=replace_u0)
 
 # %%
-## Rocket
-import os
-from walkers.mutants_rts_walker import walk
-
-path = "../projects/mutants/Rocket"
-path = os.path.abspath(path)
-branch = "master"
-commits = ["c028d63e5ba275927424397fe9d67cfebdc138ec", "a4dcb0cf4cfd28671bbc8f101a99dfa1a74668b9",
-           "cdacda08964f25efb6b7c3d89eaa2cb08de68c24"]
-
-walk(path, branch=branch, commits=commits)
-
-# %%
 ## rust-brotli
 import os
 from walkers.mutants_rts_walker import walk
