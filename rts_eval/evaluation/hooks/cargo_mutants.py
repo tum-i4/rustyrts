@@ -17,8 +17,8 @@ from ...util.os.exec import SubprocessContainer
 
 class RustyMutantsRTSMode(str, Enum):
     TEST = ""
-    DYNAMIC = "dynamic"
-    STATIC = "static"
+    DYNAMIC = " dynamic"
+    STATIC = " static"
 
 
 class CargoMutantsHook(Hook):
@@ -126,7 +126,7 @@ class CargoMutantsHook(Hook):
                 failed = int(result_matcher.group(5)) if result_matcher.group(5) else 0
 
             test_report: MutantsReport = MutantsReport(
-                name="mutants " + self.mode,
+                name="mutants" + self.mode,
                 duration=proc.end_to_end_time,
                 mutants=mutants,
                 commit=commit,

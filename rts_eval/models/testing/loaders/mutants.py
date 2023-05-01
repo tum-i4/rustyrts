@@ -35,7 +35,7 @@ class CargoMutantsTestReportLoader(TestReportLoader):
 
             is_baseline = file == "baseline.log"
 
-            descr = elements[0] if len(elements) > 0 else None
+            descr = elements[0].splitlines()[0] if len(elements) > 0 else None
             diff = None
             check_log = None
             check_result = None
