@@ -24,7 +24,7 @@ class CargoHook(Hook, ABC):
             connection: DBConnection,
             report_name: Optional[str] = None,
             output_path: Optional[str] = None,
-   ):
+    ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
             self.cache_dir = os.path.join(self.output_path, ".cargo-hook")
@@ -187,5 +187,8 @@ class CargoHook(Hook, ABC):
 
             # return to previous directory
             os.chdir(tmp_path)
+
+        self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
+        self.git_client.clean(rm_dirs=True)
 
         return not has_failed

@@ -149,6 +149,7 @@ class CargoMutantsHook(Hook):
             # return to previous directory
             os.chdir(tmp_path)
 
+        self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
         self.git_client.clean(rm_dirs=True)
 
         return not has_failed
