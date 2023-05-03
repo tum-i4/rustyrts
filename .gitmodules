@@ -22,12 +22,6 @@
 [submodule "projects/mutants/tabled"]
 	path = projects/mutants/tabled
 	url = https://github.com/zhiburt/tabled.git
-[submodule "projects/mutants/tonic"]
-	path = projects/mutants/tonic
-	url = https://github.com/hyperium/tonic.git
 [submodule "projects/mutants/tracing"]
 	path = projects/mutants/tracing
 	url = https://github.com/tokio-rs/tracing
-[submodule "projects/mutants/trust-dns"]
-	path = projects/mutants/trust-dns
-	url = https://github.com/bluejekyll/trust-dns

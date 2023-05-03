@@ -98,8 +98,8 @@ def replace_problematic_tests():
     for file in project_dir.rglob("*.rs"):
         input = file.read_text()
         for test in problematic_tests:
-            sig = "#[test]\nfn " +test +  "() {"
-            input = input.replace(sig,  "#[ignore]\n" + sig)
+            sig = "#[test]\nfn " + test + "() {"
+            input = input.replace(sig, "#[ignore]\n" + sig)
         for test in problematic_tests_indented:
             sig = "    #[test]\n    fn " + test + "() {"
             input = input.replace(sig, "    #[ignore]\n" + sig)
@@ -116,8 +116,8 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/rustls"
 path = os.path.abspath(path)
 branch = "main"
-commits = ["45197b807cf0699c842fcb85eb8eca555c74cc04", "bc754a4fbb586beb7b1dfce38ab880fd90c0e422",
-           "24a5c11d666ddb05976877034a048e2dcaa8b80d"]
+commits = ["45197b807cf0699c842fcb85eb8eca555c74cc04", "9b5bb50d9df22a2d2155a7bf35155a24824c40a6",
+           "a863fc554aca02533a422dc228bcc938d20a721f"]
 
 walk(path, branch=branch, commits=commits)
 
@@ -129,21 +129,8 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/tabled"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["cd2253e4b455431fa46e9776bd89297afc9988b8", "da08635a51bb3d5b7c42d676cb0d0fabc0af124e",
-           "cc4a110d5963b7eede0e634c83c44d9e8b8250e4"]
-
-walk(path, branch=branch, commits=commits)
-
-# %%
-## tonic
-import os
-from walkers.mutants_rts_walker import walk
-
-path = "../projects/mutants/tonic"
-path = os.path.abspath(path)
-branch = "master"
-commits = ["3a497f2ca2c2152cc0cfffc0c18365cd2aa3afa9", "ec359ba35fe91cd3d6b8ad2596127cc26aadcef5",
-           "e87db5280e93ae4ebd14ec272cd17b6dbf9699fb"]
+commits = ["cc4a110d5963b7eede0e634c83c44d9e8b8250e4", "d055382d4865622d94800cfd5fd1ef2784e1b14b",
+           "1dadeff6eca6f1ba80415de4ffdd6728117da663"]
 
 walk(path, branch=branch, commits=commits)
 
@@ -156,19 +143,6 @@ path = "../projects/mutants/tracing"
 path = os.path.abspath(path)
 branch = "master"
 commits = ["4f1e46306d4d364fcc69691fdb29a676c7105f72", "df4ba17d857db8ba1b553f7b293ac8ba967a42f8",
-           "748a1bf06efe58eaaccdcd915d7337f0b775f827"]
-
-walk(path, branch=branch, commits=commits)
-
-# %%
-## trust-dns
-import os
-from walkers.mutants_rts_walker import walk
-
-path = "../projects/mutants/trust-dns"
-path = os.path.abspath(path)
-branch = "main"
-commits = ["fc58a4fe20da679727a3d9137a7ce833faa60dd0", "931ff130b87c4f946d36a1ac55eb9fe15e54c57c",
-           "66eb9daa7d9a659f18c370c1c9fcff4e0997f9ad"]
+           "d9e8eceafda5d4f8c36f556bd9c468edb79b8dd3"]
 
 walk(path, branch=branch, commits=commits)
