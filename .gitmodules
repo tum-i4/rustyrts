@@ -25,3 +25,6 @@
 [submodule "projects/mutants/tracing"]
 	path = projects/mutants/tracing
 	url = https://github.com/tokio-rs/tracing
+[submodule "projects/mutants/trust-dns"]
+	path = projects/mutants/trust-dns
+	url = https://github.com/bluejekyll/trust-dns
