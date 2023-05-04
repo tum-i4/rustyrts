@@ -188,24 +188,8 @@ fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id:
                     | DefKind::Trait
                     | DefKind::Ctor(..) = kind
                     {
-                        let (exported_name, local_name) = match kind {
-                            DefKind::Mod => {
-                                let local_name = format!(
-                                    "{}::{}",
-                                    tcx.crate_name(def_id.krate),
-                                    tcx.def_path_str(def_id)
-                                );
-                                let exported_name =
-                                    exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, local_name)
-                            }
-                            _ => {
-                                let local_name = def_id_name(tcx, def_id);
-                                let exported_name =
-                                    exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, local_name)
-                            }
-                        };
+                        let local_name = def_id_name(tcx, def_id);
+                        let exported_name = exported_name(tcx, *mod_def_id, mod_child.ident.name);
 
                         if !exported_name.ends_with("_") {
                             trace!(

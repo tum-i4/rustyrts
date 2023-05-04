@@ -1,10 +1,3 @@
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs::read_to_string,
-    path::PathBuf,
-    sync::Mutex,
-};
-
 use lazy_static::lazy_static;
 use log::{debug, error, trace};
 use once_cell::sync::OnceCell;
@@ -15,8 +8,17 @@ use rustc_hir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Symbol;
+use std::{
+    collections::{BTreeMap, HashMap},
+    fs::read_to_string,
+    path::PathBuf,
+    sync::Mutex,
+};
 
-use crate::{fs_utils::get_reexports_path, static_rts::callback::PATH_BUF};
+use crate::{
+    fs_utils::get_reexports_path, printer::custom_def_path_str_with_substs,
+    static_rts::callback::PATH_BUF,
+};
 
 pub(crate) static REEXPORTS: OnceCell<
     Mutex<
@@ -44,9 +46,8 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     } else {
         let cstore = tcx.cstore_untracked();
 
-        // 1) We introduce a ! here, to indicate that the element after it has to be deleted
         format!(
-            "{}[{:04x}]::!",
+            "{}[{:04x}]::",
             cstore.crate_name(def_id.krate),
             cstore.stable_crate_id(def_id.krate).to_u64() >> 8 * 6
         )
@@ -55,7 +56,7 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     let mut def_path_str = format!(
         "{}{}",
         crate_name,
-        tcx.def_path_str_with_substs(def_id, substs)
+        custom_def_path_str_with_substs(tcx, def_id, substs)
     );
 
     // This is a hack
@@ -67,26 +68,6 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     }
     def_path_str = REGEX_CRATE_PREFIX
         .replace_all(&def_path_str, "$1$3")
-        .to_string();
-
-    // This is a hack
-    // See 1) above
-    // If this is a non-local def_id:
-    //      We are removing the part of the path that corresponds to the alias name of the extern crate
-    //      In this extern crate itself, this part of the path is not present
-
-    lazy_static! {
-        static ref REGEX_LOCAL_ALIAS_1: Regex = Regex::new(r"(!)<").unwrap();
-    }
-    def_path_str = REGEX_LOCAL_ALIAS_1
-        .replace_all(&def_path_str, "<")
-        .to_string();
-
-    lazy_static! {
-        static ref REGEX_LOCAL_ALIAS_2: Regex = Regex::new(r"(![^:]*?::)").unwrap();
-    }
-    def_path_str = REGEX_LOCAL_ALIAS_2
-        .replace_all(&def_path_str, "")
         .to_string();
 
     // Occasionally, there is a newline which we do not want to keep

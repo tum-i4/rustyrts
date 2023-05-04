@@ -1,6 +1,9 @@
 #![feature(rustc_private)]
 #![allow(mutable_transmutes)]
 
+// required for resolving names
+extern crate rustc_resolve;
+
 // required for calling the compiler and providing callbacks
 extern crate rustc_driver;
 extern crate rustc_interface;
@@ -40,4 +43,5 @@ pub mod constants;
 pub mod format;
 pub mod fs_utils;
 pub mod names;
+pub mod printer;
 pub mod utils;
