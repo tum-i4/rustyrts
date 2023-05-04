@@ -43,5 +43,5 @@ pub mod constants;
 pub mod format;
 pub mod fs_utils;
 pub mod names;
-pub mod printer;
+
 pub mod utils;

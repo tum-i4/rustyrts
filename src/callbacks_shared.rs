@@ -1,20 +1,14 @@
-use itertools::Itertools;
-use log::{debug, trace};
-use rustc_hir::{
-    def::{DefKind, Res},
-    def_id::LOCAL_CRATE,
-    ConstContext,
-};
-use rustc_middle::ty::{TyCtxt, Visibility};
-use std::{fs::read, path::PathBuf};
+use log::debug;
+use rustc_hir::{def_id::LOCAL_CRATE, ConstContext};
+use rustc_middle::ty::TyCtxt;
+use std::fs::read;
 
 use crate::{
     checksums::Checksums,
     fs_utils::{
-        get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_reexports_path,
-        get_test_path, write_to_file,
+        get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_test_path, write_to_file,
     },
-    names::{def_id_name, exported_name},
+    names::def_id_name,
     static_rts::callback::PATH_BUF,
 };
 
@@ -164,65 +158,4 @@ pub(crate) fn run_analysis_shared<'tcx>(
     );
 
     debug!("Exported changes for {}", crate_name);
-
-    //##################################################################################################################
-    // 5. Write a mapping of reexports to file for subsequent crates
-
-    process_reexports(tcx, PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
-}
-
-fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id: u64) {
-    let resolutions = tcx.resolutions(());
-
-    let reexport_map = &resolutions.reexport_map;
-    let mut mapping = vec![];
-
-    for (mod_def_id, reexports) in reexport_map {
-        for mod_child in reexports {
-            if let Visibility::Public = mod_child.vis {
-                if let Res::Def(kind, def_id) = mod_child.res {
-                    if let DefKind::Mod
-                    | DefKind::Fn
-                    | DefKind::Struct
-                    | DefKind::Enum
-                    | DefKind::Trait
-                    | DefKind::Ctor(..) = kind
-                    {
-                        let local_name = def_id_name(tcx, def_id);
-                        let exported_name = exported_name(tcx, *mod_def_id, mod_child.ident.name);
-
-                        if !exported_name.ends_with("_") {
-                            trace!(
-                                "Found reexport: {} as {:?}",
-                                local_name,
-                                exported_name.clone()
-                            );
-
-                            match kind {
-                                DefKind::Fn | DefKind::Ctor(..) => {
-                                    mapping.push((exported_name, local_name));
-                                }
-                                DefKind::Struct | DefKind::Enum | DefKind::Trait => {
-                                    mapping.push((exported_name + "!adt", local_name));
-                                }
-                                _ => {
-                                    mapping.push((exported_name + "::", local_name + "::"));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    write_to_file(
-        mapping
-            .iter()
-            .map(|(l, e)| format!("{} | {}", l, e))
-            .join("\n"),
-        path_buf,
-        |path_buf| get_reexports_path(path_buf, crate_name, crate_id),
-        false,
-    );
 }

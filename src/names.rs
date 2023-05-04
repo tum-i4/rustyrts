@@ -1,23 +1,16 @@
 use lazy_static::lazy_static;
-use log::{debug, error, trace};
 use once_cell::sync::OnceCell;
 use regex::Regex;
 use rustc_hir::{
-    def::DefKind,
-    def_id::{DefId, LocalDefId, LOCAL_CRATE},
+    def_id::{DefId, LOCAL_CRATE},
+    definitions::DefPathData,
 };
-use rustc_middle::ty::TyCtxt;
-use rustc_span::Symbol;
+use rustc_middle::ty::print::Printer;
+use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
+use rustc_resolve::Namespace;
 use std::{
     collections::{BTreeMap, HashMap},
-    fs::read_to_string,
-    path::PathBuf,
     sync::Mutex,
-};
-
-use crate::{
-    fs_utils::get_reexports_path, printer::custom_def_path_str_with_substs,
-    static_rts::callback::PATH_BUF,
 };
 
 pub(crate) static REEXPORTS: OnceCell<
@@ -37,26 +30,27 @@ pub(crate) static REEXPORTS: OnceCell<
 pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     let substs = &[];
 
-    let crate_name = if def_id.is_local() {
+    let crate_path = if def_id.is_local() {
+        let crate_name = tcx.crate_name(LOCAL_CRATE);
+
         format!(
-            "{}[{:04x}]::",
-            tcx.crate_name(LOCAL_CRATE),
-            tcx.sess.local_stable_crate_id().to_u64() >> 8 * 6
+            "[{:04x}]::{}",
+            tcx.sess.local_stable_crate_id().to_u64() >> 8 * 6,
+            crate_name
         )
     } else {
         let cstore = tcx.cstore_untracked();
 
         format!(
-            "{}[{:04x}]::",
-            cstore.crate_name(def_id.krate),
+            "[{:04x}]",
             cstore.stable_crate_id(def_id.krate).to_u64() >> 8 * 6
         )
     };
 
     let mut def_path_str = format!(
-        "{}{}",
-        crate_name,
-        custom_def_path_str_with_substs(tcx, def_id, substs)
+        "{}::{}",
+        crate_path,
+        def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs)
     );
 
     // This is a hack
@@ -73,133 +67,39 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
 
-    if !def_id.is_local() {
-        let cstore = tcx.cstore_untracked();
-
-        let crate_name = format!("{}", cstore.crate_name(def_id.krate));
-        let crate_id = cstore.stable_crate_id(def_id.krate).to_u64();
-        let extended_crate_name = format!("{}[{:04x}]", crate_name, crate_id >> 8 * 6);
-
-        if let Some(mutex) = REEXPORTS.get() {
-            let mut reexports = mutex.lock().unwrap();
-
-            // Load exported symbols of this crate if not present
-            if !reexports.contains_key(&extended_crate_name) {
-                let path =
-                    get_reexports_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
-                let content = load_exported_symbols(path);
-
-                if let Some(_) = content {
-                    debug!("Loaded reexports of crate {}.", extended_crate_name);
-                }
-
-                reexports.insert(extended_crate_name.clone(), content);
-            }
-
-            // If this def_id is not local, we check whether it corresponds to a name reexported by another crate
-            // If this is the case, we replace the deviating part of the name by its counterpart in the other crate
-            if let Some(maybe_maps) = reexports.get(&extended_crate_name) {
-                if let Some((prefix_map, fn_map, adt_map)) = maybe_maps {
-                    let kind = tcx.def_kind(def_id);
-
-                    if let DefKind::Fn = kind {
-                        if let Some(replacement) = fn_map.get(&def_path_str) {
-                            trace!("Found Fn {} - replaced by {}", def_path_str, replacement);
-                            return replacement.clone();
-                        }
-                    }
-
-                    if let DefKind::Struct | DefKind::Enum | DefKind::Trait = kind {
-                        if let Some(replacement) = adt_map.get(&def_path_str) {
-                            trace!("Found Adt {} - replaced by {}", def_path_str, replacement);
-                            return replacement.clone();
-                        }
-                    }
-
-                    // If we did not return in the two branches above, we check whether we need to replace
-                    //the prefix of the path of some other module
-                    if let Some((maybe_prefix, replacement)) =
-                        prefix_map.range(..def_path_str.clone()).next_back()
-                    {
-                        if def_path_str.starts_with(maybe_prefix) {
-                            trace!(
-                                "Found Mod {} - prefix {} replaced by {}",
-                                def_path_str,
-                                maybe_prefix,
-                                replacement
-                            );
-
-                            return def_path_str.replace(maybe_prefix, &replacement);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     def_path_str
 }
 
-fn load_exported_symbols(
-    path: PathBuf,
-) -> Option<(
-    BTreeMap<String, String>,
-    HashMap<String, String>,
-    HashMap<String, String>,
-)> {
-    let mut prefix_map = BTreeMap::new();
-    let mut fn_map = HashMap::new();
-    let mut adt_map = HashMap::new();
-
-    read_to_string(path.as_path())
-        .ok()?
-        .split("\n")
-        .map(|s| s.to_string())
-        .filter(|line| !line.is_empty())
-        .map(|line| {
-            line.split_once(" | ")
-                .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
-                .unwrap()
-        })
-        .into_iter()
-        .for_each(|(s1, s2)| {
-            if s1.ends_with("::") {
-                if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
-                    error!("{} overwritten by {}", x, s2.clone());
-                }
-            } else {
-                if s1.ends_with("!adt") {
-                    // If this is an Adt, insert in both adt_map and prefix_map
-                    // Because either the Adt may be used (directly) or its associated functions (via prefix)
-                    let s1 = s1.strip_suffix("!adt").unwrap().to_string();
-
-                    if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                    if let Some(x) = adt_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                } else {
-                    if let Some(x) = fn_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                }
-            }
-        });
-    Some((prefix_map, fn_map, adt_map))
-}
-
-pub(crate) fn exported_name<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    mod_def_id: LocalDefId,
-    symbol: Symbol,
+pub fn def_path_str_with_substs_with_no_visible_path<'t>(
+    tcx: TyCtxt<'t>,
+    def_id: DefId,
+    substs: &'t [GenericArg<'t>],
 ) -> String {
-    let mut mod_name = def_id_name(tcx, mod_def_id.to_def_id());
+    let ns = guess_def_namespace(tcx, def_id);
 
-    if !mod_name.ends_with("::") {
-        mod_name += "::";
+    rustc_middle::ty::print::with_no_visible_paths!(
+        FmtPrinter::new(tcx, ns).print_def_path(def_id, substs)
+    )
+    .unwrap()
+    .into_buffer()
+}
+
+// Source: https://doc.rust-lang.org/stable/nightly-rustc/src/rustc_middle/ty/print/pretty.rs.html#1766
+// HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
+// (but also some things just print a `DefId` generally so maybe we need this?)
+fn guess_def_namespace(tcx: TyCtxt<'_>, def_id: DefId) -> Namespace {
+    match tcx.def_key(def_id).disambiguated_data.data {
+        DefPathData::TypeNs(..) | DefPathData::CrateRoot | DefPathData::ImplTrait => {
+            Namespace::TypeNS
+        }
+
+        DefPathData::ValueNs(..)
+        | DefPathData::AnonConst
+        | DefPathData::ClosureExpr
+        | DefPathData::Ctor => Namespace::ValueNS,
+
+        DefPathData::MacroNs(..) => Namespace::MacroNS,
+
+        _ => Namespace::TypeNS,
     }
-
-    let def_path_str = format!("{}{}", mod_name, symbol.as_str());
-    def_path_str
 }
