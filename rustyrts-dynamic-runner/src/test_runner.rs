@@ -153,6 +153,9 @@ fn execute_tests_unix(
     mut formatter: Box<dyn OutputFormatter + Send>,
     state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
+    use libc::close;
+    use std::{io::stderr, io::stdout, os::fd::AsRawFd};
+
     if n_workers > 1 {
         formatter.write_run_start(tests.len(), None).unwrap();
 
@@ -196,6 +199,12 @@ fn execute_tests_unix(
                         }
                         Fork::Child => {
                             drop(rx);
+
+                            unsafe {
+                                close(std::io::stdout().as_raw_fd());
+                                close(std::io::stderr().as_raw_fd());
+                            }
+
                             let completed_test = run_test(
                                 &test,
                                 opts.nocapture,
