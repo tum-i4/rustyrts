@@ -25,8 +25,15 @@ class CargoTestTestReportLoader(TestReportLoader):
 
     def load(self) -> list[TestSuite]:
 
+        # Some workarounds for weird bugs that should not happen in theory
+        self.input = self.input.replace("}{", "}\n{")
+        def strip_unexpected_prefix(line: str):
+            if "\"{ \"" in line:
+                return line[line.find("\"{ \"")+1::]
+            return line
+
         names = re.findall(r"^ {5}Running (.*) ", self.input, re.MULTILINE)
-        all_test_events = [json.loads(line) for line in self.input.splitlines() if
+        all_test_events = [json.loads(strip_unexpected_prefix(line)) for line in self.input.splitlines() if
                            line.startswith("{") and line.endswith("}")]
         all_test_events = [event for event in all_test_events if
                            ("type" in event and "event" in event)
