@@ -1,11 +1,11 @@
-import json
 import re
-from json import JSONDecodeError
+from json import JSONDecodeError, JSONDecoder
 
 from ..base import TestSuite
 from ..loader import TestReportLoader
 
 IGNORE_TEST_EVENTS = ["started", "timeout"]
+
 
 class CargoTestTestReportLoader(TestReportLoader):
 
@@ -25,16 +25,9 @@ class CargoTestTestReportLoader(TestReportLoader):
 
     def load(self) -> list[TestSuite]:
 
-        # Some workarounds for weird bugs that should not happen in theory
-        self.input = self.input.replace("}{", "}\n{")
-        def strip_unexpected_prefix(line: str):
-            if "\"{ \"" in line:
-                return line[line.find("\"{ \"")+1::]
-            return line
-
         names = re.findall(r"^ {5}Running (.*) ", self.input, re.MULTILINE)
-        all_test_events = [json.loads(strip_unexpected_prefix(line)) for line in self.input.splitlines() if
-                           line.startswith("{") and line.endswith("}")]
+
+        all_test_events = extract_json_data(self.input.replace("\n", ""))
         all_test_events = [event for event in all_test_events if
                            ("type" in event and "event" in event)
                            and (event["type"] == "suite" or (event["type"] == "test" and not any(
@@ -100,3 +93,19 @@ class CargoTestTestReportLoader(TestReportLoader):
             event = next(all_tests_iter, None)
 
         return test_suites
+
+
+def extract_json_data(input: str, decoder=JSONDecoder()):
+    while input:
+        try:
+            if not "{" in input:
+                break
+            input = input[input.find("{"):]
+            result, index = decoder.raw_decode(input)
+            yield result
+            input = input[index:]
+        except JSONDecodeError:
+            input = input[1:]
+            continue
+        except ValueError:
+            break
