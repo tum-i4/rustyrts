@@ -10,6 +10,9 @@
 [submodule "projects/mutants/ripgrep"]
 	path = projects/mutants/ripgrep
 	url = https://github.com/BurntSushi/ripgrep.git
+[submodule "projects/mutants/Rocket"]
+	path = projects/mutants/Rocket
+	url = https://github.com/SergioBenitez/Rocket.git
 [submodule "projects/mutants/rust-brotli"]
 	path = projects/mutants/rust-brotli
 	url = https://github.com/dropbox/rust-brotli.git
