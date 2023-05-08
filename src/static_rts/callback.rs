@@ -1,6 +1,4 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 use log::debug;
 use once_cell::sync::OnceCell;
@@ -13,7 +11,7 @@ use rustc_middle::ty::TyCtxt;
 use crate::callbacks_shared::{excluded, run_analysis_shared};
 use crate::checksums::{get_checksum, insert_hashmap, Checksums};
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
-use crate::names::{def_id_name, REEXPORTS};
+use crate::names::def_id_name;
 
 use super::graph::DependencyGraph;
 use super::visitor::GraphVisitor;
@@ -41,7 +39,6 @@ impl Callbacks for StaticRTSCallbacks {
 impl StaticRTSCallbacks {
     pub fn new(target_path: String) -> Self {
         PATH_BUF.get_or_init(|| get_static_path(&target_path));
-        REEXPORTS.get_or_init(|| Mutex::new(HashMap::new()));
         Self {
             graph: DependencyGraph::new(),
         }
@@ -52,7 +49,7 @@ impl StaticRTSCallbacks {
             let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
             let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
-            //##############################################################################################################
+            //##########################################################################################################
             // 1. Visit every def_id that has a MIR body and process traits
             //      1) Creates the graph
             //      2) Write graph to file
@@ -72,7 +69,7 @@ impl StaticRTSCallbacks {
 
             debug!("Generated dependency graph for {}", crate_name);
 
-            //##############################################################################################################
+            //##########################################################################################################
             // 2. Calculate checksum of every MIR body
 
             let mut new_checksums = Checksums::new();
@@ -101,7 +98,7 @@ impl StaticRTSCallbacks {
                 }
             }
 
-            //##############################################################################################################
+            //##########################################################################################################
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
             // 3. Import checksums
             // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem

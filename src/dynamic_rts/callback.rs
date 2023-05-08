@@ -6,7 +6,6 @@ use rustc_interface::{interface, Queries};
 use rustc_middle::ty::query::{query_keys, query_stored};
 use rustc_middle::{mir::visit::MutVisitor, ty::TyCtxt};
 use rustc_span::source_map::{FileLoader, RealFileLoader};
-use std::collections::HashMap;
 use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Mutex;
@@ -14,7 +13,7 @@ use std::sync::Mutex;
 use crate::callbacks_shared::{excluded, run_analysis_shared};
 use crate::checksums::{get_checksum, insert_hashmap, Checksums};
 use crate::fs_utils::get_dynamic_path;
-use crate::names::{def_id_name, REEXPORTS};
+use crate::names::def_id_name;
 use crate::static_rts::callback::PATH_BUF;
 
 use super::visitor::MirManipulatorVisitor;
@@ -81,7 +80,6 @@ pub struct DynamicRTSCallbacks {}
 impl DynamicRTSCallbacks {
     pub fn new(target_path: String) -> Self {
         PATH_BUF.get_or_init(|| get_dynamic_path(&target_path));
-        REEXPORTS.get_or_init(|| Mutex::new(HashMap::new()));
         Self {}
     }
 }

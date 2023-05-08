@@ -1,6 +1,3 @@
-use lazy_static::lazy_static;
-use once_cell::sync::OnceCell;
-use regex::Regex;
 use rustc_hir::{
     def_id::{DefId, LOCAL_CRATE},
     definitions::DefPathData,
@@ -8,23 +5,6 @@ use rustc_hir::{
 use rustc_middle::ty::print::Printer;
 use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
 use rustc_resolve::Namespace;
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Mutex,
-};
-
-pub(crate) static REEXPORTS: OnceCell<
-    Mutex<
-        HashMap<
-            String,
-            Option<(
-                BTreeMap<String, String>, // Keys are prefixes that need to be replaced
-                HashMap<String, String>,  // For Functions
-                HashMap<String, String>,  // For Adts
-            )>,
-        >,
-    >,
-> = OnceCell::new();
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
@@ -52,17 +32,6 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
         crate_path,
         def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs)
     );
-
-    // This is a hack
-    //      We are removing the crate prefix in the type that is casted to
-    //      This prefix is present if the type is from a non-local crate
-    //      We do not want to keep it
-    lazy_static! {
-        static ref REGEX_CRATE_PREFIX: Regex = Regex::new(r"(<.* as )(.*::)(.*>)").unwrap();
-    }
-    def_path_str = REGEX_CRATE_PREFIX
-        .replace_all(&def_path_str, "$1$3")
-        .to_string();
 
     // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
