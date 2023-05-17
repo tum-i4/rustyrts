@@ -25,28 +25,28 @@ pub fn get_dynamic_path(str: &str) -> PathBuf {
 }
 
 pub fn get_graph_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_GRAPH));
+    path_buf.push(format!("{}[{:016x}]{}", crate_name, id, ENDING_GRAPH));
     path_buf
 }
 
 pub fn get_test_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_TEST));
+    path_buf.push(format!("{}[{:016x}]{}", crate_name, id, ENDING_TEST));
     path_buf
 }
 
 pub fn get_changes_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_CHANGES));
+    path_buf.push(format!("{}[{:016x}]{}", crate_name, id, ENDING_CHANGES));
     path_buf
 }
 
 pub fn get_checksums_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!("{}[{:16x}]{}", crate_name, id, ENDING_CHECKSUM));
+    path_buf.push(format!("{}[{:016x}]{}", crate_name, id, ENDING_CHECKSUM));
     path_buf
 }
 
 pub fn get_checksums_ctfe_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
     path_buf.push(format!(
-        "{}[{:16x}]{}",
+        "{}[{:016x}]{}",
         crate_name, id, ENDING_CHECKSUM_CTFE
     ));
     path_buf
