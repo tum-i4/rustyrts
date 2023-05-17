@@ -34,6 +34,7 @@ setup(
                       'gitpython==3.*,>=3.1.3',
                       'halo==0.*,>=0.0.29',
                       'sqlalchemy==1.*,>=1.3.17',
-                      'psycopg2-binary==2.*,>=2.8.6'
+                      'psycopg2-binary==2.*,>=2.8.6',
+                      'sqlalchemy-utils>=0.41.1'
                       ],
 )
