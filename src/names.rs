@@ -29,11 +29,20 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
         )
     };
 
-    let mut def_path_str = format!(
-        "{}::{}",
-        crate_path,
-        def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs)
-    );
+    let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs);
+
+    let mut def_path_str = if !def_id.is_local() && suffix.starts_with("<(dyn") {
+        let cstore = tcx.cstore_untracked();
+
+        format!(
+            "{}::{}::{}",
+            crate_path,
+            cstore.crate_name(def_id.krate),
+            def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs)
+        )
+    } else {
+        format!("{}::{}", crate_path, suffix)
+    };
 
     if !def_id.is_local() {
         // In case this is a non-local def_id, the name of the crate is printed in generic types like <foo::Foo>
@@ -41,11 +50,15 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
         // and false traces (dynamic)
 
         lazy_static! {
+            static ref RE_GENERICS_DYN: Regex = Regex::new(r"<\(dyn ([^>]*?)::").unwrap();
             static ref RE_GENERICS_IMPL: Regex = Regex::new(r"<impl ([^>]*?)::").unwrap();
             static ref RE_GENERICS_FOR: Regex = Regex::new(r"for ([^>]*?)::").unwrap();
             static ref RE_GENERICS: Regex = Regex::new(r"<([^> ]*?)::").unwrap();
         }
 
+        def_path_str = RE_GENERICS_DYN
+            .replace_all(&def_path_str, "<(dyn ")
+            .to_string();
         def_path_str = RE_GENERICS_IMPL
             .replace_all(&def_path_str, "<impl ")
             .to_string();
