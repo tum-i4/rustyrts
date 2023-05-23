@@ -11,6 +11,7 @@ extern crate rustc_interface;
 // required for hashing and computing checksums
 extern crate rustc_data_structures;
 extern crate rustc_hash;
+extern crate rustc_query_system;
 extern crate rustc_session;
 extern crate rustc_trait_selection;
 

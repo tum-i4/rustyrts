@@ -14,6 +14,7 @@ extern crate rustc_span;
 
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
+use rustyrts::callbacks_shared::export_checksums_and_changes;
 use rustyrts::constants::ENV_PROJECT_DIR;
 use rustyrts::dynamic_rts::callback::DynamicRTSCallbacks;
 use rustyrts::format::create_logger;
@@ -75,7 +76,10 @@ fn main() {
     });
 
     let exit_code = match result {
-        Ok(_) => EXIT_SUCCESS,
+        Ok(_) => {
+            export_checksums_and_changes();
+            EXIT_SUCCESS
+        }
         Err(_) => EXIT_FAILURE,
     };
 

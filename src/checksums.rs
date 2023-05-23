@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use regex::bytes::Regex;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_middle::mir::Body;
-use rustc_middle::ty::{Instance, TyCtxt, VtblEntry};
+use rustc_middle::ty::{TyCtxt, VtblEntry};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -106,10 +106,10 @@ pub(crate) fn get_checksum_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u
     hash
 }
 
-/// Function to obtain a stable checksum of a vtable entry of type instance
-pub(crate) fn get_checksum_instance<'tcx>(
+/// Function to obtain a stable checksum of a vtable entry
+pub(crate) fn get_checksum_vtbl_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: &Instance<'tcx>,
+    entry: &VtblEntry<'tcx>,
 ) -> (u64, u64) {
     let mut hash = (0, 0);
 
@@ -120,7 +120,7 @@ pub(crate) fn get_checksum_instance<'tcx>(
         context.without_hir_bodies(|context| {
             context.while_hashing_spans(false, |context| {
                 let mut hasher = StableHasher::new();
-                instance.hash_stable(context, &mut hasher);
+                entry.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
             })
         });

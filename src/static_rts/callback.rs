@@ -1,14 +1,19 @@
+use std::mem::transmute;
 use std::path::PathBuf;
 
 use log::debug;
 use once_cell::sync::OnceCell;
+use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
 
-use crate::callbacks_shared::{excluded, run_analysis_shared};
+use crate::callbacks_shared::{
+    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE,
+    OLD_VTABLE_ENTRIES,
+};
 use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
 use crate::names::def_id_name;
@@ -23,6 +28,15 @@ pub struct StaticRTSCallbacks {
 }
 
 impl Callbacks for StaticRTSCallbacks {
+    fn config(&mut self, config: &mut interface::Config) {
+        config.override_queries = Some(|_session, providers, _extern_providers| {
+            // SAFETY: We store the address of the original vtable_entries function as a usize.
+            OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
+
+            providers.vtable_entries = custom_vtable_entries;
+        });
+    }
+
     fn after_analysis<'compiler, 'tcx>(
         &mut self,
         _compiler: &'compiler interface::Compiler,
@@ -102,7 +116,10 @@ impl StaticRTSCallbacks {
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
             // 3. Import checksums
             // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
-            run_analysis_shared(tcx, new_checksums, new_checksums_ctfe);
+            unsafe { NEW_CHECKSUMS.get_or_init(|| new_checksums) };
+            unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| new_checksums_ctfe) };
+
+            run_analysis_shared(tcx);
         }
     }
 }

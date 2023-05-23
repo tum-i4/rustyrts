@@ -1,4 +1,3 @@
-use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::ConstContext;
@@ -8,9 +7,11 @@ use rustc_middle::{mir::visit::MutVisitor, ty::TyCtxt};
 use rustc_span::source_map::{FileLoader, RealFileLoader};
 use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
-use std::sync::Mutex;
 
-use crate::callbacks_shared::{excluded, run_analysis_shared};
+use crate::callbacks_shared::{
+    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE,
+    OLD_VTABLE_ENTRIES,
+};
 use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
@@ -18,11 +19,9 @@ use crate::static_rts::callback::PATH_BUF;
 
 use super::visitor::MirManipulatorVisitor;
 
-static mut NEW_CHECKSUMS: OnceCell<Mutex<Checksums>> = OnceCell::new();
-static mut NEW_CHECKSUMS_CTFE: OnceCell<Mutex<Checksums>> = OnceCell::new();
-
 static OLD_OPTIMIZED_MIR_PTR: AtomicUsize = AtomicUsize::new(0);
 static OLD_MIR_FOR_CTFE_PTR: AtomicUsize = AtomicUsize::new(0);
+
 static EXTERN_CRATE_INSERTED: AtomicBool = AtomicBool::new(false);
 
 pub struct FileLoaderProxy {
@@ -95,9 +94,11 @@ impl Callbacks for DynamicRTSCallbacks {
             // SAFETY: We store the address of the original optimized_mir function as a usize.
             OLD_OPTIMIZED_MIR_PTR.store(unsafe { transmute(providers.optimized_mir) }, SeqCst);
             OLD_MIR_FOR_CTFE_PTR.store(unsafe { transmute(providers.mir_for_ctfe) }, SeqCst);
+            OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
 
             providers.optimized_mir = custom_optimized_mir;
             providers.mir_for_ctfe = custom_mir_for_ctfe;
+            providers.vtable_entries = custom_vtable_entries;
         });
     }
 
@@ -143,12 +144,9 @@ fn custom_optimized_mir<'tcx>(
         let name = def_id_name(tcx, result.source.def_id());
         let checksum = get_checksum_body(tcx, result);
 
-        let new_checksums = unsafe { NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new())) };
-
-        {
-            let mut handle = new_checksums.lock().unwrap();
-            insert_hashmap(handle.inner_mut(), name, checksum);
-        }
+        unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
+        let new_checksums = unsafe { NEW_CHECKSUMS.get_mut() }.unwrap();
+        insert_hashmap(new_checksums.inner_mut(), name, checksum);
 
         //##############################################################
         // 2. Here the MIR is modified to trace this function at runtime
@@ -188,13 +186,9 @@ fn custom_mir_for_ctfe<'tcx>(
         let name = def_id_name(tcx, result.source.def_id());
         let checksum = get_checksum_body(tcx, result);
 
-        let new_checksums =
-            unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(Checksums::new())) };
-
-        {
-            let mut handle = new_checksums.lock().unwrap();
-            insert_hashmap(handle.inner_mut(), name, checksum);
-        }
+        unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new()) };
+        let new_checksums = unsafe { NEW_CHECKSUMS_CTFE.get_mut() }.unwrap();
+        insert_hashmap(new_checksums.inner_mut(), name, checksum);
     }
 
     result
@@ -223,15 +217,7 @@ impl DynamicRTSCallbacks {
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
             // 3. Import old checksums
             // 4. Determine names of changed nodes and write this information to the filesystem
-            run_analysis_shared(
-                tcx,
-                unsafe { NEW_CHECKSUMS.take() }
-                    .map(|mutex| mutex.into_inner().unwrap())
-                    .unwrap_or_else(|| Checksums::new()),
-                unsafe { NEW_CHECKSUMS_CTFE.take() }
-                    .map(|mutex| mutex.into_inner().unwrap())
-                    .unwrap_or_else(|| Checksums::new()),
-            );
+            run_analysis_shared(tcx);
         }
     }
 }
