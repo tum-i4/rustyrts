@@ -9,7 +9,7 @@ use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
 
 use crate::callbacks_shared::{excluded, run_analysis_shared};
-use crate::checksums::{get_checksum, insert_hashmap, Checksums};
+use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
 use crate::names::def_id_name;
 
@@ -83,14 +83,14 @@ impl StaticRTSCallbacks {
                         Some(ConstContext::ConstFn) | None => {
                             let body = tcx.optimized_mir(*def_id);
                             let name = def_id_name(tcx, def_id.to_def_id());
-                            let checksum = get_checksum(tcx, body);
+                            let checksum = get_checksum_body(tcx, body);
 
                             insert_hashmap(new_checksums.inner_mut(), name, checksum)
                         }
                         Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
                             let body = tcx.mir_for_ctfe(*def_id);
                             let name = def_id_name(tcx, def_id.to_def_id());
-                            let checksum = get_checksum(tcx, body);
+                            let checksum = get_checksum_body(tcx, body);
 
                             insert_hashmap(new_checksums_ctfe.inner_mut(), name, checksum)
                         }

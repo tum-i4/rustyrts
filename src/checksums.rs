@@ -2,7 +2,8 @@ use crate::rustc_data_structures::stable_hasher::HashStable;
 use lazy_static::lazy_static;
 use regex::bytes::Regex;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_middle::{mir::Body, ty::TyCtxt};
+use rustc_middle::mir::Body;
+use rustc_middle::ty::{Instance, TyCtxt, VtblEntry};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
@@ -86,7 +87,7 @@ impl From<&[u8]> for Checksums {
 }
 
 /// Function to obtain a stable checksum of a MIR body
-pub(crate) fn get_checksum<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
+pub(crate) fn get_checksum_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
     let mut hash = (0, 0);
 
     tcx.with_stable_hashing_context(|ref mut context| {
@@ -97,6 +98,29 @@ pub(crate) fn get_checksum<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
             context.while_hashing_spans(false, |context| {
                 let mut hasher = StableHasher::new();
                 body.hash_stable(context, &mut hasher);
+                hash = hasher.finalize();
+            })
+        });
+    });
+
+    hash
+}
+
+/// Function to obtain a stable checksum of a vtable entry of type instance
+pub(crate) fn get_checksum_instance<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: &Instance<'tcx>,
+) -> (u64, u64) {
+    let mut hash = (0, 0);
+
+    tcx.with_stable_hashing_context(|ref mut context| {
+        // We use the hashing mechanism provided by the compiler to obtain a hash of a MIR body,
+        // that is stable beyond the compiler session
+
+        context.without_hir_bodies(|context| {
+            context.while_hashing_spans(false, |context| {
+                let mut hasher = StableHasher::new();
+                instance.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
             })
         });

@@ -12,6 +12,7 @@ extern crate rustc_interface;
 extern crate rustc_data_structures;
 extern crate rustc_hash;
 extern crate rustc_session;
+extern crate rustc_trait_selection;
 
 // required for analyzing and modifying the MIR
 extern crate rustc_abi;

@@ -11,7 +11,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Mutex;
 
 use crate::callbacks_shared::{excluded, run_analysis_shared};
-use crate::checksums::{get_checksum, insert_hashmap, Checksums};
+use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
 use crate::static_rts::callback::PATH_BUF;
@@ -141,7 +141,7 @@ fn custom_optimized_mir<'tcx>(
         // 1. We compute the checksum before modifying the MIR
 
         let name = def_id_name(tcx, result.source.def_id());
-        let checksum = get_checksum(tcx, result);
+        let checksum = get_checksum_body(tcx, result);
 
         let new_checksums = unsafe { NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new())) };
 
@@ -186,7 +186,7 @@ fn custom_mir_for_ctfe<'tcx>(
         // 1. We compute the checksum
 
         let name = def_id_name(tcx, result.source.def_id());
-        let checksum = get_checksum(tcx, result);
+        let checksum = get_checksum_body(tcx, result);
 
         let new_checksums =
             unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(Checksums::new())) };
