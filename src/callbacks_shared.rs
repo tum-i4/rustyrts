@@ -3,6 +3,7 @@ use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::{InstanceDef, PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_span::sym::Hash;
 use std::{collections::HashSet, fs::read, mem::transmute, sync::atomic::AtomicUsize};
 
 use crate::{
@@ -156,11 +157,11 @@ pub fn export_checksums_and_changes() {
 
         trace!("Checksums: {:?}", new_checksums);
 
-        for name in names {
+        for name in names.iter() {
             trace!("Checking {}", name);
             let changed = {
-                let maybe_new = new_checksums.get(&name);
-                let maybe_old = old_checksums.get(&name);
+                let maybe_new = new_checksums.get(name);
+                let maybe_old = old_checksums.get(name);
 
                 match (maybe_new, maybe_old) {
                     (None, None) => unreachable!(),
@@ -179,10 +180,10 @@ pub fn export_checksums_and_changes() {
 
         let names_ctfe = unsafe { NODES_CTFE.take() }.unwrap();
 
-        for name in names_ctfe {
+        for name in names_ctfe.iter() {
             let changed = {
-                let maybe_new = new_checksums_ctfe.get(&name);
-                let maybe_old = old_checksums_ctfe.get(&name);
+                let maybe_new = new_checksums_ctfe.get(name);
+                let maybe_old = old_checksums_ctfe.get(name);
 
                 match (maybe_new, maybe_old) {
                     (None, None) => unreachable!(),
@@ -197,6 +198,20 @@ pub fn export_checksums_and_changes() {
 
             if changed {
                 changed_nodes.push(name.clone());
+            }
+        }
+
+        // Also consider nodes that have been removed
+
+        for node in old_checksums.keys() {
+            if !names.contains(node) {
+                changed_nodes.push(node.clone());
+            }
+        }
+
+        for node in old_checksums_ctfe.keys() {
+            if !names_ctfe.contains(node) {
+                changed_nodes.push(node.clone());
             }
         }
 
