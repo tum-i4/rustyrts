@@ -242,24 +242,8 @@ pub fn export_checksums_and_changes() {
             }
         }
 
-        // Also consider nodes that have been removed
-        // (particularly important for dynamic dispatch)
-
-        for node in old_checksums.keys() {
-            if !names.contains(node) {
-                changed_nodes.insert(node.clone());
-            }
-        }
-
-        // IMPORTANT: do not consider MIR for CTFE here!
-        // Those bodies are not compiled when not necessary
-        // (also const fns do not matter for dynamic dispatch)
-        //
-        //for node in old_checksums_ctfe.keys() {
-        //    if !names_ctfe.contains(node) {
-        //        changed_nodes.insert(node.clone());
-        //    }
-        //}
+        // Also consider nodes that do no longer have a vtable entry pointing at them as changed
+        // (dynamic dispatch may call a different function in the new revision)
 
         for node in old_checksums_vtbl.keys() {
             if !new_checksums_vtbl.keys().contains(node) {
