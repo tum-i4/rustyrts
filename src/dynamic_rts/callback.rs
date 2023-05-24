@@ -11,8 +11,8 @@ use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use crate::callbacks_shared::{
-    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE, NODES,
-    NODES_CTFE, OLD_VTABLE_ENTRIES,
+    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE,
+    NEW_CHECKSUMS_VTBL, NODES, NODES_CTFE, OLD_VTABLE_ENTRIES,
 };
 use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::get_dynamic_path;
@@ -107,6 +107,7 @@ impl Callbacks for DynamicRTSCallbacks {
         unsafe { NODES_CTFE.get_or_init(|| HashSet::new()) };
         unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
         unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new()) };
+        unsafe { NEW_CHECKSUMS_VTBL.get_or_init(|| Checksums::new()) };
     }
 
     fn after_analysis<'compiler, 'tcx>(

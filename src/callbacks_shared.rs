@@ -1,15 +1,16 @@
+use itertools::Itertools;
 use log::{debug, trace};
 use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::{InstanceDef, PolyTraitRef, TyCtxt, VtblEntry};
-use rustc_span::sym::Hash;
 use std::{collections::HashSet, fs::read, mem::transmute, sync::atomic::AtomicUsize};
 
 use crate::{
     checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums},
     fs_utils::{
-        get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_test_path, write_to_file,
+        get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_checksums_vtbl_path,
+        get_test_path, write_to_file,
     },
     names::def_id_name,
     static_rts::callback::PATH_BUF,
@@ -24,6 +25,7 @@ pub(crate) static mut NODES: OnceCell<HashSet<String>> = OnceCell::new();
 pub(crate) static mut NODES_CTFE: OnceCell<HashSet<String>> = OnceCell::new();
 pub(crate) static mut NEW_CHECKSUMS: OnceCell<Checksums> = OnceCell::new();
 pub(crate) static mut NEW_CHECKSUMS_CTFE: OnceCell<Checksums> = OnceCell::new();
+pub(crate) static mut NEW_CHECKSUMS_VTBL: OnceCell<Checksums> = OnceCell::new();
 
 const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
@@ -68,10 +70,16 @@ pub(crate) fn custom_vtable_entries<'tcx>(
                 InstanceDef::DropGlue(def_id, _) => def_id,
                 InstanceDef::CloneShim(def_id, _) => def_id,
             };
+
             let name = def_id_name(tcx, def_id);
             let checksum = get_checksum_vtbl_entry(tcx, &entry);
             debug!("Considering {:?} in checksums of {}", instance, name);
-            insert_hashmap(unsafe { NEW_CHECKSUMS.get_mut() }.unwrap(), name, checksum)
+
+            insert_hashmap(
+                unsafe { NEW_CHECKSUMS_VTBL.get_mut() }.unwrap(),
+                name,
+                checksum,
+            )
         }
     }
 
@@ -116,8 +124,10 @@ pub fn export_checksums_and_changes() {
         let mut new_checksums = unsafe { NEW_CHECKSUMS.take() }.unwrap_or_else(|| Checksums::new());
         let mut new_checksums_ctfe =
             unsafe { NEW_CHECKSUMS_CTFE.take() }.unwrap_or_else(|| Checksums::new());
+        let new_checksums_vtbl =
+            unsafe { NEW_CHECKSUMS_VTBL.take() }.unwrap_or_else(|| Checksums::new());
 
-        //##################################################################################################################
+        //##############################################################################################################
         // 3. Import checksums
 
         let old_checksums = {
@@ -146,12 +156,25 @@ pub fn export_checksums_and_changes() {
             }
         };
 
+        let old_checksums_vtbl = {
+            let checksums_path_buf =
+                get_checksums_vtbl_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
+
+            let maybe_checksums = read(checksums_path_buf);
+
+            if let Ok(checksums) = maybe_checksums {
+                Checksums::from(checksums.as_slice())
+            } else {
+                Checksums::new()
+            }
+        };
+
         debug!("Imported checksums for {}", crate_name);
 
-        //##################################################################################################################
+        //##############################################################################################################
         // 4. Calculate new checksums and names of changed nodes and write this information to filesystem
 
-        let mut changed_nodes = Vec::new();
+        let mut changed_nodes = HashSet::new();
 
         let names = unsafe { NODES.take() }.unwrap();
 
@@ -174,7 +197,7 @@ pub fn export_checksums_and_changes() {
                 }
             };
             if changed {
-                changed_nodes.push(name.clone());
+                changed_nodes.insert(name.clone());
             }
         }
 
@@ -197,21 +220,50 @@ pub fn export_checksums_and_changes() {
             };
 
             if changed {
-                changed_nodes.push(name.clone());
+                changed_nodes.insert(name.clone());
+            }
+        }
+
+        for name in new_checksums_vtbl.keys() {
+            let changed = {
+                let maybe_new = new_checksums_vtbl.get(name);
+                let maybe_old = old_checksums_vtbl.get(name);
+
+                match (maybe_new, maybe_old) {
+                    (None, None) => unreachable!(),
+                    (None, Some(_)) => unreachable!(),
+                    (Some(_), None) => true,
+                    (Some(new), Some(old)) => new != old,
+                }
+            };
+
+            if changed {
+                changed_nodes.insert(name.clone());
             }
         }
 
         // Also consider nodes that have been removed
+        // (particularly important for dynamic dispatch)
 
         for node in old_checksums.keys() {
             if !names.contains(node) {
-                changed_nodes.push(node.clone());
+                changed_nodes.insert(node.clone());
             }
         }
 
-        for node in old_checksums_ctfe.keys() {
-            if !names_ctfe.contains(node) {
-                changed_nodes.push(node.clone());
+        // IMPORTANT: do not consider MIR for CTFE here!
+        // Those bodies are not compiled when not necessary
+        // (also const fns do not matter for dynamic dispatch)
+        //
+        //for node in old_checksums_ctfe.keys() {
+        //    if !names_ctfe.contains(node) {
+        //        changed_nodes.insert(node.clone());
+        //    }
+        //}
+
+        for node in old_checksums_vtbl.keys() {
+            if !new_checksums_vtbl.keys().contains(node) {
+                changed_nodes.insert(node.clone());
             }
         }
 
@@ -230,7 +282,14 @@ pub fn export_checksums_and_changes() {
         );
 
         write_to_file(
-            changed_nodes.join("\n").to_string(),
+            Into::<Vec<u8>>::into(new_checksums_vtbl),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_checksums_vtbl_path(buf, &crate_name, crate_id),
+            false,
+        );
+
+        write_to_file(
+            changed_nodes.into_iter().join("\n").to_string(),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_changes_path(buf, &crate_name, crate_id),
             false,
