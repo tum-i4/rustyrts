@@ -1,3 +1,4 @@
+use log::trace;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::ConstContext;
@@ -5,12 +6,13 @@ use rustc_interface::{interface, Queries};
 use rustc_middle::ty::query::{query_keys, query_stored};
 use rustc_middle::{mir::visit::MutVisitor, ty::TyCtxt};
 use rustc_span::source_map::{FileLoader, RealFileLoader};
+use std::collections::HashSet;
 use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use crate::callbacks_shared::{
-    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE,
-    OLD_VTABLE_ENTRIES,
+    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE, NODES,
+    NODES_CTFE, OLD_VTABLE_ENTRIES,
 };
 use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::get_dynamic_path;
@@ -100,6 +102,11 @@ impl Callbacks for DynamicRTSCallbacks {
             providers.mir_for_ctfe = custom_mir_for_ctfe;
             providers.vtable_entries = custom_vtable_entries;
         });
+
+        unsafe { NODES.get_or_init(|| HashSet::new()) };
+        unsafe { NODES_CTFE.get_or_init(|| HashSet::new()) };
+        unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
+        unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new()) };
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -144,7 +151,8 @@ fn custom_optimized_mir<'tcx>(
         let name = def_id_name(tcx, result.source.def_id());
         let checksum = get_checksum_body(tcx, result);
 
-        unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
+        trace!("Inserting checksum of {}", name);
+
         let new_checksums = unsafe { NEW_CHECKSUMS.get_mut() }.unwrap();
         insert_hashmap(&mut *new_checksums, name, checksum);
 
@@ -186,6 +194,8 @@ fn custom_mir_for_ctfe<'tcx>(
         let name = def_id_name(tcx, result.source.def_id());
         let checksum = get_checksum_body(tcx, result);
 
+        trace!("Inserting checksum of {}", name);
+
         unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new()) };
         let new_checksums = unsafe { NEW_CHECKSUMS_CTFE.get_mut() }.unwrap();
         insert_hashmap(&mut *new_checksums, name, checksum);
@@ -197,23 +207,31 @@ fn custom_mir_for_ctfe<'tcx>(
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
         if !excluded(tcx) {
-            //##############################################################################################################
-            // 1. Invoke optimized_mir or mir_for_ctfe for every MIR body, to compute checksums
+            //##########################################################################################################
+            // 1. Collect the names of all mir bodies (because optimized mir is not always invoked)
 
+            let nodes = unsafe { NODES.get_mut() }.unwrap();
+            let nodes_ctfe = unsafe { NODES_CTFE.get_mut() }.unwrap();
             for def_id in tcx.mir_keys(()) {
                 let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
 
                 if has_body {
                     let _body = match tcx.hir().body_const_context(*def_id) {
-                        Some(ConstContext::ConstFn) | None => tcx.optimized_mir(*def_id),
+                        Some(ConstContext::ConstFn) | None => {
+                            let name: String = def_id_name(tcx, def_id.to_def_id());
+                            nodes.insert(name);
+                            tcx.optimized_mir(def_id.to_def_id())
+                        }
                         Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
-                            tcx.mir_for_ctfe(*def_id)
+                            let name: String = def_id_name(tcx, def_id.to_def_id());
+                            nodes_ctfe.insert(name);
+                            tcx.mir_for_ctfe(def_id.to_def_id())
                         }
                     };
                 }
             }
 
-            //##############################################################################################################
+            //##########################################################################################################
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
             // 3. Import old checksums
             // 4. Determine names of changed nodes and write this information to the filesystem

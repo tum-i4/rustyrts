@@ -43,4 +43,4 @@ pub const ENDING_GRAPH: &str = ".dot";
 #[cfg(target_family = "unix")]
 pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 
-pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::FromResidual::from_residual";
+pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::try_trait::FromResidual::from_residual";

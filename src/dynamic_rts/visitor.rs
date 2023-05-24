@@ -74,7 +74,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         self.super_body(body);
 
         #[cfg(target_family = "unix")]
-        if outer.ends_with("]::main") {
+        if outer.ends_with("::main") {
             // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
             // 1. insert_post, 2. trace, 3. insert_pre
 
@@ -82,7 +82,6 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         }
 
         for def_path in &self.acc {
-            trace!("Inserting call to trace(\"{}\") into {}", def_path, outer);
             body.insert_trace(
                 self.tcx,
                 def_path,

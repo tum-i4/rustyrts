@@ -3,7 +3,7 @@ use std::mem::transmute;
 use super::defid_util::{
     get_def_id_post_test_fn, get_def_id_pre_main_fn, get_def_id_pre_test_fn, get_def_id_trace_fn,
 };
-use log::error;
+use log::{error, trace};
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -246,6 +246,12 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         cache_u8: &mut Option<(Local, Ty<'tcx>)>,
         cache_ret: &mut Option<Local>,
     ) {
+        trace!(
+            "Inserting trace(\"{}\") into {:?}",
+            name,
+            self.source.def_id()
+        );
+
         let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
             error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
@@ -297,6 +303,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
     }
 
     fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
+        trace!("Inserting pre_test() into {:?}", self.source.def_id());
+
         let Some(def_id_pre_fn) = get_def_id_pre_test_fn(tcx) else {
             error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
@@ -334,6 +342,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
     #[cfg(target_family = "unix")]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
+        trace!("Inserting pre_main() into {:?}", self.source.def_id());
+
         let Some(def_id_pre_fn) = get_def_id_pre_main_fn(tcx) else {
             error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
@@ -380,6 +390,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         cache_ret: &mut Option<Local>,
         cache_call: &mut Option<BasicBlock>,
     ) {
+        trace!("Inserting post_test() into {:?}", self.source.def_id());
+
         let Some(def_id_post_fn) = get_def_id_post_test_fn(tcx) else {
             return;
         };
@@ -610,6 +622,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
     ) {
         use crate::{constants::EDGE_CASE_FROM_RESIDUAL, names::def_id_name};
 
+        trace!("Inserting post_main() into {:?}", self.source.def_id());
+
         let Some(def_id_post_fn) = get_def_id_post_main_fn(tcx) else {
             return;
         };
@@ -683,6 +697,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                     if let TerminatorKind::Call { func, .. } = terminator_kind {
                         if def_id_name(tcx, func.const_fn_def().unwrap().0)
                             .split_once("::")
+                            .and_then(|(_, second)| second.split_once("::"))
                             .map(|(_, second)| second == EDGE_CASE_FROM_RESIDUAL)
                             .unwrap_or(false)
                         {

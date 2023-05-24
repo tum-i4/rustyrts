@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, trace};
 use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -19,6 +19,8 @@ pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
 pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
 pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
 
+pub(crate) static mut NODES: OnceCell<HashSet<String>> = OnceCell::new();
+pub(crate) static mut NODES_CTFE: OnceCell<HashSet<String>> = OnceCell::new();
 pub(crate) static mut NEW_CHECKSUMS: OnceCell<Checksums> = OnceCell::new();
 pub(crate) static mut NEW_CHECKSUMS_CTFE: OnceCell<Checksums> = OnceCell::new();
 
@@ -68,7 +70,6 @@ pub(crate) fn custom_vtable_entries<'tcx>(
             let name = def_id_name(tcx, def_id);
             let checksum = get_checksum_vtbl_entry(tcx, &entry);
             debug!("Considering {:?} in checksums of {}", instance, name);
-            unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
             insert_hashmap(unsafe { NEW_CHECKSUMS.get_mut() }.unwrap(), name, checksum)
         }
     }
@@ -111,8 +112,8 @@ pub fn export_checksums_and_changes() {
     if let Some(crate_name) = CRATE_NAME.get() {
         let crate_id = *CRATE_ID.get().unwrap();
 
-        let new_checksums = unsafe { NEW_CHECKSUMS.take() }.unwrap_or_else(|| Checksums::new());
-        let new_checksums_ctfe =
+        let mut new_checksums = unsafe { NEW_CHECKSUMS.take() }.unwrap_or_else(|| Checksums::new());
+        let mut new_checksums_ctfe =
             unsafe { NEW_CHECKSUMS_CTFE.take() }.unwrap_or_else(|| Checksums::new());
 
         //##################################################################################################################
@@ -151,18 +152,22 @@ pub fn export_checksums_and_changes() {
 
         let mut changed_nodes = Vec::new();
 
-        let mut names = HashSet::new();
-        names.extend(new_checksums.keys().map(|s| s.clone()));
-        names.extend(old_checksums.keys().map(|s| s.clone()));
+        let names = unsafe { NODES.take() }.unwrap();
+
+        trace!("Checksums: {:?}", new_checksums);
 
         for name in names {
+            trace!("Checking {}", name);
             let changed = {
                 let maybe_new = new_checksums.get(&name);
                 let maybe_old = old_checksums.get(&name);
 
                 match (maybe_new, maybe_old) {
                     (None, None) => unreachable!(),
-                    (None, Some(_)) => true,
+                    (None, Some(checksums)) => {
+                        new_checksums.insert(name.clone(), checksums.clone());
+                        false
+                    }
                     (Some(_), None) => true,
                     (Some(new), Some(old)) => new != old,
                 }
@@ -172,9 +177,7 @@ pub fn export_checksums_and_changes() {
             }
         }
 
-        let mut names_ctfe = HashSet::new();
-        names_ctfe.extend(new_checksums_ctfe.keys().map(|s| s.clone()));
-        names_ctfe.extend(old_checksums_ctfe.keys().map(|s| s.clone()));
+        let names_ctfe = unsafe { NODES_CTFE.take() }.unwrap();
 
         for name in names_ctfe {
             let changed = {
@@ -183,7 +186,10 @@ pub fn export_checksums_and_changes() {
 
                 match (maybe_new, maybe_old) {
                     (None, None) => unreachable!(),
-                    (None, Some(_)) => true,
+                    (None, Some(checksums)) => {
+                        new_checksums_ctfe.insert(name.clone(), checksums.clone());
+                        false
+                    }
                     (Some(_), None) => true,
                     (Some(new), Some(old)) => new != old,
                 }
