@@ -146,7 +146,7 @@ fn custom_optimized_mir<'tcx>(
 
         unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
         let new_checksums = unsafe { NEW_CHECKSUMS.get_mut() }.unwrap();
-        insert_hashmap(new_checksums.inner_mut(), name, checksum);
+        insert_hashmap(&mut *new_checksums, name, checksum);
 
         //##############################################################
         // 2. Here the MIR is modified to trace this function at runtime
@@ -188,7 +188,7 @@ fn custom_mir_for_ctfe<'tcx>(
 
         unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new()) };
         let new_checksums = unsafe { NEW_CHECKSUMS_CTFE.get_mut() }.unwrap();
-        insert_hashmap(new_checksums.inner_mut(), name, checksum);
+        insert_hashmap(&mut *new_checksums, name, checksum);
     }
 
     result

@@ -6,9 +6,11 @@ use rustc_middle::mir::Body;
 use rustc_middle::ty::{TyCtxt, VtblEntry};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
+use std::ops::{Deref, DerefMut};
 
 /// Wrapper of HashMap to provide serialization and deserialization of checksums
-#[derive(Eq, PartialEq, Debug)]
+/// (Newtype Pattern)
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub(crate) struct Checksums {
     inner: HashMap<String, HashSet<(u64, u64)>>, // key: name of node - value: checksum(s) of length 128 bit in two u64s
 }
@@ -24,29 +26,33 @@ impl Checksums {
             inner: HashMap::new(),
         }
     }
+}
 
-    pub fn inner(&self) -> &HashMap<String, HashSet<(u64, u64)>> {
+impl Deref for Checksums {
+    type Target = HashMap<String, HashSet<(u64, u64)>>;
+
+    fn deref(&self) -> &Self::Target {
         &self.inner
     }
+}
 
-    pub fn inner_mut(&mut self) -> &mut HashMap<String, HashSet<(u64, u64)>> {
+impl DerefMut for Checksums {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl ToString for Checksums {
-    fn to_string(&self) -> String {
-        let mut output = String::new();
+impl Into<Vec<u8>> for Checksums {
+    fn into(self) -> Vec<u8> {
+        let mut output = Vec::new();
 
         for (name, checksums) in &self.inner {
             for (first, second) in checksums {
-                output += &format!(
-                    "{} - {}{}\n",
-                    name,
-                    // SAFETY: This is intentional. Checksums are not necessarily valid utf8.
-                    unsafe { String::from_utf8_unchecked(Vec::from(first.to_ne_bytes())) },
-                    unsafe { String::from_utf8_unchecked(Vec::from(second.to_ne_bytes())) },
-                );
+                output.extend(name.as_bytes());
+                output.extend(" - ".as_bytes());
+                output.extend(Vec::from(first.to_ne_bytes()));
+                output.extend(Vec::from(second.to_ne_bytes()));
+                output.push('\n' as u8);
             }
         }
         output
@@ -151,17 +157,16 @@ mod teest {
     #[test]
     pub fn test_checksum_deserialization() {
         let mut checksums = Checksums::new();
-        let mut inner = checksums.inner_mut();
 
-        insert_hashmap(&mut inner, "node1".to_string(), (100000000000006, 0));
-        insert_hashmap(&mut inner, "node2".to_string(), (2, 100000000000005));
-        insert_hashmap(&mut inner, "node3".to_string(), (3, 100000000000004));
-        insert_hashmap(&mut inner, "node4".to_string(), (4, 100000000000003));
-        insert_hashmap(&mut inner, "node5".to_string(), (5, u64::MAX - 1));
-        insert_hashmap(&mut inner, "node6".to_string(), (6, u64::MAX));
+        insert_hashmap(&mut checksums, "node1".to_string(), (100000000000006, 0));
+        insert_hashmap(&mut checksums, "node2".to_string(), (2, 100000000000005));
+        insert_hashmap(&mut checksums, "node3".to_string(), (3, 100000000000004));
+        insert_hashmap(&mut checksums, "node4".to_string(), (4, 100000000000003));
+        insert_hashmap(&mut checksums, "node5".to_string(), (5, u64::MAX - 1));
+        insert_hashmap(&mut checksums, "node6".to_string(), (6, u64::MAX));
 
-        let serialized = checksums.to_string();
-        let deserialized = Checksums::from(serialized.as_bytes());
+        let serialized: Vec<u8> = checksums.clone().into();
+        let deserialized = Checksums::from(serialized.as_slice());
 
         assert_eq!(checksums, deserialized);
     }
@@ -170,8 +175,8 @@ mod teest {
     pub fn test_checksum_deserialization_empty() {
         let checksums = Checksums::new();
 
-        let serialized = checksums.to_string();
-        let deserialized = Checksums::from(serialized.as_bytes());
+        let serialized: Vec<u8> = checksums.clone().into();
+        let deserialized = Checksums::from(serialized.as_slice());
 
         assert_eq!(checksums, deserialized);
     }

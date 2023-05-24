@@ -69,11 +69,7 @@ pub(crate) fn custom_vtable_entries<'tcx>(
             let checksum = get_checksum_vtbl_entry(tcx, &entry);
             debug!("Considering {:?} in checksums of {}", instance, name);
             unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
-            insert_hashmap(
-                unsafe { NEW_CHECKSUMS.get_mut() }.unwrap().inner_mut(),
-                name,
-                checksum,
-            )
+            insert_hashmap(unsafe { NEW_CHECKSUMS.get_mut() }.unwrap(), name, checksum)
         }
     }
 
@@ -156,13 +152,13 @@ pub fn export_checksums_and_changes() {
         let mut changed_nodes = Vec::new();
 
         let mut names = HashSet::new();
-        names.extend(new_checksums.inner().keys().map(|s| s.clone()));
-        names.extend(old_checksums.inner().keys().map(|s| s.clone()));
+        names.extend(new_checksums.keys().map(|s| s.clone()));
+        names.extend(old_checksums.keys().map(|s| s.clone()));
 
         for name in names {
             let changed = {
-                let maybe_new = new_checksums.inner().get(&name);
-                let maybe_old = old_checksums.inner().get(&name);
+                let maybe_new = new_checksums.get(&name);
+                let maybe_old = old_checksums.get(&name);
 
                 match (maybe_new, maybe_old) {
                     (None, None) => unreachable!(),
@@ -177,13 +173,13 @@ pub fn export_checksums_and_changes() {
         }
 
         let mut names_ctfe = HashSet::new();
-        names_ctfe.extend(new_checksums_ctfe.inner().keys().map(|s| s.clone()));
-        names_ctfe.extend(old_checksums_ctfe.inner().keys().map(|s| s.clone()));
+        names_ctfe.extend(new_checksums_ctfe.keys().map(|s| s.clone()));
+        names_ctfe.extend(old_checksums_ctfe.keys().map(|s| s.clone()));
 
         for name in names_ctfe {
             let changed = {
-                let maybe_new = new_checksums_ctfe.inner().get(&name);
-                let maybe_old = old_checksums_ctfe.inner().get(&name);
+                let maybe_new = new_checksums_ctfe.get(&name);
+                let maybe_old = old_checksums_ctfe.get(&name);
 
                 match (maybe_new, maybe_old) {
                     (None, None) => unreachable!(),
@@ -199,14 +195,14 @@ pub fn export_checksums_and_changes() {
         }
 
         write_to_file(
-            new_checksums.to_string().to_string(),
+            Into::<Vec<u8>>::into(new_checksums),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_checksums_path(buf, &crate_name, crate_id),
             false,
         );
 
         write_to_file(
-            new_checksums_ctfe.to_string().to_string(),
+            Into::<Vec<u8>>::into(new_checksums_ctfe),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_checksums_ctfe_path(buf, &crate_name, crate_id),
             false,

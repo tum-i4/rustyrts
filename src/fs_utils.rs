@@ -107,7 +107,7 @@ where
 /// * `initializer` - function that modifies path_buf - candidates: `get_graph_path`, `get_test_path`, `get_changes_path`
 /// * 'append' - whether content should be appended
 ///
-pub fn write_to_file<F>(content: String, path_buf: PathBuf, initializer: F, append: bool)
+pub fn write_to_file<F, C: AsRef<[u8]>>(content: C, path_buf: PathBuf, initializer: F, append: bool)
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
@@ -123,7 +123,7 @@ where
         Err(reason) => panic!("Failed to create file: {}", reason),
     };
 
-    match file.write_all(content.as_bytes()) {
+    match file.write_all(content.as_ref()) {
         Ok(_) => {}
         Err(reason) => panic!("Failed to write to file: {}", reason),
     };

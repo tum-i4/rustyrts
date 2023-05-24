@@ -99,14 +99,14 @@ impl StaticRTSCallbacks {
                             let name = def_id_name(tcx, def_id.to_def_id());
                             let checksum = get_checksum_body(tcx, body);
 
-                            insert_hashmap(new_checksums.inner_mut(), name, checksum)
+                            insert_hashmap(&mut *new_checksums, name, checksum)
                         }
                         Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
                             let body = tcx.mir_for_ctfe(*def_id);
                             let name = def_id_name(tcx, def_id.to_def_id());
                             let checksum = get_checksum_body(tcx, body);
 
-                            insert_hashmap(new_checksums_ctfe.inner_mut(), name, checksum)
+                            insert_hashmap(&mut *new_checksums_ctfe, name, checksum)
                         }
                     };
                 }
