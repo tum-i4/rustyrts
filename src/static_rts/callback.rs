@@ -35,6 +35,7 @@ impl Callbacks for StaticRTSCallbacks {
 
             providers.vtable_entries = custom_vtable_entries;
         });
+        unsafe { NEW_CHECKSUMS_VTBL.get_or_init(|| Checksums::new()) };
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -123,7 +124,6 @@ impl StaticRTSCallbacks {
 
             unsafe { NEW_CHECKSUMS.get_or_init(|| new_checksums) };
             unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| new_checksums_ctfe) };
-            unsafe { NEW_CHECKSUMS_VTBL.get_or_init(|| Checksums::new()) };
 
             run_analysis_shared(tcx);
         }

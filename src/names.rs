@@ -8,6 +8,17 @@ use rustc_middle::ty::print::Printer;
 use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
 use rustc_resolve::Namespace;
 
+lazy_static! {
+    static ref RE_NON_LOCAL: [Regex; 1] = [Regex::new(r"(<)[^> ]*?::(.*?>)").unwrap()];
+    //static ref RE_BOTH: [Regex; 5] = [
+    //    Regex::new(r"(for )[^>]*?::(.*?>)").unwrap(),
+    //    Regex::new(r"(<impl )[^>]*?::(.*?>)").unwrap(),
+    //    Regex::new(r"(<\(dyn )[^>]*?::(.*?>)").unwrap(),
+    //    Regex::new(r"(\+ )[^)>]*?::()").unwrap(),
+    //    Regex::new(r"(as )[^)>]*?::(.*?>)").unwrap(),
+    //];
+}
+
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
     let substs = &[];
@@ -49,24 +60,15 @@ pub(crate) fn def_id_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
         // We remove this crate prefix here, because it can lead to discontinuity in the dependency graph (static)
         // and false traces (dynamic)
 
-        lazy_static! {
-            static ref RE_GENERICS_DYN: Regex = Regex::new(r"<\(dyn ([^>]*?)::").unwrap();
-            static ref RE_GENERICS_IMPL: Regex = Regex::new(r"<impl ([^>]*?)::").unwrap();
-            static ref RE_GENERICS_FOR: Regex = Regex::new(r"for ([^>]*?)::").unwrap();
-            static ref RE_GENERICS: Regex = Regex::new(r"<([^> ]*?)::").unwrap();
+        for re in RE_NON_LOCAL.iter() {
+            def_path_str = re.replace_all(&def_path_str, "${1}${2}").to_string();
         }
-
-        def_path_str = RE_GENERICS_DYN
-            .replace_all(&def_path_str, "<(dyn ")
-            .to_string();
-        def_path_str = RE_GENERICS_IMPL
-            .replace_all(&def_path_str, "<impl ")
-            .to_string();
-        def_path_str = RE_GENERICS_FOR
-            .replace_all(&def_path_str, "for ")
-            .to_string();
-        def_path_str = RE_GENERICS.replace_all(&def_path_str, "<").to_string();
     }
+
+    // TODO: find out if this is necessary or not
+    //for re in RE_BOTH.iter() {
+    //    def_path_str = re.replace_all(&def_path_str, "${1}${2}").to_string();
+    //}
 
     // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
