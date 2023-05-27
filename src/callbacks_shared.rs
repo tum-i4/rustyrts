@@ -9,12 +9,14 @@ use std::{collections::HashSet, fs::read, mem::transmute, sync::atomic::AtomicUs
 use crate::{
     checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums},
     fs_utils::{
-        get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_checksums_vtbl_path,
-        get_test_path, write_to_file,
+        get_changes_path, get_checksums_path, get_checksums_vtbl_path, get_test_path, write_to_file,
     },
     names::def_id_name,
     static_rts::callback::PATH_BUF,
 };
+
+#[cfg(feature = "ctfe")]
+use crate::get_checksums_ctfe_path;
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
 
@@ -22,10 +24,13 @@ pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
 pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
 
 pub(crate) static mut NODES: OnceCell<HashSet<String>> = OnceCell::new();
-pub(crate) static mut NODES_CTFE: OnceCell<HashSet<String>> = OnceCell::new();
 pub(crate) static mut NEW_CHECKSUMS: OnceCell<Checksums> = OnceCell::new();
-pub(crate) static mut NEW_CHECKSUMS_CTFE: OnceCell<Checksums> = OnceCell::new();
 pub(crate) static mut NEW_CHECKSUMS_VTBL: OnceCell<Checksums> = OnceCell::new();
+
+#[cfg(feature = "ctfe")]
+pub(crate) static mut NODES_CTFE: OnceCell<HashSet<String>> = OnceCell::new();
+#[cfg(feature = "ctfe")]
+pub(crate) static mut NEW_CHECKSUMS_CTFE: OnceCell<Checksums> = OnceCell::new();
 
 const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
@@ -122,10 +127,12 @@ pub fn export_checksums_and_changes() {
         let crate_id = *CRATE_ID.get().unwrap();
 
         let mut new_checksums = unsafe { NEW_CHECKSUMS.take() }.unwrap_or_else(|| Checksums::new());
-        let mut new_checksums_ctfe =
-            unsafe { NEW_CHECKSUMS_CTFE.take() }.unwrap_or_else(|| Checksums::new());
         let new_checksums_vtbl =
             unsafe { NEW_CHECKSUMS_VTBL.take() }.unwrap_or_else(|| Checksums::new());
+
+        #[cfg(feature = "ctfe")]
+        let mut new_checksums_ctfe =
+            unsafe { NEW_CHECKSUMS_CTFE.take() }.unwrap_or_else(|| Checksums::new());
 
         //##############################################################################################################
         // 3. Import checksums
@@ -143,6 +150,7 @@ pub fn export_checksums_and_changes() {
             }
         };
 
+        #[cfg(feature = "ctfe")]
         let old_checksums_ctfe = {
             let checksums_path_buf =
                 get_checksums_ctfe_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
@@ -201,8 +209,10 @@ pub fn export_checksums_and_changes() {
             }
         }
 
+        #[cfg(feature = "ctfe")]
         let names_ctfe = unsafe { NODES_CTFE.take() }.unwrap();
 
+        #[cfg(feature = "ctfe")]
         for name in names_ctfe.iter() {
             let changed = {
                 let maybe_new = new_checksums_ctfe.get(name);
@@ -258,6 +268,7 @@ pub fn export_checksums_and_changes() {
             false,
         );
 
+        #[cfg(feature = "ctfe")]
         write_to_file(
             Into::<Vec<u8>>::into(new_checksums_ctfe),
             PATH_BUF.get().unwrap().clone(),

@@ -49,7 +49,7 @@ pub fn pre_test() {
 }
 
 #[no_mangle]
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub fn pre_main() {
     // Do not overwrite the HashSet in case it is present
     // This may be the case if main() is called directly by a test fn
@@ -65,7 +65,7 @@ pub fn post_test(test_name: &str) {
 }
 
 #[no_mangle]
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub fn post_main() {
     use std::os::unix::process::parent_id;
 
@@ -89,7 +89,7 @@ where
                 all.insert(node.to_string());
             });
 
-            #[cfg(target_family = "unix")]
+            #[cfg(unix)]
             {
                 use std::process::id;
 

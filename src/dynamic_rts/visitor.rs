@@ -73,7 +73,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         self.acc.insert(outer.clone());
         self.super_body(body);
 
-        #[cfg(target_family = "unix")]
+        #[cfg(unix)]
         if outer.ends_with("::main") {
             // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
             // 1. insert_post, 2. trace, 3. insert_pre
@@ -91,10 +91,10 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
             );
         }
 
-        #[cfg(target_family = "unix")]
+        #[cfg(unix)]
         body.check_calls_to_exit(self.tcx, &mut cache_ret);
 
-        #[cfg(target_family = "unix")]
+        #[cfg(unix)]
         if outer.ends_with("::main") {
             body.insert_pre_main(self.tcx, &mut cache_ret);
         }

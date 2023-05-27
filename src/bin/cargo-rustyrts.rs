@@ -576,7 +576,7 @@ fn run_cargo_rustc_dynamic() {
                 remove_file(path.path()).unwrap();
             }
 
-            #[cfg(target_family = "unix")]
+            #[cfg(unix)]
             if file_name.to_str().unwrap().ends_with(ENDING_PROCESS_TRACE) {
                 remove_file(path.path()).unwrap();
             }

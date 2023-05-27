@@ -11,9 +11,13 @@ use rustc_interface::{interface, Queries};
 use rustc_middle::ty::TyCtxt;
 
 use crate::callbacks_shared::{
-    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE,
-    NEW_CHECKSUMS_VTBL, NODES, NODES_CTFE, OLD_VTABLE_ENTRIES,
+    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES,
+    OLD_VTABLE_ENTRIES,
 };
+
+#[cfg(feature = "ctfe")]
+use crate::callbacks_shared::{NEW_CHECKSUMS_CTFE, NODES_CTFE};
+
 use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
 use crate::names::def_id_name;
@@ -118,12 +122,17 @@ impl StaticRTSCallbacks {
             // 3. Import checksums
             // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
             unsafe { NODES.get_or_init(|| new_checksums.keys().map(|s| s.clone()).collect()) };
+            unsafe { NEW_CHECKSUMS.get_or_init(|| new_checksums) };
+
+            #[cfg(feature = "ctfe")]
             unsafe {
                 NODES_CTFE.get_or_init(|| new_checksums_ctfe.keys().map(|s| s.clone()).collect())
             };
 
-            unsafe { NEW_CHECKSUMS.get_or_init(|| new_checksums) };
-            unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| new_checksums_ctfe) };
+            #[cfg(feature = "ctfe")]
+            unsafe {
+                NEW_CHECKSUMS_CTFE.get_or_init(|| new_checksums_ctfe)
+            };
 
             run_analysis_shared(tcx);
         }

@@ -11,9 +11,13 @@ use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 
 use crate::callbacks_shared::{
-    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CTFE,
-    NEW_CHECKSUMS_VTBL, NODES, NODES_CTFE, OLD_VTABLE_ENTRIES,
+    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES,
+    OLD_VTABLE_ENTRIES,
 };
+
+#[cfg(feature = "ctfe")]
+use crate::callbacks_shared::{NEW_CHECKSUMS_CTFE, NODES_CTFE};
+
 use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
@@ -98,16 +102,29 @@ impl Callbacks for DynamicRTSCallbacks {
             OLD_MIR_FOR_CTFE_PTR.store(unsafe { transmute(providers.mir_for_ctfe) }, SeqCst);
             OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
 
+            #[cfg(feature = "ctfe")]
+            {
+                providers.mir_for_ctfe = custom_mir_for_ctfe;
+            }
+
             providers.optimized_mir = custom_optimized_mir;
-            providers.mir_for_ctfe = custom_mir_for_ctfe;
             providers.vtable_entries = custom_vtable_entries;
         });
 
         unsafe { NODES.get_or_init(|| HashSet::new()) };
-        unsafe { NODES_CTFE.get_or_init(|| HashSet::new()) };
         unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
-        unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new()) };
+
         unsafe { NEW_CHECKSUMS_VTBL.get_or_init(|| Checksums::new()) };
+
+        #[cfg(feature = "ctfe")]
+        unsafe {
+            NODES_CTFE.get_or_init(|| HashSet::new())
+        };
+
+        #[cfg(feature = "ctfe")]
+        unsafe {
+            NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new())
+        };
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -168,6 +185,7 @@ fn custom_optimized_mir<'tcx>(
 }
 
 /// This function is executed instead of mir_for_ctfe() in the compiler
+#[cfg(feature = "ctfe")]
 fn custom_mir_for_ctfe<'tcx>(
     tcx: TyCtxt<'tcx>,
     def: query_keys::mir_for_ctfe<'tcx>,
@@ -212,23 +230,28 @@ impl DynamicRTSCallbacks {
             // 1. Collect the names of all mir bodies (because optimized mir is not always invoked)
 
             let nodes = unsafe { NODES.get_mut() }.unwrap();
+
+            #[cfg(feature = "ctfe")]
             let nodes_ctfe = unsafe { NODES_CTFE.get_mut() }.unwrap();
+
             for def_id in tcx.mir_keys(()) {
                 let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
 
                 if has_body {
-                    let _body = match tcx.hir().body_const_context(*def_id) {
-                        Some(ConstContext::ConstFn) | None => {
-                            let name: String = def_id_name(tcx, def_id.to_def_id());
-                            nodes.insert(name);
-                            tcx.optimized_mir(def_id.to_def_id())
-                        }
-                        Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
+                    if let Some(ConstContext::ConstFn) | None =
+                        tcx.hir().body_const_context(*def_id)
+                    {
+                        let name: String = def_id_name(tcx, def_id.to_def_id());
+                        nodes.insert(name);
+                        let _body = tcx.optimized_mir(def_id.to_def_id());
+                    } else {
+                        #[cfg(feature = "ctfe")]
+                        {
                             let name: String = def_id_name(tcx, def_id.to_def_id());
                             nodes_ctfe.insert(name);
-                            tcx.mir_for_ctfe(def_id.to_def_id())
+                            let _body = tcx.mir_for_ctfe(def_id.to_def_id());
                         }
-                    };
+                    }
                 }
             }
 

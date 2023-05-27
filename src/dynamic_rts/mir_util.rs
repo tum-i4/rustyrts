@@ -17,7 +17,7 @@ use rustc_middle::{
 };
 use rustc_span::Span;
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 use super::defid_util::get_def_id_post_main_fn;
 
 //######################################################################################################################
@@ -213,7 +213,7 @@ pub trait Traceable<'tcx> {
 
     fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
 
     fn insert_post_test(
@@ -225,10 +225,10 @@ pub trait Traceable<'tcx> {
         cache_call: &mut Option<BasicBlock>,
     );
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn check_calls_to_exit(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_post_main(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -340,7 +340,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         basic_blocks.swap(BasicBlock::from_usize(0), index);
     }
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
         trace!("Inserting pre_main() into {:?}", self.source.def_id());
 
@@ -535,7 +535,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         }
     }
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn check_calls_to_exit(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
         use super::defid_util::get_def_id_exit_fn;
 
@@ -613,7 +613,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         }
     }
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_post_main(
         &mut self,
         tcx: TyCtxt<'tcx>,

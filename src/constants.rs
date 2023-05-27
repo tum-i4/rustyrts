@@ -36,12 +36,14 @@ pub const FILE_COMPLETE_GRAPH: &str = "!complete_graph.dot";
 pub const ENDING_TRACE: &str = ".trace";
 pub const ENDING_CHANGES: &str = ".changes";
 pub const ENDING_CHECKSUM: &str = ".checksum";
-pub const ENDING_CHECKSUM_CTFE: &str = ".checksum_ctfe";
 pub const ENDING_CHECKSUM_VTBL: &str = ".checksum_vtbl";
 pub const ENDING_TEST: &str = ".test";
 pub const ENDING_GRAPH: &str = ".dot";
 
-#[cfg(target_family = "unix")]
+#[cfg(feature = "ctfe")]
+pub const ENDING_CHECKSUM_CTFE: &str = ".checksum_ctfe";
+
+#[cfg(unix)]
 pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 
 pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::try_trait::FromResidual::from_residual";

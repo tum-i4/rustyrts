@@ -16,13 +16,13 @@ use crate::libtest::{
     TestSuiteExecTime, ERROR_EXIT_CODE,
 };
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 use libc::c_int;
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 use crate::pipe::create_pipes;
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 use crate::util::waitpid_wrapper;
 
 const UNUSUAL_EXIT_CODE: c_int = 15;
@@ -145,7 +145,7 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     }
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 fn execute_tests_unix(
     opts: TestOpts,
     n_workers: usize,
