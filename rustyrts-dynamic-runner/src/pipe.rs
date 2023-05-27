@@ -1,6 +1,6 @@
 #![cfg(unix)]
 
-use libc::{c_int, pipe};
+use libc::{c_int, pipe2, O_CLOEXEC};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::{from_reader, to_writer};
@@ -15,7 +15,7 @@ where
 {
     let fds: [c_int; 2] = [0, 0];
     // SAFETY: Just a call to libc
-    if unsafe { pipe(&fds[0] as *const c_int as *mut c_int) } == 0 {
+    if unsafe { pipe2(&fds[0] as *const c_int as *mut c_int, O_CLOEXEC) } == 0 {
         Ok((ReadHandle::new(fds[0]), WriteHandle::new(fds[1])))
     } else {
         Err(Error::last_os_error())
