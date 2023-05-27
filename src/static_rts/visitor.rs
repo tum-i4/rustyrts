@@ -53,6 +53,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             for def_id in impls {
                 let implementors = self.tcx.impl_item_implementor_ids(def_id.to_def_id());
 
+                // 7. abstract data type -> fn in trait impl (`impl <trait> for ..`)
                 if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(def_id.to_def_id()) {
                     for subst in trait_ref.substs {
                         if let GenericArgKind::Type(ty) = subst.unpack() {
@@ -69,6 +70,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                     }
                 }
 
+                // 8. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
                 for (&trait_fn, &impl_fn) in implementors {
                     self.graph.add_edge(
                         def_id_name(self.tcx, trait_fn),
@@ -98,6 +100,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         match constant.literal {
             ConstantKind::Unevaluated(content, _ty) => {
+                // 5. borrowing node -> `const var`
                 // This takes care of borrows of e.g. "const var: u64"
                 let def_id = content.def.did;
 
@@ -112,6 +115,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
                         match self.tcx.global_alloc(ptr.provenance) {
                             GlobalAlloc::Static(def_id) => {
+                                // 6. borrowing node -> `static var` or `static mut var`
                                 // This takes care of borrows of e.g. "static var: u64"
                                 let (accessor, accessed_maybe_more) =
                                     (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
@@ -162,6 +166,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
 
         match ty.kind() {
+            // 1. outer node  -> contained Closure
             TyKind::Closure(def_id, _) => {
                 self.graph.add_edge(
                     def_id_name(self.tcx, outer),
@@ -169,6 +174,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     EdgeType::Closure,
                 );
             }
+            // 2. outer node  -> contained Generator
             TyKind::Generator(def_id, _, _) => {
                 self.graph.add_edge(
                     def_id_name(self.tcx, outer),
@@ -176,6 +182,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     EdgeType::Generator,
                 );
             }
+            // 3. caller node  -> callee `fn`
             TyKind::FnDef(def_id, _) => {
                 self.graph.add_edge(
                     def_id_name(self.tcx, outer),
@@ -183,6 +190,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     EdgeType::FnDef,
                 );
             }
+            // 4. outer node -> referenced abstract data type (`struct` or `enum`)
             TyKind::Adt(adt_def, _) => {
                 self.graph.add_edge(
                     def_id_name(self.tcx, outer),
@@ -190,14 +198,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     EdgeType::Adt,
                 );
             }
-            //TyKind::Foreign(def_id) => {
-            //    // this has effectively no impact because we do not track modifications of extern types
-            //    self.graph.add_edge(
-            //        def_path_debug_str_custom(self.tcx, outer),
-            //        def_path_debug_str_custom(self.tcx, *def_id),
-            //        EdgeType::Foreign,
-            //    );
-            //}
             _ => {}
         }
     }
