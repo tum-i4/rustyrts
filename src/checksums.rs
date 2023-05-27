@@ -42,7 +42,7 @@ impl DerefMut for Checksums {
     }
 }
 
-impl Into<Vec<u8>> for Checksums {
+impl Into<Vec<u8>> for &Checksums {
     fn into(self) -> Vec<u8> {
         let mut output = Vec::new();
 
@@ -165,7 +165,7 @@ mod teest {
         insert_hashmap(&mut checksums, "node5".to_string(), (5, u64::MAX - 1));
         insert_hashmap(&mut checksums, "node6".to_string(), (6, u64::MAX));
 
-        let serialized: Vec<u8> = checksums.clone().into();
+        let serialized: Vec<u8> = (&checksums).into();
         let deserialized = Checksums::from(serialized.as_slice());
 
         assert_eq!(checksums, deserialized);
@@ -175,7 +175,7 @@ mod teest {
     pub fn test_checksum_deserialization_empty() {
         let checksums = Checksums::new();
 
-        let serialized: Vec<u8> = checksums.clone().into();
+        let serialized: Vec<u8> = (&checksums).into();
         let deserialized = Checksums::from(serialized.as_slice());
 
         assert_eq!(checksums, deserialized);

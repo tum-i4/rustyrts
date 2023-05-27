@@ -4,7 +4,12 @@ use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::{InstanceDef, PolyTraitRef, TyCtxt, VtblEntry};
-use std::{collections::HashSet, fs::read, mem::transmute, sync::atomic::AtomicUsize};
+use std::{
+    collections::HashSet,
+    fs::read,
+    mem::transmute,
+    sync::{atomic::AtomicUsize, Mutex},
+};
 
 use crate::{
     checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums},
@@ -16,21 +21,21 @@ use crate::{
 };
 
 #[cfg(feature = "ctfe")]
-use crate::get_checksums_ctfe_path;
+use crate::fs_utils::get_checksums_ctfe_path;
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
 
 pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
 pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
 
-pub(crate) static mut NODES: OnceCell<HashSet<String>> = OnceCell::new();
-pub(crate) static mut NEW_CHECKSUMS: OnceCell<Checksums> = OnceCell::new();
-pub(crate) static mut NEW_CHECKSUMS_VTBL: OnceCell<Checksums> = OnceCell::new();
+pub(crate) static NODES: OnceCell<Mutex<HashSet<String>>> = OnceCell::new();
+pub(crate) static NEW_CHECKSUMS: OnceCell<Mutex<Checksums>> = OnceCell::new();
+pub(crate) static NEW_CHECKSUMS_VTBL: OnceCell<Mutex<Checksums>> = OnceCell::new();
 
 #[cfg(feature = "ctfe")]
-pub(crate) static mut NODES_CTFE: OnceCell<HashSet<String>> = OnceCell::new();
+pub(crate) static NODES_CTFE: OnceCell<Mutex<HashSet<String>>> = OnceCell::new();
 #[cfg(feature = "ctfe")]
-pub(crate) static mut NEW_CHECKSUMS_CTFE: OnceCell<Checksums> = OnceCell::new();
+pub(crate) static NEW_CHECKSUMS_CTFE: OnceCell<Mutex<Checksums>> = OnceCell::new();
 
 const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
@@ -81,7 +86,7 @@ pub(crate) fn custom_vtable_entries<'tcx>(
             debug!("Considering {:?} in checksums of {}", instance, name);
 
             insert_hashmap(
-                unsafe { NEW_CHECKSUMS_VTBL.get_mut() }.unwrap(),
+                &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
                 name,
                 checksum,
             )
@@ -126,13 +131,11 @@ pub fn export_checksums_and_changes() {
     if let Some(crate_name) = CRATE_NAME.get() {
         let crate_id = *CRATE_ID.get().unwrap();
 
-        let mut new_checksums = unsafe { NEW_CHECKSUMS.take() }.unwrap_or_else(|| Checksums::new());
-        let new_checksums_vtbl =
-            unsafe { NEW_CHECKSUMS_VTBL.take() }.unwrap_or_else(|| Checksums::new());
+        let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+        let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
 
         #[cfg(feature = "ctfe")]
-        let mut new_checksums_ctfe =
-            unsafe { NEW_CHECKSUMS_CTFE.take() }.unwrap_or_else(|| Checksums::new());
+        let mut new_checksums_ctfe = NEW_CHECKSUMS_CTFE.get().unwrap().lock().unwrap();
 
         //##############################################################################################################
         // 3. Import checksums
@@ -184,7 +187,7 @@ pub fn export_checksums_and_changes() {
 
         let mut changed_nodes = HashSet::new();
 
-        let names = unsafe { NODES.take() }.unwrap();
+        let names = NODES.get().unwrap().lock().unwrap();
 
         trace!("Checksums: {:?}", new_checksums);
 
@@ -210,7 +213,7 @@ pub fn export_checksums_and_changes() {
         }
 
         #[cfg(feature = "ctfe")]
-        let names_ctfe = unsafe { NODES_CTFE.take() }.unwrap();
+        let names_ctfe = NODES_CTFE.get().unwrap().lock().unwrap();
 
         #[cfg(feature = "ctfe")]
         for name in names_ctfe.iter() {
@@ -262,7 +265,7 @@ pub fn export_checksums_and_changes() {
         }
 
         write_to_file(
-            Into::<Vec<u8>>::into(new_checksums),
+            Into::<Vec<u8>>::into(&*new_checksums),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_checksums_path(buf, &crate_name, crate_id),
             false,
@@ -270,14 +273,14 @@ pub fn export_checksums_and_changes() {
 
         #[cfg(feature = "ctfe")]
         write_to_file(
-            Into::<Vec<u8>>::into(new_checksums_ctfe),
+            Into::<Vec<u8>>::into(&*new_checksums_ctfe),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_checksums_ctfe_path(buf, &crate_name, crate_id),
             false,
         );
 
         write_to_file(
-            Into::<Vec<u8>>::into(new_checksums_vtbl),
+            Into::<Vec<u8>>::into(&*new_checksums_vtbl),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_checksums_vtbl_path(buf, &crate_name, crate_id),
             false,

@@ -9,6 +9,7 @@ use rustc_span::source_map::{FileLoader, RealFileLoader};
 use std::collections::HashSet;
 use std::mem::transmute;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::sync::Mutex;
 
 use crate::callbacks_shared::{
     custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES,
@@ -111,20 +112,19 @@ impl Callbacks for DynamicRTSCallbacks {
             providers.vtable_entries = custom_vtable_entries;
         });
 
-        unsafe { NODES.get_or_init(|| HashSet::new()) };
-        unsafe { NEW_CHECKSUMS.get_or_init(|| Checksums::new()) };
-
-        unsafe { NEW_CHECKSUMS_VTBL.get_or_init(|| Checksums::new()) };
-
-        #[cfg(feature = "ctfe")]
-        unsafe {
-            NODES_CTFE.get_or_init(|| HashSet::new())
-        };
+        NODES.get_or_init(|| Mutex::new(HashSet::new()));
+        NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
+        NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
 
         #[cfg(feature = "ctfe")]
-        unsafe {
-            NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new())
-        };
+        {
+            NODES_CTFE.get_or_init(|| Mutex::new(HashSet::new()));
+        }
+
+        #[cfg(feature = "ctfe")]
+        {
+            NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(Checksums::new()));
+        }
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -171,7 +171,7 @@ fn custom_optimized_mir<'tcx>(
 
         trace!("Inserting checksum of {}", name);
 
-        let new_checksums = unsafe { NEW_CHECKSUMS.get_mut() }.unwrap();
+        let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
         insert_hashmap(&mut *new_checksums, name, checksum);
 
         //##############################################################
@@ -215,8 +215,7 @@ fn custom_mir_for_ctfe<'tcx>(
 
         trace!("Inserting checksum of {}", name);
 
-        unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Checksums::new()) };
-        let new_checksums = unsafe { NEW_CHECKSUMS_CTFE.get_mut() }.unwrap();
+        let mut new_checksums = NEW_CHECKSUMS_CTFE.get().unwrap().lock().unwrap();
         insert_hashmap(&mut *new_checksums, name, checksum);
     }
 
@@ -229,10 +228,10 @@ impl DynamicRTSCallbacks {
             //##########################################################################################################
             // 1. Collect the names of all mir bodies (because optimized mir is not always invoked)
 
-            let nodes = unsafe { NODES.get_mut() }.unwrap();
+            let nodes = NODES.get().unwrap();
 
             #[cfg(feature = "ctfe")]
-            let nodes_ctfe = unsafe { NODES_CTFE.get_mut() }.unwrap();
+            let mut nodes_ctfe = NODES_CTFE.get().unwrap().lock().unwrap();
 
             for def_id in tcx.mir_keys(()) {
                 let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
@@ -242,7 +241,7 @@ impl DynamicRTSCallbacks {
                         tcx.hir().body_const_context(*def_id)
                     {
                         let name: String = def_id_name(tcx, def_id.to_def_id());
-                        nodes.insert(name);
+                        nodes.lock().unwrap().insert(name);
                         let _body = tcx.optimized_mir(def_id.to_def_id());
                     } else {
                         #[cfg(feature = "ctfe")]

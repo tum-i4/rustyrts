@@ -154,7 +154,7 @@ fn execute_tests_unix(
     state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
     use libc::close;
-    use std::{io::stderr, io::stdout, os::fd::AsRawFd};
+    use std::os::fd::AsRawFd;
 
     if n_workers > 1 {
         formatter.write_run_start(tests.len(), None).unwrap();
@@ -181,16 +181,18 @@ fn execute_tests_unix(
                     match fork().expect("Fork failed") {
                         Fork::Parent(child) => {
                             drop(tx);
-                            let maybe_result = rx.recv();
 
                             match waitpid_wrapper(child) {
-                                Ok(exit) if exit == UNUSUAL_EXIT_CODE => match maybe_result {
-                                    Ok(t) => t,
-                                    Err(e) => CompletedTest::failed(format!(
-                                        "Failed to receive test result: {}",
-                                        e
-                                    )),
-                                },
+                                Ok(exit) if exit == UNUSUAL_EXIT_CODE => {
+                                    let maybe_result = rx.recv();
+                                    match maybe_result {
+                                        Ok(t) => t,
+                                        Err(e) => CompletedTest::failed(format!(
+                                            "Failed to receive test result: {}",
+                                            e
+                                        )),
+                                    }
+                                }
                                 Ok(exit) => {
                                     CompletedTest::failed(format!("Wrong exit code: {}", exit))
                                 }
@@ -200,10 +202,10 @@ fn execute_tests_unix(
                         Fork::Child => {
                             drop(rx);
 
-                            unsafe {
-                                close(std::io::stdout().as_raw_fd());
-                                close(std::io::stderr().as_raw_fd());
-                            }
+                            //unsafe {
+                            //    close(std::io::stdout().as_raw_fd());
+                            //    close(std::io::stderr().as_raw_fd());
+                            //}
 
                             let completed_test = run_test(
                                 &test,

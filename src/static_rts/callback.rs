@@ -1,5 +1,6 @@
 use std::mem::transmute;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use log::debug;
 use once_cell::sync::OnceCell;
@@ -39,7 +40,7 @@ impl Callbacks for StaticRTSCallbacks {
 
             providers.vtable_entries = custom_vtable_entries;
         });
-        unsafe { NEW_CHECKSUMS_VTBL.get_or_init(|| Checksums::new()) };
+        NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -121,18 +122,21 @@ impl StaticRTSCallbacks {
             // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
             // 3. Import checksums
             // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
-            unsafe { NODES.get_or_init(|| new_checksums.keys().map(|s| s.clone()).collect()) };
-            unsafe { NEW_CHECKSUMS.get_or_init(|| new_checksums) };
+
+            NODES.get_or_init(|| Mutex::new(new_checksums.keys().map(|s| s.clone()).collect()));
+            NEW_CHECKSUMS.get_or_init(|| Mutex::new(new_checksums));
 
             #[cfg(feature = "ctfe")]
-            unsafe {
-                NODES_CTFE.get_or_init(|| new_checksums_ctfe.keys().map(|s| s.clone()).collect())
-            };
+            {
+                NODES_CTFE.get_or_init(|| {
+                    Mutex::new(new_checksums_ctfe.keys().map(|s| s.clone()).collect())
+                });
+            }
 
             #[cfg(feature = "ctfe")]
-            unsafe {
-                NEW_CHECKSUMS_CTFE.get_or_init(|| new_checksums_ctfe)
-            };
+            {
+                NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(new_checksums_ctfe));
+            }
 
             run_analysis_shared(tcx);
         }
