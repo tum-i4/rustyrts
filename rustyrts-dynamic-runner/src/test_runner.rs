@@ -181,17 +181,16 @@ fn execute_tests_unix(
                         Fork::Parent(child) => {
                             drop(tx);
 
+                            let maybe_result = rx.recv();
+
                             match waitpid_wrapper(child) {
-                                Ok(exit) if exit == UNUSUAL_EXIT_CODE => {
-                                    let maybe_result = rx.recv();
-                                    match maybe_result {
-                                        Ok(t) => t,
-                                        Err(e) => CompletedTest::failed(format!(
-                                            "Failed to receive test result: {}",
-                                            e
-                                        )),
-                                    }
-                                }
+                                Ok(exit) if exit == UNUSUAL_EXIT_CODE => match maybe_result {
+                                    Ok(t) => t,
+                                    Err(e) => CompletedTest::failed(format!(
+                                        "Failed to receive test result: {}",
+                                        e
+                                    )),
+                                },
                                 Ok(exit) => {
                                     CompletedTest::failed(format!("Wrong exit code: {}", exit))
                                 }
@@ -201,11 +200,6 @@ fn execute_tests_unix(
                         Fork::Child => {
                             drop(rx);
                             install_kill_hook();
-
-                            //unsafe {
-                            //    close(std::io::stdout().as_raw_fd());
-                            //    close(std::io::stderr().as_raw_fd());
-                            //}
 
                             let completed_test = run_test(
                                 &test,
