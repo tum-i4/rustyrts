@@ -31,7 +31,6 @@ static RLIB_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
 #[cfg(unix)]
 static STD_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
 
-#[cfg(unix)]
 static PRE_FN_TEST_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
 #[cfg(unix)]

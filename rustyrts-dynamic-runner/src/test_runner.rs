@@ -1,13 +1,11 @@
-use fork::{fork, Fork};
 use std::io::{self, stdout};
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::process::{self, exit};
+use std::process::{self};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use test::test::{parse_opts, TestExecTime, TestTimeOptions};
 use test::{OutputFormat, ShouldPanic, TestDesc, TestDescAndFn, TestOpts};
-use threadpool::ThreadPool;
 
 use crate::constants::DESC_FLAG;
 use crate::libtest::{
@@ -17,15 +15,13 @@ use crate::libtest::{
 };
 
 #[cfg(unix)]
-use libc::c_int;
-
-#[cfg(unix)]
 use crate::pipe::create_pipes;
 
 #[cfg(unix)]
 use crate::util::waitpid_wrapper;
 
-const UNUSUAL_EXIT_CODE: c_int = 15;
+#[cfg(unix)]
+const UNUSUAL_EXIT_CODE: libc::c_int = 15;
 
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
@@ -131,10 +127,16 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         OutputFormat::Json => Box::new(JsonFormatter::new(OutputLocation::Raw(stdout()))),
     };
 
-    let (mut formatter, mut state) = if cfg!(unix) {
-        execute_tests_unix(opts, n_workers, tests, formatter, state)
-    } else {
-        execute_tests_single_threaded(opts, tests, formatter, state)
+    let (mut formatter, mut state) = {
+        #[cfg(unix)]
+        {
+            execute_tests_unix(opts, n_workers, tests, formatter, state)
+        }
+
+        #[cfg(not(unix))]
+        {
+            execute_tests_single_threaded(opts, tests, formatter, state)
+        }
     };
 
     state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
@@ -153,7 +155,11 @@ fn execute_tests_unix(
     mut formatter: Box<dyn OutputFormatter + Send>,
     state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
+    use std::process::exit;
+
     use crate::util::install_kill_hook;
+    use fork::{fork, Fork};
+    use threadpool::ThreadPool;
 
     if n_workers > 1 {
         formatter.write_run_start(tests.len(), None).unwrap();
@@ -334,6 +340,7 @@ pub(crate) struct CompletedTest {
 }
 
 impl CompletedTest {
+    #[cfg(unix)]
     fn failed(cause: String) -> Self {
         CompletedTest {
             result: TestResult::TrFailedMsg(cause),

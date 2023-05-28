@@ -8,12 +8,15 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use crate::constants::{
-    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_VTBL, ENDING_GRAPH, ENDING_PROCESS_TRACE,
+    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_VTBL, ENDING_GRAPH,
     ENDING_TEST, ENDING_TRACE, FILE_AFFECTED,
 };
 
 #[cfg(feature = "ctfe")]
 use crate::constants::ENDING_CHECKSUM_CTFE;
+
+#[cfg(unix)]
+use crate::constants::ENDING_PROCESS_TRACE;
 
 pub fn get_static_path(str: &str) -> PathBuf {
     let mut path_buf = PathBuf::from_str(str).unwrap();
@@ -79,6 +82,7 @@ where {
     read_lines_filter_map(files, file_ending, |_x| true, |x| x)
 }
 
+#[cfg(unix)]
 pub fn get_process_traces_path(mut path_buf: PathBuf, pid: &u32) -> PathBuf {
     path_buf.push(format!("{}{}", pid, ENDING_PROCESS_TRACE));
     path_buf
