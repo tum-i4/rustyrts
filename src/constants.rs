@@ -47,3 +47,10 @@ pub const ENDING_CHECKSUM_CTFE: &str = ".checksum_ctfe";
 pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 
 pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::try_trait::FromResidual::from_residual";
+
+pub const EDGE_CASE_ALLOCATOR: [&str; 4] = [
+    "as core::alloc::global::GlobalAlloc>::alloc",
+    "as core::alloc::global::GlobalAlloc>::dealloc",
+    "as core::alloc::global::GlobalAlloc>::realloc",
+    "as core::alloc::global::GlobalAlloc>::alloc_zeroed",
+];

@@ -1,8 +1,6 @@
 use std::mem::transmute;
 
-use super::defid_util::{
-    get_def_id_post_test_fn, get_def_id_pre_test_fn, get_def_id_trace_fn,
-};
+use super::defid_util::{get_def_id_post_test_fn, get_def_id_pre_test_fn, get_def_id_trace_fn};
 use log::{error, trace};
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
@@ -18,7 +16,7 @@ use rustc_middle::{
 use rustc_span::Span;
 
 #[cfg(unix)]
-use super::defid_util::{get_def_id_pre_main_fn, get_def_id_post_main_fn};
+use super::defid_util::{get_def_id_post_main_fn, get_def_id_pre_main_fn};
 
 //######################################################################################################################
 // Functions for inserting locals
