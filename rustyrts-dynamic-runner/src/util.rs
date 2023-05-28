@@ -1,6 +1,11 @@
 #![cfg(unix)]
 
-use libc::{c_int, waitpid, WEXITSTATUS, WIFEXITED};
+use libc::{c_int, prctl, waitpid, PR_SET_PDEATHSIG, SIGHUP, WEXITSTATUS, WIFEXITED};
+
+pub fn install_kill_hook() {
+    // SAFETY: Just a call to libc
+    unsafe { prctl(PR_SET_PDEATHSIG, SIGHUP) };
+}
 
 pub fn waitpid_wrapper(pid: libc::pid_t) -> Result<c_int, String> {
     let mut status: c_int = 0;

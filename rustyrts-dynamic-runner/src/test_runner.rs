@@ -153,8 +153,7 @@ fn execute_tests_unix(
     mut formatter: Box<dyn OutputFormatter + Send>,
     state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
-    use libc::close;
-    use std::os::fd::AsRawFd;
+    use crate::util::install_kill_hook;
 
     if n_workers > 1 {
         formatter.write_run_start(tests.len(), None).unwrap();
@@ -201,6 +200,7 @@ fn execute_tests_unix(
                         }
                         Fork::Child => {
                             drop(rx);
+                            install_kill_hook();
 
                             //unsafe {
                             //    close(std::io::stdout().as_raw_fd());
