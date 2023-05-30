@@ -9,7 +9,7 @@ use std::str::FromStr;
 
 use crate::constants::{
     ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_VTBL, ENDING_GRAPH,
-    ENDING_TEST, ENDING_TRACE, FILE_AFFECTED,
+    ENDING_TEST, ENDING_TRACE,
 };
 
 #[cfg(feature = "ctfe")]
@@ -72,20 +72,15 @@ pub fn get_traces_path(mut path_buf: PathBuf, test_name: &str) -> PathBuf {
     path_buf
 }
 
-pub fn get_affected_path(mut path_buf: PathBuf) -> PathBuf {
-    path_buf.push(FILE_AFFECTED);
+#[cfg(unix)]
+pub fn get_process_traces_path(mut path_buf: PathBuf, pid: &u32) -> PathBuf {
+    path_buf.push(format!("{}{}", pid, ENDING_PROCESS_TRACE));
     path_buf
 }
 
 pub fn read_lines(files: &Vec<DirEntry>, file_ending: &str) -> HashSet<String>
 where {
     read_lines_filter_map(files, file_ending, |_x| true, |x| x)
-}
-
-#[cfg(unix)]
-pub fn get_process_traces_path(mut path_buf: PathBuf, pid: &u32) -> PathBuf {
-    path_buf.push(format!("{}{}", pid, ENDING_PROCESS_TRACE));
-    path_buf
 }
 
 pub fn read_lines_filter_map<F, M, O>(

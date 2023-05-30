@@ -1,12 +1,11 @@
 use crate::names::def_id_name;
 use log::warn;
 use once_cell::sync::OnceCell;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, CrateNum};
 use rustc_middle::{
     middle::exported_symbols::{ExportedSymbol, SymbolExportInfo},
     ty::TyCtxt,
 };
-use rustc_span::def_id::CrateNum;
 
 const RLIB_CRATE_NAME: &str = "rustyrts_dynamic_rlib";
 

@@ -198,7 +198,7 @@ pub fn export_checksums_and_changes() {
                 let maybe_old = old_checksums.get(name);
 
                 match (maybe_new, maybe_old) {
-                    (None, None) => unreachable!(),
+                    (None, None) => panic!("Did not find checksum for {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
                     (None, Some(checksums)) => {
                         new_checksums.insert(name.clone(), checksums.clone());
                         false
@@ -222,7 +222,7 @@ pub fn export_checksums_and_changes() {
                 let maybe_old = old_checksums_ctfe.get(name);
 
                 match (maybe_new, maybe_old) {
-                    (None, None) => unreachable!(),
+                    (None, None) => panic!("Did not find checksum for {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
                     (None, Some(checksums)) => {
                         new_checksums_ctfe.insert(name.clone(), checksums.clone());
                         false
@@ -243,8 +243,7 @@ pub fn export_checksums_and_changes() {
                 let maybe_old = old_checksums_vtbl.get(name);
 
                 match (maybe_new, maybe_old) {
-                    (None, None) => unreachable!(),
-                    (None, Some(_)) => unreachable!(),
+                    (None, _) => panic!("Did not find checksum for vtable entry {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
                     (Some(_), None) => true,
                     (Some(new), Some(old)) => new != old,
                 }

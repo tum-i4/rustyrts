@@ -13,18 +13,17 @@ extern crate rustc_data_structures;
 extern crate rustc_hash;
 extern crate rustc_query_system;
 extern crate rustc_session;
-extern crate rustc_trait_selection;
 
 // required for analyzing and modifying the MIR
 extern crate rustc_abi;
 extern crate rustc_ast;
 extern crate rustc_hir;
 extern crate rustc_middle;
+extern crate rustc_span;
 
 // required for running compiler on strings during testing
 extern crate rustc_error_codes;
 extern crate rustc_errors;
-extern crate rustc_span;
 
 pub mod static_rts {
     pub mod callback;

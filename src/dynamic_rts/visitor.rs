@@ -2,7 +2,6 @@ use std::collections::HashSet;
 
 use super::mir_util::Traceable;
 use crate::callbacks_shared::TEST_MARKER;
-use crate::constants::EDGE_CASE_ALLOCATOR;
 use crate::names::def_id_name;
 use log::trace;
 use rustc_hir::AttributeMap;
@@ -31,10 +30,6 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
     fn visit_body(&mut self, body: &mut Body<'tcx>) {
         let def_id = body.source.instance.def_id();
         let outer = def_id_name(self.tcx, def_id);
-
-        if EDGE_CASE_ALLOCATOR.iter().any(|c| outer.ends_with(c)) {
-            panic!("Dynamic RustyRTS does not support using a custom allocator. Please use static RustyRTS instead.")
-        }
 
         trace!("Visiting {}", outer);
 
@@ -79,7 +74,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         self.super_body(body);
 
         #[cfg(unix)]
-        if outer.ends_with("::main") {
+        if outer.ends_with("::main") && body.arg_count == 0 {
             // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
             // 1. insert_post, 2. trace, 3. insert_pre
 
@@ -89,6 +84,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         for def_path in &self.acc {
             body.insert_trace(
                 self.tcx,
+                &outer,
                 def_path,
                 &mut cache_str,
                 &mut cache_u8,
@@ -100,7 +96,7 @@ impl<'tcx> MutVisitor<'tcx> for MirManipulatorVisitor<'tcx> {
         body.check_calls_to_exit(self.tcx, &mut cache_ret);
 
         #[cfg(unix)]
-        if outer.ends_with("::main") {
+        if outer.ends_with("::main") && body.arg_count == 0 {
             body.insert_pre_main(self.tcx, &mut cache_ret);
         }
     }

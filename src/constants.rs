@@ -30,7 +30,6 @@ pub const ENV_RUSTYRTS_VERBOSE: &str = "RUSTYRTS_VERBOSE";
 pub const DIR_STATIC: &str = ".rts_static";
 pub const DIR_DYNAMIC: &str = ".rts_dynamic";
 
-pub const FILE_AFFECTED: &str = "affected";
 pub const FILE_COMPLETE_GRAPH: &str = "!complete_graph.dot";
 
 pub const ENDING_TRACE: &str = ".trace";
@@ -46,9 +45,16 @@ pub const ENDING_CHECKSUM_CTFE: &str = ".checksum_ctfe";
 #[cfg(unix)]
 pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 
+//######################################################################################################################
+// Edge cases that need special treatment
+
 pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::try_trait::FromResidual::from_residual";
 
-pub const EDGE_CASE_ALLOCATOR: [&str; 4] = [
+pub const EDGE_CASES_NO_TRACE: &[&str] = &[
+    "_::__rg_alloc",
+    "_::__rg_dealloc",
+    "_::__rg_realloc",
+    "_::__rg_alloc_zeroed",
     "as core::alloc::global::GlobalAlloc>::alloc",
     "as core::alloc::global::GlobalAlloc>::dealloc",
     "as core::alloc::global::GlobalAlloc>::realloc",

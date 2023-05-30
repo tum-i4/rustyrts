@@ -13,6 +13,7 @@ use rustc_middle::{
     },
     ty::{List, RegionKind, Ty, TyCtxt, TyKind, UintTy},
 };
+use crate::constants::EDGE_CASES_NO_TRACE;
 use rustc_span::Span;
 
 #[cfg(unix)]
@@ -203,6 +204,7 @@ pub trait Traceable<'tcx> {
     fn insert_trace(
         &mut self,
         tcx: TyCtxt<'tcx>,
+        name_self: &str,
         name: &str,
         cache_str: &mut Option<(Local, Ty<'tcx>)>,
         cache_u8: &mut Option<(Local, Ty<'tcx>)>,
@@ -239,65 +241,69 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
     fn insert_trace(
         &mut self,
         tcx: TyCtxt<'tcx>,
+        name_self: &str,
         name: &str,
         cache_str: &mut Option<(Local, Ty<'tcx>)>,
         cache_u8: &mut Option<(Local, Ty<'tcx>)>,
         cache_ret: &mut Option<Local>,
     ) {
-        trace!(
-            "Inserting trace(\"{}\") into {:?}",
-            name,
-            self.source.def_id()
-        );
+        if !EDGE_CASES_NO_TRACE.iter().any(|c| name_self.ends_with(c)) {
+            trace!(
+                "Inserting trace(\"{}\") into {:?}",
+                name,
+                self.source.def_id()
+            );
 
-        let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
+            let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
             error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
         };
 
-        let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
-        let (local_str, ty_ref_str) = *cache_str.get_or_insert_with(|| insert_local_str(tcx, self));
-        let (local_u8, ty_ref_u8) = *cache_u8.get_or_insert_with(|| insert_local_u8(tcx, self));
+            let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+            let (local_str, ty_ref_str) =
+                *cache_str.get_or_insert_with(|| insert_local_str(tcx, self));
+            let (local_u8, ty_ref_u8) = *cache_u8.get_or_insert_with(|| insert_local_u8(tcx, self));
 
-        let span = self.span;
+            let span = self.span;
 
-        //*******************************************************
-        // Create assign statements
+            //*******************************************************
+            // Create assign statements
 
-        let place_elem_list = tcx.mk_place_elems([].iter());
+            let place_elem_list = tcx.mk_place_elems([].iter());
 
-        let (assign_statement_str, place_ref_str) =
-            insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
+            let (assign_statement_str, place_ref_str) =
+                insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
 
-        let (assign_statement_u8, place_ref_u8) =
-            insert_assign_u8(tcx, local_u8, place_elem_list, 0u8, ty_ref_u8, span);
+            let (assign_statement_u8, place_ref_u8) =
+                insert_assign_u8(tcx, local_u8, place_elem_list, 0u8, ty_ref_u8, span);
 
-        //*******************************************************
-        // Create new basic block
+            //*******************************************************
+            // Create new basic block
 
-        let basic_blocks = self.basic_blocks.as_mut();
+            let basic_blocks = self.basic_blocks.as_mut();
 
-        let mut args_vec = Vec::new();
-        args_vec.push(Operand::Move(place_ref_str));
-        args_vec.push(Operand::Move(place_ref_u8));
-        let terminator = create_call(
-            tcx,
-            def_id_trace_fn,
-            span,
-            args_vec,
-            local_ret,
-            place_elem_list,
-            Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb0
-        );
+            let mut args_vec = Vec::new();
+            args_vec.push(Operand::Move(place_ref_str));
+            args_vec.push(Operand::Move(place_ref_u8));
+            let terminator = create_call(
+                tcx,
+                def_id_trace_fn,
+                span,
+                args_vec,
+                local_ret,
+                place_elem_list,
+                Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb0
+            );
 
-        let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-        new_basic_block_data.statements.push(assign_statement_str);
-        new_basic_block_data.statements.push(assign_statement_u8);
+            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+            new_basic_block_data.statements.push(assign_statement_str);
+            new_basic_block_data.statements.push(assign_statement_u8);
 
-        let index = basic_blocks.push(new_basic_block_data);
+            let index = basic_blocks.push(new_basic_block_data);
 
-        // Swap bb0 and the new basic block
-        basic_blocks.swap(BasicBlock::from_usize(0), index);
+            // Swap bb0 and the new basic block
+            basic_blocks.swap(BasicBlock::from_usize(0), index);
+        }
     }
 
     fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {

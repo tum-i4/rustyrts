@@ -45,6 +45,11 @@ impl FileLoader for FileLoaderProxy {
         if !EXTERN_CRATE_INSERTED.load(SeqCst) {
             EXTERN_CRATE_INSERTED.store(true, SeqCst);
 
+            if content.contains("#![feature(custom_test_frameworks)]") {
+                panic!("Dynamic RustyRTS does not support using a custom test framework. Please use static RustyRTS instead");
+            }
+
+            let content = content.replace("#![feature(test)]", "");
             let extended_content = format!(
                 "#![feature(test)]
                 #![feature(custom_test_frameworks)]

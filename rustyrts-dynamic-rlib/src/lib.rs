@@ -1,7 +1,6 @@
-#![allow(mutable_transmutes)]
 use std::env;
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::Mutex;
 use std::{collections::HashSet, fs::read_to_string};
 
 use constants::ENV_PROJECT_DIR;
@@ -13,7 +12,7 @@ use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
 mod constants;
 mod fs_utils;
 
-static NODES: RwLock<Option<HashSet<(&'static str, &'static u8)>>> = RwLock::new(None);
+static NODES: Mutex<Option<HashSet<(&'static str, &'static u8)>>> = Mutex::new(None);
 //######################################################################################################################
 // Functions for tracing
 
@@ -25,7 +24,7 @@ pub fn trace(input: &'static str, bit: &'static u8) {
 
     if !flag.load(Acquire) {
         if !flag.fetch_or(true, AcqRel) {
-            let mut handle = NODES.write().unwrap();
+            let mut handle = NODES.lock().unwrap();
             if let Some(ref mut set) = *handle {
                 set.insert((input, bit));
             }
@@ -35,7 +34,7 @@ pub fn trace(input: &'static str, bit: &'static u8) {
 
 #[no_mangle]
 pub fn pre_test() {
-    let mut handle = NODES.write().unwrap();
+    let mut handle = NODES.lock().unwrap();
     if let Some(set) = handle.replace(HashSet::new()) {
         set.into_iter().for_each(|(_, bit)| {
             // Reset bit-flag
@@ -53,7 +52,7 @@ pub fn pre_test() {
 pub fn pre_main() {
     // Do not overwrite the HashSet in case it is present
     // This may be the case if main() is called directly by a test fn
-    let mut handle = NODES.write().unwrap();
+    let mut handle = NODES.lock().unwrap();
     if handle.is_none() {
         *handle = Some(HashSet::new());
     }
@@ -77,7 +76,7 @@ pub fn export_traces<F>(path_buf_init: F, append: bool)
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
-    let handle = NODES.read().unwrap();
+    let handle = NODES.lock().unwrap();
     if let Some(ref set) = *handle {
         if let Ok(source_path) = env::var(ENV_PROJECT_DIR) {
             let path_buf = get_dynamic_path(&source_path);
