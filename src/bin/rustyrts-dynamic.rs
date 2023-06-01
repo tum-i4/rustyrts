@@ -15,7 +15,6 @@ extern crate rustc_span;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
 use rustyrts::callbacks_shared::export_checksums_and_changes;
-use rustyrts::constants::ENV_PROJECT_DIR;
 use rustyrts::dynamic_rts::callback::DynamicRTSCallbacks;
 use rustyrts::format::create_logger;
 use rustyrts::utils;
@@ -68,8 +67,7 @@ fn main() {
             }
         }
 
-        let source_path = env::var(ENV_PROJECT_DIR).unwrap();
-        let mut callbacks = DynamicRTSCallbacks::new(source_path);
+        let mut callbacks = DynamicRTSCallbacks::new();
 
         let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
         run_compiler.run()

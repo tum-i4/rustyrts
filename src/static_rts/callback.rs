@@ -57,8 +57,8 @@ impl Callbacks for StaticRTSCallbacks {
 }
 
 impl StaticRTSCallbacks {
-    pub fn new(target_path: String) -> Self {
-        PATH_BUF.get_or_init(|| get_static_path(&target_path));
+    pub fn new() -> Self {
+        PATH_BUF.get_or_init(|| get_static_path(true));
         Self {
             graph: DependencyGraph::new(),
         }

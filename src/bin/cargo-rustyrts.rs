@@ -1,10 +1,12 @@
 use itertools::Itertools;
 use rustyrts::constants::{
     DESC_FLAG, ENDING_CHANGES, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST, ENDING_TRACE,
-    ENV_PROJECT_DIR, ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
-    ENV_TARGET_DIR, FILE_COMPLETE_GRAPH,
+    ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE, ENV_TARGET_DIR,
+    FILE_COMPLETE_GRAPH,
 };
-use rustyrts::fs_utils::{get_dynamic_path, get_static_path, read_lines, read_lines_filter_map};
+use rustyrts::fs_utils::{
+    get_dynamic_path, get_static_path, get_target_dir, read_lines, read_lines_filter_map,
+};
 use rustyrts::static_rts::graph::DependencyGraph;
 use rustyrts::utils;
 use serde_json;
@@ -141,10 +143,10 @@ impl FromStr for Mode {
 ///
 /// And set the following environment variables:
 /// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
-/// * [`ENV_PROJECT_DIR`] is set to the directory of the cargo project
+/// * [`ENV_TARGET_DIR`] is set to a custom build directory inside the directory of the cargo project
 /// * [`ENV_RUSTYRTS_ARGS`] is set to the user-provided arguments for `rustc`
 /// * [`ENV_RUSTC_WRAPPER`] is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
-fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
+fn cargo_build(mode: Mode) -> Command {
     // Now we run `cargo build $FLAGS $ARGS`, giving the user the
     // chance to add additional arguments. `FLAGS` is set to identify
     // this target.  The user gets to control what gets actually passed to rustyrts.
@@ -171,10 +173,6 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
     // Store mode in env variable
     cmd.env(ENV_RUSTYRTS_MODE, mode.to_string());
 
-    // Store directory of the project, such that rustyrts knows where to store information about tests, changes
-    // and the graph
-    cmd.env(ENV_PROJECT_DIR, project_dir.to_str().unwrap());
-
     // Serialize the remaining args into a special environment variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
@@ -183,6 +181,9 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
         ENV_RUSTYRTS_ARGS,
         serde_json::to_string(&args_vec).expect("failed to serialize args"),
     );
+
+    // If not set manually, set cargo target dir to something other than the default
+    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string()));
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
@@ -195,20 +196,16 @@ fn cargo_build(project_dir: PathBuf, mode: Mode) -> Command {
 ///
 /// And set the following environment variables:
 /// * [`ENV_RUSTYRTS_MODE`] is set to either "dynamic" or "static"
-/// * [`ENV_PROJECT_DIR`] is set to the directory of the cargo project
+/// * [`ENV_TARGET_DIR`] is set to a custom build directory inside the directory of the cargo project
 /// * [`ENV_RUSTYRTS_ARGS`] is set to the user-provided arguments for `rustc`
 /// * [`ENV_RUSTC_WRAPPER`] is set to `cargo-rustyrts` itself so the execution will proceed in the second branch in main()
-fn cargo_test<'a, I>(project_dir: PathBuf, mode: Mode, affected_tests: I) -> Command
+fn cargo_test<'a, I>(mode: Mode, affected_tests: I) -> Command
 where
     I: Iterator<Item = &'a String>,
 {
     let mut cmd = cargo();
     cmd.arg("test");
     cmd.arg("--no-fail-fast"); // Do not stop if a test fails, execute all included tests
-
-    // Store directory of the project, such that rustyrts knows where to store information about tests, changes
-    // graph or traces
-    cmd.env(ENV_PROJECT_DIR, project_dir.to_str().unwrap());
 
     // Serialize the args for rust_c into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
@@ -218,6 +215,9 @@ where
         ENV_RUSTYRTS_ARGS,
         serde_json::to_string(&args_vec).expect("failed to serialize args"),
     );
+
+    // If not set manually, set cargo target dir to something other than the default
+    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string()));
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
@@ -348,27 +348,24 @@ fn main() {
 // Actually important functions...
 
 fn clean() {
-    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
+    let dirs = if let Ok(dir) = std::env::var(ENV_TARGET_DIR) {
+        vec![dir]
+    } else {
+        vec![
+            format!("target_{}", Mode::Dynamic.to_string()),
+            format!("target_{}", Mode::Static.to_string()),
+        ]
+    };
 
-    let path_buf_static = get_static_path(&target_dir);
-    if path_buf_static.exists() {
-        remove_dir_all(path_buf_static.clone()).expect(&format!(
-            "Failed to remove directory {}",
-            path_buf_static.display()
-        ));
+    for target_dir in dirs {
+        let path_buf = PathBuf::from(target_dir);
+        if path_buf.exists() {
+            remove_dir_all(path_buf.clone()).expect(&format!(
+                "Failed to remove directory {}",
+                path_buf.display()
+            ));
+        }
     }
-
-    let path_buf_dynamic = get_dynamic_path(&target_dir);
-    if path_buf_dynamic.exists() {
-        remove_dir_all(path_buf_dynamic.clone()).expect(&format!(
-            "Failed to remove directory {}",
-            path_buf_dynamic.display()
-        ));
-    }
-
-    let mut cmd = cargo();
-    cmd.arg("clean");
-    execute(cmd);
 }
 
 /// This will construct and execute a command like:
@@ -418,9 +415,8 @@ fn run_rustyrts() {
 /// `cargo build --bin some_crate_name -v -- --top_crate_name some_top_crate_name --domain interval -v cargo-rustyrts-marker-end`
 /// using the rustc wrapper for static rustyrts
 fn run_cargo_rustc_static() {
-    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
+    let path_buf: PathBuf = get_static_path(false);
 
-    let path_buf = get_static_path(&target_dir);
     create_dir_all(path_buf.as_path()).expect(&format!(
         "Failed to create directory {}",
         path_buf.display()
@@ -435,10 +431,7 @@ fn run_cargo_rustc_static() {
         }
     }
 
-    let cmd = cargo_build(
-        PathBuf::from(target_dir).canonicalize().unwrap(),
-        Mode::Static,
-    );
+    let cmd = cargo_build(Mode::Static);
     execute(cmd);
 }
 
@@ -449,8 +442,7 @@ fn run_cargo_rustc_static() {
 fn select_and_execute_tests_static() {
     let verbose = has_arg_flag("-v");
 
-    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
-    let path_buf = get_static_path(&target_dir);
+    let path_buf = get_static_path(true);
 
     let files: Vec<DirEntry> = read_dir(path_buf.as_path())
         .unwrap()
@@ -545,11 +537,7 @@ fn select_and_execute_tests_static() {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    let cmd = cargo_test(
-        PathBuf::from(target_dir).canonicalize().unwrap(),
-        Mode::Static,
-        affected_tests.into_iter().map(|test| *test),
-    );
+    let cmd = cargo_test(Mode::Static, affected_tests.into_iter().map(|test| *test));
 
     execute(cmd);
 }
@@ -561,8 +549,8 @@ fn select_and_execute_tests_static() {
 /// `cargo build --bin some_crate_name -v -- cargo-rustyrts-marker-begin --top_crate_name some_top_crate_name --domain interval -v cargo-rustyrts-marker-end`
 /// using the rustc wrapper for dynamic rustyrts
 fn run_cargo_rustc_dynamic() {
-    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
-    let path_buf = get_dynamic_path(&target_dir);
+    let path_buf: PathBuf = get_dynamic_path(false);
+
     create_dir_all(path_buf.as_path()).expect(&format!(
         "Failed to create directory {}",
         path_buf.display()
@@ -586,10 +574,7 @@ fn run_cargo_rustc_dynamic() {
     // Now we run `cargo build $FLAGS $ARGS`, giving the user the
     // chance to add additional arguments. `FLAGS` is set to identify
     // this target.  The user gets to control what gets actually passed to rustyrts.
-    let cmd = cargo_build(
-        PathBuf::from(target_dir).canonicalize().unwrap(),
-        Mode::Dynamic,
-    );
+    let cmd = cargo_build(Mode::Dynamic);
     execute(cmd);
 }
 
@@ -600,9 +585,7 @@ fn run_cargo_rustc_dynamic() {
 fn select_and_execute_tests_dynamic() {
     let verbose = has_arg_flag("-v");
 
-    let target_dir = std::env::var(ENV_TARGET_DIR).unwrap_or("target".to_string());
-
-    let path_buf = get_dynamic_path(&target_dir);
+    let path_buf = get_dynamic_path(true);
 
     let files: Vec<DirEntry> = read_dir(path_buf.as_path())
         .unwrap()
@@ -714,10 +697,6 @@ fn select_and_execute_tests_dynamic() {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    let cmd = cargo_test(
-        PathBuf::from(target_dir).canonicalize().unwrap(),
-        Mode::Dynamic,
-        affected_tests.iter(),
-    );
+    let cmd = cargo_test(Mode::Dynamic, affected_tests.iter());
     execute(cmd);
 }

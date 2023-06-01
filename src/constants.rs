@@ -14,10 +14,6 @@ pub const ENV_RUSTC_WRAPPER: &str = "RUSTC_WRAPPER";
 /// Is set by cargo
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
-/// Used to transmit the directory of the current project
-/// that is not obvious when compiling dependencies
-pub const ENV_PROJECT_DIR: &str = "PROJECT_DIR";
-
 /// Used to buffer arguments to rustc
 pub const ENV_RUSTYRTS_ARGS: &str = "rustyrts_args";
 

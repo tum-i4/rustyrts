@@ -89,8 +89,8 @@ impl FileLoader for FileLoaderProxy {
 pub struct DynamicRTSCallbacks {}
 
 impl DynamicRTSCallbacks {
-    pub fn new(target_path: String) -> Self {
-        PATH_BUF.get_or_init(|| get_dynamic_path(&target_path));
+    pub fn new() -> Self {
+        PATH_BUF.get_or_init(|| get_dynamic_path(true));
         Self {}
     }
 }

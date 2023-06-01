@@ -5,11 +5,10 @@ use std::fs::{read_to_string, DirEntry, OpenOptions};
 use std::hash::Hash;
 use std::io::Write;
 use std::path::PathBuf;
-use std::str::FromStr;
 
 use crate::constants::{
-    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_VTBL, ENDING_GRAPH,
-    ENDING_TEST, ENDING_TRACE,
+    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_VTBL, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE,
+    ENV_TARGET_DIR,
 };
 
 #[cfg(feature = "ctfe")]
@@ -18,14 +17,32 @@ use crate::constants::ENDING_CHECKSUM_CTFE;
 #[cfg(unix)]
 use crate::constants::ENDING_PROCESS_TRACE;
 
-pub fn get_static_path(str: &str) -> PathBuf {
-    let mut path_buf = PathBuf::from_str(str).unwrap();
+pub fn get_target_dir(mode: &str) -> PathBuf {
+    get_target_dir_relative(mode)
+        .canonicalize()
+        .expect("Failed to canonicalize ENV_TARGET_DIR")
+}
+
+pub fn get_target_dir_relative(mode: &str) -> PathBuf {
+    PathBuf::from(std::env::var(ENV_TARGET_DIR).unwrap_or(format!("target_{}", mode).to_string()))
+}
+
+pub fn get_static_path(absolute: bool) -> PathBuf {
+    let mut path_buf = if !absolute {
+        get_target_dir_relative("static")
+    } else {
+        get_target_dir("static")
+    };
     path_buf.push(".rts_static");
     path_buf
 }
 
-pub fn get_dynamic_path(str: &str) -> PathBuf {
-    let mut path_buf = PathBuf::from_str(str).unwrap();
+pub fn get_dynamic_path(absolute: bool) -> PathBuf {
+    let mut path_buf = if !absolute {
+        get_target_dir_relative("dynamic")
+    } else {
+        get_target_dir("dynamic")
+    };
     path_buf.push(".rts_dynamic");
     path_buf
 }

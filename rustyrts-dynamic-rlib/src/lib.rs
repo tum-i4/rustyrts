@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::{collections::HashSet, fs::read_to_string};
 
-use constants::ENV_PROJECT_DIR;
-use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
+use fs_utils::{
+    get_dynamic_path, get_process_traces_path, get_target_dir, get_traces_path, write_to_file,
+};
 
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
@@ -78,39 +79,37 @@ where
 {
     let handle = NODES.lock().unwrap();
     if let Some(ref set) = *handle {
-        if let Ok(source_path) = env::var(ENV_PROJECT_DIR) {
-            let path_buf = get_dynamic_path(&source_path);
+        let path_buf = get_dynamic_path(true);
 
-            let mut all = HashSet::new();
+        let mut all = HashSet::new();
 
-            set.iter().for_each(|(node, _)| {
-                // Append node to acc
-                all.insert(node.to_string());
-            });
+        set.iter().for_each(|(node, _)| {
+            // Append node to acc
+            all.insert(node.to_string());
+        });
 
-            #[cfg(unix)]
-            {
-                use std::process::id;
+        #[cfg(unix)]
+        {
+            use std::process::id;
 
-                let pid = id();
-                let path_child_traces = get_process_traces_path(path_buf.clone(), &pid);
-                if path_child_traces.is_file() {
-                    read_to_string(path_child_traces)
-                        .unwrap()
-                        .lines()
-                        .for_each(|l| {
-                            all.insert(l.to_string());
-                        });
-                }
+            let pid = id();
+            let path_child_traces = get_process_traces_path(path_buf.clone(), &pid);
+            if path_child_traces.is_file() {
+                read_to_string(path_child_traces)
+                    .unwrap()
+                    .lines()
+                    .for_each(|l| {
+                        all.insert(l.to_string());
+                    });
             }
-
-            let output = all.into_iter().fold(String::new(), |mut acc, node| {
-                acc.push_str(&node);
-                acc.push_str("\n");
-                acc
-            });
-
-            write_to_file(output, path_buf, path_buf_init, append);
         }
+
+        let output = all.into_iter().fold(String::new(), |mut acc, node| {
+            acc.push_str(&node);
+            acc.push_str("\n");
+            acc
+        });
+
+        write_to_file(output, path_buf, path_buf_init, append);
     }
 }
