@@ -92,8 +92,9 @@ class GitWalker(Walker):
             # run hooks
             success = True
             for h in self.hooks:
-                run_successful = h.run(next_commit)
-                success = success and run_successful
+                success &= h.run(next_commit)
+                if not success:
+                    break
 
             # inc counter and break if `num_commits` reached
             if success:

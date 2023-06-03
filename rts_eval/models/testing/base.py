@@ -136,7 +136,6 @@ class TestSuite:
 
     @classmethod
     def from_dict(cls, test_suite: Dict) -> "TestSuite":
-        # we support two different kinds of JSON schemas here (one from the `ttrace` project, one from `coop`)
         return cls(
             name=test_suite["testId" if "testId" in test_suite else "name"],
             duration=test_suite["exec_time"],

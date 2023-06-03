@@ -21,7 +21,7 @@ INVALID_PARAMETERS_MSG = "Invalid parameters provided."
 @click.option("--debug", is_flag=True, default=False, help="Show debug information.")
 def entry_point(ctx, debug):
     """
-    coop CLI
+    rts_eval CLI
     """
     ctx.ensure_object(dict)
     ctx.obj["debug"] = debug

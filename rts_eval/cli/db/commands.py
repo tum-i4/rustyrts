@@ -45,7 +45,7 @@ def db(ctx, url: str):
 
     Examples:
 
-        $ coop db postgresql://user:pass@localhost:5432/db ping
+        $ rts_eval db postgresql://user:pass@localhost:5432/db ping
     """
     # set options
     echo = "debug" if ctx.obj["debug"] else False
@@ -87,7 +87,7 @@ def migrate(ctx):
 
     Examples:
 
-        $ coop db postgresql://user:pass@localhost:5432/db migrate
+        $ rts_eval db postgresql://user:pass@localhost:5432/db migrate
     """
     conn: DBConnection = ctx["connection"]
     try:
@@ -109,7 +109,7 @@ def drop(ctx):
 
     Examples:
 
-        $ coop db postgresql://user:pass@localhost:5432/db drop
+        $ rts_eval db postgresql://user:pass@localhost:5432/db drop
     """
     conn: DBConnection = ctx["connection"]
     try:
@@ -136,7 +136,7 @@ def dump(ctx, output):
 
     Examples:
 
-        $ coop db postgresql://user:pass@localhost:5432/db dump backup.dump
+        $ rts_eval db postgresql://user:pass@localhost:5432/db dump backup.dump
     """
     conn: DBConnection = ctx["connection"]
     try:
@@ -188,7 +188,7 @@ def restore(ctx, backup, clean):
 
     Examples:
 
-        $ coop db postgresql://user:pass@localhost:5432/db restore backup.dump
+        $ rts_eval db postgresql://user:pass@localhost:5432/db restore backup.dump
     """
     conn: DBConnection = ctx["connection"]
     try:

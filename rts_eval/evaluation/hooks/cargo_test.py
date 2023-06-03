@@ -22,6 +22,9 @@ class CargoTestHook(CargoHook):
         self.build_options = build_options if build_options else []
         self.test_options = test_options if test_options else []
 
+        if "--no-fail-fast" not in build_options:
+            build_options += ["--no-fail-fast"]
+
     def env(self):
         return os.environ | self.env_vars
 

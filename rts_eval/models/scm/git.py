@@ -76,7 +76,7 @@ class GitClient(SCMClient):
         self.git_repo.git.reset(hard=True)
 
     def clean(self, rm_dirs: bool = True):
-        self.git_repo.git.clean(force=True, d=rm_dirs)
+        self.git_repo.git.clean(force=True, d=rm_dirs, x=rm_dirs)
 
     def get_commit_from_repo(self, commit_id: Optional[str] = None) -> Optional[
         Commit]:

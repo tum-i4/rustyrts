@@ -1,98 +1,142 @@
 # %%
-## actix-web
+## actix/actix-web
 from rustyrts.walkers.rustyrts_walker import walk
 
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/actix-web"
+path = "../projects/git_walk/actix-web"
 branch = "master"
 
 walk(path, branch=branch)
 
+
 # %%
-## coreutils
+## arrow-datafusion
 from rustyrts.walkers.rustyrts_walker import walk
 
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/coreutils"
+path = "../projects/git_walk/arrow-datafusion"
 branch = "main"
 
 walk(path, branch=branch)
 
-# %%
-## deno
-from rustyrts.walkers.rustyrts_walker import walk
-
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/deno"
-branch = "main"
-
-walk(path, branch=branch)
-
-# %%
-## exonum
-from rustyrts.walkers.rustyrts_walker import walk
-
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/exonum"
-branch = "master"
-
-walk(path, branch=branch)
 
 # %%
 ## feroxbuster
 from rustyrts.walkers.rustyrts_walker import walk
 
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/feroxbuster"
+path = "../projects/git_walk/feroxbuster"
 branch = "main"
 
 walk(path, branch=branch)
 
-# %%
-## fluvio
-from rustyrts.walkers.rustyrts_walker import walk
-
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/fluvio"
-branch = "master"
-
-walk(path, branch=branch)
 
 # %%
-## futures-rs
+## nushell
 from rustyrts.walkers.rustyrts_walker import walk
 
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/futures-rs"
-branch = "master"
-
-walk(path, branch=branch)
-
-# %%
-## image
-from rustyrts.walkers.rustyrts_walker import walk
-
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/image"
-branch = "master"
-
-walk(path, branch=branch)
-
-# %%
-## penumbra
-from rustyrts.walkers.rustyrts_walker import walk
-
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/penumbra"
+path = "../projects/git_walk/nushell"
 branch = "main"
 
 walk(path, branch=branch)
 
+
 # %%
-## quickwit
+## ockam
 from rustyrts.walkers.rustyrts_walker import walk
 
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/quickwit"
-branch = "main"
+path = "../projects/git_walk/ockam"
+branch = "develop"
 
 walk(path, branch=branch)
+
 
 # %%
 ## rayon
 from rustyrts.walkers.rustyrts_walker import walk
 
-path = "/home/simon/Dokumente/Semester10/GuidedResearch/Projects/Suitable/Long/rayon"
+path = "../projects/git_walk/rayon"
 branch = "master"
+
+walk(path, branch=branch)
+
+
+# %%
+## rust-analyzer
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/rust-analyzer"
+branch = "master"
+
+walk(path, branch=branch)
+
+
+# %%
+## wasmer
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/wasmer"
+branch = "master"
+
+options = ["--features", "test-singlepass,test-cranelift,test-universal"]
+
+walk(path, branch=branch, build_options=options)
+
+
+# %%
+## zenoh
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/zenoh"
+branch = "master"
+
+walk(path, branch=branch)
+
+
+# %%
+## exonum
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/exonum"
+branch = "master"
+
+walk(path, branch=branch)
+
+
+# %%
+## tantivy
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/tantivy"
+branch = "main"
+
+walk(path, branch=branch)
+
+
+# %%
+## meilisearch
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/meilisearch"
+branch = "main"
+
+walk(path, branch=branch)
+
+
+# %%
+## sled
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/sled"
+branch = "main"
+
+options = ["--features", "testing"]
+
+walk(path, branch=branch, build_options=options)
+
+
+# %%
+## penumbra
+from rustyrts.walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/penumbra"
+branch = "main"
 
 walk(path, branch=branch)

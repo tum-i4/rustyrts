@@ -47,11 +47,12 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
     # does not work correctly anymore
     # that is why we fixed the commits that are analyzed
     (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (
-        RandomWalkerStrategy(repository, branch=branch), 20)
+        RandomWalkerStrategy(repository, branch=branch), 4)
 
     build_options = build_options if build_options else []
+    build_options += ["-Z no-index-update"]
 
-    test_options = build_options if build_options else []
+    test_options = test_options if test_options else []
     test_options += ["-Z unstable-options", "--report-time", "--format", "json"]
 
     env_vars = env_vars if env_vars else {}
@@ -78,9 +79,9 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                           connection=connection,
                           git_client=git_client,
                           report_name="cargo test",
-                          env_vars=env_vars,
-                          build_options=build_options,
-                          test_options=test_options
+                          env_vars=env_vars.copy(),
+                          build_options=build_options.copy(),
+                          test_options=test_options.copy()
                           ),
 
             CargoRustyRTSHook(repository=repository,
@@ -88,9 +89,9 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                               git_client=git_client,
                               report_name="cargo rustyrts dynamic",
                               mode=RustyRTSMode.DYNAMIC,
-                              env_vars=env_vars,
-                              build_options=build_options,
-                              test_options=test_options
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy(),
+                              test_options=test_options.copy()
                               ),
 
             CargoRustyRTSHook(repository=repository,
@@ -98,9 +99,9 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                               git_client=git_client,
                               report_name="cargo rustyrts static",
                               mode=RustyRTSMode.STATIC,
-                              env_vars=env_vars,
-                              build_options=build_options,
-                              test_options=test_options
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy(),
+                              test_options=test_options.copy()
                               ),
 
             # ***********************************************************************************************************
@@ -110,9 +111,9 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                           connection=connection,
                           git_client=git_client,
                           report_name="cargo test single threaded",
-                          env_vars=env_vars,
-                          build_options=build_options + ["--jobs 1"],
-                          test_options=test_options + ["--test-threads 1"]
+                          env_vars=env_vars.copy(),
+                          build_options=build_options.copy() + ["--jobs 1"],
+                          test_options=test_options.copy() + ["--test-threads 1"]
                           ),
 
             CargoRustyRTSHook(repository=repository,
@@ -120,9 +121,9 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                               git_client=git_client,
                               report_name="cargo rustyrts dynamic single threaded",
                               mode=RustyRTSMode.DYNAMIC,
-                              env_vars=env_vars,
-                              build_options=build_options + ["--jobs 1"],
-                              test_options=test_options + ["--test-threads 1"]
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy() + ["--jobs 1"],
+                              test_options=test_options.copy() + ["--test-threads 1"]
                               ),
 
             CargoRustyRTSHook(repository=repository,
@@ -130,9 +131,9 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                               git_client=git_client,
                               report_name="cargo rustyrts static single threaded",
                               mode=RustyRTSMode.STATIC,
-                              env_vars=env_vars,
-                              build_options=build_options + ["--jobs 1"],
-                              test_options=test_options + ["--test-threads 1"]
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy() + ["--jobs 1"],
+                              test_options=test_options.copy() + ["--test-threads 1"]
                               ),
         ],
     )
