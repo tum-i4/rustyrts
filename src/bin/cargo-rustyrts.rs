@@ -244,6 +244,10 @@ where
 
     if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
         cmd.arg("--no-run");
+        
+        for arg in get_args_test() {
+            cmd.arg(arg);
+        }
     } else {
         let mut delimiter_found = false;
         for arg in get_args_test() {
