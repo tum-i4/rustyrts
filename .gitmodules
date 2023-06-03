@@ -31,3 +31,48 @@
 [submodule "projects/mutants/trust-dns"]
 	path = projects/mutants/trust-dns
 	url = https://github.com/bluejekyll/trust-dns
+[submodule "projects/git_walk/actix-web"]
+	path = projects/git_walk/actix-web
+	url = https://github.com/actix/actix-web
+[submodule "projects/git_walk/arrow-datafusion"]
+	path = projects/git_walk/arrow-datafusion
+	url = https://github.com/apache/arrow-datafusion
+[submodule "projects/git_walk/feroxbuster"]
+	path = projects/git_walk/feroxbuster
+	url = https://github.com/epi052/feroxbuster
+[submodule "projects/git_walk/nushell"]
+	path = projects/git_walk/nushell
+	url = https://github.com/nushell/nushell
+[submodule "projects/git_walk/ockam"]
+	path = projects/git_walk/ockam
+	url = https://github.com/build-trust/ockam
+[submodule "projects/git_walk/rayon"]
+	path = projects/git_walk/rayon
+	url = https://github.com/rayon-rs/rayon
+[submodule "projects/git_walk/rust-analyzer"]
+	path = projects/git_walk/rust-analyzer
+	url = https://github.com/rust-lang/rust-analyzer
+[submodule "projects/git_walk/wasmer"]
+	path = projects/git_walk/wasmer
+	url = https://github.com/wasmerio/wasmer
+[submodule "projects/git_walk/zenoh"]
+	path = projects/git_walk/zenoh
+	url = https://github.com/eclipse-zenoh/zenoh
+[submodule "projects/git_walk/exonum"]
+	path = projects/git_walk/exonum
+	url = https://github.com/exonum/exonum
+[submodule "projects/git_walk/tantivy"]
+	path = projects/git_walk/tantivy
+	url = https://github.com/quickwit-oss/tantivy
+[submodule "projects/git_walk/meilisearch"]
+	path = projects/git_walk/meilisearch
+	url = https://github.com/meilisearch/meilisearch
+[submodule "projects/git_walk/sled"]
+	path = projects/git_walk/sled
+	url = https://github.com/spacejam/sled
+[submodule "projects/git_walk/penumbra"]
+	path = projects/git_walk/penumbra
+	url = https://github.com/penumbra-zone/penumbra
+[submodule "projects/util/rust-rocksdb"]
+	path = projects/util/rust-rocksdb
+	url = https://github.com/rust-rocksdb/rust-rocksdb.git
