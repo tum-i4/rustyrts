@@ -1,6 +1,10 @@
 import pandas as pd
 
-from plotter import boxplot, url_mutants, get_labels_mutants
+from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
+from rustyrts.util.plotter import boxplot
+
+y_label = "absolute number of tests"
+file = "../selected_tests_absolute.pdf"
 
 labels = get_labels_mutants()
 
@@ -15,4 +19,4 @@ df_static = pd.read_sql(
 
 df = pd.concat([df_retest_all, df_dynamic, df_static])
 
-boxplot(df, labels, "absolute number of tests", "selected_tests_absolute.pdf", ["#DAD7CB", "#E37222", "#A2AD00"])
+boxplot(df, labels, y_label, file, ["#DAD7CB", "#E37222", "#A2AD00"])

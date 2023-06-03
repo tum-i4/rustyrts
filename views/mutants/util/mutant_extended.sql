@@ -1,22 +1,26 @@
 CREATE VIEW mutant_extended
 AS
-SELECT c.id                          as commit,
+SELECT c.id                            as commit,
        c.commit_str,
        c.repo_id,
 
-       retest_all_mutant.descr       as descr,
+       retest_all_mutant.descr         as descr,
+       retest_all_mutant.diff          as diff,
 
-       retest_all_mutant.id          as retest_all_id,
-       retest_all_mutant.test_log    as retest_all_test_log,
-       retest_all_mutant.test_result as retest_all_test_result,
+       retest_all_mutant.id            as retest_all_id,
+       retest_all_mutant.test_log      as retest_all_test_log,
+       retest_all_mutant.test_result   as retest_all_test_result,
+       retest_all_mutant.test_duration as retest_all_duration,
 
-       dynamic_mutant.id             as dynamic_id,
-       dynamic_mutant.test_log       as dynamic_test_log,
-       dynamic_mutant.test_result    as dynamic_test_result,
+       dynamic_mutant.id               as dynamic_id,
+       dynamic_mutant.test_log         as dynamic_test_log,
+       dynamic_mutant.test_result      as dynamic_test_result,
+       dynamic_mutant.test_duration    as dynamic_duration,
 
-       static_mutant.id              as static_id,
-       static_mutant.test_log        as static_test_log,
-       static_mutant.test_result     as static_test_result
+       static_mutant.id                as static_id,
+       static_mutant.test_log          as static_test_log,
+       static_mutant.test_result       as static_test_result,
+       static_mutant.test_duration     as static_duration
 
 FROM "Commit" c,
      "MutantsReport" retest_all,
@@ -45,4 +49,13 @@ WHERE c.id = retest_all.commit_id
 
   AND retest_all_mutant.test_result != 'TIMEOUT'
   AND dynamic_mutant.test_result != 'TIMEOUT'
-  AND static_mutant.test_result != 'TIMEOUT';
+  AND static_mutant.test_result != 'TIMEOUT'
+
+  -- filter mutants that are not comparable
+  AND not exists(SELECT * FROM "MutantsTestSuite" s WHERE s.mutant_id = retest_all_mutant.id AND s.crashed = True)
+  AND not exists(SELECT * FROM "MutantsTestSuite" s WHERE s.mutant_id = dynamic_mutant.id AND s.crashed = True)
+  AND not exists(SELECT * FROM "MutantsTestSuite" s WHERE s.mutant_id = static_mutant.id AND s.crashed = True)
+
+  -- remove the baseline
+  AND retest_all_mutant.descr != 'baseline'
+;

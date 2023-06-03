@@ -1,6 +1,7 @@
 import pandas as pd
 
-from plotter import boxplot, get_labels_mutants, url_mutants
+from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
+from rustyrts.util.plotter import boxplot
 
 labels = get_labels_mutants()
 

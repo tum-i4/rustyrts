@@ -1,4 +1,4 @@
-CREATE VIEW mutant_testcase_overview
+CREATE MATERIALIZED VIEW mutant_testcase_overview
 AS
 SELECT mutant.commit,
        mutant.descr                 as descr,

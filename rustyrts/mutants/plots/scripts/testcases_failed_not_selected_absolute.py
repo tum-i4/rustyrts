@@ -1,7 +1,7 @@
 import pandas as pd
-from sqlalchemy import create_engine
 
-from plotter import boxplot, get_labels_mutants, url_mutants
+from rustyrts.mutants.plots.scripts.labels import url_mutants, get_labels_mutants
+from rustyrts.util.plotter import boxplot
 
 table_ddl = """
 create sequence "AnalysisTestsNotSelected_id_seq"
@@ -30,7 +30,7 @@ alter table "AnalysisTestsNotSelected"
 """
 
 y_label = 'Failed tests, not selected'
-file = 'failed_but_not_selected_absolute.pdf'
+file = '../failed_but_not_selected_absolute.pdf'
 
 labels = get_labels_mutants()
 
@@ -42,27 +42,20 @@ def get_test_diff(retest_all, other):
 
 
 df_failed_retest_all = pd.read_sql(
-    'SELECT commit as repository, retest_all_failed , descr as mutant FROM testcases_failed WHERE descr != \'baseline\' ORDER BY commit, descr',
+    'SELECT commit as repository, retest_all_mutant_id, retest_all_failed , descr as mutant FROM testcases_failed WHERE descr != \'baseline\' ORDER BY commit, descr',
     url_mutants)
 
 df_selected_dynamic = pd.read_sql(
-    'SELECT commit as repository, dynamic, descr as mutant FROM testcases_selected WHERE descr != \'baseline\' ORDER BY commit, descr',
+    'SELECT commit as repository, retest_all_mutant_id, dynamic, descr as mutant FROM testcases_selected WHERE descr != \'baseline\' ORDER BY commit, descr',
     url_mutants)
 
 df_selected_static = pd.read_sql(
-    'SELECT commit as repository, static, descr as mutant FROM testcases_selected WHERE descr != \'baseline\' ORDER BY commit, descr',
+    'SELECT commit as repository, retest_all_mutant_id, static, descr as mutant FROM testcases_selected WHERE descr != \'baseline\' ORDER BY commit, descr',
     url_mutants)
 
 should_be_selected = []
 not_selected_dynamic = []
 not_selected_static = []
-
-not_selected_dynamic_summary = {}
-not_selected_static_summary = {}
-
-for i in range(1, len(labels) + 1):
-    not_selected_dynamic_summary[i] = {}
-    not_selected_static_summary[i] = {}
 
 failed_retest_all = df_failed_retest_all.to_dict(orient='records')
 selected_dynamic = df_selected_dynamic.to_dict(orient='records')
@@ -71,23 +64,14 @@ selected_static = df_selected_static.to_dict(orient='records')
 assert len(failed_retest_all) == len(selected_dynamic) and len(failed_retest_all) == len(selected_static)
 
 for (retest_all_mutant, dynamic_mutant, static_mutant) in zip(failed_retest_all, selected_dynamic, selected_static):
+    assert retest_all_mutant['retest_all_mutant_id'] == dynamic_mutant['retest_all_mutant_id']
+    assert retest_all_mutant['retest_all_mutant_id'] == static_mutant['retest_all_mutant_id']
+
     repository = retest_all_mutant['repository']
     descr = retest_all_mutant['mutant']
 
     diff_dynamic = get_test_diff(retest_all_mutant['retest_all_failed'], dynamic_mutant['dynamic'])
     diff_static = get_test_diff(retest_all_mutant['retest_all_failed'], static_mutant['static'])
-
-    for test in diff_dynamic:
-        if test not in not_selected_dynamic_summary[repository]:
-            not_selected_dynamic_summary[repository][test] = 1
-        else:
-            not_selected_dynamic_summary[repository][test] += 1
-
-    for test in diff_static:
-        if test not in not_selected_static_summary[repository]:
-            not_selected_static_summary[repository][test] = 1
-        else:
-            not_selected_static_summary[repository][test] += 1
 
     should_be_selected.append(
         {'repository': repository, 'mutant': descr, 'algorithm': 'retest-all',
@@ -96,27 +80,6 @@ for (retest_all_mutant, dynamic_mutant, static_mutant) in zip(failed_retest_all,
         {'repository': repository, 'mutant': descr, 'algorithm': 'dynamic', 'y': len(diff_dynamic)})
     not_selected_static.append(
         {'repository': repository, 'mutant': descr, 'algorithm': 'static', 'y': len(diff_static)})
-
-into_db = False
-if not into_db:
-    for i in range(1, len(labels) + 1):
-        print("Repository " + str(i))
-        print("    Dynamic: " + str(not_selected_dynamic_summary[i]))
-        print("    Static: " + str(not_selected_static_summary[i]))
-        print('\n')
-else:
-    engine = create_engine(url_mutants)
-    with engine.connect() as conn:
-        conn.execute(table_ddl)
-
-        for commit in not_selected_dynamic_summary:
-            for (test, count) in not_selected_dynamic_summary[commit].items():
-                statement = f"INSERT INTO public.\"AnalysisTestsNotSelected\" (commit, test_name, not_selected_count, algorithm) VALUES ({commit}, '{test}', {count}, 'dynamic')"
-                conn.execute(statement)
-        for commit in not_selected_static_summary:
-            for (test, count) in not_selected_static_summary[commit].items():
-                statement = f"INSERT INTO public.\"AnalysisTestsNotSelected\" (commit, test_name, not_selected_count, algorithm) VALUES ({commit}, '{test}', {count}, 'static')"
-                conn.execute(statement)
 
 
 df_failed_retest_all = pd.DataFrame(should_be_selected)
