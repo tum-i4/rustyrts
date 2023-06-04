@@ -1,6 +1,7 @@
 use std::mem::transmute;
 
 use super::defid_util::{get_def_id_post_test_fn, get_def_id_pre_test_fn, get_def_id_trace_fn};
+use crate::constants::EDGE_CASES_NO_TRACE;
 use log::{error, trace};
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
@@ -13,7 +14,6 @@ use rustc_middle::{
     },
     ty::{List, RegionKind, Ty, TyCtxt, TyKind, UintTy},
 };
-use crate::constants::EDGE_CASES_NO_TRACE;
 use rustc_span::Span;
 
 #[cfg(unix)]
@@ -699,7 +699,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                         .kind;
 
                     if let TerminatorKind::Call { func, .. } = terminator_kind {
-                        if def_id_name(tcx, func.const_fn_def().unwrap().0)
+                        if def_id_name(tcx, func.const_fn_def().unwrap().0, &[])
                             .split_once("::")
                             .and_then(|(_, second)| second.split_once("::"))
                             .map(|(_, second)| second == EDGE_CASE_FROM_RESIDUAL)

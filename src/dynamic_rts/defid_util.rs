@@ -1,7 +1,7 @@
 use crate::names::def_id_name;
 use log::warn;
 use once_cell::sync::OnceCell;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, CrateNum};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::{
     middle::exported_symbols::{ExportedSymbol, SymbolExportInfo},
     ty::TyCtxt,
@@ -88,7 +88,7 @@ pub(crate) fn get_def_id_exported(tcx: TyCtxt, krate: CrateNum, name: &str) -> O
         };
 
         if let Some(def_id) = maybe_def_id {
-            let def_path_str = def_id_name(tcx, def_id);
+            let def_path_str = def_id_name(tcx, def_id, &[]);
             if def_path_str.ends_with(name) {
                 return Some(def_id);
             }

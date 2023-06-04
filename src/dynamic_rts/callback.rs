@@ -1,10 +1,10 @@
-use log::trace;
+use log::{debug, trace};
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::query::{query_keys, query_stored};
-use rustc_middle::{mir::visit::MutVisitor, ty::TyCtxt};
+use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_span::source_map::{FileLoader, RealFileLoader};
 use std::collections::HashSet;
 use std::mem::transmute;
@@ -12,19 +12,17 @@ use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Mutex;
 
 use crate::callbacks_shared::{
-    custom_vtable_entries, excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES,
-    OLD_VTABLE_ENTRIES,
+    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES, OLD_VTABLE_ENTRIES,
 };
 
 #[cfg(feature = "ctfe")]
 use crate::callbacks_shared::{NEW_CHECKSUMS_CTFE, NODES_CTFE};
 
-use crate::checksums::{get_checksum_body, insert_hashmap, Checksums};
+use crate::checksums::{get_checksum_body, get_checksum_vtbl_entry, insert_hashmap, Checksums};
+use crate::dynamic_rts::visitor::modify_body;
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
 use crate::static_rts::callback::PATH_BUF;
-
-use super::visitor::MirManipulatorVisitor;
 
 static OLD_OPTIMIZED_MIR_PTR: AtomicUsize = AtomicUsize::new(0);
 static OLD_MIR_FOR_CTFE_PTR: AtomicUsize = AtomicUsize::new(0);
@@ -165,13 +163,13 @@ fn custom_optimized_mir<'tcx>(
         >(content)
     };
 
-    let mut result = orig_function(tcx, def);
+    let result = orig_function(tcx, def);
 
     if !excluded(tcx) {
         //##############################################################
         // 1. We compute the checksum before modifying the MIR
 
-        let name = def_id_name(tcx, result.source.def_id());
+        let name = def_id_name(tcx, result.source.def_id(), &[]);
         let checksum = get_checksum_body(tcx, result);
 
         trace!("Inserting checksum of {}", name);
@@ -182,8 +180,7 @@ fn custom_optimized_mir<'tcx>(
         //##############################################################
         // 2. Here the MIR is modified to trace this function at runtime
 
-        let mut visitor = MirManipulatorVisitor::new(tcx);
-        visitor.visit_body(&mut result);
+        modify_body(tcx, result);
     }
 
     result
@@ -215,13 +212,48 @@ fn custom_mir_for_ctfe<'tcx>(
         //##############################################################
         // 1. We compute the checksum
 
-        let name = def_id_name(tcx, result.source.def_id());
+        let name = def_id_name(tcx, result.source.def_id(), &[]);
         let checksum = get_checksum_body(tcx, result);
 
         trace!("Inserting checksum of {}", name);
 
         let mut new_checksums = NEW_CHECKSUMS_CTFE.get().unwrap().lock().unwrap();
         insert_hashmap(&mut *new_checksums, name, checksum);
+    }
+
+    result
+}
+
+fn custom_vtable_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: PolyTraitRef<'tcx>,
+) -> &'tcx [VtblEntry<'tcx>] {
+    let content = OLD_VTABLE_ENTRIES.load(SeqCst);
+
+    // SAFETY: At this address, the original vtable_entries() function has been stored before.
+    // We reinterpret it as a function.
+    let orig_function = unsafe {
+        transmute::<usize, fn(_: TyCtxt<'tcx>, _: PolyTraitRef<'tcx>) -> &'tcx [VtblEntry<'tcx>]>(
+            content,
+        )
+    };
+
+    let result = orig_function(tcx, key);
+
+    for entry in result {
+        if let VtblEntry::Method(instance) = entry {
+            let def_id = instance.def_id();
+
+            let name = def_id_name(tcx, def_id, &[]);
+            let checksum = get_checksum_vtbl_entry(tcx, &entry);
+            debug!("Considering {:?} in checksums of {}", instance, name);
+
+            insert_hashmap(
+                &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
+                name,
+                checksum,
+            )
+        }
     }
 
     result
@@ -245,13 +277,13 @@ impl DynamicRTSCallbacks {
                     if let Some(ConstContext::ConstFn) | None =
                         tcx.hir().body_const_context(*def_id)
                     {
-                        let name: String = def_id_name(tcx, def_id.to_def_id());
+                        let name: String = def_id_name(tcx, def_id.to_def_id(), &[]);
                         nodes.lock().unwrap().insert(name);
                         let _body = tcx.optimized_mir(def_id.to_def_id());
                     } else {
                         #[cfg(feature = "ctfe")]
                         {
-                            let name: String = def_id_name(tcx, def_id.to_def_id());
+                            let name: String = def_id_name(tcx, def_id.to_def_id(), &[]);
                             nodes_ctfe.insert(name);
                             let _body = tcx.mir_for_ctfe(def_id.to_def_id());
                         }

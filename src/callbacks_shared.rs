@@ -1,18 +1,16 @@
 use itertools::Itertools;
 use log::{debug, trace};
 use once_cell::sync::OnceCell;
-use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::ty::{InstanceDef, PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_middle::ty::TyCtxt;
 use std::{
     collections::HashSet,
     fs::read,
-    mem::transmute,
     sync::{atomic::AtomicUsize, Mutex},
 };
 
 use crate::{
-    checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums},
+    checksums::Checksums,
     constants::ENV_TARGET_DIR,
     fs_utils::{
         get_changes_path, get_checksums_path, get_checksums_vtbl_path, get_test_path, write_to_file,
@@ -55,54 +53,6 @@ pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
     };
 }
 
-pub(crate) fn custom_vtable_entries<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: PolyTraitRef<'tcx>,
-) -> &'tcx [VtblEntry<'tcx>] {
-    let content = OLD_VTABLE_ENTRIES.load(SeqCst);
-
-    // SAFETY: At this address, the original vtable_entries() function has been stored before.
-    // We reinterpret it as a function.
-    let orig_function = unsafe {
-        transmute::<usize, fn(_: TyCtxt<'tcx>, _: PolyTraitRef<'tcx>) -> &'tcx [VtblEntry<'tcx>]>(
-            content,
-        )
-    };
-
-    let result = orig_function(tcx, key);
-
-    for entry in result {
-        if let VtblEntry::Method(instance) = entry {
-            let def_id = match instance.def {
-                InstanceDef::Item(item) => item.did,
-                InstanceDef::Intrinsic(def_id) => def_id,
-                InstanceDef::VTableShim(def_id) => def_id,
-                InstanceDef::ReifyShim(def_id) => def_id,
-                InstanceDef::FnPtrShim(def_id, _) => def_id,
-                InstanceDef::Virtual(def_id, _) => def_id,
-                InstanceDef::ClosureOnceShim {
-                    call_once,
-                    track_caller: _,
-                } => call_once,
-                InstanceDef::DropGlue(def_id, _) => def_id,
-                InstanceDef::CloneShim(def_id, _) => def_id,
-            };
-
-            let name = def_id_name(tcx, def_id);
-            let checksum = get_checksum_vtbl_entry(tcx, &entry);
-            debug!("Considering {:?} in checksums of {}", instance, name);
-
-            insert_hashmap(
-                &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
-                name,
-                checksum,
-            )
-        }
-    }
-
-    result
-}
-
 pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
     let crate_id = tcx.sess.local_stable_crate_id().to_u64();
@@ -117,7 +67,7 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     for def_id in tcx.mir_keys(()) {
         for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                tests.push(def_id_name(tcx, def_id.to_def_id()));
+                tests.push(def_id_name(tcx, def_id.to_def_id(), &[]));
             }
         }
     }

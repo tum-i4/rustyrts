@@ -1,18 +1,18 @@
 use super::graph::{DependencyGraph, EdgeType};
 use crate::names::def_id_name;
-use rustc_hir::def_id::DefId;
+
 use rustc_hir::ConstContext;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::ConstantKind;
 use rustc_middle::mir::{self, Body, Location};
-use rustc_middle::ty::{GenericArgKind, ImplSubject, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{GenericArgKind, ImplSubject, Instance, Ty, TyCtxt, TyKind};
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
-    processed_def_id: Option<DefId>,
+    processed_instance: Option<&'tcx Instance<'tcx>>,
 }
 
 impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
@@ -23,18 +23,14 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
         GraphVisitor {
             tcx,
             graph,
-            processed_def_id: None,
+            processed_instance: None,
         }
     }
 
-    pub fn visit(&mut self, def_id: DefId) {
-        let has_body = self
-            .tcx
-            .hir()
-            .maybe_body_owned_by(def_id.expect_local())
-            .is_some();
+    pub fn visit(&mut self, instance: &'tcx Instance<'tcx>) {
+        let def_id = instance.def_id();
 
-        if has_body {
+        if def_id.is_local() {
             let body = match self.tcx.hir().body_const_context(def_id.expect_local()) {
                 Some(ConstContext::ConstFn) | None => self.tcx.optimized_mir(def_id),
                 Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
@@ -42,61 +38,55 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                 }
             };
 
+            let old_processed_instance = self.processed_instance.replace(instance);
             //##########################################################################################################
-            // Visit body
+            // Visit body and contained promoted mir
             self.visit_body(body);
-        }
-    }
 
-    pub(crate) fn process_traits(&mut self) {
-        for (_, impls) in self.tcx.all_local_trait_impls(()) {
-            for def_id in impls {
-                let implementors = self.tcx.impl_item_implementor_ids(def_id.to_def_id());
-
-                // 7. abstract data type -> fn in trait impl (`impl <trait> for ..`)
-                if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(def_id.to_def_id()) {
-                    for subst in trait_ref.substs {
-                        if let GenericArgKind::Type(ty) = subst.unpack() {
-                            if let TyKind::Adt(adt_def, _) = ty.kind() {
-                                for (_, &impl_fn) in implementors {
-                                    self.graph.add_edge(
-                                        def_id_name(self.tcx, adt_def.did()),
-                                        def_id_name(self.tcx, impl_fn),
-                                        EdgeType::Impl,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // 8. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
-                for (&trait_fn, &impl_fn) in implementors {
-                    self.graph.add_edge(
-                        def_id_name(self.tcx, trait_fn),
-                        def_id_name(self.tcx, impl_fn),
-                        EdgeType::Impl,
-                    );
-                }
+            for body in self.tcx.promoted_mir(def_id) {
+                self.visit_body(body)
             }
+            self.processed_instance = old_processed_instance;
         }
     }
 }
 
 impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        let def_id = body.source.instance.def_id();
+        let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
 
-        self.graph.add_node(def_id_name(self.tcx, def_id));
+        let name_after_monomorphization = def_id_name(self.tcx, outer.def_id(), outer.substs);
+        let name_not_monomorphized = def_id_name(self.tcx, outer.def_id(), &[]);
 
-        let old_processed_body = self.processed_def_id.replace(def_id);
+        self.graph.add_edge(
+            name_after_monomorphization,
+            name_not_monomorphized,
+            EdgeType::Monomorphization,
+        );
+
+        if let Some(impl_def) = self.tcx.impl_of_method(outer.def_id()) {
+            // 7. abstract data type -> fn in trait impl (`impl <trait> for ..`)
+            if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(impl_def) {
+                for subst in trait_ref.substs {
+                    if let GenericArgKind::Type(ty) = subst.unpack() {
+                        if let TyKind::Adt(adt_def, substs) = ty.kind() {
+                            self.graph.add_edge(
+                                def_id_name(self.tcx, adt_def.did(), substs),
+                                def_id_name(self.tcx, outer.def_id(), outer.substs),
+                                EdgeType::Impl,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
         self.super_body(body);
-        self.processed_def_id = old_processed_body;
     }
 
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
+        let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
 
         match constant.literal {
             ConstantKind::Unevaluated(content, _ty) => {
@@ -105,8 +95,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 let def_id = content.def.did;
 
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, def_id),
+                    def_id_name(self.tcx, outer.def_id(), outer.substs),
+                    def_id_name(self.tcx, def_id, &[]),
                     EdgeType::Unevaluated,
                 );
             }
@@ -117,8 +107,10 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             GlobalAlloc::Static(def_id) => {
                                 // 6. borrowing node -> `static var` or `static mut var`
                                 // This takes care of borrows of e.g. "static var: u64"
-                                let (accessor, accessed_maybe_more) =
-                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
+                                let (accessor, accessed_maybe_more) = (
+                                    def_id_name(self.tcx, outer.def_id(), outer.substs),
+                                    def_id_name(self.tcx, def_id, &[]),
+                                );
 
                                 // // This is not necessary since for a node that writes into a variable,
                                 // // there must exist a path from test to this node already
@@ -142,9 +134,11 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             GlobalAlloc::Function(instance) => {
                                 // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                                 // Perhaps this refers to extern fns?
-                                let def_id = instance.def_id();
-                                let (accessor, accessed_maybe_more) =
-                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
+
+                                let (accessor, accessed_maybe_more) = (
+                                    def_id_name(self.tcx, outer.def_id(), outer.substs),
+                                    def_id_name(self.tcx, instance.def_id(), instance.substs),
+                                );
                                 self.graph.add_edge(
                                     accessor.clone(),
                                     accessed_maybe_more,
@@ -163,49 +157,33 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
     fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
         self.super_ty(ty);
-        let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
+        let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
 
-        match ty.kind() {
+        if let Some((def_id, substs, edge_type)) = match ty.kind() {
             // 1. outer node  -> contained Closure
-            TyKind::Closure(def_id, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::Closure,
-                );
-            }
+            TyKind::Closure(def_id, substs) => Some((*def_id, substs, EdgeType::Closure)),
             // 2. outer node  -> contained Generator
-            TyKind::Generator(def_id, _, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::Generator,
-                );
-            }
+            TyKind::Generator(def_id, substs, _) => Some((*def_id, substs, EdgeType::Generator)),
             // 3. caller node  -> callee `fn`
-            TyKind::FnDef(def_id, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::FnDef,
-                );
-            }
+            TyKind::FnDef(def_id, substs) => Some((*def_id, substs, EdgeType::FnDef)),
             // 4. outer node -> referenced abstract data type (`struct` or `enum`)
-            TyKind::Adt(adt_def, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, adt_def.did()),
-                    EdgeType::Adt,
-                );
-            }
-            _ => {}
+            TyKind::Adt(adt_def, substs) => Some((adt_def.did(), substs, EdgeType::Adt)),
+            _ => None,
+        } {
+            self.graph.add_edge(
+                def_id_name(self.tcx, outer.def_id(), outer.substs),
+                def_id_name(self.tcx, def_id, substs),
+                edge_type,
+            );
         }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use itertools::Itertools;
     use log::info;
+    use rustc_middle::mir::mono::MonoItem;
     use std::{fs, io::Error, path::PathBuf, string::String};
     use test_log::test;
 
@@ -257,12 +235,22 @@ mod test {
         rustc_interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
                 queries.global_ctxt().unwrap().enter(|tcx| {
+                    let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+                    let instances = code_gen_units
+                        .iter()
+                        .flat_map(|c| c.items().keys())
+                        .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+                        .map(|m| {
+                            let MonoItem::Fn(instance) = m else {unreachable!()};
+                            instance
+                        })
+                        .collect_vec();
+
                     let mut visitor = GraphVisitor::new(tcx, &mut graph);
 
-                    for def_id in tcx.iter_local_def_id() {
-                        visitor.visit(def_id.to_def_id());
+                    for instance in instances {
+                        visitor.visit(instance);
                     }
-                    visitor.process_traits();
                 })
             });
         });
@@ -450,63 +438,65 @@ mod test {
         println!("{}", graph.to_string());
 
         {
-            let end = "::Animal::sound";
+            let end = "<Lion as Animal>::sound";
             let edge_type = EdgeType::FnDef;
 
             let start = "::test::test_direct";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start = "::sound_generic";
+            let start = "::sound_generic::<Lion>";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
             let start = "::sound_dyn";
+            let end = "<dyn Animal as Animal>::sound";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
 
         {
-            let end = "::Animal::set_treat";
+            let end = "::<Dog as Animal>::set_treat";
             let edge_type = EdgeType::FnDef;
 
             let start = "::test::test_mut_direct";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start = "::set_treat_generic";
+            let start = "::set_treat_generic::<Dog>";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
             let start = "::set_treat_dyn";
+            let end = "<dyn Animal as Animal>::set_treat";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
 
-        {
-            let start = "::Animal::set_treat";
-            let edge_type = EdgeType::Impl;
+        //{
+        //    let start = "::Animal::set_treat";
+        //    let edge_type = EdgeType::Impl;
+        //
+        //    let end = "::<Lion as Animal>::set_treat";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //
+        //    let end = "::<Dog as Animal>::set_treat";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //}
 
-            let end = "::<Lion as Animal>::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let end = "::<Dog as Animal>::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
-
-        {
-            let start = "::Animal::sound";
-            let edge_type = EdgeType::Impl;
-
-            let end = "::<Lion as Animal>::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let end = "::<Dog as Animal>::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
+        //{
+        //    let start = "::Animal::sound";
+        //    let edge_type = EdgeType::Impl;
+        //
+        //    let end = "::<Lion as Animal>::sound";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //
+        //    let end = "::<Dog as Animal>::sound";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //}
     }
 }

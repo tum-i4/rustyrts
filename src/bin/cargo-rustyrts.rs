@@ -244,7 +244,7 @@ where
 
     if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
         cmd.arg("--no-run");
-        
+
         for arg in get_args_test() {
             cmd.arg(arg);
         }
@@ -518,7 +518,8 @@ fn select_and_execute_tests_static() {
         println!("#Tests that have been found: {}\n", tests.iter().count());
     }
 
-    let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
+    let (reached_nodes, affected_tests) = dependency_graph.affected_tests(changed_nodes, tests);
+
     if verbose {
         println!(
             "Nodes that reach any changed node in the graph:\n{}\n",
@@ -531,17 +532,20 @@ fn select_and_execute_tests_static() {
         );
     }
 
-    let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
     if verbose {
         println!(
             "Affected tests:\n{}\n",
-            affected_tests.iter().sorted().join(", ")
+            affected_tests
+                .iter()
+                .sorted()
+                .map(|(t, p)| format!("{}: [ {} ]", t, p.iter().join(" <- ")))
+                .join("\n")
         );
     } else {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    let cmd = cargo_test(Mode::Static, affected_tests.into_iter().map(|test| *test));
+    let cmd = cargo_test(Mode::Static, affected_tests.keys().map(|t| *t));
 
     execute(cmd);
 }

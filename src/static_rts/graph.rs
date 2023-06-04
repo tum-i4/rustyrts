@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use queues::{IsQueue, Queue};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
@@ -16,6 +15,7 @@ pub enum EdgeType {
     Adt,
     //Foreign,
     //Opaque,
+    Monomorphization,
 }
 
 impl FromStr for EdgeType {
@@ -33,6 +33,7 @@ impl FromStr for EdgeType {
             "Adt" => Ok(Self::Adt),
             //"Foreign" => Ok(Self::Foreign),
             //"Opaque" => Ok(Self::Opaque),
+            "Monomorphization" => Ok(Self::Monomorphization),
             _ => Err(()),
         }
     }
@@ -83,33 +84,50 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         self.backwards_edges.get(to_node)
     }
 
-    pub fn reachable_nodes<'b, S>(&'b self, starting_points: S) -> HashSet<&'b T>
+    pub fn affected_tests<'b: 'c, 'c, S>(
+        &'b self,
+        starting_points: S,
+        tests: HashSet<&T>,
+    ) -> (HashSet<&'b T>, HashMap<&'c T, Vec<&'b T>>)
     where
         S: IntoIterator<Item = &'b T>,
     {
-        let mut queue: Queue<&'b T> = Queue::new();
-        let mut reached: HashSet<&'b T> = HashSet::new();
+        let mut reached = HashSet::new();
+        let mut affected = HashMap::new();
+        let mut acc = Vec::new();
 
         for ele in starting_points {
-            queue.add(ele).unwrap();
+            if reached.insert(ele) {
+                self.affected_tests_helper(ele, &tests, &mut reached, &mut affected, &mut acc);
+            }
         }
 
-        while let Ok(node) = queue.remove() {
-            if !reached.insert(node) {
-                // We already processed this node before
-                continue;
-            }
+        (reached, affected)
+    }
 
-            if let Some(edges) = self.backwards_edges.get(node) {
-                for (start, _types) in edges {
-                    if !reached.contains(start) {
-                        queue.add(start).unwrap();
-                    }
+    fn affected_tests_helper<'b: 'c, 'c>(
+        &'b self,
+        node: &'b T,
+        tests: &HashSet<&T>,
+        reached: &mut HashSet<&'b T>,
+        affected: &mut HashMap<&'c T, Vec<&'b T>>,
+        acc: &mut Vec<&'b T>,
+    ) {
+        acc.push(node);
+
+        if tests.contains(node) && !affected.keys().contains(&node) {
+            affected.insert(node, acc.clone());
+        }
+
+        if let Some(edges) = self.backwards_edges.get(node) {
+            for (start, _types) in edges {
+                if reached.insert(start) {
+                    self.affected_tests_helper(start, tests, reached, affected, acc);
                 }
             }
         }
 
-        reached
+        acc.pop();
     }
 }
 
