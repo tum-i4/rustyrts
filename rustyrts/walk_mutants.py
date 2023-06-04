@@ -1,4 +1,17 @@
 # %%
+## Rocket
+import os
+from walkers.mutants_rts_walker import walk
+
+path = "../projects/mutants/Rocket"
+path = os.path.abspath(path)
+branch = "master"
+commits = ["c028d63e5ba275927424397fe9d67cfebdc138ec"]
+
+walk(path, branch=branch, commits=commits)
+
+
+# %%
 ## tracing
 import os
 from walkers.mutants_rts_walker import walk
@@ -10,17 +23,6 @@ commits = ["4f1e46306d4d364fcc69691fdb29a676c7105f72"]
 
 walk(path, branch=branch, commits=commits)
 
-# %%
-## Rocket
-import os
-from walkers.mutants_rts_walker import walk
-
-path = "../projects/mutants/Rocket"
-path = os.path.abspath(path)
-branch = "master"
-commits = ["c028d63e5ba275927424397fe9d67cfebdc138ec"]
-
-walk(path, branch=branch, commits=commits)
 
 # %%
 ## orion
