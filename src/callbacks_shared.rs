@@ -13,6 +13,7 @@ use std::{
 
 use crate::{
     checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums},
+    constants::ENV_TARGET_DIR,
     fs_utils::{
         get_changes_path, get_checksums_path, get_checksums_vtbl_path, get_test_path, write_to_file,
     },
@@ -42,10 +43,16 @@ const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
 
 pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
-    let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-    EXCLUDED_CRATES
-        .iter()
-        .any(|krate| *krate == local_crate_name.as_str())
+    return {
+        let local_crate_name = tcx.crate_name(LOCAL_CRATE);
+        EXCLUDED_CRATES
+            .iter()
+            .any(|krate| *krate == local_crate_name.as_str())
+    } || {
+        std::env::var(ENV_TARGET_DIR)
+            .map(|d| d.ends_with("trybuild"))
+            .unwrap_or(false)
+    };
 }
 
 pub(crate) fn custom_vtable_entries<'tcx>(

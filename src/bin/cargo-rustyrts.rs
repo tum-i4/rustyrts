@@ -290,7 +290,7 @@ fn execute(mut cmd: Command) {
                 std::process::exit(exit.code().unwrap_or(42));
             }
         }
-        Err(ref e) => panic!("error during rustyrts dynamic run: {:?}", e),
+        Err(ref e) => panic!("error during rustyrts run: {:?}", e),
     }
 }
 
