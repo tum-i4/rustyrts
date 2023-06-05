@@ -58,6 +58,12 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
 impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
+        let outer_substs = if self.monomorphize_all {
+            outer.substs.as_slice()
+        } else {
+            &[]
+        };
+
 
         if self.monomorphize_all {
             let name_after_monomorphization = def_id_name(self.tcx, outer.def_id(), outer.substs);
@@ -88,7 +94,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         if let TyKind::Adt(adt_def, substs) = ty.kind() {
                             self.graph.add_edge(
                                 def_id_name(self.tcx, adt_def.did(), substs),
-                                def_id_name(self.tcx, outer.def_id(), outer.substs),
+                                def_id_name(self.tcx, outer.def_id(), outer_substs),
                                 EdgeType::Impl,
                             );
                         }
