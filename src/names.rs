@@ -17,7 +17,7 @@ lazy_static! {
     //    Regex::new(r"(\+ )[^)>]*?::()").unwrap(),
     //    Regex::new(r"(as )[^)>]*?::(.*?>)").unwrap(),
     //];
-    static ref RE_LIFETIME: Regex = Regex::new(r"( \+ )?'.+?(, |(>))").unwrap();
+    static ref RE_LIFETIME: [Regex; 2] = [Regex::new(r"( \+ )?'.+?(, |(\)|>))").unwrap(), Regex::new(r"<>").unwrap()];
 }
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
@@ -26,6 +26,9 @@ pub(crate) fn def_id_name<'tcx>(
     def_id: DefId,
     substs: &'tcx [GenericArg<'tcx>],
 ) -> String {
+    //let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
+    //let def_id = tcx.normalize_erasing_regions(param_env, def_id);
+
     let crate_path = if def_id.is_local() {
         let crate_name = tcx.crate_name(LOCAL_CRATE);
 
@@ -68,8 +71,10 @@ pub(crate) fn def_id_name<'tcx>(
         }
     }
 
-    // Remove lifetime parameters if present
-    def_path_str = RE_LIFETIME.replace_all(&def_path_str, "${3}").to_string();
+    for re in RE_LIFETIME.iter() {
+        // Remove lifetime parameters if present
+        def_path_str = re.replace_all(&def_path_str, "${3}").to_string();
+    }
 
     // TODO: find out if this is necessary or not
     //for re in RE_BOTH.iter() {

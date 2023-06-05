@@ -50,5 +50,5 @@ fn test_const_generic() {
     foo.set(1);
     assert_eq!(foo.get(), 1);
 
-    assert_eq!(size_of::<Foo<{ fib(5) }>>(), 32);
+    assert_eq!(size_of::<Foo<{ fib(4) }>>(), 32);
 }

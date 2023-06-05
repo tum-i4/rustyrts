@@ -7,14 +7,17 @@ use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::ConstantKind;
 use rustc_middle::mir::{self, Body, Location};
-use rustc_middle::ty::{GenericArgKind, ImplSubject, Instance, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{
+    GenericArg, GenericArgKind, ImplSubject, Instance, List, Ty, TyCtxt, TyKind,
+};
+use rustc_span::def_id::DefId;
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
     monomorphize_all: bool,
-    processed_instance: Option<&'tcx Instance<'tcx>>,
+    processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
 }
 
 impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
@@ -32,7 +35,8 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
     }
 
     pub fn visit(&mut self, instance: &'tcx Instance<'tcx>) {
-        let def_id = instance.def_id();
+        self.init(instance);
+        let (def_id, _) = self.get_outer();
 
         if def_id.is_local() {
             let body = match self.tcx.hir().body_const_context(def_id.expect_local()) {
@@ -42,32 +46,49 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
                 }
             };
 
-            let old_processed_instance = self.processed_instance.replace(instance);
             //##########################################################################################################
             // Visit body and contained promoted mir
+
             self.visit_body(body);
 
             for body in self.tcx.promoted_mir(def_id) {
                 self.visit_body(body)
             }
-            self.processed_instance = old_processed_instance;
         }
+    }
+
+    fn init(&mut self, instance: &Instance<'tcx>) {
+        //let param_env = self
+        //    .tcx
+        //    .param_env(instance.def_id())
+        //    .with_reveal_all_normalized(self.tcx);
+        //
+        //let def_id = self
+        //    .tcx
+        //    .normalize_erasing_regions(param_env, instance.def_id());
+
+        let substs = if self.monomorphize_all {
+            instance.substs
+        } else {
+            List::empty()
+        };
+
+        self.processed_instance = Some((instance.def_id(), substs));
+    }
+
+    fn get_outer(&self) -> (DefId, &'tcx List<GenericArg<'tcx>>) {
+        self.processed_instance
+            .expect("Cannot find currently analyzed body")
     }
 }
 
 impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
-        let outer_substs = if self.monomorphize_all {
-            outer.substs.as_slice()
-        } else {
-            &[]
-        };
-
+        let (outer, outer_substs) = self.get_outer();
 
         if self.monomorphize_all {
-            let name_after_monomorphization = def_id_name(self.tcx, outer.def_id(), outer.substs);
-            let name_not_monomorphized = def_id_name(self.tcx, outer.def_id(), &[]);
+            let name_after_monomorphization = def_id_name(self.tcx, outer, outer_substs);
+            let name_not_monomorphized = def_id_name(self.tcx, outer, &[]);
 
             self.graph.add_edge(
                 name_after_monomorphization,
@@ -76,29 +97,54 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             );
         }
 
-        if let Some(impl_def) = self.tcx.impl_of_method(outer.def_id()) {
+        if let Some(impl_def) = self.tcx.impl_of_method(outer) {
             // 7. abstract data type -> fn in trait impl (`impl <trait> for ..`)
-            if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(impl_def) {
-                for subst in trait_ref.substs {
-                    if let GenericArgKind::Type(ty) = subst.unpack() {
-                        let param_env = self
-                            .tcx
-                            .param_env(outer.def_id())
-                            .with_reveal_all_normalized(self.tcx);
-                        let ty = self.tcx.subst_and_normalize_erasing_regions(
-                            outer.substs,
-                            param_env,
-                            ty,
-                        );
+            let tys = match self.tcx.impl_subject(impl_def) {
+                ImplSubject::Trait(trait_ref) => {
+                    let mut acc = Vec::new();
+                    for subst in trait_ref.substs {
+                        if let GenericArgKind::Type(ty) = subst.unpack() {
+                            acc.push(ty);
+                        }
+                    }
+                    acc
+                }
+                ImplSubject::Inherent(ty) => {
+                    vec![ty]
+                }
+            };
 
-                        if let TyKind::Adt(adt_def, substs) = ty.kind() {
+            for ty in tys {
+                match ty.kind() {
+                    TyKind::Adt(adt_def, substs) => {
+                        self.graph.add_edge(
+                            def_id_name(self.tcx, adt_def.did(), substs),
+                            def_id_name(self.tcx, outer, outer_substs),
+                            EdgeType::TraitImpl,
+                        );
+                    }
+                    TyKind::Dynamic(predicates, _, _) => {
+                        for binder in predicates.iter() {
+                            let pred = binder.skip_binder();
+                            let (def_id, substs) = match pred {
+                                rustc_middle::ty::ExistentialPredicate::Trait(trait_ref) => {
+                                    (trait_ref.def_id, trait_ref.substs)
+                                }
+                                rustc_middle::ty::ExistentialPredicate::Projection(trait_ref) => {
+                                    (trait_ref.def_id, trait_ref.substs)
+                                }
+                                rustc_middle::ty::ExistentialPredicate::AutoTrait(def_id) => {
+                                    (def_id, List::empty())
+                                }
+                            };
                             self.graph.add_edge(
-                                def_id_name(self.tcx, adt_def.did(), substs),
-                                def_id_name(self.tcx, outer.def_id(), outer_substs),
-                                EdgeType::Impl,
+                                def_id_name(self.tcx, def_id, substs),
+                                def_id_name(self.tcx, outer, outer_substs),
+                                EdgeType::InherentImpl,
                             );
                         }
                     }
+                    _ => {}
                 }
             }
         }
@@ -108,26 +154,25 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
-        let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
-        let outer_substs = if self.monomorphize_all {
-            outer.substs.as_slice()
-        } else {
-            &[]
-        };
+
+        let (outer, outer_substs) = self.get_outer();
 
         match constant.literal {
-            ConstantKind::Unevaluated(content, _ty) => {
+            ConstantKind::Unevaluated(content, ty) => {
+                self.visit_ty(ty, TyContext::Location(location));
+
                 // 5. borrowing node -> `const var`
                 // This takes care of borrows of e.g. "const var: u64"
                 let def_id = content.def.did;
 
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer.def_id(), outer_substs),
+                    def_id_name(self.tcx, outer, outer_substs),
                     def_id_name(self.tcx, def_id, &[]),
                     EdgeType::Unevaluated,
                 );
             }
-            ConstantKind::Val(cons, _ty) => {
+            ConstantKind::Val(cons, ty) => {
+                self.visit_ty(ty, TyContext::Location(location));
                 match cons {
                     ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
                         match self.tcx.global_alloc(ptr.provenance) {
@@ -135,7 +180,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                 // 6. borrowing node -> `static var` or `static mut var`
                                 // This takes care of borrows of e.g. "static var: u64"
                                 let (accessor, accessed) = (
-                                    def_id_name(self.tcx, outer.def_id(), outer_substs),
+                                    def_id_name(self.tcx, outer, outer_substs),
                                     def_id_name(self.tcx, def_id, &[]),
                                 );
 
@@ -152,7 +197,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                     &[]
                                 };
                                 let (accessor, accessed) = (
-                                    def_id_name(self.tcx, outer.def_id(), outer_substs),
+                                    def_id_name(self.tcx, outer, outer_substs),
                                     def_id_name(self.tcx, instance.def_id(), instance_substs),
                                 );
                                 self.graph
@@ -168,64 +213,101 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         }
     }
 
-    fn visit_ty(&mut self, mut ty: Ty<'tcx>, _: TyContext) {
+    fn visit_ty(&mut self, ty: Ty<'tcx>, ty_context: TyContext) {
         self.super_ty(ty);
-        let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
+        let (outer, outer_substs) = self.get_outer();
 
-        let param_env = self
-            .tcx
-            .param_env(outer.def_id())
-            .with_reveal_all_normalized(self.tcx);
-        ty = self
-            .tcx
-            .subst_and_normalize_erasing_regions(outer.substs, param_env, ty);
+        // Apparently, all this is not done in self.super_ty(ty)
+        match ty.kind() {
+            TyKind::Ref(_, ty, _) => self.visit_ty(*ty, clone_ty_context(&ty_context)),
+            TyKind::Array(ty, _) => self.visit_ty(*ty, clone_ty_context(&ty_context)),
+            TyKind::Slice(ty) => self.visit_ty(*ty, clone_ty_context(&ty_context)),
+            TyKind::Tuple(tys) => {
+                for ty in tys.iter() {
+                    self.visit_ty(ty, clone_ty_context(&ty_context));
+                }
+            }
+            _ => {}
+        }
 
-        if let Some((def_id, substs, edge_type)) = match ty.kind() {
+        for (def_id, substs, edge_type) in match ty.kind() {
             // 1. outer node  -> contained Closure
-            TyKind::Closure(def_id, substs) => Some((*def_id, substs, EdgeType::Closure)),
+            TyKind::Closure(def_id, substs) => vec![(*def_id, *substs, EdgeType::Closure)],
             // 2. outer node  -> contained Generator
-            TyKind::Generator(def_id, substs, _) => Some((*def_id, substs, EdgeType::Generator)),
-            // 3. caller node  -> callee `fn`
-            TyKind::FnDef(def_id, substs) => Some((*def_id, substs, EdgeType::FnDef)),
+            TyKind::Generator(def_id, substs, _) => vec![(*def_id, *substs, EdgeType::Generator)],
+            // 3. caller node  -> callee `fn` (only non-associated functions)
+            TyKind::FnDef(def_id, substs) => {
+                vec![(*def_id, *substs, EdgeType::FnDef)]
+            }
             // 4. outer node -> referenced abstract data type (`struct` or `enum`)
-            TyKind::Adt(adt_def, substs) => Some((adt_def.did(), substs, EdgeType::Adt)),
-            _ => None,
+            TyKind::Adt(adt_def, substs) => vec![(adt_def.did(), *substs, EdgeType::Adt)],
+            // 5. outer node -> referenced trait
+            TyKind::Dynamic(predicates, _, _) => {
+                let mut acc = Vec::new();
+
+                for binder in predicates.iter() {
+                    let pred = binder.skip_binder();
+
+                    let result: (DefId, &List<GenericArg>, EdgeType) = match pred {
+                        rustc_middle::ty::ExistentialPredicate::Trait(trait_ref) => {
+                            (trait_ref.def_id, trait_ref.substs, EdgeType::Trait)
+                        }
+                        rustc_middle::ty::ExistentialPredicate::Projection(trait_ref) => {
+                            (trait_ref.def_id, trait_ref.substs, EdgeType::Trait)
+                        }
+                        rustc_middle::ty::ExistentialPredicate::AutoTrait(def_id) => {
+                            (def_id, List::empty(), EdgeType::Trait)
+                        }
+                    };
+                    acc.push(result);
+                }
+                acc
+            }
+            TyKind::Alias(_, ty) => vec![(ty.def_id, ty.substs, EdgeType::Adt)],
+            _ => vec![],
         } {
+            // We also want to visit the tys of substs here, to capture all traits and adts referenced
+            for subst in substs {
+                if let GenericArgKind::Type(ty) = subst.unpack() {
+                    self.visit_ty(ty, clone_ty_context(&ty_context));
+                }
+            }
+
             if self.monomorphize_all {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
                     if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
-                        all_substs = upstream_mono.keys().collect_vec();
+                        all_substs = upstream_mono.keys().map(|s| *s).collect_vec();
                     }
                 }
 
                 for substs in all_substs {
                     self.graph.add_edge(
-                        def_id_name(self.tcx, outer.def_id(), outer.substs),
+                        def_id_name(self.tcx, outer, outer_substs),
                         def_id_name(self.tcx, def_id, substs),
                         edge_type,
                     );
                 }
-            } else if edge_type == EdgeType::Adt {
+            } else if edge_type == EdgeType::Adt || edge_type == EdgeType::Trait {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
                     if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
-                        all_substs = upstream_mono.keys().collect_vec();
+                        all_substs = upstream_mono.keys().map(|s| *s).collect_vec();
                     }
                 }
 
                 for substs in all_substs {
                     self.graph.add_edge(
-                        def_id_name(self.tcx, outer.def_id(), &[]),
+                        def_id_name(self.tcx, outer, &[]),
                         def_id_name(self.tcx, def_id, substs),
                         edge_type,
                     );
                 }
             } else {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer.def_id(), &[]),
+                    def_id_name(self.tcx, outer, &[]),
                     def_id_name(self.tcx, def_id, &[]),
                     edge_type,
                 );
@@ -555,5 +637,18 @@ mod test {
         //    assert_contains_edge(&graph, &start, &end, &edge_type);
         //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         //}
+    }
+}
+
+fn clone_ty_context(context: &TyContext) -> TyContext {
+    match context {
+        TyContext::LocalDecl { local, source_info } => TyContext::LocalDecl {
+            local: local.clone(),
+            source_info: source_info.clone(),
+        },
+        TyContext::UserTy(span) => TyContext::UserTy(span.clone()),
+        TyContext::ReturnTy(source_info) => TyContext::ReturnTy(source_info.clone()),
+        TyContext::YieldTy(source_info) => TyContext::YieldTy(source_info.clone()),
+        TyContext::Location(location) => TyContext::Location(location.clone()),
     }
 }
