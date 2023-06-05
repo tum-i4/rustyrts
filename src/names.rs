@@ -26,6 +26,7 @@ pub(crate) fn def_id_name<'tcx>(
     def_id: DefId,
     substs: &'tcx [GenericArg<'tcx>],
 ) -> String {
+    #[cfg(not(test))]
     if cfg!(not(monomorphize)) {
         assert!(substs.is_empty());
     }
