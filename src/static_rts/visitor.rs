@@ -13,7 +13,7 @@ use rustc_middle::ty::{GenericArgKind, ImplSubject, Instance, Ty, TyCtxt, TyKind
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
-    monomorphize: bool,
+    monomorphize_all: bool,
     processed_instance: Option<&'tcx Instance<'tcx>>,
 }
 
@@ -21,12 +21,12 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         graph: &'g mut DependencyGraph<String>,
-        monomorphize: bool,
+        monomorphize_all: bool,
     ) -> GraphVisitor<'tcx, 'g> {
         GraphVisitor {
             tcx,
             graph,
-            monomorphize,
+            monomorphize_all,
             processed_instance: None,
         }
     }
@@ -59,7 +59,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
 
-        if self.monomorphize {
+        if self.monomorphize_all {
             let name_after_monomorphization = def_id_name(self.tcx, outer.def_id(), outer.substs);
             let name_not_monomorphized = def_id_name(self.tcx, outer.def_id(), &[]);
 
@@ -75,32 +75,22 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(impl_def) {
                 for subst in trait_ref.substs {
                     if let GenericArgKind::Type(ty) = subst.unpack() {
-                        if self.monomorphize {
-                            let param_env = self
-                                .tcx
-                                .param_env(outer.def_id())
-                                .with_reveal_all_normalized(self.tcx);
-                            let ty = self.tcx.subst_and_normalize_erasing_regions(
-                                outer.substs,
-                                param_env,
-                                ty,
-                            );
+                        let param_env = self
+                            .tcx
+                            .param_env(outer.def_id())
+                            .with_reveal_all_normalized(self.tcx);
+                        let ty = self.tcx.subst_and_normalize_erasing_regions(
+                            outer.substs,
+                            param_env,
+                            ty,
+                        );
 
-                            if let TyKind::Adt(adt_def, substs) = ty.kind() {
-                                self.graph.add_edge(
-                                    def_id_name(self.tcx, adt_def.did(), substs),
-                                    def_id_name(self.tcx, outer.def_id(), outer.substs),
-                                    EdgeType::Impl,
-                                );
-                            }
-                        } else {
-                            if let TyKind::Adt(adt_def, _substs) = ty.kind() {
-                                self.graph.add_edge(
-                                    def_id_name(self.tcx, adt_def.did(), &[]),
-                                    def_id_name(self.tcx, outer.def_id(), &[]),
-                                    EdgeType::Impl,
-                                );
-                            }
+                        if let TyKind::Adt(adt_def, substs) = ty.kind() {
+                            self.graph.add_edge(
+                                def_id_name(self.tcx, adt_def.did(), substs),
+                                def_id_name(self.tcx, outer.def_id(), outer.substs),
+                                EdgeType::Impl,
+                            );
                         }
                     }
                 }
@@ -113,7 +103,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
-        let outer_substs = if self.monomorphize {
+        let outer_substs = if self.monomorphize_all {
             outer.substs.as_slice()
         } else {
             &[]
@@ -150,7 +140,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             GlobalAlloc::Function(instance) => {
                                 // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                                 // Perhaps this refers to extern fns?
-                                let instance_substs = if self.monomorphize {
+                                let instance_substs = if self.monomorphize_all {
                                     instance.substs.as_slice()
                                 } else {
                                     &[]
@@ -176,15 +166,13 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         self.super_ty(ty);
         let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
 
-        if self.monomorphize {
-            let param_env = self
-                .tcx
-                .param_env(outer.def_id())
-                .with_reveal_all_normalized(self.tcx);
-            ty = self
-                .tcx
-                .subst_and_normalize_erasing_regions(outer.substs, param_env, ty);
-        }
+        let param_env = self
+            .tcx
+            .param_env(outer.def_id())
+            .with_reveal_all_normalized(self.tcx);
+        ty = self
+            .tcx
+            .subst_and_normalize_erasing_regions(outer.substs, param_env, ty);
 
         if let Some((def_id, substs, edge_type)) = match ty.kind() {
             // 1. outer node  -> contained Closure
@@ -197,7 +185,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             TyKind::Adt(adt_def, substs) => Some((adt_def.did(), substs, EdgeType::Adt)),
             _ => None,
         } {
-            if self.monomorphize {
+            if self.monomorphize_all {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
@@ -209,6 +197,22 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 for substs in all_substs {
                     self.graph.add_edge(
                         def_id_name(self.tcx, outer.def_id(), outer.substs),
+                        def_id_name(self.tcx, def_id, substs),
+                        edge_type,
+                    );
+                }
+            } else if edge_type == EdgeType::Adt {
+                let mut all_substs = vec![substs];
+
+                if !def_id.is_local() {
+                    if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
+                        all_substs = upstream_mono.keys().collect_vec();
+                    }
+                }
+
+                for substs in all_substs {
+                    self.graph.add_edge(
+                        def_id_name(self.tcx, outer.def_id(), &[]),
                         def_id_name(self.tcx, def_id, substs),
                         edge_type,
                     );

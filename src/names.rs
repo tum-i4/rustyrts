@@ -26,11 +26,6 @@ pub(crate) fn def_id_name<'tcx>(
     def_id: DefId,
     substs: &'tcx [GenericArg<'tcx>],
 ) -> String {
-    #[cfg(not(test))]
-    if cfg!(not(monomorphize)) {
-        assert!(substs.is_empty());
-    }
-
     let crate_path = if def_id.is_local() {
         let crate_name = tcx.crate_name(LOCAL_CRATE);
 

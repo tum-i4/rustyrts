@@ -17,7 +17,7 @@ name = "rustyrts-dynamic"
 
 [features]
 ctfe = []
-monomorphize = []
+monomorphize_all = []
 
 [dependencies]
 log = "0.4"
