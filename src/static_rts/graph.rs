@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
     Unevaluated,
     Scalar,

@@ -1,6 +1,7 @@
 use super::graph::{DependencyGraph, EdgeType};
 use crate::names::def_id_name;
 
+use itertools::Itertools;
 use rustc_hir::ConstContext;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::{TyContext, Visitor};
@@ -170,11 +171,24 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             TyKind::Adt(adt_def, substs) => Some((adt_def.did(), substs, EdgeType::Adt)),
             _ => None,
         } {
-            self.graph.add_edge(
-                def_id_name(self.tcx, outer.def_id(), outer.substs),
-                def_id_name(self.tcx, def_id, substs),
-                edge_type,
-            );
+            let mut all_substs = vec![substs];
+
+            if !def_id.is_local() {
+                if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
+                    all_substs.extend(upstream_mono.keys().collect_vec());
+                }
+            }
+
+            for substs in all_substs {
+                //let substs = substs.rebase_onto(self.tcx, def_id, outer.substs);
+                // TODO: check if necessary to combine both substs
+
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer.def_id(), outer.substs),
+                    def_id_name(self.tcx, def_id, substs),
+                    edge_type,
+                );
+            }
         }
     }
 }
@@ -438,14 +452,15 @@ mod test {
         println!("{}", graph.to_string());
 
         {
-            let end = "<Lion as Animal>::sound";
             let edge_type = EdgeType::FnDef;
 
             let start = "::test::test_direct";
+            let end = "<Lion as Animal>::sound";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
             let start = "::sound_generic::<Lion>";
+            let end = "<T as Animal>::sound";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
@@ -456,14 +471,15 @@ mod test {
         }
 
         {
-            let end = "::<Dog as Animal>::set_treat";
             let edge_type = EdgeType::FnDef;
 
             let start = "::test::test_mut_direct";
+            let end = "::<Dog as Animal>::set_treat";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
             let start = "::set_treat_generic::<Dog>";
+            let end = "::<T as Animal>::set_treat";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
