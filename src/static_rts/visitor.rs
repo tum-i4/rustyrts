@@ -217,6 +217,14 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         self.super_ty(ty);
         let (outer, outer_substs) = self.get_outer();
 
+        let param_env = self
+            .tcx
+            .param_env(outer)
+            .with_reveal_all_normalized(self.tcx);
+        let ty = self
+            .tcx
+            .subst_and_normalize_erasing_regions(outer_substs, param_env, ty);
+
         // Apparently, all this is not done in self.super_ty(ty)
         match ty.kind() {
             TyKind::Ref(_, ty, _) => self.visit_ty(*ty, clone_ty_context(&ty_context)),
@@ -612,31 +620,33 @@ mod test {
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
 
-        //{
-        //    let start = "::Animal::set_treat";
-        //    let edge_type = EdgeType::Impl;
-        //
-        //    let end = "::<Lion as Animal>::set_treat";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //
-        //    let end = "::<Dog as Animal>::set_treat";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //}
+        {
+            let edge_type = EdgeType::TraitImpl;
 
-        //{
-        //    let start = "::Animal::sound";
-        //    let edge_type = EdgeType::Impl;
-        //
-        //    let end = "::<Lion as Animal>::sound";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //
-        //    let end = "::<Dog as Animal>::sound";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //}
+            let start = "::Lion";
+            let end = "::<Lion as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start: &str = "::Dog";
+            let end = "::<Dog as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
+
+        {
+            let edge_type = EdgeType::TraitImpl;
+
+            let start = "::Lion";
+            let end = "::<Lion as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start: &str = "::Dog";
+            let end = "::<Dog as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
     }
 }
 
