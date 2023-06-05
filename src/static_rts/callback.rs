@@ -86,7 +86,7 @@ impl StaticRTSCallbacks {
             //      1) Creates the graph
             //      2) Write graph to file
 
-            let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
+            let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph, cfg!(monomorphize));
             for instance in instances {
                 graph_visitor.visit(instance);
             }
@@ -173,17 +173,20 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
 
     for entry in result {
         if let VtblEntry::Method(instance) = entry {
-            let name_after_monomorphization = def_id_name(tcx, instance.def_id(), instance.substs);
+            let substs = if cfg!(monomorphize) {
+                instance.substs.as_slice()
+            } else {
+                &[]
+            };
+
+            let name = def_id_name(tcx, instance.def_id(), substs);
 
             let checksum = get_checksum_vtbl_entry(tcx, &entry);
-            debug!(
-                "Considering {:?} in checksums of {}",
-                instance, name_after_monomorphization
-            );
+            debug!("Considering {:?} in checksums of {}", instance, name);
 
             insert_hashmap(
                 &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
-                name_after_monomorphization,
+                name,
                 checksum,
             )
         }

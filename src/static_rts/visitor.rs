@@ -13,6 +13,7 @@ use rustc_middle::ty::{GenericArgKind, ImplSubject, Instance, Ty, TyCtxt, TyKind
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
+    monomorphize: bool,
     processed_instance: Option<&'tcx Instance<'tcx>>,
 }
 
@@ -20,10 +21,12 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         graph: &'g mut DependencyGraph<String>,
+        monomorphize: bool,
     ) -> GraphVisitor<'tcx, 'g> {
         GraphVisitor {
             tcx,
             graph,
+            monomorphize,
             processed_instance: None,
         }
     }
@@ -56,26 +59,48 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
 
-        let name_after_monomorphization = def_id_name(self.tcx, outer.def_id(), outer.substs);
-        let name_not_monomorphized = def_id_name(self.tcx, outer.def_id(), &[]);
+        if self.monomorphize {
+            let name_after_monomorphization = def_id_name(self.tcx, outer.def_id(), outer.substs);
+            let name_not_monomorphized = def_id_name(self.tcx, outer.def_id(), &[]);
 
-        self.graph.add_edge(
-            name_after_monomorphization,
-            name_not_monomorphized,
-            EdgeType::Monomorphization,
-        );
+            self.graph.add_edge(
+                name_after_monomorphization,
+                name_not_monomorphized,
+                EdgeType::Monomorphization,
+            );
+        }
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer.def_id()) {
             // 7. abstract data type -> fn in trait impl (`impl <trait> for ..`)
             if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(impl_def) {
                 for subst in trait_ref.substs {
                     if let GenericArgKind::Type(ty) = subst.unpack() {
-                        if let TyKind::Adt(adt_def, substs) = ty.kind() {
-                            self.graph.add_edge(
-                                def_id_name(self.tcx, adt_def.did(), substs),
-                                def_id_name(self.tcx, outer.def_id(), outer.substs),
-                                EdgeType::Impl,
+                        if self.monomorphize {
+                            let param_env = self
+                                .tcx
+                                .param_env(outer.def_id())
+                                .with_reveal_all_normalized(self.tcx);
+                            let ty = self.tcx.subst_and_normalize_erasing_regions(
+                                outer.substs,
+                                param_env,
+                                ty,
                             );
+
+                            if let TyKind::Adt(adt_def, substs) = ty.kind() {
+                                self.graph.add_edge(
+                                    def_id_name(self.tcx, adt_def.did(), substs),
+                                    def_id_name(self.tcx, outer.def_id(), outer.substs),
+                                    EdgeType::Impl,
+                                );
+                            }
+                        } else {
+                            if let TyKind::Adt(adt_def, _substs) = ty.kind() {
+                                self.graph.add_edge(
+                                    def_id_name(self.tcx, adt_def.did(), &[]),
+                                    def_id_name(self.tcx, outer.def_id(), &[]),
+                                    EdgeType::Impl,
+                                );
+                            }
                         }
                     }
                 }
@@ -88,6 +113,11 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
         self.super_constant(constant, location);
         let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
+        let outer_substs = if self.monomorphize {
+            outer.substs.as_slice()
+        } else {
+            &[]
+        };
 
         match constant.literal {
             ConstantKind::Unevaluated(content, _ty) => {
@@ -96,7 +126,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 let def_id = content.def.did;
 
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer.def_id(), outer.substs),
+                    def_id_name(self.tcx, outer.def_id(), outer_substs),
                     def_id_name(self.tcx, def_id, &[]),
                     EdgeType::Unevaluated,
                 );
@@ -108,43 +138,29 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             GlobalAlloc::Static(def_id) => {
                                 // 6. borrowing node -> `static var` or `static mut var`
                                 // This takes care of borrows of e.g. "static var: u64"
-                                let (accessor, accessed_maybe_more) = (
-                                    def_id_name(self.tcx, outer.def_id(), outer.substs),
+                                let (accessor, accessed) = (
+                                    def_id_name(self.tcx, outer.def_id(), outer_substs),
                                     def_id_name(self.tcx, def_id, &[]),
                                 );
 
-                                // // This is not necessary since for a node that writes into a variable,
-                                // // there must exist a path from test to this node already
-                                //
-                                //if ty.is_mutable_ptr() {
-                                //    // If the borrow is mut, we also add an edge in the reverse direction
-                                //    self.graph.add_edge(
-                                //        accessed.clone(),
-                                //        accessor.clone(),
-                                //        EdgeType::Scalar,
-                                //    );
-                                //}
-
                                 // Since we assume that a borrow is actually read, we always add an edge here
-                                self.graph.add_edge(
-                                    accessor.clone(),
-                                    accessed_maybe_more,
-                                    EdgeType::Scalar,
-                                );
+                                self.graph
+                                    .add_edge(accessor.clone(), accessed, EdgeType::Scalar);
                             }
                             GlobalAlloc::Function(instance) => {
                                 // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                                 // Perhaps this refers to extern fns?
-
-                                let (accessor, accessed_maybe_more) = (
-                                    def_id_name(self.tcx, outer.def_id(), outer.substs),
-                                    def_id_name(self.tcx, instance.def_id(), instance.substs),
+                                let instance_substs = if self.monomorphize {
+                                    instance.substs.as_slice()
+                                } else {
+                                    &[]
+                                };
+                                let (accessor, accessed) = (
+                                    def_id_name(self.tcx, outer.def_id(), outer_substs),
+                                    def_id_name(self.tcx, instance.def_id(), instance_substs),
                                 );
-                                self.graph.add_edge(
-                                    accessor.clone(),
-                                    accessed_maybe_more,
-                                    EdgeType::FnPtr,
-                                );
+                                self.graph
+                                    .add_edge(accessor.clone(), accessed, EdgeType::FnPtr);
                             }
                             _ => {}
                         }
@@ -156,9 +172,19 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
+    fn visit_ty(&mut self, mut ty: Ty<'tcx>, _: TyContext) {
         self.super_ty(ty);
         let Some(outer) = self.processed_instance else {panic!("Cannot find currently analyzed body")};
+
+        if self.monomorphize {
+            let param_env = self
+                .tcx
+                .param_env(outer.def_id())
+                .with_reveal_all_normalized(self.tcx);
+            ty = self
+                .tcx
+                .subst_and_normalize_erasing_regions(outer.substs, param_env, ty);
+        }
 
         if let Some((def_id, substs, edge_type)) = match ty.kind() {
             // 1. outer node  -> contained Closure
@@ -171,21 +197,26 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             TyKind::Adt(adt_def, substs) => Some((adt_def.did(), substs, EdgeType::Adt)),
             _ => None,
         } {
-            let mut all_substs = vec![substs];
+            if self.monomorphize {
+                let mut all_substs = vec![substs];
 
-            if !def_id.is_local() {
-                if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
-                    all_substs.extend(upstream_mono.keys().collect_vec());
+                if !def_id.is_local() {
+                    if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
+                        all_substs = upstream_mono.keys().collect_vec();
+                    }
                 }
-            }
 
-            for substs in all_substs {
-                //let substs = substs.rebase_onto(self.tcx, def_id, outer.substs);
-                // TODO: check if necessary to combine both substs
-
+                for substs in all_substs {
+                    self.graph.add_edge(
+                        def_id_name(self.tcx, outer.def_id(), outer.substs),
+                        def_id_name(self.tcx, def_id, substs),
+                        edge_type,
+                    );
+                }
+            } else {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer.def_id(), outer.substs),
-                    def_id_name(self.tcx, def_id, substs),
+                    def_id_name(self.tcx, outer.def_id(), &[]),
+                    def_id_name(self.tcx, def_id, &[]),
                     edge_type,
                 );
             }
@@ -260,7 +291,7 @@ mod test {
                         })
                         .collect_vec();
 
-                    let mut visitor = GraphVisitor::new(tcx, &mut graph);
+                    let mut visitor = GraphVisitor::new(tcx, &mut graph, true);
 
                     for instance in instances {
                         visitor.visit(instance);
@@ -460,7 +491,7 @@ mod test {
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
             let start = "::sound_generic::<Lion>";
-            let end = "<T as Animal>::sound";
+            let end = "<Lion as Animal>::sound";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
@@ -479,7 +510,7 @@ mod test {
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
             let start = "::set_treat_generic::<Dog>";
-            let end = "::<T as Animal>::set_treat";
+            let end = "::<Dog as Animal>::set_treat";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 

@@ -1,4 +1,5 @@
 use itertools::Itertools;
+use queues::{IsQueue, Queue};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
@@ -84,6 +85,7 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         self.backwards_edges.get(to_node)
     }
 
+    #[allow(unused)]
     pub fn affected_tests<'b: 'c, 'c, S>(
         &'b self,
         starting_points: S,
@@ -128,6 +130,36 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         }
 
         acc.pop();
+    }
+
+    #[allow(unused)]
+    pub fn reachable_nodes<'b, S>(&'b self, starting_points: S) -> HashSet<&'b T>
+    where
+        S: IntoIterator<Item = &'b T>,
+    {
+        let mut queue: Queue<&'b T> = Queue::new();
+        let mut reached: HashSet<&'b T> = HashSet::new();
+
+        for ele in starting_points {
+            queue.add(ele).unwrap();
+        }
+
+        while let Ok(node) = queue.remove() {
+            if !reached.insert(node) {
+                // We already processed this node before
+                continue;
+            }
+
+            if let Some(edges) = self.backwards_edges.get(node) {
+                for (start, _types) in edges {
+                    if !reached.contains(start) {
+                        queue.add(start).unwrap();
+                    }
+                }
+            }
+        }
+
+        reached
     }
 }
 
