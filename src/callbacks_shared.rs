@@ -84,7 +84,7 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     debug!("Exported tests for {}", crate_name);
 }
 
-pub fn export_checksums_and_changes() {
+pub fn export_checksums_and_changes(consider_added_vtable_entries: bool) {
     if let Some(crate_name) = CRATE_NAME.get() {
         let crate_id = *CRATE_ID.get().unwrap();
 
@@ -199,10 +199,20 @@ pub fn export_checksums_and_changes() {
                 let maybe_new = new_checksums_vtbl.get(name);
                 let maybe_old = old_checksums_vtbl.get(name);
 
+                // Only in dynamic RustyRTS:
+                // We only need to consider functions that are no longer pointed to by the vtable entries
+                // (dynamic dispatch may call a different function in the new revision)
+
                 match (maybe_new, maybe_old) {
                     (None, _) => panic!("Did not find checksum for vtable entry {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
-                    (Some(_), None) => true,
-                    (Some(new), Some(old)) => new != old,
+                    (Some(_), None) => false,
+                    (Some(new), Some(old)) => {
+                        if consider_added_vtable_entries {
+                            old != new
+                        } else {
+                            old.difference(new).count() != 0
+                        }
+                     },
                 }
             };
 

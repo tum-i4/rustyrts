@@ -37,7 +37,9 @@ For example:
 # How tests are selected
 
 ## Checksums
-TODO
+RustyRTS (both static and dynamic) keeps track of modifications to the code by calculating and comparing checksums of MIR bodies. When the checksum of a node differs between old and new revision, this node is considered changed.
+
+Furthermore, the checksums of vtable entries are contributing to the checksum of the function that they are pointing to. If a vtable entry that was pointing to a function a) in the old revision is now pointing to a different function b) in the new revision, both functions would be considered changed in static RustyRTS. In dynamic RustyRTS only function a) would be considered changed.
 
 ## Dynamic
 Dynamic RustyRTS collects traces containing all functions that are called during the execution of a test. Some helper functions and global variables are used to obtain those traces:
@@ -74,11 +76,12 @@ Static RustyRTS analyzes the MIR during compilation, without modifying it, to bu
 2. outer node  -> contained Generator
 3. caller node  -> callee `fn`
 4. outer node -> referenced abstract data type (`struct` or `enum`)
-5. borrowing node -> `const var`
-6. borrowing node -> `static var` or `static mut var`
-7. abstract data type -> fn in trait impl (`impl <trait> for ..`)
-8. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
+5. outer node -> referenced trait
+6. borrowing node -> `const var`
+7. borrowing node -> `static var` or `static mut var`
+8. abstract data type -> fn in trait impl (`impl <trait> for ..`)
+9. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
 
-Abstract data types, which are not corresponding to actual code are just used as "transit" nodes here.
+Abstract data types and traits, which are not corresponding to actual code are just used as "transit" nodes here.
 
 When there is a path from a test to a changed node, the test is considered affected.

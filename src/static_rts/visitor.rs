@@ -118,7 +118,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
             for ty in tys {
                 match ty.kind() {
-                    // 7. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
+                    // 8. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
                     TyKind::Adt(adt_def, substs) => {
                         self.graph.add_edge(
                             def_id_name(self.tcx, adt_def.did(), substs),
@@ -126,7 +126,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             EdgeType::AdtImpl,
                         );
                     }
-                    // 8. trait -> fn in trait definition (`trait { ..`)
+                    // 9. trait -> fn in trait definition (`trait { ..`)
                     TyKind::Dynamic(predicates, _, _) => {
                         for binder in predicates.iter() {
                             let pred = binder.skip_binder();
@@ -166,7 +166,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             ConstantKind::Unevaluated(content, ty) => {
                 self.visit_ty(ty, TyContext::Location(location));
 
-                // 5. borrowing node -> `const var`
+                // 6. borrowing node -> `const var`
                 // This takes care of borrows of e.g. "const var: u64"
                 let def_id = content.def.did;
 
@@ -182,7 +182,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
                         match self.tcx.global_alloc(ptr.provenance) {
                             GlobalAlloc::Static(def_id) => {
-                                // 6. borrowing node -> `static var` or `static mut var`
+                                // 7. borrowing node -> `static var` or `static mut var`
                                 // This takes care of borrows of e.g. "static var: u64"
                                 let (accessor, accessed) = (
                                     def_id_name(self.tcx, outer, outer_substs),
@@ -250,7 +250,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             TyKind::Closure(def_id, substs) => vec![(*def_id, *substs, EdgeType::Closure)],
             // 2. outer node  -> contained Generator
             TyKind::Generator(def_id, substs, _) => vec![(*def_id, *substs, EdgeType::Generator)],
-            // 3. caller node  -> callee `fn` (only non-associated functions)
+            // 3. caller node  -> callee `fn`
             TyKind::FnDef(def_id, substs) => {
                 vec![(*def_id, *substs, EdgeType::FnDef)]
             }
@@ -288,7 +288,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 }
             }
 
-            if cfg!(feature = "monomorphize_all") {
+            if cfg!(feature = "monomorphize_all") || edge_type == EdgeType::Adt || edge_type == EdgeType::Trait {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
@@ -304,25 +304,9 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         edge_type,
                     );
                 }
-            } else if edge_type == EdgeType::Adt || edge_type == EdgeType::Trait {
-                let mut all_substs = vec![substs];
-
-                if !def_id.is_local() {
-                    if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
-                        all_substs = upstream_mono.keys().map(|s| *s).collect_vec();
-                    }
-                }
-
-                for substs in all_substs {
-                    self.graph.add_edge(
-                        def_id_name(self.tcx, outer, &[]),
-                        def_id_name(self.tcx, def_id, substs),
-                        edge_type,
-                    );
-                }
             } else {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer, &[]),
+                    def_id_name(self.tcx, outer, outer_substs),
                     def_id_name(self.tcx, def_id, &[]),
                     edge_type,
                 );

@@ -61,7 +61,7 @@ fn main() {
 
     let exit_code = match result {
         Ok(_) => {
-            export_checksums_and_changes();
+            export_checksums_and_changes(true);
             EXIT_SUCCESS
         }
         Err(_) => EXIT_FAILURE,
