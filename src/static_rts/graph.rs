@@ -13,7 +13,7 @@ pub enum EdgeType {
     FnDef,
     FnPtr, // TODO: not sure if this is necessary
     TraitImpl,
-    InherentImpl,
+    AdtImpl,
     Adt,
     Trait,
     Alias,
@@ -34,7 +34,7 @@ impl FromStr for EdgeType {
             "FnDef" => Ok(Self::FnDef),
             "FnPtr" => Ok(Self::FnPtr),
             "TraitImpl" => Ok(Self::TraitImpl),
-            "InherentImpl" => Ok(Self::InherentImpl),
+            "AdtImpl" => Ok(Self::AdtImpl),
             "Adt" => Ok(Self::Adt),
             "Trait" => Ok(Self::Trait),
             "Alias" => Ok(Self::Alias),
@@ -312,11 +312,7 @@ mod test {
         );
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnDef);
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnPtr);
-        graph.add_edge(
-            "start1".to_string(),
-            "end1".to_string(),
-            EdgeType::InherentImpl,
-        );
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::AdtImpl);
 
         let serialized = graph.to_string();
         let deserialized = DependencyGraph::from_str(&serialized).unwrap();

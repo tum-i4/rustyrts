@@ -16,7 +16,6 @@ use rustc_span::def_id::DefId;
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
-    monomorphize_all: bool,
     processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
 }
 
@@ -24,12 +23,10 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
     pub(crate) fn new(
         tcx: TyCtxt<'tcx>,
         graph: &'g mut DependencyGraph<String>,
-        monomorphize_all: bool,
     ) -> GraphVisitor<'tcx, 'g> {
         GraphVisitor {
             tcx,
             graph,
-            monomorphize_all,
             processed_instance: None,
         }
     }
@@ -58,16 +55,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
     }
 
     fn init(&mut self, instance: &Instance<'tcx>) {
-        //let param_env = self
-        //    .tcx
-        //    .param_env(instance.def_id())
-        //    .with_reveal_all_normalized(self.tcx);
-        //
-        //let def_id = self
-        //    .tcx
-        //    .normalize_erasing_regions(param_env, instance.def_id());
-
-        let substs = if self.monomorphize_all {
+        let substs = if cfg!(feature = "monomorphize_all") {
             instance.substs
         } else {
             List::empty()
@@ -86,7 +74,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let (outer, outer_substs) = self.get_outer();
 
-        if self.monomorphize_all {
+        if cfg!(feature = "monomorphize_all") {
             let name_after_monomorphization = def_id_name(self.tcx, outer, outer_substs);
             let name_not_monomorphized = def_id_name(self.tcx, outer, &[]);
 
@@ -98,9 +86,23 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         }
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer) {
-            // 7. abstract data type -> fn in trait impl (`impl <trait> for ..`)
             let tys = match self.tcx.impl_subject(impl_def) {
                 ImplSubject::Trait(trait_ref) => {
+                    let implementors = self.tcx.impl_item_implementor_ids(impl_def);
+
+                    if !cfg!(monomorphize_all) {
+                        // 9. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
+                        for (trait_fn, impl_fn) in implementors {
+                            if *impl_fn == outer {
+                                self.graph.add_edge(
+                                    def_id_name(self.tcx, *trait_fn, &[]), // No substs here
+                                    def_id_name(self.tcx, outer, outer_substs),
+                                    EdgeType::TraitImpl,
+                                );
+                            }
+                        }
+                    }
+
                     let mut acc = Vec::new();
                     for subst in trait_ref.substs {
                         if let GenericArgKind::Type(ty) = subst.unpack() {
@@ -116,13 +118,15 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
             for ty in tys {
                 match ty.kind() {
+                    // 7. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
                     TyKind::Adt(adt_def, substs) => {
                         self.graph.add_edge(
                             def_id_name(self.tcx, adt_def.did(), substs),
                             def_id_name(self.tcx, outer, outer_substs),
-                            EdgeType::TraitImpl,
+                            EdgeType::AdtImpl,
                         );
                     }
+                    // 8. trait -> fn in trait definition (`trait { ..`)
                     TyKind::Dynamic(predicates, _, _) => {
                         for binder in predicates.iter() {
                             let pred = binder.skip_binder();
@@ -137,10 +141,11 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                                     (def_id, List::empty())
                                 }
                             };
+
                             self.graph.add_edge(
                                 def_id_name(self.tcx, def_id, substs),
                                 def_id_name(self.tcx, outer, outer_substs),
-                                EdgeType::InherentImpl,
+                                EdgeType::TraitImpl,
                             );
                         }
                     }
@@ -191,7 +196,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                             GlobalAlloc::Function(instance) => {
                                 // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
                                 // Perhaps this refers to extern fns?
-                                let instance_substs = if self.monomorphize_all {
+                                let instance_substs = if cfg!(feature = "monomorphize_all") {
                                     instance.substs.as_slice()
                                 } else {
                                     &[]
@@ -213,17 +218,19 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         }
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>, ty_context: TyContext) {
+    fn visit_ty(&mut self, mut ty: Ty<'tcx>, ty_context: TyContext) {
         self.super_ty(ty);
         let (outer, outer_substs) = self.get_outer();
 
-        let param_env = self
-            .tcx
-            .param_env(outer)
-            .with_reveal_all_normalized(self.tcx);
-        let ty = self
-            .tcx
-            .subst_and_normalize_erasing_regions(outer_substs, param_env, ty);
+        if cfg!(feature = "monomorphize_all") {
+            let param_env = self
+                .tcx
+                .param_env(outer)
+                .with_reveal_all_normalized(self.tcx);
+            ty = self
+                .tcx
+                .subst_and_normalize_erasing_regions(outer_substs, param_env, ty);
+        }
 
         // Apparently, all this is not done in self.super_ty(ty)
         match ty.kind() {
@@ -281,7 +288,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 }
             }
 
-            if self.monomorphize_all {
+            if cfg!(feature = "monomorphize_all") {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
@@ -391,7 +398,7 @@ mod test {
                         })
                         .collect_vec();
 
-                    let mut visitor = GraphVisitor::new(tcx, &mut graph, true);
+                    let mut visitor = GraphVisitor::new(tcx, &mut graph);
 
                     for instance in instances {
                         visitor.visit(instance);
@@ -555,6 +562,7 @@ mod test {
     }
 
     #[test]
+    #[cfg(not(feature = "monomorphize_all"))]
     fn test_impls() {
         let graph = compile_and_visit("impls.rs");
 
@@ -577,6 +585,81 @@ mod test {
     }
 
     #[test]
+    #[cfg(not(feature = "monomorphize_all"))]
+    fn test_traits() {
+        let graph = compile_and_visit("traits.rs");
+
+        println!("{}", graph.to_string());
+
+        {
+            let edge_type = EdgeType::FnDef;
+
+            let start = "::test::test_direct";
+            let end = "Animal::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = "::sound_generic";
+            let end = "Animal::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = "::sound_dyn";
+            let end = "Animal::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
+
+        {
+            let edge_type = EdgeType::FnDef;
+
+            let start = "::test::test_mut_direct";
+            let end = "::Animal::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = "::set_treat_generic";
+            let end = "::Animal::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = "::set_treat_dyn";
+            let end = "Animal::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
+
+        {
+            let edge_type = EdgeType::AdtImpl;
+
+            let start = "::Lion";
+            let end = "::<Lion as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start: &str = "::Dog";
+            let end = "::<Dog as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
+
+        {
+            let edge_type = EdgeType::AdtImpl;
+
+            let start = "::Lion";
+            let end = "::<Lion as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start: &str = "::Dog";
+            let end = "::<Dog as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "monomorphize_all")]
     fn test_traits() {
         let graph = compile_and_visit("traits.rs");
 
@@ -621,7 +704,7 @@ mod test {
         }
 
         {
-            let edge_type = EdgeType::TraitImpl;
+            let edge_type = EdgeType::AdtImpl;
 
             let start = "::Lion";
             let end = "::<Lion as Animal>::set_treat";
@@ -635,7 +718,7 @@ mod test {
         }
 
         {
-            let edge_type = EdgeType::TraitImpl;
+            let edge_type = EdgeType::AdtImpl;
 
             let start = "::Lion";
             let end = "::<Lion as Animal>::sound";

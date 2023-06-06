@@ -16,6 +16,8 @@ name = "rustyrts-static"
 name = "rustyrts-dynamic"
 
 [features]
+default = []
+
 ctfe = []
 monomorphize_all = []
 

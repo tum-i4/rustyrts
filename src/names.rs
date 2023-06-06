@@ -17,7 +17,7 @@ lazy_static! {
     //    Regex::new(r"(\+ )[^)>]*?::()").unwrap(),
     //    Regex::new(r"(as )[^)>]*?::(.*?>)").unwrap(),
     //];
-    static ref RE_LIFETIME: [Regex; 2] = [Regex::new(r"( \+ )?'.+?(, |(\)|>))").unwrap(), Regex::new(r"<>").unwrap()];
+    static ref RE_LIFETIME: [Regex; 2] = [Regex::new(r"( \+ )?'.+?(, | |(\)|>))").unwrap(), Regex::new(r"<>").unwrap()];
 }
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt

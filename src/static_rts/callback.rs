@@ -86,7 +86,7 @@ impl StaticRTSCallbacks {
             //      1) Creates the graph
             //      2) Write graph to file
 
-            let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph, cfg!(monomorphize_all));
+            let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
             for instance in instances {
                 graph_visitor.visit(instance);
             }
@@ -173,7 +173,7 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
 
     for entry in result {
         if let VtblEntry::Method(instance) = entry {
-            let substs = if cfg!(monomorphize_all) {
+            let substs = if cfg!(feature = "monomorphize_all") {
                 instance.substs.as_slice()
             } else {
                 &[]
