@@ -18,6 +18,7 @@ name = "rustyrts-dynamic"
 [features]
 default = []
 
+print_paths = []
 monomorphize_all = []
 
 [dependencies]

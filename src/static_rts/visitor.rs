@@ -3,6 +3,7 @@ use crate::names::def_id_name;
 
 use itertools::Itertools;
 
+use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{GenericArg, GenericArgKind, ImplSubject, List, Ty, TyCtxt, TyKind};
@@ -177,7 +178,11 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             TyKind::Generator(def_id, substs, _) => vec![(*def_id, *substs, EdgeType::Generator)],
             // 3. caller node  -> callee `fn`
             TyKind::FnDef(def_id, substs) => {
-                vec![(*def_id, *substs, EdgeType::FnDef)]
+                if let DefKind::AssocFn = self.tcx.def_kind(def_id) {
+                    vec![]
+                } else {
+                    vec![(*def_id, *substs, EdgeType::FnDef)]
+                }
             }
             // 4. outer node -> referenced abstract data type (`struct` or `enum`)
             TyKind::Adt(adt_def, substs) => vec![(adt_def.did(), *substs, EdgeType::Adt)],

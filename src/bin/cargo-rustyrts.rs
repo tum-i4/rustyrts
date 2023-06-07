@@ -518,32 +518,72 @@ fn select_and_execute_tests_static() {
         println!("#Tests that have been found: {}\n", tests.iter().count());
     }
 
-    let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
-    if verbose {
-        println!(
-            "Nodes that reach any changed node in the graph:\n{}\n",
-            reached_nodes.iter().sorted().join(", ")
-        );
-    } else {
-        println!(
-            "#Nodes that reach any changed node in the graph: {}\n",
-            reached_nodes.iter().count()
-        );
+    #[cfg(not(feature = "print_paths"))]
+    {
+        let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
+        let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
+
+        if verbose {
+            println!(
+                "Nodes that reach any changed node in the graph:\n{}\n",
+                reached_nodes.iter().sorted().join(", ")
+            );
+        } else {
+            println!(
+                "#Nodes that reach any changed node in the graph: {}\n",
+                reached_nodes.iter().count()
+            );
+        }
+
+        if verbose {
+            println!(
+                "Affected tests:\n{}\n",
+                affected_tests.iter().sorted().join(", ")
+            );
+        } else {
+            println!("#Affected tests: {}\n", affected_tests.iter().count());
+        }
+
+        let cmd = cargo_test(Mode::Static, affected_tests.into_iter().map(|test| *test));
+
+        execute(cmd);
     }
+    #[cfg(feature = "print_paths")]
+    {
+        let (reached_nodes, affected_tests) = dependency_graph.affected_tests(changed_nodes, tests);
 
-    let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
-    if verbose {
-        println!(
-            "Affected tests:\n{}\n",
-            affected_tests.iter().sorted().join(", ")
+        if verbose {
+            println!(
+                "Nodes that reach any changed node in the graph:\n{}\n",
+                reached_nodes.iter().sorted().join(", ")
+            );
+        } else {
+            println!(
+                "#Nodes that reach any changed node in the graph: {}\n",
+                reached_nodes.iter().count()
+            );
+        }
+
+        if verbose {
+            println!(
+                "Affected tests:\n{}\n",
+                affected_tests
+                    .iter()
+                    .sorted()
+                    .map(|(k, v)| format!("{}: [ {} ]", k, v.iter().join(" <- ")))
+                    .join("\n")
+            );
+        } else {
+            println!("#Affected tests: {}\n", affected_tests.iter().count());
+        }
+
+        let cmd = cargo_test(
+            Mode::Static,
+            affected_tests.keys().into_iter().map(|test| *test),
         );
-    } else {
-        println!("#Affected tests: {}\n", affected_tests.iter().count());
+
+        execute(cmd);
     }
-
-    let cmd = cargo_test(Mode::Static, affected_tests.into_iter().map(|test| *test));
-
-    execute(cmd);
 }
 
 //######################################################################################################################
