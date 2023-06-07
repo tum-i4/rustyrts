@@ -127,27 +127,25 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         OutputFormat::Json => Box::new(JsonFormatter::new(OutputLocation::Raw(stdout()))),
     };
 
-    if tests.len() > 0 {
-        formatter.write_run_start(tests.len(), None).unwrap();
+    formatter.write_run_start(tests.len(), None).unwrap();
 
-        let (mut formatter, mut state) = {
-            #[cfg(unix)]
-            {
-                execute_tests_unix(opts, n_workers, tests, formatter, state)
-            }
-
-            #[cfg(not(unix))]
-            {
-                execute_tests_single_threaded(opts, tests, formatter, state)
-            }
-        };
-
-        state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
-        let is_success = formatter.write_run_finish(&state).unwrap();
-
-        if !is_success {
-            process::exit(ERROR_EXIT_CODE);
+    let (mut formatter, mut state) = {
+        #[cfg(unix)]
+        {
+            execute_tests_unix(opts, n_workers, tests, formatter, state)
         }
+
+        #[cfg(not(unix))]
+        {
+            execute_tests_single_threaded(opts, tests, formatter, state)
+        }
+    };
+
+    state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
+    let is_success = formatter.write_run_finish(&state).unwrap();
+
+    if !is_success {
+        process::exit(ERROR_EXIT_CODE);
     }
 }
 
