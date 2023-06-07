@@ -266,8 +266,6 @@ fn execute_tests_single_threaded(
     mut formatter: Box<dyn OutputFormatter + Send>,
     mut state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
-    formatter.write_run_start(tests.len(), None).unwrap();
-
     for test in tests {
         formatter.write_test_start(&test.desc).unwrap();
 
