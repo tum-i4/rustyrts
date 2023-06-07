@@ -2,6 +2,7 @@ use crate::rustc_data_structures::stable_hasher::HashStable;
 use lazy_static::lazy_static;
 use regex::bytes::Regex;
 use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_middle::mir::interpret::ConstAllocation;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{TyCtxt, VtblEntry};
 use std::collections::{HashMap, HashSet};
@@ -86,7 +87,7 @@ impl From<&[u8]> for Checksums {
                 (name, (first, second))
             })
             .for_each(|(name, checksum)| {
-                insert_hashmap(&mut output.inner, name.to_string(), checksum);
+                insert_hashmap(&mut output.inner, &name.to_string(), checksum);
             });
         output
     }
@@ -135,15 +136,38 @@ pub(crate) fn get_checksum_vtbl_entry<'tcx>(
     hash
 }
 
+/// Function to obtain a stable checksum of a global alloc
+pub(crate) fn get_checksum_const_allocation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    alloc: &ConstAllocation<'tcx>,
+) -> (u64, u64) {
+    let mut hash = (0, 0);
+
+    tcx.with_stable_hashing_context(|ref mut context| {
+        // We use the hashing mechanism provided by the compiler to obtain a hash of a MIR body,
+        // that is stable beyond the compiler session
+
+        context.without_hir_bodies(|context| {
+            context.while_hashing_spans(false, |context| {
+                let mut hasher = StableHasher::new();
+                alloc.hash_stable(context, &mut hasher);
+                hash = hasher.finalize();
+            })
+        });
+    });
+
+    hash
+}
+
 pub(crate) fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
     map: &mut HashMap<K, HashSet<V>>,
-    key: K,
+    key: &K,
     value: V,
 ) {
-    if let None = map.get(&key) {
+    if let None = map.get(key) {
         map.insert(key.clone(), HashSet::new()).unwrap_or_default();
     }
-    map.get_mut(&key).unwrap().insert(value);
+    map.get_mut(key).unwrap().insert(value);
 }
 
 #[cfg(test)]
@@ -158,12 +182,12 @@ mod teest {
     pub fn test_checksum_deserialization() {
         let mut checksums = Checksums::new();
 
-        insert_hashmap(&mut checksums, "node1".to_string(), (100000000000006, 0));
-        insert_hashmap(&mut checksums, "node2".to_string(), (2, 100000000000005));
-        insert_hashmap(&mut checksums, "node3".to_string(), (3, 100000000000004));
-        insert_hashmap(&mut checksums, "node4".to_string(), (4, 100000000000003));
-        insert_hashmap(&mut checksums, "node5".to_string(), (5, u64::MAX - 1));
-        insert_hashmap(&mut checksums, "node6".to_string(), (6, u64::MAX));
+        insert_hashmap(&mut checksums, &"node1".to_string(), (100000000000006, 0));
+        insert_hashmap(&mut checksums, &"node2".to_string(), (2, 100000000000005));
+        insert_hashmap(&mut checksums, &"node3".to_string(), (3, 100000000000004));
+        insert_hashmap(&mut checksums, &"node4".to_string(), (4, 100000000000003));
+        insert_hashmap(&mut checksums, &"node5".to_string(), (5, u64::MAX - 1));
+        insert_hashmap(&mut checksums, &"node6".to_string(), (6, u64::MAX));
 
         let serialized: Vec<u8> = (&checksums).into();
         let deserialized = Checksums::from(serialized.as_slice());

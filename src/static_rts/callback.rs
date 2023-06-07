@@ -17,10 +17,8 @@ use crate::callbacks_shared::{
     excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES, OLD_VTABLE_ENTRIES,
 };
 
-#[cfg(feature = "ctfe")]
-use crate::callbacks_shared::{NEW_CHECKSUMS_CTFE, NODES_CTFE};
-
 use crate::checksums::{get_checksum_body, get_checksum_vtbl_entry, insert_hashmap, Checksums};
+use crate::const_visitor::ConstVisitor;
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
 use crate::names::def_id_name;
 
@@ -41,6 +39,8 @@ impl Callbacks for StaticRTSCallbacks {
 
             providers.vtable_entries = custom_vtable_entries_monomorphized;
         });
+
+        NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
         NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
     }
 
@@ -71,7 +71,7 @@ impl StaticRTSCallbacks {
             let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
             let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
-            let instances = code_gen_units
+            let bodies = code_gen_units
                 .iter()
                 .flat_map(|c| c.items().keys())
                 .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
@@ -79,18 +79,22 @@ impl StaticRTSCallbacks {
                     let MonoItem::Fn(instance) = m else {unreachable!()};
                     instance
                 })
+                .filter(|i| tcx.is_mir_available(i.def_id()))
+                .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
                 .collect_vec();
 
             //##########################################################################################################
-            // 1. Visit every def_id that has a MIR body and process traits
+            // 1. Visit every instance (pair of MIR body and corresponding generic args)
+            //    and every body from const
             //      1) Creates the graph
             //      2) Write graph to file
 
             let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
-            for instance in instances {
-                graph_visitor.visit(instance);
+            let mut const_visitor = ConstVisitor::new(tcx);
+            for (body, substs) in bodies {
+                graph_visitor.visit(&body, substs);
+                const_visitor.visit(&body);
             }
-            //graph_visitor.process_traits();
 
             write_to_file(
                 self.graph.to_string(),
@@ -104,30 +108,23 @@ impl StaticRTSCallbacks {
             //##########################################################################################################
             // 2. Calculate checksum of every MIR body
 
-            let mut new_checksums = Checksums::new();
-            let mut new_checksums_ctfe = Checksums::new();
+            let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
 
             for def_id in tcx.mir_keys(()) {
-                let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
+                match tcx.hir().body_const_context(*def_id) {
+                    Some(ConstContext::ConstFn) | None => {
+                        let body = tcx.optimized_mir(*def_id);
+                        let name = def_id_name(tcx, def_id.to_def_id(), &[]);
+                        let checksum = get_checksum_body(tcx, body);
+                        insert_hashmap(&mut *new_checksums, &name, checksum);
 
-                if has_body {
-                    match tcx.hir().body_const_context(*def_id) {
-                        Some(ConstContext::ConstFn) | None => {
-                            let body = tcx.optimized_mir(*def_id);
-                            let name = def_id_name(tcx, def_id.to_def_id(), &[]);
+                        for body in tcx.promoted_mir(*def_id) {
                             let checksum = get_checksum_body(tcx, body);
-
-                            insert_hashmap(&mut *new_checksums, name, checksum)
+                            insert_hashmap(&mut *new_checksums, &name, checksum);
                         }
-                        Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
-                            let body = tcx.mir_for_ctfe(*def_id);
-                            let name = def_id_name(tcx, def_id.to_def_id(), &[]);
-                            let checksum = get_checksum_body(tcx, body);
-
-                            insert_hashmap(&mut *new_checksums_ctfe, name, checksum)
-                        }
-                    };
-                }
+                    }
+                    _ => {}
+                };
             }
 
             //##########################################################################################################
@@ -136,20 +133,6 @@ impl StaticRTSCallbacks {
             // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
 
             NODES.get_or_init(|| Mutex::new(new_checksums.keys().map(|s| s.clone()).collect()));
-            NEW_CHECKSUMS.get_or_init(|| Mutex::new(new_checksums));
-
-            #[cfg(feature = "ctfe")]
-            {
-                NODES_CTFE.get_or_init(|| {
-                    Mutex::new(new_checksums_ctfe.keys().map(|s| s.clone()).collect())
-                });
-            }
-
-            #[cfg(feature = "ctfe")]
-            {
-                NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(new_checksums_ctfe));
-            }
-
             run_analysis_shared(tcx);
         }
     }
@@ -186,7 +169,7 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
 
             insert_hashmap(
                 &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
-                name,
+                &name,
                 checksum,
             )
         }

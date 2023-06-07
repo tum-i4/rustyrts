@@ -19,9 +19,6 @@ use crate::{
     static_rts::callback::PATH_BUF,
 };
 
-#[cfg(feature = "ctfe")]
-use crate::fs_utils::get_checksums_ctfe_path;
-
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
 
 pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
@@ -31,26 +28,22 @@ pub(crate) static NODES: OnceCell<Mutex<HashSet<String>>> = OnceCell::new();
 pub(crate) static NEW_CHECKSUMS: OnceCell<Mutex<Checksums>> = OnceCell::new();
 pub(crate) static NEW_CHECKSUMS_VTBL: OnceCell<Mutex<Checksums>> = OnceCell::new();
 
-#[cfg(feature = "ctfe")]
-pub(crate) static NODES_CTFE: OnceCell<Mutex<HashSet<String>>> = OnceCell::new();
-#[cfg(feature = "ctfe")]
-pub(crate) static NEW_CHECKSUMS_CTFE: OnceCell<Mutex<Checksums>> = OnceCell::new();
-
 const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
 pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
 
 pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
-    return {
-        let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-        EXCLUDED_CRATES
-            .iter()
-            .any(|krate| *krate == local_crate_name.as_str())
-    } || {
-        std::env::var(ENV_TARGET_DIR)
-            .map(|d| d.ends_with("trybuild"))
-            .unwrap_or(false)
-    };
+    let local_crate_name = tcx.crate_name(LOCAL_CRATE);
+
+    let excluded_crate = EXCLUDED_CRATES
+        .iter()
+        .any(|krate| *krate == local_crate_name.as_str());
+
+    let trybuild = std::env::var(ENV_TARGET_DIR)
+        .map(|d| d.ends_with("trybuild"))
+        .unwrap_or(false);
+
+    excluded_crate || trybuild
 }
 
 pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
@@ -91,29 +84,12 @@ pub fn export_checksums_and_changes(consider_added_vtable_entries: bool) {
         let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
         let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
 
-        #[cfg(feature = "ctfe")]
-        let mut new_checksums_ctfe = NEW_CHECKSUMS_CTFE.get().unwrap().lock().unwrap();
-
         //##############################################################################################################
         // 3. Import checksums
 
         let old_checksums = {
             let checksums_path_buf =
                 get_checksums_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
-
-            let maybe_checksums = read(checksums_path_buf);
-
-            if let Ok(checksums) = maybe_checksums {
-                Checksums::from(checksums.as_slice())
-            } else {
-                Checksums::new()
-            }
-        };
-
-        #[cfg(feature = "ctfe")]
-        let old_checksums_ctfe = {
-            let checksums_path_buf =
-                get_checksums_ctfe_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 
             let maybe_checksums = read(checksums_path_buf);
 
@@ -169,31 +145,6 @@ pub fn export_checksums_and_changes(consider_added_vtable_entries: bool) {
             }
         }
 
-        #[cfg(feature = "ctfe")]
-        let names_ctfe = NODES_CTFE.get().unwrap().lock().unwrap();
-
-        #[cfg(feature = "ctfe")]
-        for name in names_ctfe.iter() {
-            let changed = {
-                let maybe_new = new_checksums_ctfe.get(name);
-                let maybe_old = old_checksums_ctfe.get(name);
-
-                match (maybe_new, maybe_old) {
-                    (None, None) => panic!("Did not find checksum for {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
-                    (None, Some(checksums)) => {
-                        new_checksums_ctfe.insert(name.clone(), checksums.clone());
-                        false
-                    }
-                    (Some(_), None) => true,
-                    (Some(new), Some(old)) => new != old,
-                }
-            };
-
-            if changed {
-                changed_nodes.insert(name.clone());
-            }
-        }
-
         for name in new_checksums_vtbl.keys() {
             let changed = {
                 let maybe_new = new_checksums_vtbl.get(name);
@@ -234,14 +185,6 @@ pub fn export_checksums_and_changes(consider_added_vtable_entries: bool) {
             Into::<Vec<u8>>::into(&*new_checksums),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_checksums_path(buf, &crate_name, crate_id),
-            false,
-        );
-
-        #[cfg(feature = "ctfe")]
-        write_to_file(
-            Into::<Vec<u8>>::into(&*new_checksums_ctfe),
-            PATH_BUF.get().unwrap().clone(),
-            |buf| get_checksums_ctfe_path(buf, &crate_name, crate_id),
             false,
         );
 

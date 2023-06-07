@@ -18,7 +18,6 @@ name = "rustyrts-dynamic"
 [features]
 default = []
 
-ctfe = []
 monomorphize_all = []
 
 [dependencies]

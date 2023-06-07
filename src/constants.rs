@@ -35,9 +35,6 @@ pub const ENDING_CHECKSUM_VTBL: &str = ".checksum_vtbl";
 pub const ENDING_TEST: &str = ".test";
 pub const ENDING_GRAPH: &str = ".dot";
 
-#[cfg(feature = "ctfe")]
-pub const ENDING_CHECKSUM_CTFE: &str = ".checksum_ctfe";
-
 #[cfg(unix)]
 pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 

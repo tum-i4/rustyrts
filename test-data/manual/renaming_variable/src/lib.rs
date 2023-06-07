@@ -3,6 +3,7 @@
 use std::intrinsics::size_of;
 
 static VAR_STATIC: i32 = 42;
+static VAR_STATIC_MUT: i32 = init();
 const VAR_CONST: i32 = init();
 
 const fn init() -> i32 {
@@ -42,6 +43,11 @@ impl<const size: usize> Foo<size> {
 fn test() {
     assert_eq!(VAR_STATIC, reference());
     assert_eq!(VAR_CONST, reference());
+}
+
+#[test]
+fn test_mut() {
+    assert_eq!(unsafe { VAR_STATIC_MUT }, reference());
 }
 
 #[test]

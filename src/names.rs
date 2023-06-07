@@ -34,7 +34,7 @@ pub(crate) fn def_id_name<'tcx>(
 
         format!(
             "[{:04x}]::{}",
-            tcx.sess.local_stable_crate_id().to_u64() >> 8 * 6,
+            tcx.sess.local_stable_crate_id().to_u64() >> (8 * 6),
             crate_name
         )
     } else {
@@ -42,7 +42,7 @@ pub(crate) fn def_id_name<'tcx>(
 
         format!(
             "[{:04x}]",
-            cstore.stable_crate_id(def_id.krate).to_u64() >> 8 * 6
+            cstore.stable_crate_id(def_id.krate).to_u64() >> (8 * 6)
         )
     };
 

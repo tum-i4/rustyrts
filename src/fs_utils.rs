@@ -11,9 +11,6 @@ use crate::constants::{
     ENV_TARGET_DIR,
 };
 
-#[cfg(feature = "ctfe")]
-use crate::constants::ENDING_CHECKSUM_CTFE;
-
 #[cfg(unix)]
 use crate::constants::ENDING_PROCESS_TRACE;
 
@@ -64,15 +61,6 @@ pub fn get_changes_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> Pat
 
 pub fn get_checksums_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
     path_buf.push(format!("{}[{:016x}]{}", crate_name, id, ENDING_CHECKSUM));
-    path_buf
-}
-
-#[cfg(feature = "ctfe")]
-pub fn get_checksums_ctfe_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {
-    path_buf.push(format!(
-        "{}[{:016x}]{}",
-        crate_name, id, ENDING_CHECKSUM_CTFE
-    ));
     path_buf
 }
 

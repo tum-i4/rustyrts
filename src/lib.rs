@@ -34,12 +34,13 @@ pub mod static_rts {
 pub mod dynamic_rts {
     pub mod callback;
     pub mod defid_util;
+    pub mod instrumentation;
     pub mod mir_util;
-    pub mod visitor;
 }
 
 pub mod callbacks_shared;
 pub mod checksums;
+pub mod const_visitor;
 pub mod constants;
 pub mod format;
 pub mod fs_utils;
