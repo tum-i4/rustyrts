@@ -77,7 +77,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     let implementors = self.tcx.impl_item_implementor_ids(impl_def);
 
                     if !cfg!(monomorphize_all) {
-                        // 9. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
+                        // 8. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
                         for (trait_fn, impl_fn) in implementors {
                             if *impl_fn == outer {
                                 self.graph.add_edge(

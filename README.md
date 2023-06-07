@@ -80,8 +80,10 @@ Static RustyRTS analyzes the MIR during compilation, without modifying it, to bu
 3. caller node  -> callee `fn`
 4. outer node -> referenced abstract data type (`struct` or `enum`)
 5. outer node -> referenced trait
-6. abstract data type -> fn in trait impl (`impl <trait> for ..`)
-7. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
+6. abstract data type -> fn in impl (`impl for ..`)
+7. trait -> fn in trait definition (`trait { ..}`)
+8. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
+
 
 Abstract data types and traits, which are not corresponding to actual code are just used as "transit" nodes here. To not unnecessarily decrease precision, the names of these nodes are fully qualified, including substituted generics.
 Using generics on function nodes as well (i.e. names of fully monomorphized functions) is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.
