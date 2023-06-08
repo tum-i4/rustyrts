@@ -77,7 +77,7 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     debug!("Exported tests for {}", crate_name);
 }
 
-pub fn export_checksums_and_changes(consider_added_vtable_entries: bool) {
+pub fn export_checksums_and_changes(from_new_revision: bool) {
     if let Some(crate_name) = CRATE_NAME.get() {
         let crate_id = *CRATE_ID.get().unwrap();
 
@@ -158,8 +158,8 @@ pub fn export_checksums_and_changes(consider_added_vtable_entries: bool) {
                     (None, _) => panic!("Did not find checksum for vtable entry {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
                     (Some(_), None) => false,
                     (Some(new), Some(old)) => {
-                        if consider_added_vtable_entries {
-                            old != new
+                        if from_new_revision {
+                            new.difference(old).count() != 0
                         } else {
                             old.difference(new).count() != 0
                         }

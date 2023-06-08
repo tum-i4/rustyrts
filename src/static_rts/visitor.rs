@@ -6,7 +6,7 @@ use itertools::Itertools;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;
-use rustc_middle::ty::{GenericArg, GenericArgKind, ImplSubject, List, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{GenericArg, List, Ty, TyCtxt, TyKind};
 use rustc_span::def_id::DefId;
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
@@ -80,46 +80,37 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         }
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer) {
-            let implementors = self.tcx.impl_item_implementor_ids(impl_def);
+            if let Some(trait_ref_binder) = self.tcx.impl_trait_ref(impl_def) {
+                let trait_substs = if cfg!(feature = "monomorphize_all") {
+                    let mut trait_ref = trait_ref_binder.skip_binder();
 
-            if !cfg!(feature = "monomorphize_all") {
-                // 6. function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
+                    let param_env = self
+                        .tcx
+                        .param_env(outer)
+                        .with_reveal_all_normalized(self.tcx);
+                    trait_ref = self.tcx.subst_and_normalize_erasing_regions(
+                        outer_substs,
+                        param_env,
+                        trait_ref,
+                    );
+                    trait_ref.substs
+                } else {
+                    List::empty()
+                };
+
+                let implementors = self.tcx.impl_item_implementor_ids(impl_def);
+
+                // 4. function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
                 for (trait_fn, impl_fn) in implementors {
                     if *impl_fn == outer {
                         self.graph.add_edge(
-                            def_id_name(self.tcx, *trait_fn, &[]), // No substs here
+                            def_id_name(self.tcx, *trait_fn, trait_substs),
                             def_id_name(self.tcx, outer, outer_substs),
                             EdgeType::TraitImpl,
                         );
                     }
                 }
             }
-        }
-
-        if let Some(impl_def) = self.tcx.impl_of_method(outer) {
-            match self.tcx.impl_subject(impl_def) {
-                // 6. abstract data type -> fn in (not necessarily trait) impl (`impl <trait>? for ..`)
-                ImplSubject::Inherent(mut ty) => {
-                    let param_env = self
-                        .tcx
-                        .param_env(outer)
-                        .with_reveal_all_normalized(self.tcx);
-                    ty = self.tcx.subst_and_normalize_erasing_regions(
-                        self.original_substs.unwrap(),
-                        param_env,
-                        ty,
-                    );
-
-                    if let TyKind::Adt(adt_def, substs) = ty.kind() {
-                        self.graph.add_edge(
-                            def_id_name(self.tcx, adt_def.did(), substs),
-                            def_id_name(self.tcx, outer, outer_substs),
-                            EdgeType::AdtImpl,
-                        );
-                    }
-                }
-                _ => {}
-            };
         }
 
         self.super_body(body);
@@ -137,21 +128,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             ty = self
                 .tcx
                 .subst_and_normalize_erasing_regions(outer_substs, param_env, ty);
-        } else {
-            match ty.kind() {
-                TyKind::Adt(_, _) => {
-                    let param_env = self
-                        .tcx
-                        .param_env(outer)
-                        .with_reveal_all_normalized(self.tcx);
-                    ty = self.tcx.subst_and_normalize_erasing_regions(
-                        self.original_substs.unwrap(),
-                        param_env,
-                        ty,
-                    );
-                }
-                _ => {}
-            }
         }
 
         // Apparently, all this is not done in self.super_ty(ty)
@@ -197,23 +173,19 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         // 3.1 caller function -> callee `fn` (for functions in `trait {..})
                         vec![(*def_id, *substs, EdgeType::FnDefTrait)]
                     } else {
-                        all_substs.push(*substs); // To visit substs later even though we do not add an edge for the fn
-                        vec![]
+                        // 3.2 caller function -> callee `fn` (for assoc `fn`s in `impl .. {..})
+                        vec![(*def_id, *substs, EdgeType::FnDefImpl)]
                     }
                 } else {
-                    // 3.2 caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
+                    // 3.3 caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
                     vec![(*def_id, *substs, EdgeType::FnDef)]
                 }
             }
-            // 4. function -> referenced abstract data type (`struct` or `enum`)
-            TyKind::Adt(adt_def, substs) => vec![(adt_def.did(), *substs, EdgeType::Adt)],
-
-            TyKind::Alias(_, ty) => vec![(ty.def_id, ty.substs, EdgeType::Alias)],
             _ => vec![],
         } {
             all_substs.push(substs);
 
-            if cfg!(feature = "monomorphize_all") || edge_type == EdgeType::Adt {
+            if cfg!(feature = "monomorphize_all") {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
@@ -235,39 +207,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     def_id_name(self.tcx, def_id, &[]),
                     edge_type,
                 );
-            }
-        }
-
-        // We also want to visit the tys of substs here, to capture all traits and adts referenced
-        for substs in all_substs {
-            for subst in substs {
-                match subst.unpack() {
-                    GenericArgKind::Type(ty) => {
-                        self.visit_ty(ty, clone_ty_context(&ty_context));
-                    }
-                    GenericArgKind::Const(cons) => {
-                        self.visit_ty(cons.ty(), clone_ty_context(&ty_context));
-                    }
-                    _ => (),
-                }
-            }
-        }
-
-        // We also want to visit the tys of the original substs once, to capture all traits and adts referenced
-        if self.visited_orig_substs == false {
-            self.visited_orig_substs = true;
-            let mut tys = Vec::new();
-
-            for subst in self.original_substs.unwrap() {
-                match subst.unpack() {
-                    GenericArgKind::Type(ty) => tys.push(ty),
-                    GenericArgKind::Const(cons) => tys.push(cons.ty()),
-                    _ => (),
-                }
-            }
-
-            for ty in tys {
-                self.visit_ty(ty, clone_ty_context(&ty_context))
             }
         }
     }
@@ -455,8 +394,8 @@ mod test {
     fn test_impls() {
         let graph = compile_and_visit("impls.rs");
 
-        let edge_type = EdgeType::Adt;
-        let end: &str = "::Foo";
+        let edge_type = EdgeType::FnDefImpl;
+        let end: &str = "::Foo::new";
 
         let start = "::test::test_static";
         assert_contains_edge(&graph, &start, &end, &edge_type);

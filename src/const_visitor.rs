@@ -1,4 +1,3 @@
-use log::info;
 use rustc_hir::definitions::DefPathData;
 use rustc_middle::mir::interpret::ConstAllocation;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};

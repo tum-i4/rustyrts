@@ -41,7 +41,10 @@ RustyRTS (both static and dynamic) keeps track of modifications to the code by c
 
 Furthermore, the checksums of [`ConstAllocation`s](https://doc.rust-lang.org/stable/nightly-rustc/rustc_middle/mir/interpret/allocation/struct.ConstAllocation.html) corresponding to `static var` or `static mut var` are contributing to the checksum of every `Body` that accesses the respective variable. This enables dynamic RustyRTS to recognize changes in compile-time evaluation, where instrumentation for tracing is not possible. In static RustyRTS this allows to restrict the analysis to functions that are relevant at runtime (i.e. not only used in compile-time evaluation).
 
-Lastly, the checksums of [`VtblEntry`s](https://doc.rust-lang.org/stable/nightly-rustc/rustc_middle/ty/vtable/enum.VtblEntry.html) (vtable entries) are contributing to the checksum of the function that they are pointing to. If a vtable entry that was pointing to a function a) in the old revision is now pointing to a different function b) in the new revision, both functions would be considered changed in static RustyRTS. In dynamic RustyRTS only function a) would be considered changed.
+Lastly, the checksums of [`VtblEntry`s](https://doc.rust-lang.org/stable/nightly-rustc/rustc_middle/ty/vtable/enum.VtblEntry.html) (vtable entries) are contributing to the checksum of the function that they are pointing to.
+Assume a vtable entry that was pointing to a function a) in the old revision is now pointing to a different function b) in the new revision.
+Because static RustyRTS is working entirely on the graph data of the new revision, it is sufficient to consider function b) changed, as long as there is a continuous path from a corresponding test to function b). 
+Dynamic RustyRTS is comparing traces originating from the old revision, which is why function a) would be considered changed.
 
 ## Dynamic
 Dynamic RustyRTS collects traces containing the names of all functions that are called during the execution of a test. Some helper functions and global variables are used to obtain those traces:
@@ -77,13 +80,13 @@ During the subsequent run, the traces are compared to the set of changed `Body`s
 Static RustyRTS analyzes the MIR during compilation, without modifying it, to build a (directed) dependency graph. Edges are created according to the following criteria:
 1. `EdgeType::Closure`:         function  -> contained Closure
 2. `EdgeType::Generator`:       function  -> contained Generator
-3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for functions in `trait {..})
-3. 2. `EdgeType::FnDef`:        caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
-4. `EdgeType::Adt`:             function -> referenced abstract data type (`struct` or `enum`)
-5. `EdgeType::AdtImpl`:         abstract data type -> fn in (not necessarily trait) impl (`impl <trait>? for ..`)
-6. `EdgeType::TraitImpl`:       function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
+3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for assoc `fn`s in `trait {..})
+3. 3. `EdgeType::FnDefImpl`:    caller function -> callee `fn` (for assoc `fn`s in `impl .. {..})
+3. 3. `EdgeType::FnDef`:        caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
+4. `EdgeType::TraitImpl`:       function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
 
-Abstract data types and traits, which are not corresponding to actual code are just used as "transit" nodes here. To not unnecessarily decrease precision, the names of these nodes are fully qualified, including substituted generics.
-Using generics on function nodes as well (i.e. names of fully monomorphized functions) is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.
+All these functions are not yet monomorphized. Using names of fully monomorphized functions is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.
+It is nevertheless possible to do that using the `monomorphize_all` feature.
+
 
 When there is a path from a test to a changed `Body`, the test is considered affected.
