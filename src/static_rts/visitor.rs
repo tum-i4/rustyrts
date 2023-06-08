@@ -460,20 +460,18 @@ mod test {
     fn test_impls() {
         let graph = compile_and_visit("impls.rs");
 
-        let edge_type = EdgeType::FnDef;
+        let edge_type = EdgeType::Adt;
+        let end: &str = "::Foo";
 
         let start = "::test::test_static";
-        let end = "::Foo::new";
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
         let start = "::test::test_const";
-        let end = "::Foo::get";
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
         let start = "::test::test_mut";
-        let end = "::Foo::set";
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
     }
@@ -486,7 +484,7 @@ mod test {
         println!("{}", graph.to_string());
 
         {
-            let edge_type = EdgeType::FnDef;
+            let edge_type = EdgeType::FnDefTrait;
 
             let start = "::test::test_direct";
             let end = "Animal::sound";
@@ -505,7 +503,7 @@ mod test {
         }
 
         {
-            let edge_type = EdgeType::FnDef;
+            let edge_type = EdgeType::FnDefTrait;
 
             let start = "::test::test_mut_direct";
             let end = "::Animal::set_treat";
@@ -524,29 +522,14 @@ mod test {
         }
 
         {
-            let edge_type = EdgeType::AdtImpl;
+            let edge_type = EdgeType::Trait;
+            let end: &str = "::Animal";
 
-            let start = "::Lion";
-            let end = "::<Lion as Animal>::set_treat";
+            let start = "::test_dyn";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start: &str = "::Dog";
-            let end = "::<Dog as Animal>::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
-
-        {
-            let edge_type = EdgeType::AdtImpl;
-
-            let start = "::Lion";
-            let end = "::<Lion as Animal>::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start: &str = "::Dog";
-            let end = "::<Dog as Animal>::sound";
+            let start: &str = "::set_treat_dyn";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
@@ -560,7 +543,7 @@ mod test {
         println!("{}", graph.to_string());
 
         {
-            let edge_type = EdgeType::FnDef;
+            let edge_type = EdgeType::FnDefTrait;
 
             let start = "::test::test_direct";
             let end = "<Lion as Animal>::sound";
@@ -579,7 +562,7 @@ mod test {
         }
 
         {
-            let edge_type = EdgeType::FnDef;
+            let edge_type = EdgeType::FnDefTrait;
 
             let start = "::test::test_mut_direct";
             let end = "::<Dog as Animal>::set_treat";
@@ -598,29 +581,14 @@ mod test {
         }
 
         {
-            let edge_type = EdgeType::AdtImpl;
+            let edge_type = EdgeType::Trait;
+            let end: &str = "::Animal";
 
-            let start = "::Lion";
-            let end = "::<Lion as Animal>::set_treat";
+            let start = "::test_dyn";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start: &str = "::Dog";
-            let end = "::<Dog as Animal>::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
-
-        {
-            let edge_type = EdgeType::AdtImpl;
-
-            let start = "::Lion";
-            let end = "::<Lion as Animal>::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start: &str = "::Dog";
-            let end = "::<Dog as Animal>::sound";
+            let start: &str = "::set_treat_dyn";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
