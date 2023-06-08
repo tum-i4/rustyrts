@@ -11,6 +11,7 @@ pub enum EdgeType {
     FnDef,
     FnDefTrait,
     TraitDef,
+    TraitPred,
     FnPtr, // TODO: not sure if this is necessary
     TraitImpl,
     AdtImpl,
@@ -29,6 +30,7 @@ impl AsRef<str> for EdgeType {
             EdgeType::FnDef => "[color = black]",
             EdgeType::FnDefTrait => "[color = cyan]",
             EdgeType::TraitDef => "[color = yellow]",
+            EdgeType::TraitPred => "[color = green]",
             EdgeType::FnPtr => "[color = brown]",
             EdgeType::TraitImpl => "[color = magenta]",
             EdgeType::AdtImpl => "[color = magenta]",
@@ -50,6 +52,7 @@ impl FromStr for EdgeType {
             "FnDef" => Ok(Self::FnDef),
             "FnDefTrait" => Ok(Self::FnDefTrait),
             "TraitDef" => Ok(Self::FnDef),
+            "TraitPred" => Ok(Self::TraitPred),
             "FnPtr" => Ok(Self::FnPtr),
             "TraitImpl" => Ok(Self::TraitImpl),
             "AdtImpl" => Ok(Self::AdtImpl),

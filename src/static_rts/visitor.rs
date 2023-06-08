@@ -6,7 +6,9 @@ use itertools::Itertools;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;
-use rustc_middle::ty::{GenericArg, GenericArgKind, ImplSubject, List, Ty, TyCtxt, TyKind};
+use rustc_middle::ty::{
+    GenericArg, GenericArgKind, ImplSubject, List, PredicateKind, Ty, TyCtxt, TyKind,
+};
 use rustc_span::def_id::DefId;
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
@@ -15,6 +17,7 @@ pub(crate) struct GraphVisitor<'tcx, 'g> {
     graph: &'g mut DependencyGraph<String>,
     processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
     original_substs: Option<&'tcx List<GenericArg<'tcx>>>,
+    visited_orig_substs: bool,
 }
 
 impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
@@ -27,6 +30,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             graph,
             processed_instance: None,
             original_substs: None,
+            visited_orig_substs: false,
         }
     }
 
@@ -41,6 +45,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             },
         ));
         self.original_substs = Some(substs);
+        self.visited_orig_substs = false;
 
         //##########################################################################################################
         // Visit body and contained promoted mir
@@ -104,7 +109,17 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     );
                 }
                 // 6. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
-                ImplSubject::Inherent(ty) => {
+                ImplSubject::Inherent(mut ty) => {
+                    let param_env = self
+                        .tcx
+                        .param_env(outer)
+                        .with_reveal_all_normalized(self.tcx);
+                    ty = self.tcx.subst_and_normalize_erasing_regions(
+                        self.original_substs.unwrap(),
+                        param_env,
+                        ty,
+                    );
+
                     if let TyKind::Adt(adt_def, substs) = ty.kind() {
                         self.graph.add_edge(
                             def_id_name(self.tcx, adt_def.did(), substs),
@@ -126,6 +141,34 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             }
         }
 
+        if let Some(impl_def) = self.tcx.impl_of_method(outer) {
+            let predicates = self.tcx.explicit_predicates_of(impl_def);
+            for (predicate, _span) in predicates.predicates {
+                if let PredicateKind::Clause(clause) = predicate.kind().skip_binder() {
+                    if let rustc_middle::ty::Clause::Trait(trait_pred) = clause {
+                        let mut trait_ref = trait_pred.trait_ref;
+
+                        let param_env = self
+                            .tcx
+                            .param_env(outer)
+                            .with_reveal_all_normalized(self.tcx);
+                        trait_ref = self.tcx.subst_and_normalize_erasing_regions(
+                            self.original_substs.unwrap(),
+                            param_env,
+                            trait_ref,
+                        );
+                        let (def_id, substs) = (trait_ref.def_id, trait_ref.substs);
+
+                        self.graph.add_edge(
+                            def_id_name(self.tcx, outer, outer_substs),
+                            def_id_name(self.tcx, def_id, substs),
+                            EdgeType::TraitPred,
+                        );
+                    };
+                }
+            }
+        }
+
         self.super_body(body);
     }
 
@@ -141,6 +184,21 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             ty = self
                 .tcx
                 .subst_and_normalize_erasing_regions(outer_substs, param_env, ty);
+        } else {
+            match ty.kind() {
+                TyKind::Adt(_, _) | TyKind::Dynamic(_, _, _) => {
+                    let param_env = self
+                        .tcx
+                        .param_env(outer)
+                        .with_reveal_all_normalized(self.tcx);
+                    ty = self.tcx.subst_and_normalize_erasing_regions(
+                        self.original_substs.unwrap(),
+                        param_env,
+                        ty,
+                    );
+                }
+                _ => {}
+            }
         }
 
         // Apparently, all this is not done in self.super_ty(ty)
@@ -182,13 +240,13 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
             TyKind::FnDef(def_id, substs) => {
                 if let DefKind::AssocFn = self.tcx.def_kind(def_id) {
-                    if let Some(_trait_def_id) = self.tcx.trait_of_item(*def_id) {
-                        // 3.1 caller function -> callee `fn` (for functions in `trait {..})
-                        vec![(*def_id, *substs, EdgeType::FnDefTrait)]
-                    } else {
-                        all_substs.push(*substs); // To visit substs later even though we do not add an edge for the fn
-                        vec![]
-                    }
+                    //if let Some(_trait_def_id) = self.tcx.trait_of_item(*def_id) {
+                    //    // 3.1 caller function -> callee `fn` (for functions in `trait {..})
+                    //    vec![(*def_id, *substs, EdgeType::FnDefTrait)]
+                    //} else {
+                    all_substs.push(*substs); // To visit substs later even though we do not add an edge for the fn
+                    vec![]
+                    //}
                 } else {
                     // 3.2 caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
                     vec![(*def_id, *substs, EdgeType::FnDef)]
@@ -273,6 +331,24 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     }
                     _ => (),
                 }
+            }
+        }
+
+        // We also want to visit the tys of the original substs once, to capture all traits and adts referenced
+        if self.visited_orig_substs == false {
+            self.visited_orig_substs = true;
+            let mut tys = Vec::new();
+
+            for subst in self.original_substs.unwrap() {
+                match subst.unpack() {
+                    GenericArgKind::Type(ty) => tys.push(ty),
+                    GenericArgKind::Const(cons) => tys.push(cons.ty()),
+                    _ => (),
+                }
+            }
+
+            for ty in tys {
+                self.visit_ty(ty, clone_ty_context(&ty_context))
             }
         }
     }
@@ -483,43 +559,43 @@ mod test {
 
         println!("{}", graph.to_string());
 
-        {
-            let edge_type = EdgeType::FnDefTrait;
-
-            let start = "::test::test_direct";
-            let end = "Animal::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start = "::sound_generic";
-            let end = "Animal::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start = "::sound_dyn";
-            let end = "Animal::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
-
-        {
-            let edge_type = EdgeType::FnDefTrait;
-
-            let start = "::test::test_mut_direct";
-            let end = "::Animal::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start = "::set_treat_generic";
-            let end = "::Animal::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start = "::set_treat_dyn";
-            let end = "Animal::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
+        //{
+        //    let edge_type = EdgeType::FnDefTrait;
+        //
+        //    let start = "::test::test_direct";
+        //    let end = "Animal::sound";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //
+        //    let start = "::sound_generic";
+        //    let end = "Animal::sound";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //
+        //    let start = "::sound_dyn";
+        //    let end = "Animal::sound";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //}
+        //
+        //{
+        //    let edge_type = EdgeType::FnDefTrait;
+        //
+        //    let start = "::test::test_mut_direct";
+        //    let end = "::Animal::set_treat";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //
+        //    let start = "::set_treat_generic";
+        //    let end = "::Animal::set_treat";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //
+        //    let start = "::set_treat_dyn";
+        //    let end = "Animal::set_treat";
+        //    assert_contains_edge(&graph, &start, &end, &edge_type);
+        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        //}
 
         {
             let edge_type = EdgeType::Trait;

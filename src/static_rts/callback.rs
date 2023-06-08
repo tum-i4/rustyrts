@@ -80,7 +80,7 @@ impl StaticRTSCallbacks {
                     instance
                 })
                 .filter(|i| tcx.is_mir_available(i.def_id()))
-                //.filter(|i| i.def_id().is_local()) // TODO: Check if this is feasible
+                .filter(|i| i.def_id().is_local()) // TODO: Check if this is feasible
                 .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
                 .collect_vec();
 
