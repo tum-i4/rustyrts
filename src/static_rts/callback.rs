@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use itertools::Itertools;
-use log::{debug};
+use log::debug;
 use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
@@ -80,7 +80,7 @@ impl StaticRTSCallbacks {
                     instance
                 })
                 .filter(|i| tcx.is_mir_available(i.def_id()))
-                .filter(|i| i.def_id().is_local()) // TODO: Check if this is feasible
+                //.filter(|i| i.def_id().is_local()) // It is not feasible to only analyze crate-local bodies
                 .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
                 .collect_vec();
 
@@ -98,8 +98,6 @@ impl StaticRTSCallbacks {
                     const_visitor.visit(&body, substs);
                 }
             }
-
-            
 
             write_to_file(
                 self.graph.to_string(),
@@ -162,12 +160,11 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
 
     for entry in result {
         if let VtblEntry::Method(instance) = entry {
-            let substs = 
-            //if cfg!(feature = "monomorphize_all") {
-            //    instance.substs.as_slice()
-            //} else {
-                List::empty();
-            //};
+            let substs = if cfg!(feature = "monomorphize_all") {
+                instance.substs.as_slice()
+            } else {
+                List::empty()
+            };
 
             let name = def_id_name(tcx, instance.def_id(), substs);
 

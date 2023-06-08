@@ -30,10 +30,11 @@ impl<'tcx> ConstVisitor<'tcx> {
 
         self.processed_instance = Some((
             def_id,
-            //if cfg!(feature = "monomorphize_all") {
-            //    substs
-            //} else {
-            List::empty(), //},
+            if cfg!(feature = "monomorphize_all") {
+                substs
+            } else {
+                List::empty()
+            },
         ));
         self.original_substs = Some(substs);
 

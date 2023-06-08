@@ -55,7 +55,7 @@ pub(crate) fn def_id_name<'tcx>(
             "{}::{}::{}",
             crate_path,
             cstore.crate_name(def_id.krate),
-            def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs)
+            suffix
         )
     } else {
         format!("{}::{}", crate_path, suffix)

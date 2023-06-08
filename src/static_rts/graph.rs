@@ -10,13 +10,9 @@ pub enum EdgeType {
     Generator,
     FnDef,
     FnDefTrait,
-    TraitDef,
-    TraitPred,
-    FnPtr, // TODO: not sure if this is necessary
     TraitImpl,
     AdtImpl,
     Adt,
-    Trait,
     Alias,
 
     Monomorphization,
@@ -26,16 +22,12 @@ impl AsRef<str> for EdgeType {
     fn as_ref(&self) -> &str {
         match self {
             EdgeType::Closure => "[color = blue]",
-            EdgeType::Generator => "[color = blue]",
+            EdgeType::Generator => "[color = green]",
             EdgeType::FnDef => "[color = black]",
             EdgeType::FnDefTrait => "[color = cyan]",
-            EdgeType::TraitDef => "[color = yellow]",
-            EdgeType::TraitPred => "[color = green]",
-            EdgeType::FnPtr => "[color = brown]",
             EdgeType::TraitImpl => "[color = magenta]",
             EdgeType::AdtImpl => "[color = magenta]",
-            EdgeType::Adt => "[color = green]",
-            EdgeType::Trait => "[color = green]",
+            EdgeType::Adt => "[color = yellow]",
             EdgeType::Alias => "[color = yellow]",
             EdgeType::Monomorphization => "[color = red]",
         }
@@ -52,12 +44,9 @@ impl FromStr for EdgeType {
             "FnDef" => Ok(Self::FnDef),
             "FnDefTrait" => Ok(Self::FnDefTrait),
             "TraitDef" => Ok(Self::FnDef),
-            "TraitPred" => Ok(Self::TraitPred),
-            "FnPtr" => Ok(Self::FnPtr),
             "TraitImpl" => Ok(Self::TraitImpl),
             "AdtImpl" => Ok(Self::AdtImpl),
             "Adt" => Ok(Self::Adt),
-            "Trait" => Ok(Self::Trait),
             "Alias" => Ok(Self::Alias),
 
             "Monomorphization" => Ok(Self::Monomorphization),
@@ -363,7 +352,11 @@ mod test {
     pub fn test_graph_deserialization_edge_types() {
         let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Trait);
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::TraitImpl,
+        );
         graph.add_edge(
             "start1".to_string(),
             "end1".to_string(),
@@ -376,7 +369,7 @@ mod test {
             EdgeType::Generator,
         );
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnDef);
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnPtr);
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Alias);
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::AdtImpl);
 
         let serialized = graph.to_string();

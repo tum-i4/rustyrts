@@ -6,9 +6,7 @@ use itertools::Itertools;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;
-use rustc_middle::ty::{
-    GenericArg, GenericArgKind, ImplSubject, List, PredicateKind, Ty, TyCtxt, TyKind,
-};
+use rustc_middle::ty::{GenericArg, GenericArgKind, ImplSubject, List, Ty, TyCtxt, TyKind};
 use rustc_span::def_id::DefId;
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
@@ -100,14 +98,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer) {
             match self.tcx.impl_subject(impl_def) {
-                // 7. trait -> fn in trait definition (`trait { ..`)
-                ImplSubject::Trait(trait_ref) => {
-                    self.graph.add_edge(
-                        def_id_name(self.tcx, trait_ref.def_id, trait_ref.substs),
-                        def_id_name(self.tcx, outer, outer_substs),
-                        EdgeType::TraitImpl,
-                    );
-                }
                 // 6. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
                 ImplSubject::Inherent(mut ty) => {
                     let param_env = self
@@ -128,45 +118,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         );
                     }
                 }
+                _ => {}
             };
-        }
-
-        if !cfg!(feature = "monomorphize_all") {
-            if let Some(_trait_def_id) = self.tcx.trait_of_item(outer) {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer, self.original_substs.unwrap()),
-                    def_id_name(self.tcx, outer, &[]),
-                    EdgeType::TraitDef,
-                );
-            }
-        }
-
-        if let Some(impl_def) = self.tcx.impl_of_method(outer) {
-            let predicates = self.tcx.explicit_predicates_of(impl_def);
-            for (predicate, _span) in predicates.predicates {
-                if let PredicateKind::Clause(clause) = predicate.kind().skip_binder() {
-                    if let rustc_middle::ty::Clause::Trait(trait_pred) = clause {
-                        let mut trait_ref = trait_pred.trait_ref;
-
-                        let param_env = self
-                            .tcx
-                            .param_env(outer)
-                            .with_reveal_all_normalized(self.tcx);
-                        trait_ref = self.tcx.subst_and_normalize_erasing_regions(
-                            self.original_substs.unwrap(),
-                            param_env,
-                            trait_ref,
-                        );
-                        let (def_id, substs) = (trait_ref.def_id, trait_ref.substs);
-
-                        self.graph.add_edge(
-                            def_id_name(self.tcx, outer, outer_substs),
-                            def_id_name(self.tcx, def_id, substs),
-                            EdgeType::TraitPred,
-                        );
-                    };
-                }
-            }
         }
 
         self.super_body(body);
@@ -186,7 +139,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 .subst_and_normalize_erasing_regions(outer_substs, param_env, ty);
         } else {
             match ty.kind() {
-                TyKind::Adt(_, _) | TyKind::Dynamic(_, _, _) => {
+                TyKind::Adt(_, _) => {
                     let param_env = self
                         .tcx
                         .param_env(outer)
@@ -240,13 +193,13 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
             TyKind::FnDef(def_id, substs) => {
                 if let DefKind::AssocFn = self.tcx.def_kind(def_id) {
-                    //if let Some(_trait_def_id) = self.tcx.trait_of_item(*def_id) {
-                    //    // 3.1 caller function -> callee `fn` (for functions in `trait {..})
-                    //    vec![(*def_id, *substs, EdgeType::FnDefTrait)]
-                    //} else {
-                    all_substs.push(*substs); // To visit substs later even though we do not add an edge for the fn
-                    vec![]
-                    //}
+                    if let Some(_trait_def_id) = self.tcx.trait_of_item(*def_id) {
+                        // 3.1 caller function -> callee `fn` (for functions in `trait {..})
+                        vec![(*def_id, *substs, EdgeType::FnDefTrait)]
+                    } else {
+                        all_substs.push(*substs); // To visit substs later even though we do not add an edge for the fn
+                        vec![]
+                    }
                 } else {
                     // 3.2 caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
                     vec![(*def_id, *substs, EdgeType::FnDef)]
@@ -254,47 +207,13 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             }
             // 4. function -> referenced abstract data type (`struct` or `enum`)
             TyKind::Adt(adt_def, substs) => vec![(adt_def.did(), *substs, EdgeType::Adt)],
-            // 5. function -> referenced trait in dyn context
-            TyKind::Dynamic(predicates, _, _) => {
-                let mut acc = Vec::new();
 
-                for binder in predicates.iter() {
-                    let pred = binder.skip_binder();
-
-                    let result: (DefId, &List<GenericArg>, EdgeType) = match pred {
-                        rustc_middle::ty::ExistentialPredicate::Trait(trait_ref) => {
-                            (trait_ref.def_id, trait_ref.substs, EdgeType::Trait)
-                        }
-                        rustc_middle::ty::ExistentialPredicate::Projection(trait_ref) => {
-                            (trait_ref.def_id, trait_ref.substs, EdgeType::Trait)
-                        }
-                        rustc_middle::ty::ExistentialPredicate::AutoTrait(def_id) => {
-                            (def_id, List::empty(), EdgeType::Trait)
-                        }
-                    };
-                    acc.push(result);
-                }
-                acc
-            }
-            TyKind::Alias(_, ty) => vec![(ty.def_id, ty.substs, EdgeType::Adt)],
+            TyKind::Alias(_, ty) => vec![(ty.def_id, ty.substs, EdgeType::Alias)],
             _ => vec![],
         } {
             all_substs.push(substs);
 
-            if !cfg!(feature = "monomorphize_all") && edge_type == EdgeType::Trait {
-                // (9. only auxiliary) non-monomorphized trait -> monomorphized trait
-                self.graph.add_edge(
-                    def_id_name(self.tcx, def_id, substs),
-                    def_id_name(self.tcx, def_id, &[]),
-                    edge_type,
-                );
-            }
-
-            if cfg!(feature = "monomorphize_all")
-                || edge_type == EdgeType::Adt
-                || edge_type == EdgeType::Trait
-            //|| edge_type == EdgeType::FnDefTrait
-            {
+            if cfg!(feature = "monomorphize_all") || edge_type == EdgeType::Adt {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
@@ -559,53 +478,40 @@ mod test {
 
         println!("{}", graph.to_string());
 
-        //{
-        //    let edge_type = EdgeType::FnDefTrait;
-        //
-        //    let start = "::test::test_direct";
-        //    let end = "Animal::sound";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //
-        //    let start = "::sound_generic";
-        //    let end = "Animal::sound";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //
-        //    let start = "::sound_dyn";
-        //    let end = "Animal::sound";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //}
-        //
-        //{
-        //    let edge_type = EdgeType::FnDefTrait;
-        //
-        //    let start = "::test::test_mut_direct";
-        //    let end = "::Animal::set_treat";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //
-        //    let start = "::set_treat_generic";
-        //    let end = "::Animal::set_treat";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //
-        //    let start = "::set_treat_dyn";
-        //    let end = "Animal::set_treat";
-        //    assert_contains_edge(&graph, &start, &end, &edge_type);
-        //    assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        //}
-
         {
-            let edge_type = EdgeType::Trait;
-            let end: &str = "::Animal";
+            let edge_type = EdgeType::FnDefTrait;
 
-            let start = "::test_dyn";
+            let start = "::test::test_direct";
+            let end = "Animal::sound";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-            let start: &str = "::set_treat_dyn";
+            let start = "::sound_generic";
+            let end = "Animal::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = "::sound_dyn";
+            let end = "Animal::sound";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+        }
+
+        {
+            let edge_type = EdgeType::FnDefTrait;
+
+            let start = "::test::test_mut_direct";
+            let end = "::Animal::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = "::set_treat_generic";
+            let end = "::Animal::set_treat";
+            assert_contains_edge(&graph, &start, &end, &edge_type);
+            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+
+            let start = "::set_treat_dyn";
+            let end = "Animal::set_treat";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
@@ -652,19 +558,6 @@ mod test {
 
             let start = "::set_treat_dyn";
             let end = "<dyn Animal as Animal>::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
-
-        {
-            let edge_type = EdgeType::Trait;
-            let end: &str = "::Animal";
-
-            let start = "::test_dyn";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start: &str = "::set_treat_dyn";
             assert_contains_edge(&graph, &start, &end, &edge_type);
             assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
         }
