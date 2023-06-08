@@ -1,11 +1,21 @@
 trait CustomTrait<T> {
+    const FOO: i32 = 42;
+
     fn get(self) -> T;
+
+    fn value() -> i32 {
+        Self::FOO
+    }
 }
 
 impl<'a> CustomTrait<&'a String> for &'a String {
     fn get(self) -> &'a String {
         println!("Test");
         &self
+    }
+
+    fn value() -> i32 {
+        21
     }
 }
 
@@ -36,4 +46,9 @@ fn test_primitive() {
 
     let signed = 42;
     assert_eq!(signed.get(), signed as u32);
+}
+
+#[test]
+fn test_assoc_const() {
+    assert_eq!(<i32 as CustomTrait<u32>>::value(), 42);
 }

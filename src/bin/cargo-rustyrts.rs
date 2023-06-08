@@ -1,8 +1,9 @@
 use itertools::Itertools;
+use rustyrts::checksums::Checksums;
 use rustyrts::constants::{
-    DESC_FLAG, ENDING_CHANGES, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST, ENDING_TRACE,
-    ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE, ENV_TARGET_DIR,
-    FILE_COMPLETE_GRAPH,
+    DESC_FLAG, ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST,
+    ENDING_TRACE, ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
+    ENV_TARGET_DIR, FILE_COMPLETE_GRAPH,
 };
 use rustyrts::fs_utils::{
     get_dynamic_path, get_static_path, get_target_dir, read_lines, read_lines_filter_map,
@@ -13,7 +14,8 @@ use serde_json;
 use std::collections::HashSet;
 use std::ffi::OsString;
 use std::fs::{
-    create_dir_all, read_dir, read_to_string, remove_dir_all, remove_file, DirEntry, OpenOptions,
+    create_dir_all, read, read_dir, read_to_string, remove_dir_all, remove_file, DirEntry,
+    OpenOptions,
 };
 use std::io::Write;
 use std::path::PathBuf;
@@ -476,7 +478,25 @@ fn select_and_execute_tests_static() {
             Err(reason) => panic!("Failed to open file: {}", reason),
         };
 
-        match file.write_all(format!("{}\n", dependency_graph.to_string()).as_bytes()) {
+        let checksum_files = files.iter().filter(|path| {
+            path.file_name()
+                .to_str()
+                .unwrap()
+                .ends_with(ENDING_CHECKSUM)
+        });
+        let mut checksums_nodes = HashSet::new();
+
+        for checkums_path in checksum_files {
+            let maybe_checksums = read(checkums_path.path());
+            if let Ok(checksums) = maybe_checksums {
+                let checksums = Checksums::from(checksums.as_slice());
+                for node in checksums.keys() {
+                    checksums_nodes.insert(node.clone());
+                }
+            }
+        }
+
+        match file.write_all(format!("{}\n", dependency_graph.pretty(checksums_nodes)).as_bytes()) {
             Ok(_) => {}
             Err(reason) => panic!("Failed to write to file: {}", reason),
         };

@@ -77,13 +77,13 @@ During the subsequent run, the traces are compared to the set of changed `Body`s
 Static RustyRTS analyzes the MIR during compilation, without modifying it, to build a (directed) dependency graph. Edges are created according to the following criteria:
 1. function  -> contained Closure
 2. function  -> contained Generator
-3. caller function  -> callee function (only for non-associated functions, i.e. functions outside of `impl ..` or `trait ..`)
+3. 1. caller function -> callee `fn` (for functions in `trait {..})
+3. 2. caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
 4. function -> referenced abstract data type (`struct` or `enum`)
-5. function -> referenced trait
-6. abstract data type -> fn in impl (`impl for ..`)
+5. function -> referenced trait in dyn context
+6. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
 7. trait -> fn in trait definition (`trait { ..}`)
-8. fn in trait definition -> fn in trait impl (`impl <trait> for ..`)
-
+8. function in trait definition -> function in trait impl (`impl <trait> for ..`)
 
 Abstract data types and traits, which are not corresponding to actual code are just used as "transit" nodes here. To not unnecessarily decrease precision, the names of these nodes are fully qualified, including substituted generics.
 Using generics on function nodes as well (i.e. names of fully monomorphized functions) is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.

@@ -6,20 +6,38 @@ use std::str::FromStr;
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
-    Unevaluated,
-    Scalar,
     Closure,
     Generator,
     FnDef,
+    FnDefTrait,
+    TraitDef,
     FnPtr, // TODO: not sure if this is necessary
     TraitImpl,
     AdtImpl,
     Adt,
     Trait,
     Alias,
-    //Foreign,
-    //Opaque,
+
     Monomorphization,
+}
+
+impl AsRef<str> for EdgeType {
+    fn as_ref(&self) -> &str {
+        match self {
+            EdgeType::Closure => "[color = blue]",
+            EdgeType::Generator => "[color = blue]",
+            EdgeType::FnDef => "[color = black]",
+            EdgeType::FnDefTrait => "[color = cyan]",
+            EdgeType::TraitDef => "[color = yellow]",
+            EdgeType::FnPtr => "[color = brown]",
+            EdgeType::TraitImpl => "[color = magenta]",
+            EdgeType::AdtImpl => "[color = magenta]",
+            EdgeType::Adt => "[color = green]",
+            EdgeType::Trait => "[color = green]",
+            EdgeType::Alias => "[color = yellow]",
+            EdgeType::Monomorphization => "[color = red]",
+        }
+    }
 }
 
 impl FromStr for EdgeType {
@@ -27,19 +45,18 @@ impl FromStr for EdgeType {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "Unevaluated" => Ok(Self::Unevaluated),
-            "Scalar" => Ok(Self::Scalar),
             "Closure" => Ok(Self::Closure),
             "Generator" => Ok(Self::Generator),
             "FnDef" => Ok(Self::FnDef),
+            "FnDefTrait" => Ok(Self::FnDefTrait),
+            "TraitDef" => Ok(Self::FnDef),
             "FnPtr" => Ok(Self::FnPtr),
             "TraitImpl" => Ok(Self::TraitImpl),
             "AdtImpl" => Ok(Self::AdtImpl),
             "Adt" => Ok(Self::Adt),
             "Trait" => Ok(Self::Trait),
             "Alias" => Ok(Self::Alias),
-            //"Foreign" => Ok(Self::Foreign),
-            //"Opaque" => Ok(Self::Opaque),
+
             "Monomorphization" => Ok(Self::Monomorphization),
             _ => Err(()),
         }
@@ -214,6 +231,51 @@ impl DependencyGraph<String> {
             }
         }
     }
+
+    pub fn pretty(&self, checksum_nodes: HashSet<String>) -> String {
+        let mut result = String::new();
+
+        result.push_str("digraph {\n");
+
+        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&b, &a)) {
+            let format = if checksum_nodes.contains(node) {
+                " [penwidth = 2.5]"
+            } else {
+                ""
+            };
+            result.push_str(format!("\"{}\"{}\n", node, format).as_str())
+        }
+
+        let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
+
+        for (end, edge) in self.backwards_edges.iter() {
+            for (start, types) in edge.iter() {
+                unsorted.push((start, end, types));
+            }
+        }
+
+        for (start, end, types) in unsorted
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0).then(Ord::cmp(&b.1, &a.1)))
+        {
+            for typ in *types {
+                result.push_str(
+                    format!(
+                        "\"{}\" -> \"{}\" {} // {:?}\n",
+                        start,
+                        end,
+                        typ.as_ref(),
+                        typ
+                    )
+                    .as_str(),
+                )
+            }
+        }
+
+        result.push_str("}\n");
+
+        result
+    }
 }
 
 impl ToString for DependencyGraph<String> {
@@ -298,12 +360,12 @@ mod test {
     pub fn test_graph_deserialization_edge_types() {
         let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Trait);
         graph.add_edge(
             "start1".to_string(),
             "end1".to_string(),
-            EdgeType::Unevaluated,
+            EdgeType::TraitImpl,
         );
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Scalar);
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
         graph.add_edge(
             "start1".to_string(),

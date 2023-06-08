@@ -4,7 +4,7 @@ use regex::bytes::Regex;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_middle::mir::interpret::ConstAllocation;
 use rustc_middle::mir::Body;
-use rustc_middle::ty::{TyCtxt, VtblEntry};
+use rustc_middle::ty::{ScalarInt, TyCtxt, VtblEntry};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
@@ -12,7 +12,7 @@ use std::ops::{Deref, DerefMut};
 /// Wrapper of HashMap to provide serialization and deserialization of checksums
 /// (Newtype Pattern)
 #[derive(Eq, PartialEq, Debug, Clone)]
-pub(crate) struct Checksums {
+pub struct Checksums {
     inner: HashMap<String, HashSet<(u64, u64)>>, // key: name of node - value: checksum(s) of length 128 bit in two u64s
 }
 
@@ -151,6 +151,29 @@ pub(crate) fn get_checksum_const_allocation<'tcx>(
             context.while_hashing_spans(false, |context| {
                 let mut hasher = StableHasher::new();
                 alloc.hash_stable(context, &mut hasher);
+                hash = hasher.finalize();
+            })
+        });
+    });
+
+    hash
+}
+
+/// Function to obtain a stable checksum of a scalar int
+pub(crate) fn get_checksum_scalar_int<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    scalar_int: &ScalarInt,
+) -> (u64, u64) {
+    let mut hash = (0, 0);
+
+    tcx.with_stable_hashing_context(|ref mut context| {
+        // We use the hashing mechanism provided by the compiler to obtain a hash of a MIR body,
+        // that is stable beyond the compiler session
+
+        context.without_hir_bodies(|context| {
+            context.while_hashing_spans(false, |context| {
+                let mut hasher = StableHasher::new();
+                scalar_int.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
             })
         });

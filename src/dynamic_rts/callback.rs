@@ -1,8 +1,9 @@
+use itertools::Itertools;
 use log::{debug, trace};
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
-use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
+use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::query::{query_keys, query_stored};
 use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_span::source_map::{FileLoader, RealFileLoader};
@@ -166,9 +167,6 @@ fn custom_optimized_mir<'tcx>(
             }
         }
 
-        let mut const_visitor = ConstVisitor::new(tcx);
-        const_visitor.visit(result);
-
         //##############################################################
         // 2. Here the MIR is modified to trace this function at runtime
 
@@ -221,22 +219,41 @@ impl DynamicRTSCallbacks {
 
             let nodes = NODES.get().unwrap();
 
-            for def_id in tcx.mir_keys(()) {
-                match tcx.hir().body_const_context(*def_id) {
-                    Some(ConstContext::ConstFn) | None => {
-                        let name: String = def_id_name(tcx, def_id.to_def_id(), &[]);
-                        nodes.lock().unwrap().insert(name);
-                        let _body = tcx.optimized_mir(def_id.to_def_id());
-                    }
-                    _ => {}
-                };
+            let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+            let bodies = code_gen_units
+                .iter()
+                .flat_map(|c| c.items().keys())
+                .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+                .map(|m| {
+                    let MonoItem::Fn(instance) = m else {unreachable!()};
+                    instance
+                })
+                .filter(|i| tcx.is_mir_available(i.def_id()))
+                .filter(|i| i.def_id().is_local()) // TODO: Check if this is feasible
+                .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
+                .collect_vec();
 
-                //##########################################################################################################
-                // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
-                // 3. Import old checksums
-                // 4. Determine names of changed nodes and write this information to the filesystem
-                run_analysis_shared(tcx);
+            //##########################################################################################################
+            // 1. Visit every instance (pair of MIR body and corresponding generic args)
+            //    and every body from const
+            //      1) Creates the graph
+            //      2) Write graph to file
+
+            let mut const_visitor = ConstVisitor::new(tcx);
+            for (body, substs) in bodies {
+                const_visitor.visit(&body, substs);
+
+                let def_id = body.source.def_id();
+                let name: String = def_id_name(tcx, def_id, &[]);
+                nodes.lock().unwrap().insert(name);
+                let _body = tcx.optimized_mir(def_id);
             }
+
+            //##########################################################################################################
+            // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
+            // 3. Import old checksums
+            // 4. Determine names of changed nodes and write this information to the filesystem
+            run_analysis_shared(tcx);
         }
     }
 }

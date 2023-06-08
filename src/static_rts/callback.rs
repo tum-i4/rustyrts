@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use itertools::Itertools;
-use log::debug;
+use log::{debug};
 use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
@@ -11,7 +11,7 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_middle::ty::{List, PolyTraitRef, TyCtxt, VtblEntry};
 
 use crate::callbacks_shared::{
     excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES, OLD_VTABLE_ENTRIES,
@@ -80,6 +80,7 @@ impl StaticRTSCallbacks {
                     instance
                 })
                 .filter(|i| tcx.is_mir_available(i.def_id()))
+                //.filter(|i| i.def_id().is_local()) // TODO: Check if this is feasible
                 .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
                 .collect_vec();
 
@@ -93,8 +94,12 @@ impl StaticRTSCallbacks {
             let mut const_visitor = ConstVisitor::new(tcx);
             for (body, substs) in bodies {
                 graph_visitor.visit(&body, substs);
-                const_visitor.visit(&body);
+                if body.source.def_id().is_local() {
+                    const_visitor.visit(&body, substs);
+                }
             }
+
+            
 
             write_to_file(
                 self.graph.to_string(),
@@ -115,6 +120,7 @@ impl StaticRTSCallbacks {
                     Some(ConstContext::ConstFn) | None => {
                         let body = tcx.optimized_mir(*def_id);
                         let name = def_id_name(tcx, def_id.to_def_id(), &[]);
+
                         let checksum = get_checksum_body(tcx, body);
                         insert_hashmap(&mut *new_checksums, &name, checksum);
 
@@ -156,16 +162,16 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
 
     for entry in result {
         if let VtblEntry::Method(instance) = entry {
-            let substs = if cfg!(feature = "monomorphize_all") {
-                instance.substs.as_slice()
-            } else {
-                &[]
-            };
+            let substs = 
+            //if cfg!(feature = "monomorphize_all") {
+            //    instance.substs.as_slice()
+            //} else {
+                List::empty();
+            //};
 
             let name = def_id_name(tcx, instance.def_id(), substs);
 
             let checksum = get_checksum_vtbl_entry(tcx, &entry);
-            debug!("Considering {:?} in checksums of {}", instance, name);
 
             insert_hashmap(
                 &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
