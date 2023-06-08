@@ -83,7 +83,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             let implementors = self.tcx.impl_item_implementor_ids(impl_def);
 
             if !cfg!(feature = "monomorphize_all") {
-                // 8. fn in `trait` definition -> fn in trait impl (`impl <trait> for ..`)
+                // 6. function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
                 for (trait_fn, impl_fn) in implementors {
                     if *impl_fn == outer {
                         self.graph.add_edge(
@@ -98,7 +98,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer) {
             match self.tcx.impl_subject(impl_def) {
-                // 6. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
+                // 6. abstract data type -> fn in (not necessarily trait) impl (`impl <trait>? for ..`)
                 ImplSubject::Inherent(mut ty) => {
                     let param_env = self
                         .tcx

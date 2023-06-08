@@ -75,15 +75,13 @@ During the subsequent run, the traces are compared to the set of changed `Body`s
 
 ## Static
 Static RustyRTS analyzes the MIR during compilation, without modifying it, to build a (directed) dependency graph. Edges are created according to the following criteria:
-1. function  -> contained Closure
-2. function  -> contained Generator
-3. 1. caller function -> callee `fn` (for functions in `trait {..})
-3. 2. caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
-4. function -> referenced abstract data type (`struct` or `enum`)
-5. function -> referenced trait in dyn context
-6. abstract data type -> fn in (trait) impl (`impl <trait>? for ..`)
-7. trait -> fn in trait definition (`trait { ..}`)
-8. function in trait definition -> function in trait impl (`impl <trait> for ..`)
+1. `EdgeType::Closure`:         function  -> contained Closure
+2. `EdgeType::Generator`:       function  -> contained Generator
+3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for functions in `trait {..})
+3. 2. `EdgeType::FnDef`:        caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
+4. `EdgeType::Adt`:             function -> referenced abstract data type (`struct` or `enum`)
+5. `EdgeType::AdtImpl`:         abstract data type -> fn in (not necessarily trait) impl (`impl <trait>? for ..`)
+6. `EdgeType::TraitImpl`:       function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
 
 Abstract data types and traits, which are not corresponding to actual code are just used as "transit" nodes here. To not unnecessarily decrease precision, the names of these nodes are fully qualified, including substituted generics.
 Using generics on function nodes as well (i.e. names of fully monomorphized functions) is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.
