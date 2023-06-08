@@ -1,3 +1,5 @@
+use log::info;
+use rustc_hir::definitions::DefPathData;
 use rustc_middle::mir::interpret::ConstAllocation;
 use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::ty::{GenericArg, List, ScalarInt};
@@ -61,6 +63,16 @@ impl<'tcx> ConstVisitor<'tcx> {
                     let global_alloc = self.tcx.global_alloc(ptr.provenance);
                     match global_alloc {
                         GlobalAlloc::Static(def_id) => {
+                            // If the def path contains a foreign mod, it cannot be computed at compile time
+                            let def_path = self.tcx.def_path(def_id);
+                            if def_path
+                                .data
+                                .iter()
+                                .any(|d| d.data == DefPathData::ForeignMod)
+                            {
+                                return None;
+                            }
+
                             self.tcx.eval_static_initializer(def_id).ok().map(|s| Ok(s))
                         }
                         GlobalAlloc::Memory(const_alloc) => Some(Ok(const_alloc)),
