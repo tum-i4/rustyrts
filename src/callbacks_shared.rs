@@ -13,7 +13,8 @@ use crate::{
     checksums::Checksums,
     constants::ENV_TARGET_DIR,
     fs_utils::{
-        get_changes_path, get_checksums_path, get_checksums_vtbl_path, get_test_path, write_to_file,
+        get_changes_path, get_checksums_const_path, get_checksums_path, get_checksums_vtbl_path,
+        get_test_path, write_to_file,
     },
     names::def_id_name,
     static_rts::callback::PATH_BUF,
@@ -27,6 +28,7 @@ pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
 pub(crate) static NODES: OnceCell<Mutex<HashSet<String>>> = OnceCell::new();
 pub(crate) static NEW_CHECKSUMS: OnceCell<Mutex<Checksums>> = OnceCell::new();
 pub(crate) static NEW_CHECKSUMS_VTBL: OnceCell<Mutex<Checksums>> = OnceCell::new();
+pub(crate) static NEW_CHECKSUMS_CONST: OnceCell<Mutex<Checksums>> = OnceCell::new();
 
 const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
@@ -83,6 +85,7 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
 
         let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
         let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
+        let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
 
         //##############################################################################################################
         // 3. Import checksums
@@ -103,6 +106,19 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
         let old_checksums_vtbl = {
             let checksums_path_buf =
                 get_checksums_vtbl_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
+
+            let maybe_checksums = read(checksums_path_buf);
+
+            if let Ok(checksums) = maybe_checksums {
+                Checksums::from(checksums.as_slice())
+            } else {
+                Checksums::new()
+            }
+        };
+
+        let old_checksums_const = {
+            let checksums_path_buf =
+                get_checksums_const_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 
             let maybe_checksums = read(checksums_path_buf);
 
@@ -181,6 +197,25 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             }
         }
 
+        for name in new_checksums_const.keys() {
+            let changed = {
+                let maybe_new = new_checksums_const.get(name);
+                let maybe_old = old_checksums_const.get(name);
+
+                match (maybe_new, maybe_old) {
+                    (None, _) => panic!("Did not find checksum for const {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
+                    (Some(_), None) => true,
+                    (Some(new), Some(old)) => {
+                        new != old
+                     },
+                }
+            };
+
+            if changed {
+                changed_nodes.insert(name.clone());
+            }
+        }
+
         write_to_file(
             Into::<Vec<u8>>::into(&*new_checksums),
             PATH_BUF.get().unwrap().clone(),
@@ -192,6 +227,13 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             Into::<Vec<u8>>::into(&*new_checksums_vtbl),
             PATH_BUF.get().unwrap().clone(),
             |buf| get_checksums_vtbl_path(buf, &crate_name, crate_id),
+            false,
+        );
+
+        write_to_file(
+            Into::<Vec<u8>>::into(&*new_checksums_const),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_checksums_const_path(buf, &crate_name, crate_id),
             false,
         );
 

@@ -32,6 +32,7 @@ pub const ENDING_TRACE: &str = ".trace";
 pub const ENDING_CHANGES: &str = ".changes";
 pub const ENDING_CHECKSUM: &str = ".checksum";
 pub const ENDING_CHECKSUM_VTBL: &str = ".checksum_vtbl";
+pub const ENDING_CHECKSUM_CONST: &str = ".checksum_const";
 pub const ENDING_TEST: &str = ".test";
 pub const ENDING_GRAPH: &str = ".dot";
 

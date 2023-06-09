@@ -13,7 +13,8 @@ use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::sync::Mutex;
 
 use crate::callbacks_shared::{
-    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_VTBL, NODES, OLD_VTABLE_ENTRIES,
+    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, NODES,
+    OLD_VTABLE_ENTRIES,
 };
 
 use crate::checksums::{get_checksum_body, get_checksum_vtbl_entry, insert_hashmap, Checksums};
@@ -110,6 +111,7 @@ impl Callbacks for DynamicRTSCallbacks {
         NODES.get_or_init(|| Mutex::new(HashSet::new()));
         NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
         NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
+        NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
     }
 
     fn after_analysis<'compiler, 'tcx>(

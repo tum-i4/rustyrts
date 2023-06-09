@@ -9,7 +9,7 @@ use rustc_middle::{
 use rustc_span::def_id::DefId;
 
 use crate::checksums::{get_checksum_const_allocation, get_checksum_scalar_int};
-use crate::{callbacks_shared::NEW_CHECKSUMS, checksums::insert_hashmap, names::def_id_name};
+use crate::{callbacks_shared::NEW_CHECKSUMS_CONST, checksums::insert_hashmap, names::def_id_name};
 
 pub(crate) struct ConstVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -132,7 +132,7 @@ impl<'tcx> Visitor<'tcx> for ConstVisitor<'tcx> {
             };
 
             insert_hashmap(
-                &mut *NEW_CHECKSUMS.get().unwrap().lock().unwrap(),
+                &mut *NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap(),
                 &name,
                 checksum,
             );

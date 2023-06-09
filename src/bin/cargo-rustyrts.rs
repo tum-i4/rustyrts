@@ -230,7 +230,7 @@ where
 
     let mut affected_tests_iter = affected_tests
         .map(|line| {
-            let test = line.split_once("::").unwrap().1.split_once("::").unwrap().1;
+            let test = line.split_once("::").unwrap().1; //.split_once("::").unwrap().1;
             test.to_string()
         })
         .peekable();
