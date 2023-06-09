@@ -2,13 +2,20 @@ use itertools::Itertools;
 use log::{debug, trace};
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::mir::Body;
+use rustc_middle::ty::{GenericArg, List, TyCtxt};
+use std::sync::atomic::Ordering::SeqCst;
 use std::{
     collections::HashSet,
     fs::read,
-    sync::{atomic::AtomicUsize, Mutex},
+    sync::{
+        atomic::{AtomicBool, AtomicUsize},
+        Mutex,
+    },
 };
 
+use crate::checksums::{get_checksum_body, insert_hashmap};
+use crate::const_visitor::ConstVisitor;
 use crate::{
     checksums::Checksums,
     constants::ENV_TARGET_DIR,
@@ -20,12 +27,13 @@ use crate::{
     static_rts::callback::PATH_BUF,
 };
 
+pub(crate) static SKIP: AtomicBool = AtomicBool::new(false);
+
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
 
 pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
 pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
 
-pub(crate) static NODES: OnceCell<Mutex<HashSet<String>>> = OnceCell::new();
 pub(crate) static NEW_CHECKSUMS: OnceCell<Mutex<Checksums>> = OnceCell::new();
 pub(crate) static NEW_CHECKSUMS_VTBL: OnceCell<Mutex<Checksums>> = OnceCell::new();
 pub(crate) static NEW_CHECKSUMS_CONST: OnceCell<Mutex<Checksums>> = OnceCell::new();
@@ -34,12 +42,14 @@ const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
 pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
 
-pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
-    let local_crate_name = tcx.crate_name(LOCAL_CRATE);
+pub(crate) fn excluded(local_crate_name: &str) -> bool {
+    SKIP.load(SeqCst) || no_instrumentation(local_crate_name)
+}
 
+pub(crate) fn no_instrumentation(local_crate_name: &str) -> bool {
     let excluded_crate = EXCLUDED_CRATES
         .iter()
-        .any(|krate| *krate == local_crate_name.as_str());
+        .any(|krate| *krate == local_crate_name);
 
     let trybuild = std::env::var(ENV_TARGET_DIR)
         .map(|d| d.ends_with("trybuild"))
@@ -48,15 +58,35 @@ pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
     excluded_crate || trybuild
 }
 
-pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
+pub(crate) fn run_analysis_shared<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bodies: Vec<(&'tcx Body<'tcx>, &'tcx List<GenericArg<'tcx>>)>,
+) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
     let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
     CRATE_NAME.get_or_init(|| crate_name.clone());
     CRATE_ID.get_or_init(|| crate_id);
 
+    //##########################################################################################################
+    // 2. Calculate checksum of every MIR body and the consts that it uses
+
+    let mut const_visitor = ConstVisitor::new(tcx);
+    for (body, substs) in &bodies {
+        const_visitor.visit(&body, substs);
+    }
+
+    let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+
+    for (body, _substs) in &bodies {
+        let name = def_id_name(tcx, body.source.def_id(), List::empty()); // IMPORTANT: no substs here
+
+        let checksum = get_checksum_body(tcx, body);
+        insert_hashmap(&mut *new_checksums, &name, checksum);
+    }
+
     //##############################################################################################################
-    // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
+    // 3. Determine which functions represent tests and store the names of those nodes on the filesystem
 
     let mut tests: Vec<String> = Vec::new();
     for def_id in tcx.mir_keys(()) {
@@ -83,12 +113,12 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
     if let Some(crate_name) = CRATE_NAME.get() {
         let crate_id = *CRATE_ID.get().unwrap();
 
-        let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+        let new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
         let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
         let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
 
         //##############################################################################################################
-        // 3. Import checksums
+        // Import checksums
 
         let old_checksums = {
             let checksums_path_buf =
@@ -132,26 +162,20 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
         debug!("Imported checksums for {}", crate_name);
 
         //##############################################################################################################
-        // 4. Calculate new checksums and names of changed nodes and write this information to filesystem
+        // 4. Calculate names of changed nodes and write this information to filesystem
 
         let mut changed_nodes = HashSet::new();
 
-        let names = NODES.get().unwrap().lock().unwrap();
-
         trace!("Checksums: {:?}", new_checksums);
 
-        for name in names.iter() {
+        for name in new_checksums.keys() {
             trace!("Checking {}", name);
             let changed = {
                 let maybe_new = new_checksums.get(name);
                 let maybe_old = old_checksums.get(name);
 
                 match (maybe_new, maybe_old) {
-                    (None, None) => panic!("Did not find checksum for {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
-                    (None, Some(checksums)) => {
-                        new_checksums.insert(name.clone(), checksums.clone());
-                        false
-                    }
+                    (None, _) => unreachable!(),
                     (Some(_), None) => true,
                     (Some(new), Some(old)) => new != old,
                 }
@@ -190,10 +214,11 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
 
         // Also consider nodes that do no longer have a vtable entry pointing at them as changed
         // (dynamic dispatch may call a different function in the new revision)
-
-        for node in old_checksums_vtbl.keys() {
-            if !new_checksums_vtbl.keys().contains(node) {
-                changed_nodes.insert(node.clone());
+        if !from_new_revision {
+            for node in old_checksums_vtbl.keys() {
+                if !new_checksums_vtbl.keys().contains(node) {
+                    changed_nodes.insert(node.clone());
+                }
             }
         }
 
@@ -203,11 +228,9 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
                 let maybe_old = old_checksums_const.get(name);
 
                 match (maybe_new, maybe_old) {
-                    (None, _) => panic!("Did not find checksum for const {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
+                    (None, _) => unreachable!(),
                     (Some(_), None) => true,
-                    (Some(new), Some(old)) => {
-                        new != old
-                     },
+                    (Some(new), Some(old)) => new != old,
                 }
             };
 

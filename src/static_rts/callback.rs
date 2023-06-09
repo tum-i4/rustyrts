@@ -1,33 +1,28 @@
 use std::mem::transmute;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 
 use crate::callbacks_shared::{
-    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, NODES,
-    OLD_VTABLE_ENTRIES,
+    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL,
+    OLD_VTABLE_ENTRIES, SKIP,
 };
 use itertools::Itertools;
 use log::debug;
 use once_cell::sync::OnceCell;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{List, PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_session::config::CrateType;
 use std::sync::atomic::Ordering::SeqCst;
 
-use crate::checksums::{get_checksum_body, get_checksum_vtbl_entry, insert_hashmap, Checksums};
-use crate::const_visitor::ConstVisitor;
+use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
 use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
 use crate::names::def_id_name;
 
 use super::graph::DependencyGraph;
 use super::visitor::GraphVisitor;
-
-pub(crate) static SKIP_GRAPH: AtomicBool = AtomicBool::new(false);
 
 pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
@@ -37,7 +32,9 @@ pub struct StaticRTSCallbacks {
 
 impl Callbacks for StaticRTSCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
-        SKIP_GRAPH.store(
+        // There is no point in analyzing a proc macro that is executed a compile time
+        // Functions from rlibs are analyzed in other crates, only if they happen to be used there
+        SKIP.store(
             config
                 .opts
                 .crate_types
@@ -46,6 +43,7 @@ impl Callbacks for StaticRTSCallbacks {
             SeqCst,
         );
 
+        // The only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers, _extern_providers| {
             // SAFETY: We store the address of the original vtable_entries function as a usize.
             OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
@@ -53,9 +51,11 @@ impl Callbacks for StaticRTSCallbacks {
             providers.vtable_entries = custom_vtable_entries_monomorphized;
         });
 
-        NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
-        NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
-        NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
+        if !excluded(config.opts.crate_name.as_ref().unwrap()) {
+            NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
+            NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
+            NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
+        }
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -63,10 +63,11 @@ impl Callbacks for StaticRTSCallbacks {
         _compiler: &'compiler interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        queries
-            .global_ctxt()
-            .unwrap()
-            .enter(|tcx| self.run_analysis(tcx));
+        queries.global_ctxt().unwrap().enter(|tcx| {
+            if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
+                self.run_analysis(tcx);
+            }
+        });
         Compilation::Continue
     }
 }
@@ -80,85 +81,51 @@ impl StaticRTSCallbacks {
     }
 
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        if !excluded(tcx) {
-            let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-            let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+        let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+        let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
-            // There is no point in creating a graph for a proc macro that is executed a compile time
-            // Functions from rlibs are analyzed in other crates, only if they happen to be used there (see NOTE)
-            if !SKIP_GRAPH.load(SeqCst) {
-                let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+        //##############################################################################################################
+        // Collect all MIR bodies that are relevant for code generation
 
-                let bodies = code_gen_units
-                    .iter()
-                    .flat_map(|c| c.items().keys())
-                    .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
-                    .map(|m| {
-                        let MonoItem::Fn(instance) = m else {unreachable!()};
-                        instance
-                    })
-                    .filter(|i| tcx.is_mir_available(i.def_id()))
-                    //.filter(|i| i.def_id().is_local()) // NOTE: We also fetch non-local functions here
-                    .filter(|i| tcx.is_codegened_item(i.def_id()))
-                    .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
-                    .collect_vec();
+        let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
 
-                //##########################################################################################################
-                // 1. Visit every instance (pair of MIR body and corresponding generic args)
-                //    and every body from const
-                //      1) Creates the graph
-                //      2) Write graph to file
+        let bodies = code_gen_units
+            .iter()
+            .flat_map(|c| c.items().keys())
+            .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+            .map(|m| {
+                let MonoItem::Fn(instance) = m else {unreachable!()};
+                instance
+            })
+            .filter(|i| tcx.is_mir_available(i.def_id()))
+            .filter(|i| tcx.is_codegened_item(i.def_id()))
+            .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
+            .collect_vec();
 
-                let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
-                let mut const_visitor = ConstVisitor::new(tcx);
-                for (body, substs) in bodies {
-                    graph_visitor.visit(&body, substs);
-                    if body.source.def_id().is_local() {
-                        const_visitor.visit(&body, substs);
-                    }
-                }
+        //##############################################################################################################
+        // 1. Visit every instance (pair of MIR body and corresponding generic args)
+        //    and every body from const
+        //      1) Creates the graph
+        //      2) Write graph to file
 
-                write_to_file(
-                    self.graph.to_string(),
-                    PATH_BUF.get().unwrap().clone(),
-                    |buf| get_graph_path(buf, &crate_name, crate_id),
-                    false,
-                );
-
-                debug!("Generated dependency graph for {}", crate_name);
-            }
-
-            //##########################################################################################################
-            // 2. Calculate checksum of every MIR body
-
-            let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
-
-            for def_id in tcx.mir_keys(()) {
-                match tcx.hir().body_const_context(*def_id) {
-                    Some(ConstContext::ConstFn) | None => {
-                        let body = tcx.optimized_mir(*def_id);
-                        let name = def_id_name(tcx, def_id.to_def_id(), &[]);
-
-                        let checksum = get_checksum_body(tcx, body);
-                        insert_hashmap(&mut *new_checksums, &name, checksum);
-
-                        for body in tcx.promoted_mir(*def_id) {
-                            let checksum = get_checksum_body(tcx, body);
-                            insert_hashmap(&mut *new_checksums, &name, checksum);
-                        }
-                    }
-                    _ => {}
-                };
-            }
-
-            //##########################################################################################################
-            // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
-            // 3. Import checksums
-            // 4. Calculate new checksums and names of changed nodes and write this information to the filesystem
-
-            NODES.get_or_init(|| Mutex::new(new_checksums.keys().map(|s| s.clone()).collect()));
-            run_analysis_shared(tcx);
+        let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
+        for (body, substs) in &bodies {
+            graph_visitor.visit(&body, substs);
         }
+
+        write_to_file(
+            self.graph.to_string(),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_graph_path(buf, &crate_name, crate_id),
+            false,
+        );
+
+        debug!("Generated dependency graph for {}", crate_name);
+
+        //##############################################################################################################
+        // Continue at shared analysis
+
+        run_analysis_shared(tcx, bodies);
     }
 }
 
@@ -178,23 +145,25 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
 
     let result = orig_function(tcx, key);
 
-    for entry in result {
-        if let VtblEntry::Method(instance) = entry {
-            let substs = if cfg!(feature = "no_monomorphization") {
-                List::empty()
-            } else {
-                instance.substs
-            };
+    if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
+        for entry in result {
+            if let VtblEntry::Method(instance) = entry {
+                let substs = if cfg!(not(feature = "monomorphize")) {
+                    List::empty()
+                } else {
+                    instance.substs
+                };
 
-            let name = def_id_name(tcx, instance.def_id(), substs);
+                let name = def_id_name(tcx, instance.def_id(), substs);
 
-            let checksum = get_checksum_vtbl_entry(tcx, &entry);
+                let checksum = get_checksum_vtbl_entry(tcx, &entry);
 
-            insert_hashmap(
-                &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
-                &name,
-                checksum,
-            )
+                insert_hashmap(
+                    &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
+                    &name,
+                    checksum,
+                )
+            }
         }
     }
 

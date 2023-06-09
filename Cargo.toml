@@ -19,7 +19,7 @@ name = "rustyrts-dynamic"
 default = []
 
 print_paths = []
-no_monomorphization = []
+monomorphize = []
 
 [dependencies]
 log = "0.4"

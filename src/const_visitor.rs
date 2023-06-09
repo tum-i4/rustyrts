@@ -15,7 +15,7 @@ pub(crate) struct ConstVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
 
-    #[cfg(feature = "no_monomorphization")]
+    #[cfg(not(feature = "monomorphize"))]
     original_substs: Option<&'tcx List<GenericArg<'tcx>>>,
 }
 
@@ -25,7 +25,7 @@ impl<'tcx> ConstVisitor<'tcx> {
             tcx,
             processed_instance: None,
 
-            #[cfg(feature = "no_monomorphization")]
+            #[cfg(not(feature = "monomorphize"))]
             original_substs: None,
         }
     }
@@ -33,11 +33,11 @@ impl<'tcx> ConstVisitor<'tcx> {
     pub fn visit(&mut self, body: &Body<'tcx>, substs: &'tcx List<GenericArg<'tcx>>) {
         let def_id = body.source.instance.def_id();
 
-        #[cfg(not(feature = "no_monomorphization"))]
+        #[cfg(feature = "monomorphize")]
         {
             self.processed_instance = Some((def_id, substs));
         }
-        #[cfg(feature = "no_monomorphization")]
+        #[cfg(not(feature = "monomorphize"))]
         {
             self.processed_instance = Some((def_id, List::empty()));
             self.original_substs = Some(substs);
@@ -52,7 +52,7 @@ impl<'tcx> ConstVisitor<'tcx> {
 
         self.processed_instance = None;
 
-        #[cfg(feature = "no_monomorphization")]
+        #[cfg(not(feature = "monomorphize"))]
         {
             self.original_substs = None;
         }
@@ -116,7 +116,7 @@ impl<'tcx> Visitor<'tcx> for ConstVisitor<'tcx> {
                     .param_env(def_id)
                     .with_reveal_all_normalized(self.tcx);
 
-                #[cfg(feature = "no_monomorphization")]
+                #[cfg(not(feature = "monomorphize"))]
                 {
                     unevaluated_cons = self.tcx.subst_and_normalize_erasing_regions(
                         self.original_substs.unwrap(),
@@ -125,7 +125,7 @@ impl<'tcx> Visitor<'tcx> for ConstVisitor<'tcx> {
                     );
                 }
 
-                #[cfg(not(feature = "no_monomorphization"))]
+                #[cfg(feature = "monomorphize")]
                 {
                     unevaluated_cons = self.tcx.subst_and_normalize_erasing_regions(
                         substs,

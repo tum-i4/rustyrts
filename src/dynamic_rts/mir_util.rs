@@ -255,9 +255,9 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
             );
 
             let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
-            error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
-            return;
-        };
+                error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+                return;
+            };
 
             let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
             let (local_str, ty_ref_str) =

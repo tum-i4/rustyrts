@@ -13,7 +13,7 @@ pub(crate) struct GraphVisitor<'tcx, 'g> {
     graph: &'g mut DependencyGraph<String>,
     processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
 
-    #[cfg(feature = "no_monomorphization")]
+    #[cfg(not(feature = "monomorphize"))]
     original_substs: Option<&'tcx List<GenericArg<'tcx>>>,
 }
 
@@ -27,7 +27,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             graph,
             processed_instance: None,
 
-            #[cfg(feature = "no_monomorphization")]
+            #[cfg(not(feature = "monomorphize"))]
             original_substs: None,
         }
     }
@@ -35,11 +35,11 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
     pub fn visit(&mut self, body: &'tcx Body<'tcx>, substs: &'tcx List<GenericArg<'tcx>>) {
         let def_id = body.source.def_id();
 
-        #[cfg(not(feature = "no_monomorphization"))]
+        #[cfg(feature = "monomorphize")]
         {
             self.processed_instance = Some((def_id, substs));
         }
-        #[cfg(feature = "no_monomorphization")]
+        #[cfg(not(feature = "monomorphize"))]
         {
             self.processed_instance = Some((def_id, List::empty()));
             self.original_substs = Some(substs);
@@ -56,7 +56,7 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
 
         self.processed_instance = None;
 
-        #[cfg(feature = "no_monomorphization")]
+        #[cfg(not(feature = "monomorphize"))]
         {
             self.original_substs = None;
         }
@@ -72,7 +72,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let (outer, outer_substs) = self.get_outer();
 
-        #[cfg(not(feature = "no_monomorphization"))]
+        #[cfg(feature = "monomorphize")]
         {
             let name_after_monomorphization = def_id_name(self.tcx, outer, outer_substs);
             let name_not_monomorphized = def_id_name(self.tcx, outer, &[]);
@@ -86,7 +86,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer) {
             if let Some(trait_ref_binder) = self.tcx.impl_trait_ref(impl_def) {
-                let trait_substs = if cfg!(feature = "no_monomorphization") {
+                let trait_substs = if cfg!(not(feature = "monomorphize")) {
                     List::empty()
                 } else {
                     let mut trait_ref = trait_ref_binder.skip_binder();
@@ -121,11 +121,12 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         self.super_body(body);
     }
 
+    #[allow(unused_mut)]
     fn visit_ty(&mut self, mut ty: Ty<'tcx>, ty_context: TyContext) {
         self.super_ty(ty);
         let (outer, outer_substs) = self.get_outer();
 
-        #[cfg(not(feature = "no_monomorphization"))]
+        #[cfg(feature = "monomorphize")]
         {
             let param_env = self
                 .tcx
@@ -165,6 +166,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             _ => {}
         }
 
+        #[allow(unused_variables)]
         for (def_id, substs, edge_type) in match ty.kind() {
             // 1. function  -> contained Closure
             TyKind::Closure(def_id, substs) => vec![(*def_id, *substs, EdgeType::Closure)],
@@ -187,26 +189,16 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             }
             _ => vec![],
         } {
-            #[cfg(not(feature = "no_monomorphization"))]
+            #[cfg(feature = "monomorphize")]
             {
-                let mut all_substs = vec![substs];
-
-                if !def_id.is_local() {
-                    if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
-                        all_substs = upstream_mono.keys().map(|s| *s).into_iter().collect();
-                    }
-                }
-
-                for substs in all_substs {
-                    self.graph.add_edge(
-                        def_id_name(self.tcx, outer, outer_substs),
-                        def_id_name(self.tcx, def_id, substs),
-                        edge_type,
-                    );
-                }
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer, outer_substs),
+                    def_id_name(self.tcx, def_id, substs),
+                    edge_type,
+                );
             }
 
-            #[cfg(feature = "no_monomorphization")]
+            #[cfg(not(feature = "monomorphize"))]
             {
                 self.graph.add_edge(
                     def_id_name(self.tcx, outer, outer_substs),
@@ -396,7 +388,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "no_monomorphization")]
+    #[cfg(not(feature = "monomorphize"))]
     fn test_impls() {
         let graph = compile_and_visit("impls.rs");
 
@@ -417,7 +409,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "no_monomorphization")]
+    #[cfg(not(feature = "monomorphize"))]
     fn test_traits() {
         let graph = compile_and_visit("traits.rs");
 
@@ -463,7 +455,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(not(feature = "no_monomorphization"))]
+    #[cfg(feature = "monomorphize")]
     fn test_traits() {
         let graph = compile_and_visit("traits.rs");
 

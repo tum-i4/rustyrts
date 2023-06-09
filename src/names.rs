@@ -9,7 +9,7 @@ use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
 use rustc_resolve::Namespace;
 
 lazy_static! {
-    static ref RE_NON_LOCAL: [Regex; 1] = [Regex::new(r"(<[^[:alpha:]]*)[^> ]*?::(.*?>)").unwrap()];
+    static ref RE_NON_LOCAL: [Regex; 1] = [Regex::new(r"(<[^[:alpha:]>]*)[^> ]*?::(.*?>)").unwrap()];
     //static ref RE_BOTH: [Regex; 5] = [
     //    Regex::new(r"(for )[^>]*?::(.*?>)").unwrap(),
     //    Regex::new(r"(<impl )[^>]*?::(.*?>)").unwrap(),
@@ -17,7 +17,12 @@ lazy_static! {
     //    Regex::new(r"(\+ )[^)>]*?::()").unwrap(),
     //    Regex::new(r"(as )[^)>]*?::(.*?>)").unwrap(),
     //];
-    static ref RE_LIFETIME: [Regex; 2] = [Regex::new(r"( \+ )?'.+?(, | |(\)|>))").unwrap(), Regex::new(r"<>").unwrap()];
+    static ref RE_LIFETIME: [Regex; 2] = [Regex::new(r"( \+ )?'.+?(, | |(\)|>))").unwrap(), Regex::new(r"(::)?<>").unwrap()];
+}
+
+#[cfg(feature = "monomorphize")]
+lazy_static! {
+    static ref RE_CLOSURE: Regex = Regex::new(r"\[closure@.*?\/.*?\]").unwrap();
 }
 
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
@@ -56,6 +61,13 @@ pub(crate) fn def_id_name<'tcx>(
     for re in RE_LIFETIME.iter() {
         // Remove lifetime parameters if present
         def_path_str = re.replace_all(&def_path_str, "${3}").to_string();
+    }
+
+    #[cfg(feature = "monomorphize")]
+    {
+        def_path_str = RE_CLOSURE
+            .replace_all(&def_path_str, "[closure]")
+            .to_string();
     }
 
     // Occasionally, there is a newline which we do not want to keep
