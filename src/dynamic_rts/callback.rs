@@ -159,8 +159,8 @@ fn custom_optimized_mir<'tcx>(
 
         trace!("Inserting checksum of {}", name);
 
-        {
-            let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+        if let Some(lock) = NEW_CHECKSUMS.get() {
+            let mut new_checksums = lock.lock().unwrap();
             insert_hashmap(&mut *new_checksums, &name, checksum);
 
             for body in tcx.promoted_mir(def_id) {
@@ -231,7 +231,7 @@ impl DynamicRTSCallbacks {
                     instance
                 })
                 .filter(|i| tcx.is_mir_available(i.def_id()))
-                .filter(|i| i.def_id().is_local()) // TODO: Check if this is feasible
+                .filter(|i| i.def_id().is_local()) // Restricted to local functions here
                 .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
                 .collect_vec();
 

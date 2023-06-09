@@ -14,6 +14,8 @@ use crate::{callbacks_shared::NEW_CHECKSUMS_CONST, checksums::insert_hashmap, na
 pub(crate) struct ConstVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
+
+    #[cfg(feature = "no_monomorphization")]
     original_substs: Option<&'tcx List<GenericArg<'tcx>>>,
 }
 
@@ -22,6 +24,8 @@ impl<'tcx> ConstVisitor<'tcx> {
         Self {
             tcx,
             processed_instance: None,
+
+            #[cfg(feature = "no_monomorphization")]
             original_substs: None,
         }
     }
@@ -29,16 +33,15 @@ impl<'tcx> ConstVisitor<'tcx> {
     pub fn visit(&mut self, body: &Body<'tcx>, substs: &'tcx List<GenericArg<'tcx>>) {
         let def_id = body.source.instance.def_id();
 
-        self.processed_instance = Some((
-            def_id,
-            if cfg!(feature = "monomorphize_all") {
-                substs
-            } else {
-                List::empty()
-            },
-        ));
-        self.original_substs = Some(substs);
-
+        #[cfg(not(feature = "no_monomorphization"))]
+        {
+            self.processed_instance = Some((def_id, substs));
+        }
+        #[cfg(feature = "no_monomorphization")]
+        {
+            self.processed_instance = Some((def_id, List::empty()));
+            self.original_substs = Some(substs);
+        }
         //##############################################################################################################
         // Visit body and contained promoted mir
 
@@ -48,7 +51,11 @@ impl<'tcx> ConstVisitor<'tcx> {
         }
 
         self.processed_instance = None;
-        self.original_substs = None;
+
+        #[cfg(feature = "no_monomorphization")]
+        {
+            self.original_substs = None;
+        }
     }
 
     fn maybe_const_alloc_from_const_value(
@@ -109,11 +116,23 @@ impl<'tcx> Visitor<'tcx> for ConstVisitor<'tcx> {
                     .param_env(def_id)
                     .with_reveal_all_normalized(self.tcx);
 
-                unevaluated_cons = self.tcx.subst_and_normalize_erasing_regions(
-                    self.original_substs.unwrap(),
-                    param_env,
-                    unevaluated_cons,
-                );
+                #[cfg(feature = "no_monomorphization")]
+                {
+                    unevaluated_cons = self.tcx.subst_and_normalize_erasing_regions(
+                        self.original_substs.unwrap(),
+                        param_env,
+                        unevaluated_cons,
+                    );
+                }
+
+                #[cfg(not(feature = "no_monomorphization"))]
+                {
+                    unevaluated_cons = self.tcx.subst_and_normalize_erasing_regions(
+                        substs,
+                        param_env,
+                        unevaluated_cons,
+                    );
+                }
 
                 self.tcx
                     .const_eval_resolve(param_env, unevaluated_cons, None)

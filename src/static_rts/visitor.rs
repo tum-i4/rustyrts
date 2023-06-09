@@ -1,8 +1,6 @@
 use super::graph::{DependencyGraph, EdgeType};
 use crate::names::def_id_name;
 
-use itertools::Itertools;
-
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;
@@ -14,8 +12,9 @@ pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
     processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
+
+    #[cfg(feature = "no_monomorphization")]
     original_substs: Option<&'tcx List<GenericArg<'tcx>>>,
-    visited_orig_substs: bool,
 }
 
 impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
@@ -27,23 +26,24 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
             tcx,
             graph,
             processed_instance: None,
+
+            #[cfg(feature = "no_monomorphization")]
             original_substs: None,
-            visited_orig_substs: false,
         }
     }
 
     pub fn visit(&mut self, body: &'tcx Body<'tcx>, substs: &'tcx List<GenericArg<'tcx>>) {
         let def_id = body.source.def_id();
-        self.processed_instance = Some((
-            def_id,
-            if cfg!(feature = "monomorphize_all") {
-                substs
-            } else {
-                List::empty()
-            },
-        ));
-        self.original_substs = Some(substs);
-        self.visited_orig_substs = false;
+
+        #[cfg(not(feature = "no_monomorphization"))]
+        {
+            self.processed_instance = Some((def_id, substs));
+        }
+        #[cfg(feature = "no_monomorphization")]
+        {
+            self.processed_instance = Some((def_id, List::empty()));
+            self.original_substs = Some(substs);
+        }
 
         //##########################################################################################################
         // Visit body and contained promoted mir
@@ -55,7 +55,11 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
         }
 
         self.processed_instance = None;
-        self.original_substs = None;
+
+        #[cfg(feature = "no_monomorphization")]
+        {
+            self.original_substs = None;
+        }
     }
 
     fn get_outer(&self) -> (DefId, &'tcx List<GenericArg<'tcx>>) {
@@ -68,7 +72,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
         let (outer, outer_substs) = self.get_outer();
 
-        if cfg!(feature = "monomorphize_all") {
+        #[cfg(not(feature = "no_monomorphization"))]
+        {
             let name_after_monomorphization = def_id_name(self.tcx, outer, outer_substs);
             let name_not_monomorphized = def_id_name(self.tcx, outer, &[]);
 
@@ -81,7 +86,9 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer) {
             if let Some(trait_ref_binder) = self.tcx.impl_trait_ref(impl_def) {
-                let trait_substs = if cfg!(feature = "monomorphize_all") {
+                let trait_substs = if cfg!(feature = "no_monomorphization") {
+                    List::empty()
+                } else {
                     let mut trait_ref = trait_ref_binder.skip_binder();
 
                     let param_env = self
@@ -94,8 +101,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         trait_ref,
                     );
                     trait_ref.substs
-                } else {
-                    List::empty()
                 };
 
                 let implementors = self.tcx.impl_item_implementor_ids(impl_def);
@@ -120,7 +125,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         self.super_ty(ty);
         let (outer, outer_substs) = self.get_outer();
 
-        if cfg!(feature = "monomorphize_all") {
+        #[cfg(not(feature = "no_monomorphization"))]
+        {
             let param_env = self
                 .tcx
                 .param_env(outer)
@@ -159,8 +165,6 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             _ => {}
         }
 
-        let mut all_substs = Vec::new();
-
         for (def_id, substs, edge_type) in match ty.kind() {
             // 1. function  -> contained Closure
             TyKind::Closure(def_id, substs) => vec![(*def_id, *substs, EdgeType::Closure)],
@@ -183,14 +187,13 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             }
             _ => vec![],
         } {
-            all_substs.push(substs);
-
-            if cfg!(feature = "monomorphize_all") {
+            #[cfg(not(feature = "no_monomorphization"))]
+            {
                 let mut all_substs = vec![substs];
 
                 if !def_id.is_local() {
                     if let Some(upstream_mono) = self.tcx.upstream_monomorphizations_for(def_id) {
-                        all_substs = upstream_mono.keys().map(|s| *s).collect_vec();
+                        all_substs = upstream_mono.keys().map(|s| *s).into_iter().collect();
                     }
                 }
 
@@ -201,7 +204,10 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                         edge_type,
                     );
                 }
-            } else {
+            }
+
+            #[cfg(feature = "no_monomorphization")]
+            {
                 self.graph.add_edge(
                     def_id_name(self.tcx, outer, outer_substs),
                     def_id_name(self.tcx, def_id, &[]),
@@ -390,7 +396,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(not(feature = "monomorphize_all"))]
+    #[cfg(feature = "no_monomorphization")]
     fn test_impls() {
         let graph = compile_and_visit("impls.rs");
 
@@ -411,7 +417,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(not(feature = "monomorphize_all"))]
+    #[cfg(feature = "no_monomorphization")]
     fn test_traits() {
         let graph = compile_and_visit("traits.rs");
 
@@ -457,7 +463,7 @@ mod test {
     }
 
     #[test]
-    #[cfg(feature = "monomorphize_all")]
+    #[cfg(not(feature = "no_monomorphization"))]
     fn test_traits() {
         let graph = compile_and_visit("traits.rs");
 

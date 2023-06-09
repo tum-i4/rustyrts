@@ -1,22 +1,23 @@
 use std::mem::transmute;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::Mutex;
 
+use crate::callbacks_shared::{
+    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, NODES,
+    OLD_VTABLE_ENTRIES,
+};
 use itertools::Itertools;
 use log::debug;
 use once_cell::sync::OnceCell;
-use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{List, PolyTraitRef, TyCtxt, VtblEntry};
-
-use crate::callbacks_shared::{
-    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, NODES,
-    OLD_VTABLE_ENTRIES,
-};
+use rustc_session::config::CrateType;
+use std::sync::atomic::Ordering::SeqCst;
 
 use crate::checksums::{get_checksum_body, get_checksum_vtbl_entry, insert_hashmap, Checksums};
 use crate::const_visitor::ConstVisitor;
@@ -26,6 +27,8 @@ use crate::names::def_id_name;
 use super::graph::DependencyGraph;
 use super::visitor::GraphVisitor;
 
+pub(crate) static SKIP_GRAPH: AtomicBool = AtomicBool::new(false);
+
 pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
 pub struct StaticRTSCallbacks {
@@ -34,6 +37,15 @@ pub struct StaticRTSCallbacks {
 
 impl Callbacks for StaticRTSCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
+        SKIP_GRAPH.store(
+            config
+                .opts
+                .crate_types
+                .iter()
+                .any(|t| *t == CrateType::Rlib || *t == CrateType::ProcMacro),
+            SeqCst,
+        );
+
         config.override_queries = Some(|_session, providers, _extern_providers| {
             // SAFETY: We store the address of the original vtable_entries function as a usize.
             OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
@@ -72,43 +84,49 @@ impl StaticRTSCallbacks {
             let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
             let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
-            let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
-            let bodies = code_gen_units
-                .iter()
-                .flat_map(|c| c.items().keys())
-                .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
-                .map(|m| {
-                    let MonoItem::Fn(instance) = m else {unreachable!()};
-                    instance
-                })
-                .filter(|i| tcx.is_mir_available(i.def_id()))
-                //.filter(|i| i.def_id().is_local()) // It is not feasible to only analyze crate-local bodies
-                .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
-                .collect_vec();
+            // There is no point in creating a graph for a proc macro that is executed a compile time
+            // Functions from rlibs are analyzed in other crates, only if they happen to be used there (see NOTE)
+            if !SKIP_GRAPH.load(SeqCst) {
+                let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
 
-            //##########################################################################################################
-            // 1. Visit every instance (pair of MIR body and corresponding generic args)
-            //    and every body from const
-            //      1) Creates the graph
-            //      2) Write graph to file
+                let bodies = code_gen_units
+                    .iter()
+                    .flat_map(|c| c.items().keys())
+                    .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+                    .map(|m| {
+                        let MonoItem::Fn(instance) = m else {unreachable!()};
+                        instance
+                    })
+                    .filter(|i| tcx.is_mir_available(i.def_id()))
+                    //.filter(|i| i.def_id().is_local()) // NOTE: We also fetch non-local functions here
+                    .filter(|i| tcx.is_codegened_item(i.def_id()))
+                    .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
+                    .collect_vec();
 
-            let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
-            let mut const_visitor = ConstVisitor::new(tcx);
-            for (body, substs) in bodies {
-                graph_visitor.visit(&body, substs);
-                if body.source.def_id().is_local() {
-                    const_visitor.visit(&body, substs);
+                //##########################################################################################################
+                // 1. Visit every instance (pair of MIR body and corresponding generic args)
+                //    and every body from const
+                //      1) Creates the graph
+                //      2) Write graph to file
+
+                let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
+                let mut const_visitor = ConstVisitor::new(tcx);
+                for (body, substs) in bodies {
+                    graph_visitor.visit(&body, substs);
+                    if body.source.def_id().is_local() {
+                        const_visitor.visit(&body, substs);
+                    }
                 }
+
+                write_to_file(
+                    self.graph.to_string(),
+                    PATH_BUF.get().unwrap().clone(),
+                    |buf| get_graph_path(buf, &crate_name, crate_id),
+                    false,
+                );
+
+                debug!("Generated dependency graph for {}", crate_name);
             }
-
-            write_to_file(
-                self.graph.to_string(),
-                PATH_BUF.get().unwrap().clone(),
-                |buf| get_graph_path(buf, &crate_name, crate_id),
-                false,
-            );
-
-            debug!("Generated dependency graph for {}", crate_name);
 
             //##########################################################################################################
             // 2. Calculate checksum of every MIR body
@@ -162,10 +180,10 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
 
     for entry in result {
         if let VtblEntry::Method(instance) = entry {
-            let substs = if cfg!(feature = "monomorphize_all") {
-                instance.substs.as_slice()
-            } else {
+            let substs = if cfg!(feature = "no_monomorphization") {
                 List::empty()
+            } else {
+                instance.substs
             };
 
             let name = def_id_name(tcx, instance.def_id(), substs);

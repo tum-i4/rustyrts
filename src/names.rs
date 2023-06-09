@@ -9,7 +9,7 @@ use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
 use rustc_resolve::Namespace;
 
 lazy_static! {
-    static ref RE_NON_LOCAL: [Regex; 1] = [Regex::new(r"(<)[^> ]*?::(.*?>)").unwrap()];
+    static ref RE_NON_LOCAL: [Regex; 1] = [Regex::new(r"(<[^[:alpha:]]*)[^> ]*?::(.*?>)").unwrap()];
     //static ref RE_BOTH: [Regex; 5] = [
     //    Regex::new(r"(for )[^>]*?::(.*?>)").unwrap(),
     //    Regex::new(r"(<impl )[^>]*?::(.*?>)").unwrap(),
@@ -58,11 +58,6 @@ pub(crate) fn def_id_name<'tcx>(
         def_path_str = re.replace_all(&def_path_str, "${3}").to_string();
     }
 
-    // TODO: find out if this is necessary or not
-    //for re in RE_BOTH.iter() {
-    //    def_path_str = re.replace_all(&def_path_str, "${1}${2}").to_string();
-    //}
-
     // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
 
@@ -81,12 +76,6 @@ pub fn def_path_str_with_substs_with_no_visible_path<'t>(
     )
     .unwrap()
     .into_buffer()
-
-    //lazy_static! {
-    //    static ref RE_GENERICS: Regex = Regex::new(r"<.*>::").unwrap();
-    //}
-    //
-    //RE_GENERICS.replace_all(&result, "").to_string()
 }
 
 // Source: https://doc.rust-lang.org/stable/nightly-rustc/src/rustc_middle/ty/print/pretty.rs.html#1766
