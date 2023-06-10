@@ -12,9 +12,7 @@ pub enum EdgeType {
     FnDefTrait,
     FnDefImpl,
     TraitImpl,
-    AdtImpl,
-    Adt,
-    Alias,
+    Drop,
 
     Monomorphization,
 }
@@ -28,9 +26,7 @@ impl AsRef<str> for EdgeType {
             EdgeType::FnDefTrait => "[color = cyan]",
             EdgeType::FnDefImpl => "[color = yellow]",
             EdgeType::TraitImpl => "[color = magenta]",
-            EdgeType::AdtImpl => "[color = magenta]",
-            EdgeType::Adt => "[color = yellow]",
-            EdgeType::Alias => "[color = yellow]",
+            EdgeType::Drop => "[color = yellow]",
             EdgeType::Monomorphization => "[color = red]",
         }
     }
@@ -48,9 +44,7 @@ impl FromStr for EdgeType {
             "FnDefImpl" => Ok(Self::FnDefImpl),
             "TraitDef" => Ok(Self::FnDef),
             "TraitImpl" => Ok(Self::TraitImpl),
-            "AdtImpl" => Ok(Self::AdtImpl),
-            "Adt" => Ok(Self::Adt),
-            "Alias" => Ok(Self::Alias),
+            "Drop" => Ok(Self::Drop),
 
             "Monomorphization" => Ok(Self::Monomorphization),
             _ => Err(()),
@@ -372,8 +366,16 @@ mod test {
             EdgeType::Generator,
         );
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnDef);
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Alias);
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::AdtImpl);
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::FnDefTrait,
+        );
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::FnDefImpl,
+        );
 
         let serialized = graph.to_string();
         let deserialized = DependencyGraph::from_str(&serialized).unwrap();

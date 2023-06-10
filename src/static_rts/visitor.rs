@@ -1,6 +1,7 @@
 use super::graph::{DependencyGraph, EdgeType};
 use crate::names::def_id_name;
 
+use log::info;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;
@@ -164,6 +165,17 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 }
             }
             _ => {}
+        }
+
+        // 5. function -> destructor (`drop()` function) of referenced abstract datatype
+        if let Some(adt_def) = ty.ty_adt_def() {
+            if let Some(destructor) = self.tcx.adt_destructor(adt_def.did()) {
+                self.graph.add_edge(
+                    def_id_name(self.tcx, outer, outer_substs),
+                    def_id_name(self.tcx, destructor.did, &[]),
+                    EdgeType::Drop,
+                );
+            }
         }
 
         #[allow(unused_variables)]
