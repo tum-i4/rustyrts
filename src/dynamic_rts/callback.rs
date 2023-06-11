@@ -40,13 +40,12 @@ impl DynamicRTSCallbacks {
 impl Callbacks for DynamicRTSCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         // There is no point in analyzing a proc macro that is executed a compile time
-        // Functions from rlibs are analyzed in other crates, only if they happen to be used there
         SKIP.store(
             config
                 .opts
                 .crate_types
                 .iter()
-                .any(|t| *t == CrateType::Rlib || *t == CrateType::ProcMacro),
+                .any(|t| *t == CrateType::ProcMacro),
             SeqCst,
         );
 
@@ -142,6 +141,7 @@ impl DynamicRTSCallbacks {
                 instance
             })
             .filter(|i| tcx.is_mir_available(i.def_id()))
+            .filter(|i| i.def_id().is_local()) // TODO: check if this is feasible
             .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
             .collect_vec();
 

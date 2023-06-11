@@ -78,12 +78,13 @@ During the subsequent run, the traces are compared to the set of changed `Body`s
 
 ## Static
 Static RustyRTS analyzes the MIR during compilation, without modifying it, to build a (directed) dependency graph. Edges are created according to the following criteria:
-1. `EdgeType::Closure`:         function  -> contained Closure
-2. `EdgeType::Generator`:       function  -> contained Generator
+1. `EdgeType::Closure`:         function -> contained Closure
+2. `EdgeType::Generator`:       function -> contained Generator
 3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for assoc `fn`s in `trait {..})
 3. 3. `EdgeType::FnDefImpl`:    caller function -> callee `fn` (for assoc `fn`s in `impl .. {..})
-3. 3. `EdgeType::FnDef`:        caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
+3. 3. `EdgeType::FnDef`:        caller function -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
 4. `EdgeType::TraitImpl`:       function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
+5. `EdgeType::Drop`:            function -> destructor (`drop()` function) of referenced abstract datatype
 
 All these functions are not yet monomorphized. Using names of fully monomorphized functions is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.
 It is nevertheless possible to do that using the `monomorphize_all` feature.
