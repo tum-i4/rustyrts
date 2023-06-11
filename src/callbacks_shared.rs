@@ -73,16 +73,20 @@ pub(crate) fn run_analysis_shared<'tcx>(
 
     let mut const_visitor = ConstVisitor::new(tcx);
     for (body, substs) in &bodies {
-        const_visitor.visit(&body, substs);
+        if body.source.def_id().is_local() {
+            const_visitor.visit(&body, substs);
+        }
     }
 
     let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
 
     for (body, _substs) in &bodies {
-        let name = def_id_name(tcx, body.source.def_id(), List::empty()); // IMPORTANT: no substs here
-
-        let checksum = get_checksum_body(tcx, body);
-        insert_hashmap(&mut *new_checksums, &name, checksum);
+        if body.source.def_id().is_local() {
+            let name = def_id_name(tcx, body.source.def_id(), List::empty()); // IMPORTANT: no substs here
+            
+            let checksum = get_checksum_body(tcx, body);
+            insert_hashmap(&mut *new_checksums, &name, checksum);
+        }
     }
 
     //##############################################################################################################
