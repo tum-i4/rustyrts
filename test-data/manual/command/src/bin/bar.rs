@@ -8,7 +8,7 @@ pub fn main() -> ExitCode {
         process::{Command, ExitCode},
     };
 
-    let path = PathBuf::from("target/debug/foo");
+    let path = PathBuf::from("target_dynamic/debug/foo");
 
     let status = Command::new(path).status().unwrap();
     return ExitCode::from(status.code().unwrap() as u8);
