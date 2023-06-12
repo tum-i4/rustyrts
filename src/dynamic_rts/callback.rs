@@ -141,7 +141,7 @@ impl DynamicRTSCallbacks {
                 instance
             })
             .filter(|i| tcx.is_mir_available(i.def_id()))
-            .filter(|i| i.def_id().is_local())
+            //.filter(|i| i.def_id().is_local()) // It is not feasible to only analyze local MIR
             .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
             .collect_vec();
 

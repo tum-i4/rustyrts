@@ -34,18 +34,36 @@ pub(crate) fn def_id_name<'tcx>(
     //let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
     //let def_id = tcx.normalize_erasing_regions(param_env, def_id);
 
+     let crate_path = if def_id.is_local() {
+        let crate_name = tcx.crate_name(LOCAL_CRATE);
+
+        format!(
+            "[{:04x}]::{}",
+            tcx.sess.local_stable_crate_id().to_u64() >> 8 * 6,
+            crate_name
+        )
+    } else {
+        let cstore = tcx.cstore_untracked();
+
+        format!(
+            "[{:04x}]",
+            cstore.stable_crate_id(def_id.krate).to_u64() >> 8 * 6
+        )
+    };
+
     let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs);
 
     let mut def_path_str = if !def_id.is_local() && suffix.starts_with("<(dyn") {
         let cstore = tcx.cstore_untracked();
 
-        format!("{}::{}", cstore.crate_name(def_id.krate), suffix)
-    } else if def_id.is_local() {
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
-
-        format!("{}::{}", crate_name, suffix)
+        format!(
+            "{}::{}::{}",
+            crate_path,
+            cstore.crate_name(def_id.krate),
+            suffix
+        )
     } else {
-        format!("{}", suffix)
+        format!("{}::{}", crate_path, suffix)
     };
 
     if !def_id.is_local() {

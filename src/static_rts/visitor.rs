@@ -1,7 +1,6 @@
 use super::graph::{DependencyGraph, EdgeType};
 use crate::names::def_id_name;
 
-use log::info;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;

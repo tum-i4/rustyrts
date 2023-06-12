@@ -4,6 +4,8 @@ use once_cell::sync::OnceCell;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{GenericArg, List, TyCtxt};
+use rustc_span::def_id::DefId;
+use std::collections::HashMap;
 use std::sync::atomic::Ordering::SeqCst;
 use std::{
     collections::HashSet,
@@ -68,25 +70,27 @@ pub(crate) fn run_analysis_shared<'tcx>(
     CRATE_NAME.get_or_init(|| crate_name.clone());
     CRATE_ID.get_or_init(|| crate_id);
 
+    let mut bodies_map: HashMap<DefId, &'tcx Body> = HashMap::new();
+
+    for (body, _substs) in &bodies {
+        bodies_map.insert(body.source.def_id(), body);
+    }
+    let dedup_bodies: Vec<&'tcx Body> = bodies_map.values().map(|b| *b).collect();
+
     //##########################################################################################################
     // 2. Calculate checksum of every MIR body and the consts that it uses
 
     let mut const_visitor = ConstVisitor::new(tcx);
     for (body, substs) in &bodies {
-        if body.source.def_id().is_local() {
-            const_visitor.visit(&body, substs);
-        }
+        const_visitor.visit(&body, substs);
     }
 
     let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
 
-    for (body, _substs) in &bodies {
-        if body.source.def_id().is_local() {
-            let name = def_id_name(tcx, body.source.def_id(), List::empty()); // IMPORTANT: no substs here
-            
-            let checksum = get_checksum_body(tcx, body);
-            insert_hashmap(&mut *new_checksums, &name, checksum);
-        }
+    for body in dedup_bodies {
+        let name = def_id_name(tcx, body.source.def_id(), List::empty()); // IMPORTANT: no substs here
+        let checksum = get_checksum_body(tcx, body);
+        insert_hashmap(&mut *new_checksums, &name, checksum);
     }
 
     //##############################################################################################################
