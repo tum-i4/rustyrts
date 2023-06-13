@@ -204,7 +204,6 @@ pub trait Traceable<'tcx> {
     fn insert_trace(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        name_self: &str,
         name: &str,
         cache_str: &mut Option<(Local, Ty<'tcx>)>,
         cache_u8: &mut Option<(Local, Ty<'tcx>)>,
@@ -241,13 +240,12 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
     fn insert_trace(
         &mut self,
         tcx: TyCtxt<'tcx>,
-        name_self: &str,
         name: &str,
         cache_str: &mut Option<(Local, Ty<'tcx>)>,
         cache_u8: &mut Option<(Local, Ty<'tcx>)>,
         cache_ret: &mut Option<Local>,
     ) {
-        if !EDGE_CASES_NO_TRACE.iter().any(|c| name_self.ends_with(c)) {
+        if !EDGE_CASES_NO_TRACE.iter().any(|c| name.ends_with(c)) {
             trace!(
                 "Inserting trace(\"{}\") into {:?}",
                 name,
@@ -699,7 +697,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                         .kind;
 
                     if let TerminatorKind::Call { func, .. } = terminator_kind {
-                        if def_id_name(tcx, func.const_fn_def().unwrap().0, &[])
+                        if def_id_name(tcx, func.const_fn_def().unwrap().0, &[], false)
                             .split_once("::")
                             .and_then(|(_, second)| second.split_once("::"))
                             .map(|(_, second)| second == EDGE_CASE_FROM_RESIDUAL)

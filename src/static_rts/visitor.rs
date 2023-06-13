@@ -109,8 +109,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                 for (trait_fn, impl_fn) in implementors {
                     if *impl_fn == outer {
                         self.graph.add_edge(
-                            def_id_name(self.tcx, *trait_fn, trait_substs),
-                            def_id_name(self.tcx, outer, outer_substs),
+                            def_id_name(self.tcx, *trait_fn, trait_substs, false),
+                            def_id_name(self.tcx, outer, outer_substs, false),
                             EdgeType::TraitImpl,
                         );
                     }
@@ -170,8 +170,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         if let Some(adt_def) = ty.ty_adt_def() {
             if let Some(destructor) = self.tcx.adt_destructor(adt_def.did()) {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer, outer_substs),
-                    def_id_name(self.tcx, destructor.did, &[]),
+                    def_id_name(self.tcx, outer, outer_substs, false),
+                    def_id_name(self.tcx, destructor.did, &[], false),
                     EdgeType::Drop,
                 );
             }
@@ -212,8 +212,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             #[cfg(not(feature = "monomorphize"))]
             {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer, outer_substs),
-                    def_id_name(self.tcx, def_id, &[]),
+                    def_id_name(self.tcx, outer, outer_substs, false),
+                    def_id_name(self.tcx, def_id, &[], false),
                     edge_type,
                 );
             }

@@ -30,25 +30,26 @@ pub(crate) fn def_id_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     substs: &'tcx [GenericArg<'tcx>],
+    add_crate_id: bool,
 ) -> String {
-    //let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
-    //let def_id = tcx.normalize_erasing_regions(param_env, def_id);
+    let crate_id = if add_crate_id {
+        if def_id.is_local() {
+            let crate_name = tcx.crate_name(LOCAL_CRATE);
 
-     let crate_path = if def_id.is_local() {
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
+            format!(
+                "[{:04x}]::",
+                tcx.sess.local_stable_crate_id().to_u64() >> (8 * 6)
+            )
+        } else {
+            let cstore = tcx.cstore_untracked();
 
-        format!(
-            "[{:04x}]::{}",
-            tcx.sess.local_stable_crate_id().to_u64() >> 8 * 6,
-            crate_name
-        )
+            format!(
+                "[{:04x}]::",
+                cstore.stable_crate_id(def_id.krate).to_u64() >> (8 * 6)
+            )
+        }
     } else {
-        let cstore = tcx.cstore_untracked();
-
-        format!(
-            "[{:04x}]",
-            cstore.stable_crate_id(def_id.krate).to_u64() >> 8 * 6
-        )
+        "".to_string()
     };
 
     let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs);
@@ -57,13 +58,17 @@ pub(crate) fn def_id_name<'tcx>(
         let cstore = tcx.cstore_untracked();
 
         format!(
-            "{}::{}::{}",
-            crate_path,
+            "{}{}::{}",
+            crate_id,
             cstore.crate_name(def_id.krate),
             suffix
         )
+    } else if def_id.is_local() {
+        let crate_name = tcx.crate_name(LOCAL_CRATE);
+
+        format!("{}{}::{}", crate_id, crate_name, suffix)
     } else {
-        format!("{}::{}", crate_path, suffix)
+        format!("{}{}", crate_id, suffix)
     };
 
     if !def_id.is_local() {

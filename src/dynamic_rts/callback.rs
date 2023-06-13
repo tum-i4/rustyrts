@@ -173,7 +173,7 @@ fn custom_vtable_entries<'tcx>(
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();
 
-                let name = def_id_name(tcx, def_id, &[]); // IMPORTANT: no substs here
+                let name = def_id_name(tcx, def_id, &[], false); // IMPORTANT: no substs here
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
                 debug!("Considering {:?} in checksums of {}", instance, name);
 

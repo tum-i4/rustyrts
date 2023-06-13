@@ -230,7 +230,7 @@ where
 
     let mut affected_tests_iter = affected_tests
         .map(|line| {
-            let test = line.split_once("::").unwrap().1.split_once("::").unwrap().1;
+            let test = line.split_once("::").unwrap().1; // .split_once("::").unwrap().1;
             test.to_string()
         })
         .peekable();
@@ -707,6 +707,9 @@ fn select_and_execute_tests_dynamic() {
                 .split_once(".")
                 .unwrap()
                 .0
+                .split_once("::")
+                .unwrap()
+                .1
                 .to_string()
         })
         .collect();
@@ -747,6 +750,9 @@ fn select_and_execute_tests_dynamic() {
                 .split_once(".")
                 .unwrap()
                 .0
+                .split_once("::")
+                .unwrap()
+                .1
                 .to_string();
             affected_tests.push(test_name);
         }

@@ -154,7 +154,7 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
                     instance.substs
                 };
 
-                let name = def_id_name(tcx, instance.def_id(), substs);
+                let name = def_id_name(tcx, instance.def_id(), substs, false);
 
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
 

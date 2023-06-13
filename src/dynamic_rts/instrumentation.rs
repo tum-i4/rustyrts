@@ -7,7 +7,7 @@ use rustc_middle::{mir::Body, ty::TyCtxt};
 
 pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.instance.def_id();
-    let outer = def_id_name(tcx, def_id, &[]);
+    let outer = def_id_name(tcx, def_id, &[], false);
 
     trace!("Visiting {}", outer);
 
@@ -26,7 +26,8 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     for (_, list) in attrs.iter() {
         for attr in *list {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                let def_path_test = &outer[0..outer.len() - 13];
+                let def_path = def_id_name(tcx, def_id, &[], true);
+                let def_path_test = &def_path[0..def_path.len() - 13];
 
                 // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
                 // 1. insert_post 2. insert_pre
@@ -57,14 +58,7 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         body.insert_post_main(tcx, &mut cache_ret, &mut None);
     }
 
-    body.insert_trace(
-        tcx,
-        &outer,
-        &def_id_name(tcx, def_id, &[]),
-        &mut cache_str,
-        &mut cache_u8,
-        &mut cache_ret,
-    );
+    body.insert_trace(tcx, &outer, &mut cache_str, &mut cache_u8, &mut cache_ret);
 
     #[cfg(unix)]
     body.check_calls_to_exit(tcx, &mut cache_ret);
