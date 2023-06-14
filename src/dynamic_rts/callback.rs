@@ -8,6 +8,7 @@ use rustc_middle::ty::query::{query_keys, query_stored};
 use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_session::config::CrateType;
 use rustc_span::source_map::{FileLoader, RealFileLoader};
+use std::env;
 use std::mem::transmute;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;
@@ -18,6 +19,7 @@ use crate::callbacks_shared::{
 };
 
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
+use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::dynamic_rts::instrumentation::modify_body;
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
@@ -45,7 +47,8 @@ impl Callbacks for DynamicRTSCallbacks {
                 .opts
                 .crate_types
                 .iter()
-                .any(|t| *t == CrateType::ProcMacro),
+                .any(|t| *t == CrateType::ProcMacro)
+                || env::var(ENV_SKIP_ANALYSIS).is_ok(),
             SeqCst,
         );
 

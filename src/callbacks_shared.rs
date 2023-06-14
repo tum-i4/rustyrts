@@ -188,6 +188,7 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
                     (Some(new), Some(old)) => new != old,
                 }
             };
+
             if changed {
                 changed_nodes.insert(name.clone());
             }
@@ -204,7 +205,11 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
 
                 match (maybe_new, maybe_old) {
                     (None, _) => panic!("Did not find checksum for vtable entry {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
-                    (Some(_), None) => false,
+                    (Some(_), None) => {
+                        // Set to false because this function cannot have been called in the old revision (dynamic)
+                        // and this function must have been added just recently and is considered changed anyway (static)
+                        false
+                    }, 
                     (Some(new), Some(old)) => {
                         if from_new_revision {
                             new.difference(old).count() != 0

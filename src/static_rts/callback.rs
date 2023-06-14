@@ -1,3 +1,4 @@
+use std::env;
 use std::mem::transmute;
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -6,6 +7,7 @@ use crate::callbacks_shared::{
     excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL,
     OLD_VTABLE_ENTRIES, SKIP,
 };
+use crate::constants::ENV_SKIP_ANALYSIS;
 use itertools::Itertools;
 use log::debug;
 use once_cell::sync::OnceCell;
@@ -38,7 +40,8 @@ impl Callbacks for StaticRTSCallbacks {
                 .opts
                 .crate_types
                 .iter()
-                .any(|t| *t == CrateType::ProcMacro),
+                .any(|t| *t == CrateType::ProcMacro)
+                || env::var(ENV_SKIP_ANALYSIS).is_ok(),
             SeqCst,
         );
 

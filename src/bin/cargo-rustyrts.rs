@@ -3,7 +3,7 @@ use rustyrts::checksums::Checksums;
 use rustyrts::constants::{
     DESC_FLAG, ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST,
     ENDING_TRACE, ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
-    ENV_TARGET_DIR, FILE_COMPLETE_GRAPH,
+    ENV_SKIP_ANALYSIS, ENV_TARGET_DIR, FILE_COMPLETE_GRAPH,
 };
 use rustyrts::fs_utils::{
     get_dynamic_path, get_static_path, get_target_dir, read_lines, read_lines_filter_map,
@@ -209,6 +209,8 @@ where
     cmd.arg("test");
     cmd.arg("--no-fail-fast"); // Do not stop if a test fails, execute all included tests
 
+    cmd.env(ENV_SKIP_ANALYSIS, "true");
+
     // Serialize the args for rust_c into a special environemt variable.
     // This will be read by `inside_cargo_rustc` when we go to invoke
     // our actual target crate.
@@ -394,8 +396,9 @@ fn run_rustyrts() {
     cmd.arg(sysroot);
 
     // Add args for `rustyrts`
-    let magic = std::env::var(ENV_RUSTYRTS_ARGS).expect(&format!("missing {}", ENV_RUSTYRTS_ARGS));
-    let rustyrts_args: Vec<String> = serde_json::from_str(&magic)
+    let rustyrts_args_raw =
+        std::env::var(ENV_RUSTYRTS_ARGS).expect(&format!("missing {}", ENV_RUSTYRTS_ARGS));
+    let rustyrts_args: Vec<String> = serde_json::from_str(&rustyrts_args_raw)
         .expect(&format!("failed to deserialize {}", ENV_RUSTYRTS_ARGS));
     cmd.args(rustyrts_args);
 

@@ -34,8 +34,6 @@ pub(crate) fn def_id_name<'tcx>(
 ) -> String {
     let crate_id = if add_crate_id {
         if def_id.is_local() {
-            let crate_name = tcx.crate_name(LOCAL_CRATE);
-
             format!(
                 "[{:04x}]::",
                 tcx.sess.local_stable_crate_id().to_u64() >> (8 * 6)

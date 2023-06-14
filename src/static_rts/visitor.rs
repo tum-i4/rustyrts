@@ -1,6 +1,5 @@
 use super::graph::{DependencyGraph, EdgeType};
 use crate::names::def_id_name;
-
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;
@@ -75,7 +74,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         #[cfg(feature = "monomorphize")]
         {
             let name_after_monomorphization = def_id_name(self.tcx, outer, outer_substs);
-            let name_not_monomorphized = def_id_name(self.tcx, outer, &[]);
+            let name_after_monomorphization = def_id_name(self.tcx, outer, outer_substs, false);
+            let name_not_monomorphized = def_id_name(self.tcx, outer, &[], false);
 
             self.graph.add_edge(
                 name_after_monomorphization,
@@ -177,6 +177,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             }
         }
 
+        let outer_name = def_id_name(self.tcx, outer, outer_substs, false);
+
         #[allow(unused_variables)]
         for (def_id, substs, edge_type) in match ty.kind() {
             // 1. function  -> contained Closure
@@ -203,8 +205,8 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             #[cfg(feature = "monomorphize")]
             {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer, outer_substs),
-                    def_id_name(self.tcx, def_id, substs),
+                    outer_name.clone(),
+                    def_id_name(self.tcx, def_id, substs, false),
                     edge_type,
                 );
             }
@@ -212,7 +214,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             #[cfg(not(feature = "monomorphize"))]
             {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer, outer_substs, false),
+                    outer_name.clone(),
                     def_id_name(self.tcx, def_id, &[], false),
                     edge_type,
                 );
