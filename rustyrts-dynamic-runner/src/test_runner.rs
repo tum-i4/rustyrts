@@ -154,7 +154,7 @@ fn execute_tests_unix(
     opts: TestOpts,
     n_workers: usize,
     tests: Vec<TestDescAndFn>,
-    mut formatter: Box<dyn OutputFormatter + Send>,
+    formatter: Box<dyn OutputFormatter + Send>,
     state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
     use std::process::exit;

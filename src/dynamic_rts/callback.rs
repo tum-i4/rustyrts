@@ -52,16 +52,14 @@ impl Callbacks for DynamicRTSCallbacks {
             SeqCst,
         );
 
-        let file_loader = if !excluded(config.opts.crate_name.as_ref().unwrap()) {
+        let file_loader = if !no_instrumentation(config.opts.crate_name.as_ref().unwrap()) {
             Box::new(TestRunnerFileLoaderProxy {
                 delegate: InstrumentationFileLoaderProxy {
                     delegate: RealFileLoader,
                 },
             }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
         } else {
-            Box::new(InstrumentationFileLoaderProxy {
-                delegate: RealFileLoader,
-            }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+            Box::new(RealFileLoader {}) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
         };
         config.file_loader = Some(file_loader);
 
