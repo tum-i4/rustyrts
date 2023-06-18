@@ -47,7 +47,7 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
     # does not work correctly anymore
     # that is why we fixed the commits that are analyzed
     (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (
-        RandomWalkerStrategy(repository, branch=branch), 4)
+        RandomWalkerStrategy(repository, branch=branch), 4) # TODO: increase this
 
     build_options = build_options if build_options else []
     build_options += ["-Z no-index-update"]
