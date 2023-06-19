@@ -1,3 +1,4 @@
+import gc
 import glob
 import os
 from abc import ABC, abstractmethod
@@ -13,7 +14,9 @@ from ...models.scm.base import Repository, Commit
 from ...models.testing.base import TestReport
 from ...models.testing.loaders.cargo_test import CargoTestTestReportLoader
 from ...util.os.exec import SubprocessContainer
+from ...util.logging.logger import get_logger
 
+_LOGGER = get_logger(__name__)
 
 class CargoHook(Hook, ABC):
 
@@ -38,6 +41,10 @@ class CargoHook(Hook, ABC):
         pass
 
     @abstractmethod
+    def build_env(self):
+        pass
+
+    @abstractmethod
     def clean_command(self):
         pass
 
@@ -55,7 +62,6 @@ class CargoHook(Hook, ABC):
 
         :return:
         """
-        # keep track of current working directory
         has_failed = False
 
         with self.connection.create_session_ctx() as session:
@@ -68,36 +74,76 @@ class CargoHook(Hook, ABC):
 
             ############################################################################################################
             # Prepare on parent commit
+
+            # checkout parent commit
+            parent_commit = self.git_client.get_parent_commit(commit_sha=commit.commit_str)
+            self.git_client.git_repo.git.checkout(parent_commit, force=True)
+            self.git_client.git_repo.git.reset(parent_commit, hard=True)
+
+            for filename in glob.glob("rust-toolchain*"):
+                os.remove(filename)
+
+            # prepare cache dir/file
+            cache_file = "run_{}.log".format(
+                int(time() * 1000)
+            )  # run identified by timestamp
+            cache_file_path = os.path.join(self.cache_dir, cache_file)
+
+            # clean
+            proc: SubprocessContainer = SubprocessContainer(
+                command=self.clean_command(), output_filepath=cache_file_path
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+            ############################################################################################################
+            # Build on parent commit
+            # (Some tests in certain projects require artifacts that are build only by cargo build)
+
             if not has_failed:
-                # checkout parent commit
-                parent_commit = self.git_client.get_parent_commit(commit_sha=commit.commit_str)
-                self.git_client.git_repo.git.checkout(parent_commit, force=True)
-                self.git_client.git_repo.git.reset(parent_commit, hard=True)
-
-                for filename in glob.glob("rust-toolchain*"):
-                    os.remove(filename)
-
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(
                     int(time() * 1000)
                 )  # run identified by timestamp
                 cache_file_path = os.path.join(self.cache_dir, cache_file)
 
-                # clean
+                # Run build command on parent commit
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.clean_command(), output_filepath=cache_file_path
+                    command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
                 )
-                proc.execute(capture_output=True, shell=True, timeout=100.0)
+                proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                has_failed |= not (proc.exit_code == 0 or any(
+                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
+                # ******************************************************************************************************
+                # Parse result
+
+                log = proc.output
+
+                # create test report object
+                test_report: TestReport = TestReport(
+                    name=self.report_name + " - parent build",
+                    duration=proc.end_to_end_time,
+                    suites=[],
+                    commit=commit,
+                    commit_str=commit.commit_str,
+                    log=log,
+                    has_failed=has_failed
+                )
+
+                DBTestReport.create_or_update(report=test_report, session=session)
+
+            ############################################################################################################
+            # Run on parent commit
+            if not has_failed:
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(
                     int(time() * 1000)
                 )  # run identified by timestamp
                 cache_file_path = os.path.join(self.cache_dir, cache_file)
 
-                # Run build command to generate temporary files for incremental compilation
+                # Run test command to generate temporary files for incremental compilation or traces
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.build_command(), output_filepath=cache_file_path, env=self.env()
+                    command=self.test_command(), output_filepath=cache_file_path, env=self.env()
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_failed |= not (proc.exit_code == 0 or any(
@@ -131,16 +177,56 @@ class CargoHook(Hook, ABC):
                 DBTestReport.create_or_update(report=test_report, session=session)
 
             ############################################################################################################
+            # Prepare on actual commit
+
+            # checkout actual commit
+            self.git_client.git_repo.git.checkout(commit.commit_str, force=True)
+            self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
+
+            for filename in glob.glob("rust-toolchain*"):
+                os.remove(filename)
+
+            ############################################################################################################
+            # Build on actual commit
+            # (Some tests in certain projects require artifacts that are build only by cargo build)
+
+            if not has_failed:
+                # prepare cache dir/file
+                cache_file = "run_{}.log".format(
+                    int(time() * 1000)
+                )  # run identified by timestamp
+                cache_file_path = os.path.join(self.cache_dir, cache_file)
+
+                # Run build command on actual commit
+                proc: SubprocessContainer = SubprocessContainer(
+                    command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
+                )
+                proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                has_failed |= not (proc.exit_code == 0 or any(
+                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+
+                # ******************************************************************************************************
+                # Parse result
+
+                log = proc.output
+
+                # create test report object
+                test_report: TestReport = TestReport(
+                    name=self.report_name + " - build",
+                    duration=proc.end_to_end_time,
+                    suites=[],
+                    commit=commit,
+                    commit_str=commit.commit_str,
+                    log=log,
+                    has_failed=has_failed
+                )
+
+                DBTestReport.create_or_update(report=test_report, session=session)
+
+            ############################################################################################################
             # Run on actual commit
 
             if not has_failed:
-                # checkout actual commit
-                self.git_client.git_repo.git.checkout(commit.commit_str, force=True)
-                self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
-
-                for filename in glob.glob("rust-toolchain*"):
-                    os.remove(filename)
-
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(
                     int(time() * 1000)
@@ -190,5 +276,8 @@ class CargoHook(Hook, ABC):
 
         self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
         self.git_client.clean(rm_dirs=True)
+
+        freed = gc.collect()
+        _LOGGER.log(logging.INFO, "gc has freed " + str(freed) + " objects")
 
         return not has_failed

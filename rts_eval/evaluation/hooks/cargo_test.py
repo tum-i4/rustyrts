@@ -1,4 +1,5 @@
 import os
+from os.path import abspath
 from typing import Optional, Dict
 
 from .cargo_base import CargoHook
@@ -19,23 +20,30 @@ class CargoTestHook(CargoHook):
         super().__init__(repository, git_client, connection, report_name, output_path)
 
         self.env_vars = env_vars
+        self.target_dir = abspath(repository.path + "/target_test")
         self.build_options = build_options if build_options else []
         self.test_options = test_options if test_options else []
 
-        if "--no-fail-fast" not in build_options:
-            build_options += ["--no-fail-fast"]
-
     def env(self):
         return os.environ | self.env_vars
+
+    def build_env(self):
+        os.makedirs(self.target_dir, exist_ok=True)
+
+        env = {}
+        env["CARGO_TARGET_DIR"] = self.target_dir
+        return os.environ | self.env_vars | env
 
     def clean_command(self):
         return "cargo clean"
 
     def build_command(self):
-        return self.test_command()
+        return "cargo build --tests --examples {0}".format(
+            " ".join(self.build_options)
+        )
 
     def test_command(self):
-        return "cargo test --tests --examples {0} -- {1}".format(
+        return "cargo test --tests --examples {0} --no-fail-fast -- {1}".format(
             " ".join(self.build_options),
             " ".join(self.test_options),
         )

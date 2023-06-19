@@ -1,8 +1,6 @@
 import re
 from json import JSONDecodeError, JSONDecoder
 
-import gc
-
 from ..base import TestSuite
 from ..loader import TestReportLoader
 
@@ -94,7 +92,6 @@ class CargoTestTestReportLoader(TestReportLoader):
 
             event = next(all_tests_iter, None)
 
-        gc.collect()
         return test_suites
 
 

@@ -1,3 +1,5 @@
+import gc
+import logging
 import os
 import re
 from enum import Enum
@@ -13,7 +15,9 @@ from ...models.scm.base import Repository, Commit
 from ...models.testing.loaders.mutants import CargoMutantsTestReportLoader
 from ...models.testing.mutants import MutantsReport
 from ...util.os.exec import SubprocessContainer
+from ...util.logging.logger import get_logger
 
+_LOGGER = get_logger(__name__)
 
 class RustyMutantsRTSMode(str, Enum):
     TEST = ""
@@ -151,5 +155,8 @@ class CargoMutantsHook(Hook):
 
         self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
         self.git_client.clean(rm_dirs=True)
+
+        freed = gc.collect()
+        _LOGGER.log(logging.INFO, "gc has freed " + str(freed) + " objects")
 
         return not has_failed
