@@ -278,6 +278,6 @@ class CargoHook(Hook, ABC):
         self.git_client.clean(rm_dirs=True)
 
         freed = gc.collect()
-        _LOGGER.log(logging.INFO, "gc has freed " + str(freed) + " objects")
+        _LOGGER.info("gc has freed " + str(freed) + " objects")
 
         return not has_failed

@@ -70,16 +70,7 @@ path = os.path.abspath(path)
 branch = "master"
 commits = ["af6b6c543b224d348a8876f0c06245d9ea7929c5"]
 
-
-# On the second and third commit of ripgrep, the baseline fails due to \0 being printed instead of \u{0}
-# The reason for this may be some difference in stdlib, but can be fixed by replacing these tokens in the source code
-def replace_u0():
-    project_dir = Path(path)
-    for file in project_dir.rglob("*.rs"):
-        file.write_text(file.read_text().replace('u{0}', '0'))
-
-
-walk(path, branch=branch, commits=commits, pre_hook=replace_u0)
+walk(path, branch=branch, commits=commits)
 
 
 # %%
@@ -106,7 +97,7 @@ branch = "master"
 commits = ["e96addaa919e1f91c9dc143a9b13b218835f2356"]
 
 
-# Using dynamic rts, this test just keeps failing on the remote machine, while succeeding locally
+# Using dynamic rts, these tests just keeps failing on the remote machine, while succeeding locally
 # Apparently, the reason has something to do with the operating system and not RustyRTSS itself
 # This is why, we just ignore these tests
 def replace_problematic_tests():
