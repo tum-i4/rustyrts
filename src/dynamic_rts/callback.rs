@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -59,7 +59,8 @@ impl Callbacks for DynamicRTSCallbacks {
                 },
             }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
         } else {
-            Box::new(RealFileLoader {}) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+            Box::new(RealFileLoader {})
+                as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
         };
         config.file_loader = Some(file_loader);
 

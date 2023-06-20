@@ -9,7 +9,7 @@ use crate::callbacks_shared::{
 };
 use crate::constants::ENV_SKIP_ANALYSIS;
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
 use once_cell::sync::OnceCell;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -132,7 +132,7 @@ impl StaticRTSCallbacks {
     }
 }
 
-pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
+fn custom_vtable_entries_monomorphized<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: PolyTraitRef<'tcx>,
 ) -> &'tcx [VtblEntry<'tcx>] {
@@ -160,6 +160,8 @@ pub(crate) fn custom_vtable_entries_monomorphized<'tcx>(
                 let name = def_id_name(tcx, instance.def_id(), substs, false);
 
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
+
+                debug!("Considering {:?} in checksums of {}", instance, name);
 
                 insert_hashmap(
                     &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),

@@ -176,6 +176,8 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
 
         trace!("Checksums: {:?}", new_checksums);
 
+        // We only consider nodes from the new revision
+        // (Dynamic: if something in the old revision has been removed, there must be a change to some other function)
         for name in new_checksums.keys() {
             trace!("Checking {}", name);
             let changed = {
@@ -190,51 +192,49 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             };
 
             if changed {
+                debug!("Changed due to regular checksums: {}", name);
                 changed_nodes.insert(name.clone());
             }
         }
 
-        for name in new_checksums_vtbl.keys() {
+        // To properly handle dynamic dispatch, we need to differentiate
+        // We consider nodes from the "primary" revision
+        // In case of dynamic, this is the old revision (because traces are from the old revision)
+        // In case of static, this is the new revision (because graph is build over new revision)
+        let (primary_vtbl_checksums, secondary_vtbl_checksums) = if from_new_revision {
+            (&*new_checksums_vtbl, &old_checksums_vtbl)
+        } else {
+            (&old_checksums_vtbl, &*new_checksums_vtbl)
+        };
+
+        // We consider nodes from the "primary" revision
+        for name in primary_vtbl_checksums.keys() {
             let changed = {
-                let maybe_new = new_checksums_vtbl.get(name);
-                let maybe_old = old_checksums_vtbl.get(name);
+                let maybe_primary = primary_vtbl_checksums.get(name);
+                let maybe_secondary = secondary_vtbl_checksums.get(name);
 
-                // Only in dynamic RustyRTS:
-                // We only need to consider functions that are no longer pointed to by the vtable entries
-                // (dynamic dispatch may call a different function in the new revision)
-
-                match (maybe_new, maybe_old) {
+                match (maybe_primary, maybe_secondary) {
                     (None, _) => panic!("Did not find checksum for vtable entry {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
                     (Some(_), None) => {
-                        // Set to false because this function cannot have been called in the old revision (dynamic)
-                        // and this function must have been added just recently and is considered changed anyway (static)
-                        false
-                    }, 
-                    (Some(new), Some(old)) => {
-                        if from_new_revision {
-                            new.difference(old).count() != 0
-                        } else {
-                            old.difference(new).count() != 0
-                        }
+                        // We consider functions that are not in the secondary set
+                        // In case of dynamic: functions that do no longer have an entry pointing to them
+                        // In case of static: functions that now have an entry pointing to them
+                        true
+                    },
+                    (Some(primary), Some(secondary)) => {
+                        // Respectively if there is an entry that is missing in the secondary set
+                        primary.difference(secondary).count() != 0
                      },
                 }
             };
 
             if changed {
+                debug!("Changed due to vtable checksums: {}", name);
                 changed_nodes.insert(name.clone());
             }
         }
 
-        // Also consider nodes that do no longer have a vtable entry pointing at them as changed
-        // (dynamic dispatch may call a different function in the new revision)
-        if !from_new_revision {
-            for node in old_checksums_vtbl.keys() {
-                if !new_checksums_vtbl.keys().contains(node) {
-                    changed_nodes.insert(node.clone());
-                }
-            }
-        }
-
+        // We only consider nodes from the new revision
         for name in new_checksums_const.keys() {
             let changed = {
                 let maybe_new = new_checksums_const.get(name);
@@ -248,6 +248,7 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             };
 
             if changed {
+                debug!("Changed due to const checksums: {}", name);
                 changed_nodes.insert(name.clone());
             }
         }
