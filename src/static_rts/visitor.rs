@@ -1,7 +1,7 @@
 use super::graph::{DependencyGraph, EdgeType};
 use crate::constants::SUFFIX_DYN;
 use crate::names::def_id_name;
-use log::{info, warn};
+use log::warn;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::Body;

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::{debug, info, trace};
+use log::{debug, trace};
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::Body;
