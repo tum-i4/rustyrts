@@ -42,6 +42,9 @@ class CargoTestHook(CargoHook):
             " ".join(self.build_options)
         )
 
+    def test_command_parent(self):
+        return self.test_command()
+
     def test_command(self):
         return "cargo test --tests --examples {0} --no-fail-fast -- {1}".format(
             " ".join(self.build_options),

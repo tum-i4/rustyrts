@@ -56,8 +56,16 @@ class CargoRustyRTSHook(CargoHook):
             " ".join(self.build_options)
         )
 
-    def test_command(self):
+    def test_command_parent(self):
         return "cargo rustyrts {0} -- {1} -- {2} -- {1} -- {3}".format(
+            self.mode,
+            " ".join(self.build_options),
+            " ".join(self.rustc_options),
+            " ".join(self.test_options),
+        )
+
+    def test_command(self):
+        return "cargo rustyrts {0} -v -- {1} -- {2} -- {1} -- {3}".format(
             self.mode,
             " ".join(self.build_options),
             " ".join(self.rustc_options),

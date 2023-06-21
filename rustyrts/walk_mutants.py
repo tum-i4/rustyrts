@@ -1,30 +1,4 @@
 # %%
-## Rocket
-import os
-from walkers.mutants_rts_walker import walk
-
-path = "../projects/mutants/Rocket"
-path = os.path.abspath(path)
-branch = "master"
-commits = ["c028d63e5ba275927424397fe9d67cfebdc138ec"]
-
-walk(path, branch=branch, commits=commits)
-
-
-# %%
-## tracing
-import os
-from walkers.mutants_rts_walker import walk
-
-path = "../projects/mutants/tracing"
-path = os.path.abspath(path)
-branch = "master"
-commits = ["4f1e46306d4d364fcc69691fdb29a676c7105f72"]
-
-walk(path, branch=branch, commits=commits)
-
-
-# %%
 ## orion
 import os
 from walkers.mutants_rts_walker import walk
@@ -71,6 +45,20 @@ branch = "master"
 commits = ["af6b6c543b224d348a8876f0c06245d9ea7929c5"]
 
 walk(path, branch=branch, commits=commits)
+
+
+# %%
+## Rocket
+import os
+from walkers.mutants_rts_walker import walk
+
+path = "../projects/mutants/Rocket"
+path = os.path.abspath(path)
+branch = "master"
+commits = ["c028d63e5ba275927424397fe9d67cfebdc138ec"]
+
+walk(path, branch=branch, commits=commits)
+
 
 
 # %%
@@ -140,5 +128,17 @@ path = "../projects/mutants/tabled"
 path = os.path.abspath(path)
 branch = "master"
 commits = ["cc4a110d5963b7eede0e634c83c44d9e8b8250e4"]
+
+walk(path, branch=branch, commits=commits)
+
+# %%
+## tracing
+import os
+from walkers.mutants_rts_walker import walk
+
+path = "../projects/mutants/tracing"
+path = os.path.abspath(path)
+branch = "master"
+commits = ["4f1e46306d4d364fcc69691fdb29a676c7105f72"]
 
 walk(path, branch=branch, commits=commits)

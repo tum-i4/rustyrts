@@ -53,6 +53,10 @@ class CargoHook(Hook, ABC):
         pass
 
     @abstractmethod
+    def test_command_parent(self):
+        pass
+
+    @abstractmethod
     def test_command(self):
         pass
 
@@ -235,7 +239,7 @@ class CargoHook(Hook, ABC):
 
                 # Run test command on actual commit
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.test_command(), output_filepath=cache_file_path, env=self.env()
+                    command=self.test_command(), output_filepath=cache_file_path, env=self.env() | {"RUST_LOG": "debug"}
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_failed |= not (proc.exit_code == 0 or any(
