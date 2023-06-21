@@ -45,6 +45,8 @@ pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 //######################################################################################################################
 // Edge cases that need special treatment
 
+pub const SUFFIX_DYN: &str = "!dyn";
+
 pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::try_trait::FromResidual::from_residual";
 
 pub const EDGE_CASES_NO_TRACE: &[&str] = &[

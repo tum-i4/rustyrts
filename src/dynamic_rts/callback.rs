@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::{debug, info};
+use log::{info, trace};
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -8,18 +8,16 @@ use rustc_middle::ty::query::{query_keys, query_stored};
 use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_session::config::CrateType;
 use rustc_span::source_map::{FileLoader, RealFileLoader};
-use std::env;
 use std::mem::transmute;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;
 
 use crate::callbacks_shared::{
-    excluded, no_instrumentation, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
-    NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, SKIP,
+    excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
+    NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
 };
 
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
-use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::dynamic_rts::instrumentation::modify_body;
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
@@ -42,29 +40,33 @@ impl DynamicRTSCallbacks {
 impl Callbacks for DynamicRTSCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         // There is no point in analyzing a proc macro that is executed a compile time
-        SKIP.store(
-            config
-                .opts
-                .crate_types
-                .iter()
-                .any(|t| *t == CrateType::ProcMacro)
-                || env::var(ENV_SKIP_ANALYSIS).is_ok(),
-            SeqCst,
-        );
+        if config
+            .opts
+            .crate_types
+            .iter()
+            .any(|t| *t == CrateType::ProcMacro)
+        {
+            info!(
+                "Excluding crate {}",
+                config.opts.crate_name.as_ref().unwrap()
+            );
+            EXCLUDED.get_or_init(|| true);
+        }
 
-        let file_loader = if !no_instrumentation(config.opts.crate_name.as_ref().unwrap()) {
-            Box::new(TestRunnerFileLoaderProxy {
-                delegate: InstrumentationFileLoaderProxy {
-                    delegate: RealFileLoader,
-                },
-            }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
-        } else {
-            Box::new(RealFileLoader {})
-                as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
-        };
+        let file_loader =
+            if !no_instrumentation(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
+                Box::new(TestRunnerFileLoaderProxy {
+                    delegate: InstrumentationFileLoaderProxy {
+                        delegate: RealFileLoader,
+                    },
+                }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+            } else {
+                Box::new(RealFileLoader {})
+                    as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+            };
         config.file_loader = Some(file_loader);
 
-        if !excluded(config.opts.crate_name.as_ref().unwrap()) {
+        if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
             NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
             NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
             NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
@@ -88,7 +90,7 @@ impl Callbacks for DynamicRTSCallbacks {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
+            if !excluded(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
                 self.run_analysis(tcx)
             }
         });
@@ -118,7 +120,7 @@ fn custom_optimized_mir<'tcx>(
 
     let result = orig_function(tcx, def);
 
-    if !no_instrumentation(tcx.crate_name(LOCAL_CRATE).as_str()) {
+    if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
         //##############################################################
         // 1. Here the MIR is modified to trace this function at runtime
 
@@ -170,14 +172,14 @@ fn custom_vtable_entries<'tcx>(
 
     let result = orig_function(tcx, key);
 
-    if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
+    if !excluded(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
         for entry in result {
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();
 
                 let name = def_id_name(tcx, def_id, &[], false); // IMPORTANT: no substs here
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
-                debug!("Considering {:?} in checksums of {}", instance, name);
+                trace!("Considering {:?} in checksums of {}", instance, name);
 
                 insert_hashmap(
                     &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),

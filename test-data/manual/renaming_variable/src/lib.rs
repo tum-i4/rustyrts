@@ -3,7 +3,7 @@
 use std::intrinsics::size_of;
 
 static VAR_STATIC: i32 = 42;
-static VAR_STATIC_MUT: i32 = init();
+static mut VAR_STATIC_MUT: i32 = init();
 const VAR_CONST: i32 = init();
 
 const fn init() -> i32 {

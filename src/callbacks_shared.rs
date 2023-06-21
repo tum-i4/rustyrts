@@ -1,23 +1,21 @@
 use itertools::Itertools;
-use log::{debug, trace};
+use log::{debug, info, trace};
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{GenericArg, List, TyCtxt};
 use rustc_span::def_id::DefId;
 use std::collections::HashMap;
-use std::sync::atomic::Ordering::SeqCst;
+use std::env;
 use std::{
     collections::HashSet,
     fs::read,
-    sync::{
-        atomic::{AtomicBool, AtomicUsize},
-        Mutex,
-    },
+    sync::{atomic::AtomicUsize, Mutex},
 };
 
 use crate::checksums::{get_checksum_body, insert_hashmap};
 use crate::const_visitor::ConstVisitor;
+use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::{
     checksums::Checksums,
     constants::ENV_TARGET_DIR,
@@ -28,8 +26,6 @@ use crate::{
     names::def_id_name,
     static_rts::callback::PATH_BUF,
 };
-
-pub(crate) static SKIP: AtomicBool = AtomicBool::new(false);
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
 
@@ -44,20 +40,35 @@ const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
 pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
 
-pub(crate) fn excluded(local_crate_name: &str) -> bool {
-    SKIP.load(SeqCst) || no_instrumentation(local_crate_name)
+pub(crate) static EXCLUDED: OnceCell<bool> = OnceCell::new();
+static NO_INSTRUMENTATION: OnceCell<bool> = OnceCell::new();
+
+pub(crate) fn excluded<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
+    *EXCLUDED.get_or_init(|| {
+        let exclude = env::var(ENV_SKIP_ANALYSIS).is_ok() || no_instrumentation(getter_crate_name);
+        if exclude {
+            trace!("Excluding crate {}", getter_crate_name());
+        }
+        exclude
+    })
 }
 
-pub(crate) fn no_instrumentation(local_crate_name: &str) -> bool {
-    let excluded_crate = EXCLUDED_CRATES
-        .iter()
-        .any(|krate| *krate == local_crate_name);
+pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
+    *NO_INSTRUMENTATION.get_or_init(|| {
+        let excluded_crate = EXCLUDED_CRATES
+            .iter()
+            .any(|krate| *krate == getter_crate_name());
 
-    let trybuild = std::env::var(ENV_TARGET_DIR)
-        .map(|d| d.ends_with("trybuild"))
-        .unwrap_or(false);
+        let trybuild = std::env::var(ENV_TARGET_DIR)
+            .map(|d| d.ends_with("trybuild"))
+            .unwrap_or(false);
 
-    excluded_crate || trybuild
+        let no_instrumentation = excluded_crate || trybuild;
+        if no_instrumentation {
+            trace!("Not instrumenting crate {}", getter_crate_name());
+        }
+        no_instrumentation
+    })
 }
 
 pub(crate) fn run_analysis_shared<'tcx>(
@@ -229,6 +240,7 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             };
 
             if changed {
+                // Set to info, to recognize discrepancies between dynamic and static later on
                 debug!("Changed due to vtable checksums: {}", name);
                 changed_nodes.insert(name.clone());
             }

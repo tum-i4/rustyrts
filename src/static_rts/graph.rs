@@ -11,7 +11,9 @@ pub enum EdgeType {
     FnDef,
     FnDefTrait,
     FnDefImpl,
+    FnDefDyn,
     TraitImpl,
+    TraitFn,
     Drop,
 
     Monomorphization,
@@ -25,7 +27,9 @@ impl AsRef<str> for EdgeType {
             EdgeType::FnDef => "[color = black]",
             EdgeType::FnDefTrait => "[color = cyan]",
             EdgeType::FnDefImpl => "[color = yellow]",
+            EdgeType::FnDefDyn => "[color = pink]",
             EdgeType::TraitImpl => "[color = magenta]",
+            EdgeType::TraitFn => "[color = magenta]",
             EdgeType::Drop => "[color = yellow]",
             EdgeType::Monomorphization => "[color = red]",
         }
@@ -42,8 +46,10 @@ impl FromStr for EdgeType {
             "FnDef" => Ok(Self::FnDef),
             "FnDefTrait" => Ok(Self::FnDefTrait),
             "FnDefImpl" => Ok(Self::FnDefImpl),
+            "FnDefDyn" => Ok(Self::FnDefDyn),
             "TraitDef" => Ok(Self::FnDef),
             "TraitImpl" => Ok(Self::TraitImpl),
+            "TraitFn" => Ok(Self::TraitFn),
             "Drop" => Ok(Self::Drop),
 
             "Monomorphization" => Ok(Self::Monomorphization),

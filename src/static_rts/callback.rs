@@ -1,15 +1,13 @@
-use std::env;
 use std::mem::transmute;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
 use crate::callbacks_shared::{
-    excluded, run_analysis_shared, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL,
-    OLD_VTABLE_ENTRIES, SKIP,
+    excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
+    NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
 };
-use crate::constants::ENV_SKIP_ANALYSIS;
 use itertools::Itertools;
-use log::{debug, info};
+use log::{debug, info, trace};
 use once_cell::sync::OnceCell;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -35,15 +33,18 @@ pub struct StaticRTSCallbacks {
 impl Callbacks for StaticRTSCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         // There is no point in analyzing a proc macro that is executed a compile time
-        SKIP.store(
-            config
-                .opts
-                .crate_types
-                .iter()
-                .any(|t| *t == CrateType::ProcMacro)
-                || env::var(ENV_SKIP_ANALYSIS).is_ok(),
-            SeqCst,
-        );
+        if config
+            .opts
+            .crate_types
+            .iter()
+            .any(|t| *t == CrateType::ProcMacro)
+        {
+            info!(
+                "Excluding crate {}",
+                config.opts.crate_name.as_ref().unwrap()
+            );
+            EXCLUDED.get_or_init(|| true);
+        }
 
         // The only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers, _extern_providers| {
@@ -53,7 +54,7 @@ impl Callbacks for StaticRTSCallbacks {
             providers.vtable_entries = custom_vtable_entries_monomorphized;
         });
 
-        if !excluded(config.opts.crate_name.as_ref().unwrap()) {
+        if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
             NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
             NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
             NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
@@ -66,7 +67,7 @@ impl Callbacks for StaticRTSCallbacks {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
+            if !excluded(|| tcx.crate_name(LOCAL_CRATE).as_str().to_string()) {
                 self.run_analysis(tcx);
             }
         });
@@ -148,7 +149,7 @@ fn custom_vtable_entries_monomorphized<'tcx>(
 
     let result = orig_function(tcx, key);
 
-    if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
+    if !excluded(|| tcx.crate_name(LOCAL_CRATE).as_str().to_string()) {
         for entry in result {
             if let VtblEntry::Method(instance) = entry {
                 let substs = if cfg!(not(feature = "monomorphize")) {
@@ -161,7 +162,7 @@ fn custom_vtable_entries_monomorphized<'tcx>(
 
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
 
-                debug!("Considering {:?} in checksums of {}", instance, name);
+                trace!("Considering {:?} in checksums of {}", instance, name);
 
                 insert_hashmap(
                     &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),

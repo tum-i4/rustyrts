@@ -26,7 +26,7 @@ pub struct ImplBaz {}
 
 //#############
 // TODO: When any of these four functions, that are called via dynamic dispatch, are commented in or out,
-// the test will fail and has to be recognized as affected
+// test_dyn will fail and has to be recognized as affected
 
 impl Foo for ImplFoo {
     //fn foo(&self) -> i32 {
@@ -40,6 +40,7 @@ impl Foo for ImplBaz {
     //}
 }
 
+// If this is uncommented, also test_static will fail and should be affected
 impl<T: Foo + ?Sized> Bar for T {
     //fn bar(&self) -> i32 {
     //    return 41;
@@ -57,12 +58,11 @@ fn main() {
 }
 
 #[test]
-pub fn test() {
+pub fn test_dyn() {
     let bar: &dyn Bar = &ImplFoo {};
     let foo: &dyn Foo = bar; // Up-casting from Bar to Foo (only possible with special compiler feature)
 
     assert_eq!(bar.foo(), 42);
-    assert_eq!(foo.bar(), 42);
 
     assert_eq!(foo.foo(), 42);
     assert_eq!(bar.bar(), 42);
@@ -71,4 +71,10 @@ pub fn test() {
     assert_eq!(baz.foo(), 42);
     assert_eq!(baz.bar(), 42);
     assert_eq!(baz.baz(), 42);
+}
+
+#[test]
+pub fn test_static() {
+    let impl_foo = ImplFoo {};
+    assert_eq!(impl_foo.bar(), 42);
 }

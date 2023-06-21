@@ -83,8 +83,10 @@ Static RustyRTS analyzes the MIR during compilation, without modifying it, to bu
 3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for assoc `fn`s in `trait {..})
 3. 3. `EdgeType::FnDefImpl`:    caller function -> callee `fn` (for assoc `fn`s in `impl .. {..})
 3. 3. `EdgeType::FnDef`:        caller function -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
-4. `EdgeType::TraitImpl`:       function in `trait` definition -> function in trait impl (`impl <trait> for ..`)
-5. `EdgeType::Drop`:            function -> destructor (`drop()` function) of referenced abstract datatype
+3. 4. `EdgeType::FnDefDyn`:     caller function -> callee `fn` + !dyn (for functions in `trait {..} called by dynamic dispatch)
+4. `EdgeType::TraitImpl`:       function in `trait` definition + !dyn -> function in trait impl (`impl <trait> for ..`)
+5. `EdgeType::TraitFn`:         function in `trait` definition + !dyn -> function in `trait` definition
+6. `EdgeType::Drop`:            function -> destructor (`drop()` function) of referenced abstract datatype
 
 All these functions are not yet monomorphized. Using names of fully monomorphized functions is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.
 It is nevertheless possible to do that using the `monomorphize_all` feature.
