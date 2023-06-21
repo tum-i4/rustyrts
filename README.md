@@ -43,8 +43,9 @@ Furthermore, the checksums of [`ConstAllocation`s](https://doc.rust-lang.org/sta
 
 Lastly, the checksums of [`VtblEntry`s](https://doc.rust-lang.org/stable/nightly-rustc/rustc_middle/ty/vtable/enum.VtblEntry.html) (vtable entries) are contributing to the checksum of the function that they are pointing to.
 Assume a vtable entry that was pointing to a function a) in the old revision is now pointing to a different function b) in the new revision.
-Because static RustyRTS is working entirely on the graph data of the new revision, it is sufficient to consider function b) changed, as long as there is a continuous path from a corresponding test to function b). 
+Because static RustyRTS is working entirely on the graph data of the new revision, it is sufficient to consider function b) changed, as long as there is a continuous path from a corresponding test to function b).
 Dynamic RustyRTS is comparing traces originating from the old revision, which is why function a) would be considered changed.
+Because static RustyRTS can distinguish whether a function is called via dynamic or static dispatch, these additional checksums of vtable entries only contribute in the case of dynamic dispatch.
 
 ## Dynamic
 Dynamic RustyRTS collects traces containing the names of all functions that are called during the execution of a test. Some helper functions and global variables are used to obtain those traces:
@@ -80,16 +81,18 @@ During the subsequent run, the traces are compared to the set of changed `Body`s
 Static RustyRTS analyzes the MIR during compilation, without modifying it, to build a (directed) dependency graph. Edges are created according to the following criteria:
 1. `EdgeType::Closure`:         function -> contained Closure
 2. `EdgeType::Generator`:       function -> contained Generator
-3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for assoc `fn`s in `trait {..})
-3. 3. `EdgeType::FnDefImpl`:    caller function -> callee `fn` (for assoc `fn`s in `impl .. {..})
+3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for assoc `fn`s in `trait {..}`)
+3. 3. `EdgeType::FnDefImpl`:    caller function -> callee `fn` (for assoc `fn`s in `impl .. {..}`)
 3. 3. `EdgeType::FnDef`:        caller function -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
 3. 4. `EdgeType::FnDefDyn`:     caller function -> callee `fn` + !dyn (for functions in `trait {..} called by dynamic dispatch)
-4. `EdgeType::TraitImpl`:       function in `trait` definition + !dyn -> function in trait impl (`impl <trait> for ..`)
-5. `EdgeType::TraitFn`:         function in `trait` definition + !dyn -> function in `trait` definition
+4. `EdgeType::TraitImpl`:       function in `trait` definition + !dyn -> function in trait impl (`impl <trait> for ..`)  + !dyn 
+5. `EdgeType::DynFn`:           (only for associated functions) function + !dyn -> function
 6. `EdgeType::Drop`:            function -> destructor (`drop()` function) of referenced abstract datatype
 
-All these functions are not yet monomorphized. Using names of fully monomorphized functions is not that useful, since RustyRTS compares checksums of non-monomorphized functions. Additionally, it would bloat up the graph, such that reading the graph would take a long time.
-It is nevertheless possible to do that using the `monomorphize_all` feature.
+The suffix "!dyn" is used to distinguish static and dynamic dispatch. Checksums from vtable entries only contribute to the function they are pointing to with suffix !dyn.
+
+All these functions are not yet monomorphized. Using names of fully monomorphized functions may increase precision, but turns out to be impractical. On larger projects, it would bloat up the graph, such that reading the graph takes a long time. Moreover, RustyRTS compares checksums of non-monomorphized functions.
+It is nevertheless possible to use fully monomorphized function names using the `monomorphize` feature.
 
 
 When there is a path from a test to a changed `Body`, the test is considered affected.

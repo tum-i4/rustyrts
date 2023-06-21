@@ -40,13 +40,13 @@ impl Foo for ImplBaz {
     //}
 }
 
-// If this is uncommented, also test_static will fail and should be affected
 impl<T: Foo + ?Sized> Bar for T {
     //fn bar(&self) -> i32 {
     //    return 41;
     //}
 }
 
+// If this is uncommented, also test_static will fail and should be affected
 impl Baz for ImplBaz {
     //fn baz(&self) -> i32 {
     //    return 41;
@@ -75,6 +75,6 @@ pub fn test_dyn() {
 
 #[test]
 pub fn test_static() {
-    let impl_foo = ImplFoo {};
-    assert_eq!(impl_foo.bar(), 42);
+    let impl_baz = ImplBaz {};
+    assert_eq!(impl_baz.baz(), 42);
 }

@@ -91,32 +91,28 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             );
         }
 
-        if let Some(_trait_def) = self.tcx.trait_of_item(outer) {
-            let name_trait_fn = def_id_name(self.tcx, outer, &outer_substs, false);
+        if let DefKind::AssocFn = self.tcx.def_kind(outer) {
+            let name = def_id_name(self.tcx, outer, &outer_substs, false);
 
-            // 5. function in `trait` definition + !dyn -> function in `trait` definition
-            self.graph.add_edge(
-                name_trait_fn.clone() + SUFFIX_DYN,
-                name_trait_fn,
-                EdgeType::TraitFn,
-            )
+            // 5. (only associated functions) function + !dyn -> function
+            self.graph
+                .add_edge(name.clone() + SUFFIX_DYN, name, EdgeType::DynFn)
         }
 
         if let Some(impl_def) = self.tcx.impl_of_method(outer) {
             if let Some(_) = self.tcx.impl_trait_ref(impl_def) {
                 let implementors = self.tcx.impl_item_implementor_ids(impl_def);
 
-                // 4. function in `trait` definition + !dyn -> function in trait impl (`impl <trait> for ..`)
+                // 4. function in `trait` definition + !dyn -> function in trait impl (`impl <trait> for ..`) + !dyn
                 for (trait_fn, impl_fn) in implementors {
                     if *impl_fn == outer {
-                        let name_trait_fn = def_id_name(self.tcx, *trait_fn, &[], false); // No substs here, even with monomorphize
-                        let name_impl_fn = def_id_name(self.tcx, outer, outer_substs, false);
+                        let name_trait_fn =
+                            def_id_name(self.tcx, *trait_fn, &[], false) + SUFFIX_DYN; // No substs here, even with monomorphize
+                        let name_impl_fn =
+                            def_id_name(self.tcx, outer, outer_substs, false) + SUFFIX_DYN;
 
-                        self.graph.add_edge(
-                            name_trait_fn.clone() + SUFFIX_DYN,
-                            name_impl_fn,
-                            EdgeType::TraitImpl,
-                        );
+                        self.graph
+                            .add_edge(name_trait_fn, name_impl_fn, EdgeType::TraitImpl);
                     }
                 }
             }
@@ -482,19 +478,17 @@ mod test {
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
 
             let start = "::Animal::sound".to_owned() + SUFFIX_DYN;
-            let end = "rust_out::<Lion as Animal>::sound";
+            let end = "rust_out::<Lion as Animal>::sound".to_owned() + SUFFIX_DYN;
             assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
 
             let start = "::Animal::walk".to_owned() + SUFFIX_DYN;
             let end = "::Animal::walk";
-            assert_contains_edge(&graph, &start, &end, &EdgeType::TraitFn);
-            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitFn);
+            assert_contains_edge(&graph, &start, &end, &EdgeType::DynFn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::DynFn);
         }
 
         {
-            let edge_type = EdgeType::FnDefTrait;
-
             let start = "::test::test_mut_direct";
             let end = "::<Lion as Animal>::set_treat";
             assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
@@ -511,7 +505,7 @@ mod test {
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
 
             let start = "::Animal::set_treat".to_owned() + SUFFIX_DYN;
-            let end = ":<Dog as Animal>::set_treat".to_owned();
+            let end = ":<Dog as Animal>::set_treat".to_owned() + SUFFIX_DYN;
             assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
         }
@@ -541,14 +535,14 @@ mod test {
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
 
             let start = "::Animal::sound".to_owned() + SUFFIX_DYN;
-            let end = "rust_out::<Lion as Animal>::sound";
+            let end = "rust_out::<Lion as Animal>::sound".to_owned() + SUFFIX_DYN;
             assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
 
-            let start = "::<Lion as Animal>::walk".to_owned() + SUFFIX_DYN;
+            let start = ":<Lion as Animal>::walk".to_owned() + SUFFIX_DYN;
             let end = "::<Lion as Animal>::walk";
-            assert_contains_edge(&graph, &start, &end, &EdgeType::TraitFn);
-            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitFn);
+            assert_contains_edge(&graph, &start, &end, &EdgeType::DynFn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::DynFn);
         }
 
         {
@@ -568,7 +562,7 @@ mod test {
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
 
             let start = "::Animal::set_treat".to_owned() + SUFFIX_DYN;
-            let end = ":<Dog as Animal>::set_treat".to_owned();
+            let end = ":<Dog as Animal>::set_treat".to_owned() + SUFFIX_DYN;
             assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
         }

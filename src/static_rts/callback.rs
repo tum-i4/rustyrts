@@ -6,6 +6,7 @@ use crate::callbacks_shared::{
     excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
     NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
 };
+use crate::constants::SUFFIX_DYN;
 use itertools::Itertools;
 use log::{debug, info, trace};
 use once_cell::sync::OnceCell;
@@ -158,7 +159,8 @@ fn custom_vtable_entries_monomorphized<'tcx>(
                     instance.substs
                 };
 
-                let name = def_id_name(tcx, instance.def_id(), substs, false);
+                let name =
+                    def_id_name(tcx, instance.def_id(), substs, false).to_owned() + SUFFIX_DYN;
 
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
 
