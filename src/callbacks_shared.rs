@@ -125,7 +125,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
         );
     }
 
-    debug!("Exported tests for {}", crate_name);
+    trace!("Exported tests for {}", crate_name);
 }
 
 pub fn export_checksums_and_changes(from_new_revision: bool) {
@@ -178,7 +178,7 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             }
         };
 
-        debug!("Imported checksums for {}", crate_name);
+        trace!("Imported checksums for {}", crate_name);
 
         //##############################################################################################################
         // 4. Calculate names of changed nodes and write this information to filesystem
@@ -293,6 +293,6 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             false,
         );
 
-        debug!("Exported changes for {}", crate_name);
+        trace!("Exported changes for {}", crate_name);
     }
 }

@@ -16,7 +16,7 @@ name = "rustyrts-static"
 name = "rustyrts-dynamic"
 
 [features]
-default = []
+default = ["print_paths"]
 
 print_paths = []
 monomorphize = []

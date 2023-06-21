@@ -468,7 +468,7 @@ fn select_and_execute_tests_static() {
     );
     dependency_graph.import_edges(edges);
 
-    if verbose {
+    if has_arg_flag("-vv") {
         let mut complete_graph_path = path_buf.clone();
         complete_graph_path.push(FILE_COMPLETE_GRAPH);
         let mut file = match OpenOptions::new()
@@ -532,31 +532,18 @@ fn select_and_execute_tests_static() {
         |line| line != "" && dependency_graph.get_node(&line).is_some(),
         |line| dependency_graph.get_node(&line).unwrap(),
     );
-    if verbose {
-        println!(
-            "Tests that have been found:\n{}\n",
-            tests.iter().sorted().join(", ")
-        );
-    } else {
-        println!("#Tests that have been found: {}\n", tests.iter().count());
-    }
+
+    println!("#Tests that have been found: {}\n", tests.iter().count());
 
     #[cfg(not(feature = "print_paths"))]
     {
         let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
         let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
 
-        if verbose {
-            println!(
-                "Nodes that reach any changed node in the graph:\n{}\n",
-                reached_nodes.iter().sorted().join(", ")
-            );
-        } else {
-            println!(
-                "#Nodes that reach any changed node in the graph: {}\n",
-                reached_nodes.iter().count()
-            );
-        }
+        println!(
+            "#Nodes that reach any changed node in the graph: {}\n",
+            reached_nodes.iter().count()
+        );
 
         if verbose {
             println!(
@@ -575,17 +562,10 @@ fn select_and_execute_tests_static() {
     {
         let (reached_nodes, affected_tests) = dependency_graph.affected_tests(changed_nodes, tests);
 
-        if verbose {
-            println!(
-                "Nodes that reach any changed node in the graph:\n{}\n",
-                reached_nodes.iter().sorted().join(", ")
-            );
-        } else {
-            println!(
-                "#Nodes that reach any changed node in the graph: {}\n",
-                reached_nodes.iter().count()
-            );
-        }
+        println!(
+            "#Nodes that reach any changed node in the graph: {}\n",
+            reached_nodes.iter().count()
+        );
 
         if verbose {
             println!(
@@ -662,15 +642,6 @@ fn select_and_execute_tests_dynamic() {
     // Read tests
     let tests = read_lines(&files, ENDING_TEST);
 
-    if verbose {
-        println!(
-            "Tests that have been found:\n{}\n",
-            tests.iter().sorted().join(", ")
-        );
-    } else {
-        println!("#Tests that have been found: {}\n", tests.iter().count());
-    }
-
     // Read changed nodes
     let changed_nodes = read_lines(&files, ENDING_CHANGES);
 
@@ -686,8 +657,10 @@ fn select_and_execute_tests_dynamic() {
         );
     }
 
+    println!("#Tests that have been found: {}\n", tests.iter().count());
+
     // Read traces
-    let mut affected_tests: Vec<String> = Vec::new();
+    let mut affected_tests: Vec<(String, Option<HashSet<String>>)> = Vec::new();
     let traced_tests: Vec<&DirEntry> = files
         .iter()
         .filter(|traces| {
@@ -717,22 +690,15 @@ fn select_and_execute_tests_dynamic() {
         })
         .collect();
 
-    if verbose {
-        println!(
-            "Tests with traces:\n{}\n",
-            traced_tests_names.iter().sorted().join(", ")
-        );
-    } else {
-        println!(
-            "#Tests with traces:: {}\n",
-            traced_tests_names.iter().count()
-        );
-    }
+    println!(
+        "#Tests with traces:: {}\n",
+        traced_tests_names.iter().count()
+    );
 
     affected_tests.append(
         &mut tests
             .difference(&traced_tests_names)
-            .map(|s| s.clone())
+            .map(|s| (s.clone(), None))
             .collect_vec(),
     );
 
@@ -744,7 +710,10 @@ fn select_and_execute_tests_dynamic() {
             .map(|s| s.to_string())
             .collect();
 
-        let intersection: HashSet<&String> = traced_nodes.intersection(&changed_nodes).collect();
+        let intersection: HashSet<String> = traced_nodes
+            .intersection(&changed_nodes)
+            .map(|s| s.to_string())
+            .collect();
         if !intersection.is_empty() {
             let test_name = file
                 .file_name()
@@ -757,19 +726,29 @@ fn select_and_execute_tests_dynamic() {
                 .unwrap()
                 .1
                 .to_string();
-            affected_tests.push(test_name);
+            affected_tests.push((test_name, Some(intersection)));
         }
     }
 
     if verbose {
         println!(
             "Affected tests:\n{}\n",
-            affected_tests.iter().sorted().join(", ")
+            affected_tests
+                .iter()
+                .map(|(n, i)| {
+                    let reason = match i {
+                        Some(intersection) => format!("{:?}", intersection),
+                        None => "no traces".to_string(),
+                    };
+                    format!("{}: {}", n, reason)
+                })
+                .sorted()
+                .join("\n")
         );
     } else {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    let cmd = cargo_test(Mode::Dynamic, affected_tests.iter());
+    let cmd = cargo_test(Mode::Dynamic, affected_tests.iter().map(|(n, _)| n));
     execute(cmd);
 }

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::{info, trace};
+use log::trace;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
@@ -46,7 +46,7 @@ impl Callbacks for DynamicRTSCallbacks {
             .iter()
             .any(|t| *t == CrateType::ProcMacro)
         {
-            info!(
+            trace!(
                 "Excluding crate {}",
                 config.opts.crate_name.as_ref().unwrap()
             );

@@ -8,7 +8,7 @@ use crate::callbacks_shared::{
 };
 use crate::constants::SUFFIX_DYN;
 use itertools::Itertools;
-use log::{debug, info, trace};
+use log::trace;
 use once_cell::sync::OnceCell;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -40,7 +40,7 @@ impl Callbacks for StaticRTSCallbacks {
             .iter()
             .any(|t| *t == CrateType::ProcMacro)
         {
-            info!(
+            trace!(
                 "Excluding crate {}",
                 config.opts.crate_name.as_ref().unwrap()
             );
@@ -125,7 +125,7 @@ impl StaticRTSCallbacks {
             false,
         );
 
-        debug!("Generated dependency graph for {}", crate_name);
+        trace!("Generated dependency graph for {}", crate_name);
 
         //##############################################################################################################
         // Continue at shared analysis
