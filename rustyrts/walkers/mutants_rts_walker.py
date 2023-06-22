@@ -18,7 +18,7 @@ db_url = "postgresql://postgres:rustyrts@localhost:5432/mutants"
 
 def walk(path, branch="main", logging_level="DEBUG", commits=None,
          env_vars: Optional[dict[str]] = None,
-         options: Optional[list[str]] = None         ,
+         options: Optional[list[str]] = None,
          pre_hook: Optional[Callable] = None
          ):
     # set logging level
@@ -36,7 +36,7 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
         path = tmp_path
 
     # create DB connection
-    connection = DBConnection(url=db_url)
+    connection = DBConnection(url=db_url, pool_pre_ping=True)
 
     # create repo
     repository = Repository(path=path, repository_type="git")
