@@ -573,7 +573,18 @@ fn select_and_execute_tests_static() {
                 affected_tests
                     .iter()
                     .sorted()
-                    .map(|(k, v)| format!("{}: [ {} ]", k, v.iter().join(" <- ")))
+                    .map(|(k, v)| {
+                        if v.len() <= 20 {
+                            format!("{}: [ {} ]", k, v.iter().join(" <- "))
+                        } else {
+                            format!(
+                                "{}: [ {} <- ... <- {} ]",
+                                k,
+                                v[0],
+                                v[v.len() - 20..].iter().join(" <- ")
+                            )
+                        }
+                    })
                     .join("\n")
             );
         } else {
