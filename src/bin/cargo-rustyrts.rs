@@ -3,7 +3,7 @@ use rustyrts::checksums::Checksums;
 use rustyrts::constants::{
     DESC_FLAG, ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_PROCESS_TRACE, ENDING_TEST,
     ENDING_TRACE, ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
-    ENV_SKIP_ANALYSIS, ENV_TARGET_DIR, FILE_COMPLETE_GRAPH,
+    ENV_SKIP_ANALYSIS, ENV_TARGET_DIR, FILE_COMPLETE_GRAPH, VERBOSE_COUNT,
 };
 use rustyrts::fs_utils::{
     get_dynamic_path, get_static_path, get_target_dir, read_lines, read_lines_filter_map,
@@ -574,16 +574,21 @@ fn select_and_execute_tests_static() {
                     .iter()
                     .sorted()
                     .map(|(k, v)| {
-                        if v.len() <= 20 {
-                            format!("{}: [ {} ]", k, v.iter().join(" <- "))
-                        } else {
-                            format!(
-                                "{}: [ {} <- ... <- {} ]",
-                                k,
-                                v[0],
-                                v[v.len() - 20..].iter().join(" <- ")
-                            )
-                        }
+                        let path = format!(
+                            "{}: [ {}{} ]",
+                            k,
+                            v[0],
+                            if v.len() >= VERBOSE_COUNT {
+                                format!(
+                                    "<- ... <- {}",
+                                    v[v.len() - VERBOSE_COUNT..].iter().join(" <- ")
+                                )
+                            } else {
+                                v[1..].iter().join(" <- ")
+                            }
+                        );
+
+                        format!("{}: {}", k, path)
                     })
                     .join("\n")
             );
@@ -747,10 +752,20 @@ fn select_and_execute_tests_dynamic() {
             affected_tests
                 .iter()
                 .map(|(n, i)| {
-                    let reason = match i {
-                        Some(intersection) => format!("{:?}", intersection),
-                        None => "no traces".to_string(),
-                    };
+                    let reason = i
+                        .as_ref()
+                        .map(|intersection| {
+                            format!(
+                                "{{ {:?} {}}}",
+                                intersection.iter().take(VERBOSE_COUNT).join(", "),
+                                if intersection.len() > VERBOSE_COUNT {
+                                    "... "
+                                } else {
+                                    ""
+                                }
+                            )
+                        })
+                        .unwrap_or("no traces".to_string());
                     format!("{}: {}", n, reason)
                 })
                 .sorted()
