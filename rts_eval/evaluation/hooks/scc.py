@@ -23,7 +23,7 @@ class SccHook(Hook):
             connection: DBConnection,
             language: str,
             output_path: Optional[str] = None,
-   ):
+    ):
         super().__init__(repository, None, git_client=GitClient(repository))
         self.connection = connection
         self.language = language

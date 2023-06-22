@@ -1,7 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
-
-from ...models.testing.base import TestReport
 
 
 class TestReportLoader(ABC):

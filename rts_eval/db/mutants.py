@@ -150,6 +150,7 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
     check_log = Column(String, nullable=True)
     test_result = Column(Enum(MutantsResult), nullable=True)
     test_duration = Column(Float, nullable=True)
+    build_duration = Column(Float)
     test_log = Column(String, nullable=True)
     report_id = Column(Integer, ForeignKey("{}.id".format(DBMutantsReport.__tablename__), ondelete="CASCADE"))
     report = relationship("DBMutantsReport", back_populates="mutants")
@@ -167,6 +168,7 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
             check_log=mutant.check_log,
             test_result=mutant.test_result,
             test_duration=mutant.test_duration,
+            build_duration=mutant.build_duration,
             test_log=mutant.test_log,
             suites=[DBMutantsTestSuite.from_domain(suite) for suite in mutant.suites]
         )
@@ -180,6 +182,7 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
             check_log=self.check_log,
             test_result=self.test_result,
             test_duration=self.test_duration,
+            build_duration=self.build_duration,
             test_log=self.test_log,
             suites=[suite.to_domain() for suite in self.suites]
         )

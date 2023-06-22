@@ -18,6 +18,7 @@ from ...util.logging.logger import get_logger
 
 _LOGGER = get_logger(__name__)
 
+
 class RustyMutantsRTSMode(str, Enum):
     TEST = ""
     DYNAMIC = " dynamic"
@@ -105,14 +106,14 @@ class CargoMutantsHook(Hook):
             # Parse result
 
             result_matcher = re.search(
-                "^\d* mutants tested in .*:(?: (\d*) missed,?)?(?: (\d*) caught,?)?(?: (\d*) unviable,?)?(?: (\d*) timeouts,?)?(?: (\d*) failed,?)?",
+                r"^\d* mutants tested in .*:(?: (\d*) missed,?)?(?: (\d*) caught,?)?(?: (\d*) unviable,?)?(?: (\d*) timeouts,?)?(?: (\d*) failed,?)?",
                 proc.output, re.M)
 
             mutants = []
             if not has_failed:
                 # parse mutants
                 loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out",
-                                                  load_ignored=False)
+                                                      load_ignored=False)
                 mutants = loader.load()
 
             missed = None

@@ -23,6 +23,17 @@ class CargoTestTestReportLoader(TestReportLoader):
         self.input = input
         self.load_ignored = load_ignored
 
+    @classmethod
+    def parse_build_time(cls, log):
+        build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log, re.MULTILINE)
+        build_time = 0
+        for match in build_times:
+            minutes = match.group(2)
+            seconds = match.group(4)
+            build_time += 60.0 * float(minutes) if minutes else 0.0
+            build_time += float(seconds) if seconds else 0.0
+        return  round(build_time, 2)
+
     def load(self) -> list[TestSuite]:
 
         names = re.findall(r"^ {5}Running (.*) ", self.input, re.MULTILINE)
@@ -98,7 +109,7 @@ class CargoTestTestReportLoader(TestReportLoader):
 def extract_json_data(input: str, decoder=JSONDecoder()):
     while input:
         try:
-            if not "{" in input:
+            if "{" not in input:
                 break
             input = input[input.find("{"):]
             result, index = decoder.raw_decode(input)

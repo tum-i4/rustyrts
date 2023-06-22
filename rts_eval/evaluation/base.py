@@ -14,7 +14,7 @@ class Hook(ABC):
             repository: Repository,
             output_path: Optional[str] = None,
             git_client=None,
-   ):
+    ):
         self.repository = repository
         self.output_path = output_path
         self.git_client = git_client
@@ -35,19 +35,14 @@ class Walker(ABC):
             strategy: "WalkerStrategy",
             num_commits: Optional[int] = 10,
             hooks: Optional[List[Hook]] = None,
-   ):
+    ):
         """
         Constructor for walkers.
 
         :param repository: A **local** git repository.
-        :param start_commit:
-        :param include_merge_commits:
-        :param branch:
+        :param strategy: The strategy used in selecting commits
         :param num_commits:
-        :param end_commit:
-        :param pre_hooks:
         :param hooks:
-        :param post_hooks:
         """
         self.repository = repository
         self.strategy = strategy

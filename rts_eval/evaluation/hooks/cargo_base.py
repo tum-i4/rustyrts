@@ -18,6 +18,7 @@ from ...util.logging.logger import get_logger
 
 _LOGGER = get_logger(__name__)
 
+
 class CargoHook(Hook, ABC):
 
     def __init__(
@@ -27,6 +28,7 @@ class CargoHook(Hook, ABC):
             connection: DBConnection,
             report_name: Optional[str] = None,
             output_path: Optional[str] = None,
+            build = False
     ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
@@ -35,6 +37,7 @@ class CargoHook(Hook, ABC):
             self.cache_dir = os.path.join(tempfile.gettempdir(), ".cargo-hook")
         self.report_name = report_name
         self.connection = connection
+        self.build = build
 
     @abstractmethod
     def env(self):
@@ -66,7 +69,7 @@ class CargoHook(Hook, ABC):
 
         :return:
         """
-        has_failed = False
+        has_errored = False
 
         with self.connection.create_session_ctx() as session:
             tmp_path = os.getcwd()
@@ -99,46 +102,50 @@ class CargoHook(Hook, ABC):
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
-            ############################################################################################################
-            # Build on parent commit
-            # (Some tests in certain projects require artifacts that are build only by cargo build)
+            if self.build:
+                ########################################################################################################
+                # Build on parent commit
+                # (Some tests in certain projects require artifacts that are build only by cargo build)
 
-            if not has_failed:
-                # prepare cache dir/file
-                cache_file = "run_{}.log".format(
-                    int(time() * 1000)
-                )  # run identified by timestamp
-                cache_file_path = os.path.join(self.cache_dir, cache_file)
+                if not has_errored:
+                    # prepare cache dir/file
+                    cache_file = "run_{}.log".format(
+                        int(time() * 1000)
+                    )  # run identified by timestamp
+                    cache_file_path = os.path.join(self.cache_dir, cache_file)
 
-                # Run build command on parent commit
-                proc: SubprocessContainer = SubprocessContainer(
-                    command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
-                )
-                proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_failed |= not (proc.exit_code == 0 or any(
-                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+                    # Run build command on parent commit
+                    proc: SubprocessContainer = SubprocessContainer(
+                        command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
+                    )
+                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
-                # ******************************************************************************************************
-                # Parse result
+                    has_errored |= not (proc.exit_code == 0 or any(
+                        line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
-                log = proc.output
+                    # ******************************************************************************************************
+                    # Parse result
 
-                # create test report object
-                test_report: TestReport = TestReport(
-                    name=self.report_name + " - parent build",
-                    duration=proc.end_to_end_time,
-                    suites=[],
-                    commit=commit,
-                    commit_str=commit.commit_str,
-                    log=log,
-                    has_failed=has_failed
-                )
+                    log = proc.output
 
-                DBTestReport.create_or_update(report=test_report, session=session)
+                    # create test report object
+                    test_report: TestReport = TestReport(
+                        name=self.report_name + " - parent build",
+                        duration=proc.end_to_end_time,
+                        build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
+                        suites=[],
+                        commit=commit,
+                        commit_str=commit.commit_str,
+                        log=log,
+                        has_failed=proc.exit_code != 0,
+                        has_errored=has_errored
+                    )
+
+                    DBTestReport.create_or_update(report=test_report, session=session)
 
             ############################################################################################################
             # Run on parent commit
-            if not has_failed:
+            if not has_errored:
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(
                     int(time() * 1000)
@@ -147,10 +154,10 @@ class CargoHook(Hook, ABC):
 
                 # Run test command to generate temporary files for incremental compilation or traces
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.test_command(), output_filepath=cache_file_path, env=self.env()
+                    command=self.test_command_parent(), output_filepath=cache_file_path, env=self.env()
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_failed |= not (proc.exit_code == 0 or any(
+                has_errored |= not (proc.exit_code == 0 or any(
                     line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
                 # ******************************************************************************************************
@@ -163,7 +170,7 @@ class CargoHook(Hook, ABC):
                 try:
                     test_suites = loader.load()
                 except:
-                    has_failed = True
+                    has_errored = True
                     log = "Failed to parse testsuites\n" + log
                     test_suites = []
 
@@ -171,11 +178,13 @@ class CargoHook(Hook, ABC):
                 test_report: TestReport = TestReport(
                     name=self.report_name + " - parent",
                     duration=proc.end_to_end_time,
+                    build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
                     suites=test_suites,
                     commit=commit,
                     commit_str=commit.commit_str,
                     log=log,
-                    has_failed=has_failed
+                    has_failed=proc.exit_code != 0,
+                    has_errored=has_errored
                 )
 
                 DBTestReport.create_or_update(report=test_report, session=session)
@@ -190,47 +199,50 @@ class CargoHook(Hook, ABC):
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
 
-            ############################################################################################################
-            # Build on actual commit
-            # (Some tests in certain projects require artifacts that are build only by cargo build)
+            if self.build:
+                ########################################################################################################
+                # Build on actual commit
+                # (Some tests in certain projects require artifacts that are build only by cargo build)
 
-            if not has_failed:
-                # prepare cache dir/file
-                cache_file = "run_{}.log".format(
-                    int(time() * 1000)
-                )  # run identified by timestamp
-                cache_file_path = os.path.join(self.cache_dir, cache_file)
+                if not has_errored:
+                    # prepare cache dir/file
+                    cache_file = "run_{}.log".format(
+                        int(time() * 1000)
+                    )  # run identified by timestamp
+                    cache_file_path = os.path.join(self.cache_dir, cache_file)
 
-                # Run build command on actual commit
-                proc: SubprocessContainer = SubprocessContainer(
-                    command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
-                )
-                proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_failed |= not (proc.exit_code == 0 or any(
-                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+                    # Run build command on actual commit
+                    proc: SubprocessContainer = SubprocessContainer(
+                        command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
+                    )
+                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                    has_errored |= not (proc.exit_code == 0 or any(
+                        line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
-                # ******************************************************************************************************
-                # Parse result
+                    # ******************************************************************************************************
+                    # Parse result
 
-                log = proc.output
+                    log = proc.output
 
-                # create test report object
-                test_report: TestReport = TestReport(
-                    name=self.report_name + " - build",
-                    duration=proc.end_to_end_time,
-                    suites=[],
-                    commit=commit,
-                    commit_str=commit.commit_str,
-                    log=log,
-                    has_failed=has_failed
-                )
+                    # create test report object
+                    test_report: TestReport = TestReport(
+                        name=self.report_name + " - build",
+                        duration=proc.end_to_end_time,
+                        build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
+                        suites=[],
+                        commit=commit,
+                        commit_str=commit.commit_str,
+                        log=log,
+                        has_failed=proc.exit_code != 0,
+                        has_errored=has_errored
+                    )
 
-                DBTestReport.create_or_update(report=test_report, session=session)
+                    DBTestReport.create_or_update(report=test_report, session=session)
 
             ############################################################################################################
             # Run on actual commit
 
-            if not has_failed:
+            if not has_errored:
                 # prepare cache dir/file
                 cache_file = "run_{}.log".format(
                     int(time() * 1000)
@@ -242,7 +254,7 @@ class CargoHook(Hook, ABC):
                     command=self.test_command(), output_filepath=cache_file_path, env=self.env() | {"RUST_LOG": "debug"}
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_failed |= not (proc.exit_code == 0 or any(
+                has_errored |= not (proc.exit_code == 0 or any(
                     line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
                 # ******************************************************************************************************
@@ -255,7 +267,7 @@ class CargoHook(Hook, ABC):
                 try:
                     test_suites = loader.load()
                 except:
-                    has_failed = True
+                    has_errored = True
                     log = "Failed to parse testsuites\n" + log
                     test_suites = []
 
@@ -263,11 +275,13 @@ class CargoHook(Hook, ABC):
                 test_report: TestReport = TestReport(
                     name=self.report_name,
                     duration=proc.end_to_end_time,
+                    build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
                     suites=test_suites,
                     commit=commit,
                     commit_str=commit.commit_str,
                     log=log,
-                    has_failed=has_failed
+                    has_failed=proc.exit_code != 0,
+                    has_errored=has_errored
                 )
 
                 DBTestReport.create_or_update(report=test_report, session=session)
@@ -284,4 +298,4 @@ class CargoHook(Hook, ABC):
         freed = gc.collect()
         _LOGGER.info("gc has freed " + str(freed) + " objects")
 
-        return not has_failed
+        return not has_errored

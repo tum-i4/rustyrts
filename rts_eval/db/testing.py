@@ -41,12 +41,14 @@ class DBTestCaseMeta(Base.__class__, TestCase.__class__):
 class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
     name = Column(String, nullable=False)
     duration = Column(Float)
+    build_duration = Column(Float)
     suites: List["DBTestSuite"] = relationship("DBTestSuite", back_populates="report")
     commit_str = Column(String, nullable=False)
     commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
     commit: DBCommit = relationship("DBCommit", back_populates="reports")
     log = Column(Text)
     has_failed = Column(Boolean)
+    has_errored = Column(Boolean)
 
     __table_args__ = tuple(
         [UniqueConstraint("name", "commit_str", name="_test_name_revision_uc")]
@@ -103,22 +105,26 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
         return cls(
             name=report.name,
             duration=report.duration,
+            build_duration=report.build_duration,
             suites=[] if report.suites is None else [DBTestSuite.from_domain(suite) for suite in report.suites],
             commit_str=report.commit_str,
             commit=DBCommit.from_domain(report.commit),
             log=report.log,
             has_failed=report.has_failed,
+            has_errored=report.has_errored,
         )
 
     def to_domain(self) -> TestReport:
         return TestReport(
             name=self.name,
             duration=self.duration,
+            build_duration=self.build_duration,
             suites=[DBTestSuite.to_domain(suite) for suite in self.suites],
             commit_str=self.commit_str,
             commit=self.commit.to_domain(),
             log=self.log,
             has_failed=self.has_failed,
+            has_errored=self.has_errored
         )
 
 

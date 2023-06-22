@@ -45,7 +45,7 @@ class ChangelistItem:
             action: ChangelistItemAction,
             kind: ChangelistItemKind,
             content: Optional[str] = None
-   ):
+    ):
         """
         A constructor for a ChangelistItem.
 
@@ -85,18 +85,19 @@ class ChangelistItem:
             content=json["content"]
         )
 
+
 class Commit:
     def __init__(
-        self,
-        commit_str: str,
-        author: str,
-        message: str,
-        timestamp: datetime,
-        changelist: List[ChangelistItem],
-        repo: Optional[Repository] = None,
-        nr_lines = None,
-        nr_files = None,
-   ):
+            self,
+            commit_str: str,
+            author: str,
+            message: str,
+            timestamp: datetime,
+            changelist: List[ChangelistItem],
+            repo: Optional[Repository] = None,
+            nr_lines=None,
+            nr_files=None,
+    ):
         self.author = author
         self.commit_str = commit_str
         self.message = message
@@ -108,7 +109,7 @@ class Commit:
 
     @classmethod
     def create_virtual_commit(
-        cls, changelist: List[ChangelistItem], repo: Optional[Repository] = None
+            cls, changelist: List[ChangelistItem], repo: Optional[Repository] = None
     ) -> "Commit":
         now: datetime = datetime.now()
         return cls(
@@ -153,7 +154,7 @@ class Commit:
             commit_str=json["commit_str"],
             message=json["message"],
             timestamp=datetime.fromtimestamp(int(json["timestamp"])),
-            changelist= [ChangelistItem.from_json(item) for item in json["items"]],
+            changelist=[ChangelistItem.from_json(item) for item in json["items"]],
             nr_lines=json["nr_lines"],
             nr_files=json["nr_files"],
         )
@@ -178,9 +179,9 @@ class SCMClient(ABC):
 
     @abstractmethod
     def get_diff(
-        self,
-        from_revision: Union[int, str],
-        to_revision: Optional[Union[int, str]] = None,
+            self,
+            from_revision: Union[int, str],
+            to_revision: Optional[Union[int, str]] = None,
     ) -> List[ChangelistItem]:
         """
         Get a combined changelist depicting the diff between two revisions.
@@ -192,7 +193,7 @@ class SCMClient(ABC):
 
     @abstractmethod
     def get_file_content_at_commit(
-        self, revision: Union[int, str], file_path: Path
+            self, revision: Union[int, str], file_path: Path
     ) -> str:
         """
         Get the content of a file at a certain revision.
@@ -205,7 +206,7 @@ class SCMClient(ABC):
 
     @abstractmethod
     def get_status(
-        self,
+            self,
     ) -> List[ChangelistItem]:
         """
         Get a changelist that contains all currently changed/added/deleted files.

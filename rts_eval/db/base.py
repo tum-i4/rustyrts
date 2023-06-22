@@ -18,6 +18,7 @@ class Base:
     updated_at = Column(DateTime(timezone=False), onupdate=func.now())
     __name__: str
 
+    @classmethod
     @declared_attr
     def __tablename__(cls) -> str:
         return cls.__name__.removeprefix("DB")

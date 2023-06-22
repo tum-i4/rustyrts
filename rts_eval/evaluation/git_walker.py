@@ -13,7 +13,7 @@ _LOGGER = get_logger(__name__)
 
 
 class SequentialWalkerStrategy(WalkerStrategy):
-    def __init__(self, repository, include_merge_commits = False, branch: str = "main"):
+    def __init__(self, repository, include_merge_commits=False, branch: str = "main"):
         self.git_repo: Repo = Repo(repository.path)
 
         self.include_merge_commits = include_merge_commits
@@ -31,7 +31,7 @@ class SequentialWalkerStrategy(WalkerStrategy):
 
 
 class RandomWalkerStrategy(SequentialWalkerStrategy):
-    def __init__(self, repository, include_merge_commits = False, branch: str = "main"):
+    def __init__(self, repository, include_merge_commits=False, branch: str = "main"):
         super().__init__(repository, include_merge_commits, branch)
 
     def __iter__(self):
@@ -49,7 +49,6 @@ class GivenWalkerStrategy(WalkerStrategy):
         return self.commits.__iter__()
 
 
-
 class GitWalker(Walker):
     """
        GitWalker class to replay git repository history.
@@ -62,7 +61,7 @@ class GitWalker(Walker):
             strategy: WalkerStrategy,
             num_commits: Optional[int] = 10,
             hooks: Optional[List[Hook]] = None,
-   ):
+    ):
         super().__init__(
             repository,
             strategy,

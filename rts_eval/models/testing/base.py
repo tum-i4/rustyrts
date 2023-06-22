@@ -251,11 +251,13 @@ class TestReport:
             self,
             name: str,
             duration: float,
+            build_duration: Optional[float],
             suites: List[TestSuite] = None,
             commit_str: Union[Optional[str], Optional[int]] = None,
             commit: Commit = None,
             log: Optional[str] = None,
             has_failed: Optional[bool] = None,
+            has_errored: Optional[bool] = None,
     ):
         """
         Constructor for test reports
@@ -269,11 +271,13 @@ class TestReport:
         """
         self.name = name
         self.duration = duration
+        self.build_duration = build_duration
         self.suites = suites
         self.commit_str = commit_str
         self.commit = commit
         self.log = log
         self.has_failed = has_failed
+        self.has_errored = has_errored
 
     def get_filtered_cases(self, status: TestStatus) -> List[TestCase]:
         cases = []

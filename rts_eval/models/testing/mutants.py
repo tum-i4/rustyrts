@@ -253,6 +253,7 @@ class Mutant:
                  check_log: Optional[str],
                  test_result: Optional[MutantsResult],
                  test_duration: Optional[float],
+                 build_duration: Optional[float],
                  test_log: Optional[str],
                  suites: List[MutantsTestSuite] = None,
                  ):
@@ -276,6 +277,7 @@ class Mutant:
         self.check_log = check_log
         self.test_result = test_result
         self.test_duration = test_duration
+        self.build_duration = build_duration
         self.test_log = test_log
         self.suites = suites
 

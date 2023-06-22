@@ -17,7 +17,7 @@ class CargoMutantsTestReportLoader(TestReportLoader):
         """
         Constructor.
 
-        :param input: Input for loading test, should contain test events in json format
+        :param path: directory containing the logs of all mutants
         """
         super().__init__()
         self.path = path
@@ -52,12 +52,14 @@ class CargoMutantsTestReportLoader(TestReportLoader):
 
             if len(elements) > (2 + offset):
                 check_result = re.search(r"^cargo result: (.*) in ", elements[2 + offset], flags=re.MULTILINE).group(1)
-                check_duration = re.search(r"^cargo result: .* in (.*)s", elements[2 + offset], flags=re.MULTILINE).group(1)
+                check_duration = re.search(r"^cargo result: .* in (.*)s", elements[2 + offset],
+                                           flags=re.MULTILINE).group(1)
                 check_log = elements[1 + offset].replace("\x00", "")
 
             if len(elements) > (4 + offset):
                 test_result = re.search(r"^cargo result: (.*) in ", elements[4 + offset], flags=re.MULTILINE).group(1)
-                test_duration = re.search(r"^cargo result: .* in (.*)s", elements[4 + offset], flags=re.MULTILINE).group(1)
+                test_duration = re.search(r"^cargo result: .* in (.*)s", elements[4 + offset],
+                                          flags=re.MULTILINE).group(1)
                 test_log = elements[3 + offset].replace("\x00", "")
 
             if test_log:
@@ -74,6 +76,7 @@ class CargoMutantsTestReportLoader(TestReportLoader):
                             check_log=check_log,
                             test_result=test_result,
                             test_duration=test_duration,
+                            build_duration=CargoTestTestReportLoader.parse_build_time(test_log) if test_log else None,
                             test_log=test_log,
                             suites=suites)
 

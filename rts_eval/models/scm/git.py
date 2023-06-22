@@ -78,8 +78,7 @@ class GitClient(SCMClient):
     def clean(self, rm_dirs: bool = True):
         self.git_repo.git.clean(force=True, d=rm_dirs, x=rm_dirs)
 
-    def get_commit_from_repo(self, commit_id: Optional[str] = None) -> Optional[
-        Commit]:
+    def get_commit_from_repo(self, commit_id: Optional[str] = None) -> Optional[Commit]:
         # get by id or current HEAD if None
         try:
             commit = self.git_repo.commit(rev=commit_id)
@@ -101,7 +100,6 @@ class GitClient(SCMClient):
     def get_parent_commit(self, commit_sha: str) -> str:
         parent = self.git_repo.git.rev_parse(commit_sha + "^")
         return parent
-
 
     def get_changelist_from_commit(self, commit_sha: str) -> List[ChangelistItem]:
         return self._get_changelist_from_objects(objects=commit_sha)
@@ -158,7 +156,7 @@ class GitClient(SCMClient):
         for file in per_files[1:]:
             file_path = None
 
-            if (file.__contains__("@@")):
+            if file.__contains__("@@"):
                 [header, change] = file.split("@@", maxsplit=1)
                 file_matcher = re.search(" b\\/(.*)", header)
                 if file_matcher:

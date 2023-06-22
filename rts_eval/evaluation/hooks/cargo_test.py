@@ -29,9 +29,7 @@ class CargoTestHook(CargoHook):
 
     def build_env(self):
         os.makedirs(self.target_dir, exist_ok=True)
-
-        env = {}
-        env["CARGO_TARGET_DIR"] = self.target_dir
+        env = {"CARGO_TARGET_DIR": self.target_dir}
         return os.environ | self.env_vars | env
 
     def clean_command(self):
