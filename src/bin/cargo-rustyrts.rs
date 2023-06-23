@@ -575,7 +575,7 @@ fn select_and_execute_tests_static() {
                     .sorted()
                     .map(|(k, v)| {
                         let path = format!(
-                            "{}: [ {}{} ]",
+                            "{}: < {}{} >",
                             k,
                             v[0],
                             if v.len() >= VERBOSE_COUNT {
@@ -756,7 +756,7 @@ fn select_and_execute_tests_dynamic() {
                         .as_ref()
                         .map(|intersection| {
                             format!(
-                                "{{ {:?} {}}}",
+                                "< {:?} {}>",
                                 intersection.iter().take(VERBOSE_COUNT).join(", "),
                                 if intersection.len() > VERBOSE_COUNT {
                                     "... "
