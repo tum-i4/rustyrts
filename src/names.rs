@@ -1,4 +1,5 @@
 use lazy_static::lazy_static;
+use log::info;
 use regex::Regex;
 use rustc_hir::{
     def_id::{DefId, LOCAL_CRATE},
@@ -52,7 +53,7 @@ pub(crate) fn def_id_name<'tcx>(
 
     let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs);
 
-    let mut def_path_str = if !def_id.is_local() && suffix.starts_with("<(dyn") {
+    let mut def_path_str = if !def_id.is_local() && suffix.starts_with("<") {
         let cstore = tcx.cstore_untracked();
 
         format!(
