@@ -1,5 +1,4 @@
 use lazy_static::lazy_static;
-use log::info;
 use regex::Regex;
 use rustc_hir::{
     def_id::{DefId, LOCAL_CRATE},

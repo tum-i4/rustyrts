@@ -122,9 +122,10 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     }
 
     #[allow(unused_mut)]
-    fn visit_ty(&mut self, mut ty: Ty<'tcx>, ty_context: TyContext) {
+    fn visit_ty(&mut self, mut ty: Ty<'tcx>, _ty_context: TyContext) {
         self.super_ty(ty);
         let (outer, mut outer_substs) = self.get_outer();
+        let outer_name = def_id_name(self.tcx, outer, outer_substs, false);
 
         #[cfg(not(feature = "monomorphize"))]
         let orig_substs = self.get_orig();
@@ -132,56 +133,16 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
         #[cfg(feature = "monomorphize")]
         let orig_substs = outer_substs;
 
-        // We need to resolve ty here, to precisely resolve statically dispatched function calls
-        let param_env = self
-            .tcx
-            .param_env(outer)
-            .with_reveal_all_normalized(self.tcx);
-        ty = self
-            .tcx
-            .subst_and_normalize_erasing_regions(orig_substs, param_env, ty);
-
-        // Apparently, all this is not done in self.super_ty(ty)
-        match ty.kind() {
-            TyKind::Ref(_, ty, _) => self.visit_ty(*ty, clone_ty_context(&ty_context)),
-            TyKind::Array(ty, _) => self.visit_ty(*ty, clone_ty_context(&ty_context)),
-            TyKind::RawPtr(ty_and_mut) => {
-                self.visit_ty(ty_and_mut.ty, clone_ty_context(&ty_context))
-            }
-            TyKind::FnPtr(binder) => {
-                let fn_sig = binder.skip_binder();
-                for input in fn_sig.inputs() {
-                    self.visit_ty(*input, clone_ty_context(&ty_context));
-                }
-                self.visit_ty(fn_sig.output(), clone_ty_context(&ty_context));
-            }
-            TyKind::Slice(ty) => self.visit_ty(*ty, clone_ty_context(&ty_context)),
-            TyKind::Tuple(tys) => {
-                for ty in tys.iter() {
-                    self.visit_ty(ty, clone_ty_context(&ty_context));
-                }
-            }
-            TyKind::GeneratorWitness(binder) => {
-                let tys = binder.skip_binder();
-                for ty in tys {
-                    self.visit_ty(ty, clone_ty_context(&ty_context));
-                }
-            }
-            _ => {}
-        }
-
         // 6. function -> destructor (`drop()` function) of referenced abstract datatype
         if let Some(adt_def) = ty.ty_adt_def() {
             if let Some(destructor) = self.tcx.adt_destructor(adt_def.did()) {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer, outer_substs, false),
+                    outer_name.clone(),
                     def_id_name(self.tcx, destructor.did, &[], false),
                     EdgeType::Drop,
                 );
             }
         }
-
-        let outer_name = def_id_name(self.tcx, outer, outer_substs, false);
 
         #[allow(unused_variables)]
         if let Some((def_id, substs, edge_type)) = match ty.kind() {
@@ -190,22 +151,34 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             // 2. function  -> contained Generator
             TyKind::Generator(def_id, substs, _) => Some((*def_id, *substs, EdgeType::Generator)),
 
-            TyKind::FnDef(mut def_id, mut substs) => {
-                let maybe_dyn = if let Ok(Some(instance)) =
+            TyKind::FnDef(_def_id, _substs) => {
+                // We need to resolve ty here, to precisely resolve statically dispatched function calls
+                let param_env = self
+                    .tcx
+                    .param_env(outer)
+                    .with_reveal_all_normalized(self.tcx);
+                ty = self
+                    .tcx
+                    .subst_and_normalize_erasing_regions(orig_substs, param_env, ty);
+
+                let TyKind::FnDef(mut def_id, mut substs) = ty.kind() else {unreachable!()};
+
+                let maybe_resolved = if let Ok(Some(instance)) =
                     Instance::resolve(self.tcx, param_env, def_id, &substs)
                 {
                     match instance.def {
                         InstanceDef::Virtual(def_id, _) => {
                             // 3.4 caller function -> callee `fn` + !dyn (for functions in `trait {..} called by dynamic dispatch)
-                            Some((def_id, List::empty(), EdgeType::FnDefDyn)) // No substs here, even with monomorphize
+                            Some(Some((def_id, List::empty(), EdgeType::FnDefDyn)))
+                            // No substs here, even with monomorphize
                         }
-                        InstanceDef::Item(item) => {
+                        InstanceDef::Item(item) if !self.tcx.is_closure(instance.def_id()) => {
                             // Assign resolved function
                             def_id = item.did;
                             substs = instance.substs;
                             None
                         }
-                        _ => None,
+                        _ => Some(None),
                     }
                 } else {
                     warn!(
@@ -215,7 +188,7 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
                     None
                 };
 
-                maybe_dyn.or_else(|| {
+                maybe_resolved.unwrap_or_else(|| {
                     if let DefKind::AssocFn = self.tcx.def_kind(def_id) {
                         if let Some(_trait_def_id) = self.tcx.trait_of_item(def_id) {
                             // 3.1 caller function -> callee `fn` (for functions in `trait {..})
@@ -566,18 +539,5 @@ mod test {
             assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
             assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
         }
-    }
-}
-
-fn clone_ty_context(context: &TyContext) -> TyContext {
-    match context {
-        TyContext::LocalDecl { local, source_info } => TyContext::LocalDecl {
-            local: local.clone(),
-            source_info: source_info.clone(),
-        },
-        TyContext::UserTy(span) => TyContext::UserTy(span.clone()),
-        TyContext::ReturnTy(source_info) => TyContext::ReturnTy(source_info.clone()),
-        TyContext::YieldTy(source_info) => TyContext::YieldTy(source_info.clone()),
-        TyContext::Location(location) => TyContext::Location(location.clone()),
     }
 }

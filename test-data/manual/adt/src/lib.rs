@@ -16,6 +16,12 @@ impl Debug for Foo<u32> {
     }
 }
 
+impl<T> Drop for Foo<T> {
+    fn drop(&mut self) {
+        println!("Dropped")
+    }
+}
+
 fn generic_display<S: Display>(s: &S) {
     println!("{}", s);
 }
