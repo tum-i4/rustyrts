@@ -9,15 +9,16 @@ use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
 use rustc_resolve::Namespace;
 
 lazy_static! {
-    static ref RE_NON_LOCAL: [Regex; 1] = [Regex::new(r"(<[^[:alpha:]>]*)[^> ]*?::(.*?>)").unwrap()];
-    //static ref RE_BOTH: [Regex; 5] = [
-    //    Regex::new(r"(for )[^>]*?::(.*?>)").unwrap(),
-    //    Regex::new(r"(<impl )[^>]*?::(.*?>)").unwrap(),
-    //    Regex::new(r"(<\(dyn )[^>]*?::(.*?>)").unwrap(),
-    //    Regex::new(r"(\+ )[^)>]*?::()").unwrap(),
-    //    Regex::new(r"(as )[^)>]*?::(.*?>)").unwrap(),
-    //];
-    static ref RE_LIFETIME: [Regex; 2] = [Regex::new(r"( \+ )?'.+?(, | |(\)|>))").unwrap(), Regex::new(r"(::)?<>").unwrap()];
+    static ref RE_NON_LOCAL: [Regex; 4] = [
+        Regex::new(r"(<)[^&\[> ]*?::").unwrap(),
+        Regex::new(r"(&)[^&\[> ]*?::").unwrap(),
+        Regex::new(r"(\[)[^&\[> ]*?::").unwrap(),
+        Regex::new(r"( )[^&\[> ]*?::").unwrap()
+    ];
+    static ref RE_LIFETIME: [Regex; 2] = [
+        Regex::new(r"( \+ )?'.+?(, | |(\)|>))").unwrap(),
+        Regex::new(r"(::)?<>").unwrap()
+    ];
 }
 
 #[cfg(feature = "monomorphize")]
