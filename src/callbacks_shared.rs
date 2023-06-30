@@ -99,7 +99,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
     let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
 
     for body in dedup_bodies {
-        let name = def_id_name(tcx, body.source.def_id(), List::empty(), false); // IMPORTANT: no substs here
+        let name = def_id_name(tcx, body.source.def_id(), List::empty(), false, true); // IMPORTANT: no substs here
         let checksum = get_checksum_body(tcx, body);
         insert_hashmap(&mut *new_checksums, &name, checksum);
     }
@@ -111,7 +111,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
     for def_id in tcx.mir_keys(()) {
         for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                tests.push(def_id_name(tcx, def_id.to_def_id(), &[], false));
+                tests.push(def_id_name(tcx, def_id.to_def_id(), &[], false, false));
             }
         }
     }

@@ -697,7 +697,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                         .kind;
 
                     if let TerminatorKind::Call { func, .. } = terminator_kind {
-                        if def_id_name(tcx, func.const_fn_def().unwrap().0, &[], false)
+                        if def_id_name(tcx, func.const_fn_def().unwrap().0, &[], false, true)
                             .split_once("::")
                             .map(|(_, second)| second == EDGE_CASE_FROM_RESIDUAL)
                             .unwrap_or(false)

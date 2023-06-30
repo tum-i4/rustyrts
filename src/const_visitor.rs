@@ -141,7 +141,7 @@ impl<'tcx> Visitor<'tcx> for ConstVisitor<'tcx> {
             }
             _ => None,
         } {
-            let name: String = def_id_name(self.tcx, def_id, substs, false);
+            let name: String = def_id_name(self.tcx, def_id, substs, false, true);
             let checksum = match allocation_or_int {
                 Ok(allocation) => get_checksum_const_allocation(self.tcx, &allocation),
                 Err(scalar_int) => {

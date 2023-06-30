@@ -159,8 +159,8 @@ fn custom_vtable_entries_monomorphized<'tcx>(
                     instance.substs
                 };
 
-                let name =
-                    def_id_name(tcx, instance.def_id(), substs, false).to_owned() + SUFFIX_DYN;
+                let name = def_id_name(tcx, instance.def_id(), substs, false, true).to_owned()
+                    + SUFFIX_DYN;
 
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
 

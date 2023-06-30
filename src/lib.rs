@@ -45,6 +45,7 @@ pub mod const_visitor;
 pub mod constants;
 pub mod format;
 pub mod fs_utils;
+pub mod info;
 pub mod names;
 
 pub mod utils;

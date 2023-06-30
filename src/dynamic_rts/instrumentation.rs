@@ -7,7 +7,7 @@ use rustc_middle::{mir::Body, ty::TyCtxt};
 
 pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.instance.def_id();
-    let outer = def_id_name(tcx, def_id, &[], false);
+    let outer = def_id_name(tcx, def_id, &[], false, true);
 
     trace!("Visiting {}", outer);
 
@@ -26,7 +26,7 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     for (_, list) in attrs.iter() {
         for attr in *list {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                let def_path = def_id_name(tcx, def_id, &[], true);
+                let def_path = def_id_name(tcx, def_id, &[], true, false);
                 let def_path_test = &def_path[0..def_path.len() - 13];
 
                 // IMPORTANT: The order in which insert_post, insert_pre are called is critical here

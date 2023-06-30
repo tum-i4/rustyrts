@@ -16,6 +16,7 @@ pub enum EdgeType {
     DynFn,
     Drop,
 
+    Trimmed,
     Monomorphization,
 }
 
@@ -31,6 +32,8 @@ impl AsRef<str> for EdgeType {
             EdgeType::TraitImpl => "[color = magenta]",
             EdgeType::DynFn => "[color = magenta]",
             EdgeType::Drop => "[color = yellow]",
+
+            EdgeType::Trimmed => "[color = red]",
             EdgeType::Monomorphization => "[color = red]",
         }
     }
@@ -52,6 +55,7 @@ impl FromStr for EdgeType {
             "DynFn" => Ok(Self::DynFn),
             "Drop" => Ok(Self::Drop),
 
+            "Trimmed" => Ok(Self::Trimmed),
             "Monomorphization" => Ok(Self::Monomorphization),
             _ => Err(()),
         }

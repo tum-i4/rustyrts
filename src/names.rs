@@ -9,12 +9,6 @@ use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
 use rustc_resolve::Namespace;
 
 lazy_static! {
-    static ref RE_NON_LOCAL: [Regex; 4] = [
-        Regex::new(r"(<)[^&\[> ]*?::").unwrap(),
-        Regex::new(r"(&)[^&\[> ]*?::").unwrap(),
-        Regex::new(r"(\[)[^&\[> ]*?::").unwrap(),
-        Regex::new(r"( )[^&\[> ]*?::").unwrap()
-    ];
     static ref RE_LIFETIME: [Regex; 2] = [
         Regex::new(r"( \+ )?'.+?(, | |(\)|>))").unwrap(),
         Regex::new(r"(::)?<>").unwrap()
@@ -32,6 +26,7 @@ pub(crate) fn def_id_name<'tcx>(
     def_id: DefId,
     substs: &'tcx [GenericArg<'tcx>],
     add_crate_id: bool,
+    trimmed: bool,
 ) -> String {
     let crate_id = if add_crate_id {
         if def_id.is_local() {
@@ -51,7 +46,7 @@ pub(crate) fn def_id_name<'tcx>(
         "".to_string()
     };
 
-    let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs);
+    let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs, trimmed);
 
     let mut def_path_str = if !def_id.is_local() && suffix.starts_with("<") {
         let cstore = tcx.cstore_untracked();
@@ -69,16 +64,6 @@ pub(crate) fn def_id_name<'tcx>(
     } else {
         format!("{}{}", crate_id, suffix)
     };
-
-    if !def_id.is_local() {
-        // In case this is a non-local def_id, the name of the crate is printed in generic types like <foo::Foo>
-        // We remove this crate prefix here, because it can lead to discontinuity in the dependency graph (static)
-        // and false traces (dynamic)
-
-        for re in RE_NON_LOCAL.iter() {
-            def_path_str = re.replace_all(&def_path_str, "${1}${2}").to_string();
-        }
-    }
 
     for re in RE_LIFETIME.iter() {
         // Remove lifetime parameters if present
@@ -102,12 +87,21 @@ pub fn def_path_str_with_substs_with_no_visible_path<'t>(
     tcx: TyCtxt<'t>,
     def_id: DefId,
     substs: &'t [GenericArg<'t>],
+    trimmed: bool,
 ) -> String {
     let ns = guess_def_namespace(tcx, def_id);
 
-    rustc_middle::ty::print::with_no_visible_paths!(
-        FmtPrinter::new(tcx, ns).print_def_path(def_id, substs)
-    )
+    if trimmed {
+        rustc_middle::ty::print::with_forced_trimmed_paths!(
+            rustc_middle::ty::print::with_no_visible_paths!(
+                FmtPrinter::new(tcx, ns).print_def_path(def_id, substs)
+            )
+        )
+    } else {
+        rustc_middle::ty::print::with_no_visible_paths!(
+            FmtPrinter::new(tcx, ns).print_def_path(def_id, substs)
+        )
+    }
     .unwrap()
     .into_buffer()
 }
