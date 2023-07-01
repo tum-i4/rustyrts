@@ -66,10 +66,6 @@ pub(crate) fn def_id_name<'tcx>(
     // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
 
-    if def_path_str.contains("from_residual") {
-        info!("Found from_residual in {}", def_path_str);
-    }
-
     def_path_str
 }
 
