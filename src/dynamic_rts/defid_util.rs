@@ -23,7 +23,7 @@ const POST_MAIN_FN_NAME: &str = "post_main";
 const PRE_MAIN_FN_NAME: &str = "pre_main";
 
 #[cfg(unix)]
-const EXIT_FN_NAME: &str = "process::exit";
+const EXIT_FN_NAME: &str = "std::exit";
 
 static RLIB_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
 
@@ -88,7 +88,7 @@ pub(crate) fn get_def_id_exported(tcx: TyCtxt, krate: CrateNum, name: &str) -> O
         };
 
         if let Some(def_id) = maybe_def_id {
-            let def_path_str = def_id_name(tcx, def_id, &[], false, false);
+            let def_path_str = def_id_name(tcx, def_id, &[], false, true);
             if def_path_str.ends_with(name) {
                 return Some(def_id);
             }

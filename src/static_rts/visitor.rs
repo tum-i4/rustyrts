@@ -94,8 +94,9 @@ impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
             for (_, list) in attrs.iter() {
                 for attr in *list {
                     if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                        let def_path = def_id_name(self.tcx, outer, &[], false, false);
-                        let trimmed_def_path = def_id_name(self.tcx, outer, &[], false, true);
+                        let def_path = def_id_name(self.tcx, outer, outer_substs, false, false);
+                        let trimmed_def_path =
+                            def_id_name(self.tcx, outer, outer_substs, false, true);
 
                         self.graph.add_edge(
                             def_path[0..def_path.len() - 13].to_string(),

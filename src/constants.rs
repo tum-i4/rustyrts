@@ -49,15 +49,15 @@ pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 
 pub const SUFFIX_DYN: &str = "!dyn";
 
-pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::try_trait::FromResidual::from_residual";
+pub const EDGE_CASE_FROM_RESIDUAL: &str = "core::FromResidual::from_residual";
 
 pub const EDGE_CASES_NO_TRACE: &[&str] = &[
-    "_::__rg_alloc",
-    "_::__rg_dealloc",
-    "_::__rg_realloc",
-    "_::__rg_alloc_zeroed",
-    "as core::alloc::global::GlobalAlloc>::alloc",
-    "as core::alloc::global::GlobalAlloc>::dealloc",
-    "as core::alloc::global::GlobalAlloc>::realloc",
-    "as core::alloc::global::GlobalAlloc>::alloc_zeroed",
+    "__rg_alloc",
+    "__rg_dealloc",
+    "__rg_realloc",
+    "__rg_alloc_zeroed",
+    "as GlobalAlloc>::alloc",
+    "as GlobalAlloc>::dealloc",
+    "as GlobalAlloc>::realloc",
+    "as GlobalAlloc>::alloc_zeroed",
 ];

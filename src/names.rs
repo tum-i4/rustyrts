@@ -1,9 +1,7 @@
 use lazy_static::lazy_static;
+use log::info;
 use regex::Regex;
-use rustc_hir::{
-    def_id::{DefId, LOCAL_CRATE},
-    definitions::DefPathData,
-};
+use rustc_hir::{def_id::DefId, definitions::DefPathData};
 use rustc_middle::ty::print::Printer;
 use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
 use rustc_resolve::Namespace;
@@ -28,6 +26,8 @@ pub(crate) fn def_id_name<'tcx>(
     add_crate_id: bool,
     trimmed: bool,
 ) -> String {
+    assert!(trimmed | def_id.is_local());
+
     let crate_id = if add_crate_id {
         if def_id.is_local() {
             format!(
@@ -46,24 +46,10 @@ pub(crate) fn def_id_name<'tcx>(
         "".to_string()
     };
 
+    let crate_name = tcx.crate_name(def_id.krate);
     let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs, trimmed);
 
-    let mut def_path_str = if !def_id.is_local() && suffix.starts_with("<") {
-        let cstore = tcx.cstore_untracked();
-
-        format!(
-            "{}{}::{}",
-            crate_id,
-            cstore.crate_name(def_id.krate),
-            suffix
-        )
-    } else if def_id.is_local() {
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
-
-        format!("{}{}::{}", crate_id, crate_name, suffix)
-    } else {
-        format!("{}{}", crate_id, suffix)
-    };
+    let mut def_path_str = format!("{}{}::{}", crate_id, crate_name, suffix);
 
     for re in RE_LIFETIME.iter() {
         // Remove lifetime parameters if present
@@ -79,6 +65,10 @@ pub(crate) fn def_id_name<'tcx>(
 
     // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
+
+    if def_path_str.contains("from_residual") {
+        info!("Found from_residual in {}", def_path_str);
+    }
 
     def_path_str
 }
