@@ -1,5 +1,4 @@
 use lazy_static::lazy_static;
-use log::info;
 use regex::Regex;
 use rustc_hir::{def_id::DefId, definitions::DefPathData};
 use rustc_middle::ty::print::Printer;
@@ -46,10 +45,18 @@ pub(crate) fn def_id_name<'tcx>(
         "".to_string()
     };
 
-    let crate_name = tcx.crate_name(def_id.krate);
     let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs, trimmed);
 
-    let mut def_path_str = format!("{}{}::{}", crate_id, crate_name, suffix);
+    let crate_name = {
+        let name = format!("{}::", tcx.crate_name(def_id.krate));
+        if !suffix.starts_with(&name) {
+            name
+        } else {
+            "".to_string()
+        }
+    };
+
+    let mut def_path_str = format!("{}{}{}", crate_id, crate_name, suffix);
 
     for re in RE_LIFETIME.iter() {
         // Remove lifetime parameters if present
