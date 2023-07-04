@@ -6,8 +6,11 @@ use log::{Level, Record};
 use std::io::Result;
 use std::io::Write;
 
+use crate::constants::ENV_RUSTYRTS_LOG;
+
 pub fn create_logger<'a>() -> Builder {
-    let mut builder = env_logger::Builder::from_env(Env::default().default_filter_or("info"));
+    let mut builder =
+        env_logger::Builder::from_env(Env::from(ENV_RUSTYRTS_LOG).default_filter_or("info"));
 
     builder.format(colored_record);
 

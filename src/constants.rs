@@ -22,6 +22,9 @@ pub const ENV_RUSTYRTS_ARGS: &str = "rustyrts_args";
 /// Used to specify whether rustyrts should provide verbose output
 pub const ENV_RUSTYRTS_VERBOSE: &str = "RUSTYRTS_VERBOSE";
 
+/// Used to specify the log level
+pub const ENV_RUSTYRTS_LOG: &str = "RUSTYRTS_LOG";
+
 /// Used to skip the analysis in the second invocation of the compiler wrapper
 pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP";
 
