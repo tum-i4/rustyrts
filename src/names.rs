@@ -49,7 +49,7 @@ pub(crate) fn def_id_name<'tcx>(
 
     let crate_name = {
         let name = format!("{}::", tcx.crate_name(def_id.krate));
-        if !suffix.starts_with(&name) {
+        if def_id.is_local() || !suffix.starts_with(&name) {
             name
         } else {
             "".to_string()

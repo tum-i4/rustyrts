@@ -243,7 +243,7 @@ where
     cmd.arg("--examples");
 
     // we do not want to execute benches,
-    // because they do not rely on the test harness and are not recognized aas tests
+    // because they do not rely on the test harness and are not recognized as tests
     //cmd.arg("--benches");
 
     if affected_tests_iter.peek().is_none() && !(mode == Mode::Dynamic && has_arg_flag(DESC_FLAG)) {
