@@ -104,6 +104,11 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
                 if report.has_failed is not None
                 else db_report.has_failed
             )
+            db_report.missed = report.missed
+            db_report.caught = report.caught
+            db_report.unviable = report.unviable
+            db_report.timeout = report.timeout
+            db_report.failed = report.failed
         return db_report
 
     @classmethod
