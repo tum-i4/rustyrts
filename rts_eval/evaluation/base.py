@@ -20,7 +20,7 @@ class Hook(ABC):
         self.git_client = git_client
 
     @abstractmethod
-    def run(self, commit: Commit) -> int:
+    def run(self, commit: Commit, features_parent: Optional[str], features: Optional[str]) -> int:
         pass
 
 

@@ -51,23 +51,26 @@ class CargoRustyRTSHook(CargoHook):
     def clean_command(self):
         return "cargo clean"
 
-    def build_command(self):
+    def build_command(self, features):
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
         return "cargo build --tests --examples {0}".format(
-            " ".join(self.build_options)
+            build_options
         )
 
-    def test_command_parent(self):
+    def test_command_parent(self, features):
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
         return "cargo rustyrts {0} -- {1} -- {2} -- {1} -- {3}".format(
             self.mode,
-            " ".join(self.build_options),
+            build_options,
             " ".join(self.rustc_options),
             " ".join(self.test_options),
         )
 
-    def test_command(self):
+    def test_command(self, features):
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
         return "cargo rustyrts {0} -v -- {1} -- {2} -- {1} -- {3}".format(
             self.mode,
-            " ".join(self.build_options),
+            build_options,
             " ".join(self.rustc_options),
             " ".join(self.test_options),
         )

@@ -32,13 +32,13 @@ class CargoTestTestReportLoader(TestReportLoader):
             seconds = match.group(4)
             build_time += 60.0 * float(minutes) if minutes else 0.0
             build_time += float(seconds) if seconds else 0.0
-        return  round(build_time, 2)
+        return round(build_time, 2)
 
     def load(self) -> list[TestSuite]:
 
         names = re.findall(r"^ {5}Running (.*) ", self.input, re.MULTILINE)
 
-        all_test_events = extract_json_data(self.input.replace("\n", ""))
+        all_test_events = extract_json_data(self.input)
         all_test_events = [event for event in all_test_events if
                            ("type" in event and "event" in event)
                            and (event["type"] == "suite" or (event["type"] == "test" and not any(
@@ -107,6 +107,7 @@ class CargoTestTestReportLoader(TestReportLoader):
 
 
 def extract_json_data(input: str, decoder=JSONDecoder()):
+    input = "".join([line for line in input.splitlines() if line.startswith("{")])
     while input:
         try:
             if "{" not in input:

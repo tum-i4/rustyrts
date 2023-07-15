@@ -6,7 +6,7 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/orion"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["cfa2c0c1e89f1ec3d2ab1ab1d57f88c1201e452c"]
+commits = [("cfa2c0c1e89f1ec3d2ab1ab1d57f88c1201e452c", None, None)]
 walk(path, branch=branch, commits=commits)
 
 # %%
@@ -17,7 +17,7 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/pulldown-cmark"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["967dd38554399573279855a9e124dc598a0e3200"]
+commits = [("967dd38554399573279855a9e124dc598a0e3200", None, None)]
 
 walk(path, branch=branch, commits=commits)
 
@@ -29,7 +29,7 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/regex"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["b5ef0ec281220d9047fed199ed48c29af9749570"]
+commits = [("b5ef0ec281220d9047fed199ed48c29af9749570", None, None)]
 
 walk(path, branch=branch, commits=commits)
 
@@ -42,7 +42,7 @@ from pathlib import Path
 path = "../projects/mutants/ripgrep"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["af6b6c543b224d348a8876f0c06245d9ea7929c5"]
+commits = [("af6b6c543b224d348a8876f0c06245d9ea7929c5", None, None)]
 
 walk(path, branch=branch, commits=commits)
 
@@ -55,7 +55,7 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/Rocket"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["c028d63e5ba275927424397fe9d67cfebdc138ec"]
+commits = [("c028d63e5ba275927424397fe9d67cfebdc138ec", None, None)]
 
 walk(path, branch=branch, commits=commits)
 
@@ -69,7 +69,7 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/rust-brotli"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["b1f5aed58287cb01795a099230faa7d2ac734740"]
+commits = [("b1f5aed58287cb01795a099230faa7d2ac734740", None, None)]
 
 walk(path, branch=branch, commits=commits)
 
@@ -82,7 +82,7 @@ from pathlib import Path
 path = "../projects/mutants/rust-openssl"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["e96addaa919e1f91c9dc143a9b13b218835f2356"]
+commits = [("e96addaa919e1f91c9dc143a9b13b218835f2356", None, None)]
 
 
 # Using dynamic rts, these tests just keeps failing on the remote machine, while succeeding locally
@@ -115,7 +115,7 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/rustls"
 path = os.path.abspath(path)
 branch = "main"
-commits = ["45197b807cf0699c842fcb85eb8eca555c74cc04"]
+commits = [("45197b807cf0699c842fcb85eb8eca555c74cc04", None, None)]
 
 walk(path, branch=branch, commits=commits)
 
@@ -127,7 +127,7 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/tabled"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["cc4a110d5963b7eede0e634c83c44d9e8b8250e4"]
+commits = [("cc4a110d5963b7eede0e634c83c44d9e8b8250e4", None, None)]
 
 walk(path, branch=branch, commits=commits)
 
@@ -139,6 +139,6 @@ from walkers.mutants_rts_walker import walk
 path = "../projects/mutants/tracing"
 path = os.path.abspath(path)
 branch = "master"
-commits = ["4f1e46306d4d364fcc69691fdb29a676c7105f72"]
+commits = [("4f1e46306d4d364fcc69691fdb29a676c7105f72", None, None)]
 
 walk(path, branch=branch, commits=commits)

@@ -32,7 +32,7 @@ class SccHook(Hook):
         else:
             self.cache_dir = os.path.join(tempfile.gettempdir(), ".scc-hook")
 
-    def run(self, commit: Commit) -> bool:
+    def run(self, commit: Commit, features_parent: Optional[str], features: Optional[str]) -> bool:
 
         _LOGGER.debug("Checking out commit {}.".format(commit.commit_str))
         self.git_client.checkout(commit)

@@ -17,7 +17,7 @@ from rts_eval.util.logging.logger import configure_logging_verbosity
 db_url = "postgresql://postgres:rustyrts@localhost:5432/git"
 
 
-def walk(path, branch="main", logging_level="DEBUG", commits=None,
+def walk(path, branch="main", logging_level="DEBUG", commits: Optional[list[(str, Optional[str], Optional[str])]] = None,
          env_vars: Optional[dict[str]] = None,
          build_options: Optional[list[str]] = None,
          test_options: Optional[list[str]] = None,
@@ -47,7 +47,7 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
     # does not work correctly anymore
     # that is why we fixed the commits that are analyzed
     (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (
-        RandomWalkerStrategy(repository, branch=branch), 4) # TODO: increase this
+        RandomWalkerStrategy(repository, branch=branch), 30)
 
     build_options = build_options if build_options else []
     build_options += ["-Z no-index-update"]
@@ -84,57 +84,57 @@ def walk(path, branch="main", logging_level="DEBUG", commits=None,
                           test_options=test_options.copy()
                           ),
 
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts dynamic",
-                              mode=RustyRTSMode.DYNAMIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy(),
-                              test_options=test_options.copy()
-                              ),
+#            CargoRustyRTSHook(repository=repository,
+#                              connection=connection,
+#                              git_client=git_client,
+#                              report_name="cargo rustyrts dynamic",
+#                              mode=RustyRTSMode.DYNAMIC,
+#                              env_vars=env_vars.copy(),
+#                              build_options=build_options.copy(),
+#                              test_options=test_options.copy()
+#                              ),
 
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts static",
-                              mode=RustyRTSMode.STATIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy(),
-                              test_options=test_options.copy()
-                              ),
+#            CargoRustyRTSHook(repository=repository,
+#                              connection=connection,
+#                              git_client=git_client,
+#                              report_name="cargo rustyrts static",
+#                              mode=RustyRTSMode.STATIC,
+#                              env_vars=env_vars.copy(),
+#                              build_options=build_options.copy(),
+#                              test_options=test_options.copy()
+#                              ),
 
             # ***********************************************************************************************************
             # Single threaded
 
-            CargoTestHook(repository=repository,
-                          connection=connection,
-                          git_client=git_client,
-                          report_name="cargo test single threaded",
-                          env_vars=env_vars.copy(),
-                          build_options=build_options.copy() + ["--jobs 1"],
-                          test_options=test_options.copy() + ["--test-threads 1"]
-                          ),
-
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts dynamic single threaded",
-                              mode=RustyRTSMode.DYNAMIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy() + ["--jobs 1"],
-                              test_options=test_options.copy() + ["--test-threads 1"]
-                              ),
-
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts static single threaded",
-                              mode=RustyRTSMode.STATIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy() + ["--jobs 1"],
-                              test_options=test_options.copy() + ["--test-threads 1"]
-                              ),
+#            CargoTestHook(repository=repository,
+#                          connection=connection,
+#                          git_client=git_client,
+#                          report_name="cargo test single threaded",
+#                          env_vars=env_vars.copy(),
+#                          build_options=build_options.copy() + ["--jobs 1"],
+#                          test_options=test_options.copy() + ["--test-threads 1"]
+#                          ),
+#
+#            CargoRustyRTSHook(repository=repository,
+#                              connection=connection,
+#                              git_client=git_client,
+#                              report_name="cargo rustyrts dynamic single threaded",
+#                              mode=RustyRTSMode.DYNAMIC,
+#                              env_vars=env_vars.copy(),
+#                              build_options=build_options.copy() + ["--jobs 1"],
+#                              test_options=test_options.copy() + ["--test-threads 1"]
+#                              ),
+#
+#            CargoRustyRTSHook(repository=repository,
+#                              connection=connection,
+#                              git_client=git_client,
+#                              report_name="cargo rustyrts static single threaded",
+#                              mode=RustyRTSMode.STATIC,
+#                              env_vars=env_vars.copy(),
+#                              build_options=build_options.copy() + ["--jobs 1"],
+#                              test_options=test_options.copy() + ["--test-threads 1"]
+#                              ),
         ],
     )
     # create walker

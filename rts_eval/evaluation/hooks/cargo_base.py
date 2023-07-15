@@ -19,6 +19,10 @@ from ...util.logging.logger import get_logger
 _LOGGER = get_logger(__name__)
 
 
+def env_tmp_override():
+    return {"TRYBUILD": "overwrite", "INSTA_UPDATE": "always"}
+
+
 class CargoHook(Hook, ABC):
 
     def __init__(
@@ -28,7 +32,7 @@ class CargoHook(Hook, ABC):
             connection: DBConnection,
             report_name: Optional[str] = None,
             output_path: Optional[str] = None,
-            build = False
+            build=False
     ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
@@ -52,18 +56,18 @@ class CargoHook(Hook, ABC):
         pass
 
     @abstractmethod
-    def build_command(self):
+    def build_command(self, features):
         pass
 
     @abstractmethod
-    def test_command_parent(self):
+    def test_command_parent(self, features):
         pass
 
     @abstractmethod
-    def test_command(self):
+    def test_command(self, features):
         pass
 
-    def run(self, commit: Commit) -> bool:
+    def run(self, commit: Commit, features_parent: Optional[str], features: Optional[str]) -> bool:
         """
         Run cargo test.
 
@@ -102,6 +106,14 @@ class CargoHook(Hook, ABC):
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
+            # Check if we need to build before testing
+            for file in glob.glob("**/*.rs", recursive=True):
+                if os.path.isfile(file):
+                    content = open(file, "r").read()
+                    if "target/debug" in content:
+                        self.build = True
+                        break
+
             if self.build:
                 ########################################################################################################
                 # Build on parent commit
@@ -116,7 +128,7 @@ class CargoHook(Hook, ABC):
 
                     # Run build command on parent commit
                     proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
+                        command=self.build_command(features_parent), output_filepath=cache_file_path, env=self.build_env()
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -154,7 +166,9 @@ class CargoHook(Hook, ABC):
 
                 # Run test command to generate temporary files for incremental compilation or traces
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.test_command_parent(), output_filepath=cache_file_path, env=self.env()
+                    command=self.test_command_parent(features_parent),
+                    output_filepath=cache_file_path,
+                    env=self.env() | env_tmp_override()
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_errored |= not (proc.exit_code == 0 or any(
@@ -213,7 +227,7 @@ class CargoHook(Hook, ABC):
 
                     # Run build command on actual commit
                     proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(), output_filepath=cache_file_path, env=self.build_env()
+                        command=self.build_command(features), output_filepath=cache_file_path, env=self.build_env()
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
                     has_errored |= not (proc.exit_code == 0 or any(
@@ -251,7 +265,7 @@ class CargoHook(Hook, ABC):
 
                 # Run test command on actual commit
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.test_command(), output_filepath=cache_file_path, env=self.env() | {"RUST_LOG": "debug"}
+                    command=self.test_command(features), output_filepath=cache_file_path, env=self.env() | {"RUSTYRTS_LOG": "debug"}
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_errored |= not (proc.exit_code == 0 or any(

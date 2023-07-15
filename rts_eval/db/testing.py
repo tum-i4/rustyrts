@@ -81,7 +81,7 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
         else:
             # if already existing, update all fields
             db_report.duration = report.duration if report.duration else db_report.duration
-
+            db_report.build_duration = report.build_duration if report.build_duration else db_report.build_duration
             db_report.commit_str = report.commit_str if report.commit_str else db_report.commit_str
             # get from db if it exists
             db_report.commit = DBCommit.create_or_get(report.commit, session)
@@ -95,6 +95,11 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
                 report.has_failed
                 if report.has_failed is not None
                 else db_report.has_failed
+            )
+            db_report.has_errored = (
+                report.has_errored
+                if report.has_errored is not None
+                else db_report.has_errored
             )
         return db_report
 
