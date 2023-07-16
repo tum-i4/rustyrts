@@ -92,7 +92,7 @@ class CargoHook(Hook, ABC):
             self.git_client.git_repo.git.reset(parent_commit, hard=True)
 
             for submodule in self.git_client.git_repo.submodules:
-                submodule.update(init=True, recursive=True, force=True)
+                submodule.update(init=True, recursive=True, force=True, keep_going=True)
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
@@ -214,7 +214,7 @@ class CargoHook(Hook, ABC):
             self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
 
             for submodule in self.git_client.git_repo.submodules:
-                submodule.update(init=True, recursive=True, force=True)
+                submodule.update(init=True, recursive=True, force=True, keep_going=True)
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
