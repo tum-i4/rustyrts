@@ -46,19 +46,6 @@ walk(path, branch=branch, commits=commits)
 #walk(path, branch=branch, commits=commits)
 #
 
-# Not enough disk space
-# %%
-## ockam
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/ockam"
-branch = "develop"
-
-commits = None #[("24b17f208b9aa18a0cd3d0050d6360837fa5afc2", None, None)]
-
-walk(path, branch=branch, commits=commits)
-
-
 ## %%
 ## rayon
 #from walkers.rustyrts_walker import walk
