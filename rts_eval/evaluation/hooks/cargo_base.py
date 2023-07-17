@@ -93,7 +93,6 @@ class CargoHook(Hook, ABC):
 
             for submodule in self.git_client.git_repo.submodules:
                 try:
-                    submodule.remove(module=True, force=True, configuration=True)
                     submodule.update(init=True, recursive=True, force=True)
                 except:
                     continue
@@ -220,7 +219,6 @@ class CargoHook(Hook, ABC):
 
             for submodule in self.git_client.git_repo.submodules:
                 try:
-                    submodule.remove(module=True, force=True, configuration=True)
                     submodule.update(init=True, recursive=True, force=True)
                 except:
                     continue
