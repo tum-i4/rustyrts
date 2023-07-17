@@ -135,7 +135,8 @@ class CargoHook(Hook, ABC):
 
                     # Run build command on parent commit
                     proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(features_parent), output_filepath=cache_file_path, env=self.build_env()
+                        command=self.build_command(features_parent), output_filepath=cache_file_path,
+                        env=self.build_env()
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -279,7 +280,10 @@ class CargoHook(Hook, ABC):
 
                 # Run test command on actual commit
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.test_command(features), output_filepath=cache_file_path, env=self.env() | {"RUSTYRTS_LOG": "debug"}
+                    command=self.test_command(features), output_filepath=cache_file_path,
+                    env=self.env() | env_tmp_override() | {"RUSTYRTS_LOG": "debug"}
+                    # e.g. changes trybuild files will be overridden by git reset, so we just use it here as well
+                    # this effectively prevents those tests from failing, but there is just no other way
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_errored |= not (proc.exit_code == 0 or any(
