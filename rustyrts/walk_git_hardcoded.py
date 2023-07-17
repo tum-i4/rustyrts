@@ -40,18 +40,47 @@ commits = [
 
 walk(path, branch=branch, commits=commits)
 
-## Not enough disk space, TODO
-## %%
-### arrow-datafusion
-# from walkers.rustyrts_walker import walk
-#
-# path = "../projects/git_walk/arrow-datafusion"
-# branch = "main"
-#
-# commits = None #[("2a2e147984088d0c224c440279a4f3122b8ad38e", None, None)]
-#
-# walk(path, branch=branch, commits=commits)
-#
+# %%
+## arrow-datafusion
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/arrow-datafusion"
+branch = "main"
+
+commits = [
+    ('844bcda2664a04685b865afe7ff159c0648d2860', None, None),
+    ('0e416f0e39d8a76ea13aab9b8f306b64d1133857', None, None),
+    ('dde6f71202abdb41964609e5e699e80885fbc161', None, None),
+    ('379f42ca444d280113a4d7b0d6fe6877c122e740', None, None),
+    ('91352518dd05af9491f3fecaad5c9077072626cf', None, None),
+    ('3da59e8877620a095efae102b0177e7e6a76f65b', None, None),
+    ('894be6719373be85fa777028fe3ec534536660e3', None, None),
+    ('b6fb0dd52c2abd0f8e134aa46cc1571cc6a0971b', None, None),
+    ('cbb05177bce90618021c51622989b58edd882275', None, None),
+    ('c2972a29c3165dc8cb92f8d437de80d56d99740e', None, None),
+    ('acb245a9c1d4cf30a484a26152ba0489886a8474', None, None),
+    ('a25529166f82e4f52d56eba6448a5a32e126698e', None, None),
+    ('533e2b4c72da854f4d9e4a9e2d3d7c35814b7ffd', None, None),
+    ('1152c14f5a6bb6fa949d5162380f47aeeeca6696', None, None),
+    ('cb842b55705d95b6c1367fb13c223f53d019ca5c', None, None),
+    ('f37dd7cd231a5423e19c519f66d6b6cffb60d230', None, None),
+    ('a6e93a10ab2659500eb4f838b7b53f138e545be3', None, None),
+    ('de314e74fb9b423b067fd83976836235effdcb26', None, None),
+    ('748b6a65a5fa801595fd80a3c7b2728be3c9cdaa', None, None),
+    ('6e0bb8476d783c1caaf6bf011487c92ae9352f78', None, None),
+    ('aed3aa46d98ed86c296d447ef4de676ea77c62a2', None, None),
+    ('a690a28ec7d35e994c2e021c62c336a4af84209e', None, None),
+    ('f100f3bf6d397fcee24a6bde526888f45d2fd058', None, None),
+    ('3c1c188e1476575f113a511789e398fdd5c009cd', None, None),
+    ('3a313c9d2bb04f104dcd3664851bb22f6b130cd8', None, None),
+    ('e5ae1ead6812e36245e379848a45b0078a6b1235', None, None),
+    ('9ea7dc6036a7b1d28c7450db4f26720b732a50de', None, None),
+    ('43575e1e4bdeb23320ed7a1119a4a6a5e192254b', None, None),
+    ('fdb8fecf0ab475ba07dc0d15f7b53e25ccf30ee7', None, None),
+    ('2a15e3f13d52ff2c625742810d096608986de0f2', None, None)
+]
+
+walk(path, branch=branch, commits=commits)
 
 # %%
 ## feroxbuster
