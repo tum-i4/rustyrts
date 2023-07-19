@@ -85,25 +85,25 @@ def walk(path, branch="main", logging_level="DEBUG", commits: Optional[list[(str
                           test_options=test_options.copy()
                           ),
 
-#            CargoRustyRTSHook(repository=repository,
-#                              connection=connection,
-#                              git_client=git_client,
-#                              report_name="cargo rustyrts dynamic",
-#                              mode=RustyRTSMode.DYNAMIC,
-#                              env_vars=env_vars.copy(),
-#                              build_options=build_options.copy(),
-#                              test_options=test_options.copy()
-#                              ),
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts dynamic",
+                              mode=RustyRTSMode.DYNAMIC,
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy(),
+                              test_options=test_options.copy()
+                              ),
 
-#            CargoRustyRTSHook(repository=repository,
-#                              connection=connection,
-#                              git_client=git_client,
-#                              report_name="cargo rustyrts static",
-#                              mode=RustyRTSMode.STATIC,
-#                              env_vars=env_vars.copy(),
-#                              build_options=build_options.copy(),
-#                              test_options=test_options.copy()
-#                              ),
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts static",
+                              mode=RustyRTSMode.STATIC,
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy(),
+                              test_options=test_options.copy()
+                              ),
 
             # ***********************************************************************************************************
             # Single threaded
