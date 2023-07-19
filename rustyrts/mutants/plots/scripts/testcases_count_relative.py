@@ -4,6 +4,7 @@ from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutant
 from rustyrts.util.plotter import boxplot
 
 labels = get_labels_mutants()
+file = "../selected_tests_relative.pdf"
 
 df_dynamic = pd.read_sql(
     'SELECT commit as repository, dynamic_count * 100.0 / retest_all_count as y, \'dynamic\' as algorithm FROM testcases_count',
@@ -15,4 +16,4 @@ df_static = pd.read_sql(
 
 df = pd.concat([df_dynamic, df_static])
 
-boxplot(df, labels, "relative number of tests [%]", "selected_tests_relative.pdf", ["#E37222", "#A2AD00"], hue='algorithm')
+boxplot(df, labels, "relative number of tests [%]", file, ["#E37222", "#A2AD00"], hue='algorithm')

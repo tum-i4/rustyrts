@@ -1,0 +1,1688 @@
+Changed: tracing-core/src/event.rs:75: replace Event<'a>::child_of with ()
+
+   Compiling tracing-core v0.1.26 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-core)
+   Compiling tracing v0.1.34 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing)
+   Compiling tracing-serde v0.1.3 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-serde)
+   Compiling tracing-log v0.1.2 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-log)
+   Compiling tracing-futures v0.2.5 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-futures)
+   Compiling tracing-mock v0.1.0 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-mock)
+   Compiling tracing-subscriber v0.3.11 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-subscriber)
+   Compiling tracing-tower v0.1.0 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-tower)
+   Compiling tracing-attributes v0.1.20 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-attributes)
+   Compiling tracing-flame v0.2.0 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-flame)
+   Compiling tracing-journald v0.2.4 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-journald)
+   Compiling tracing-opentelemetry v0.17.2 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-opentelemetry)
+   Compiling tracing-appender v0.2.2 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-appender)
+   Compiling tracing-error v0.2.0 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-error)
+   Compiling tracing-examples v0.0.0 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/examples)
+     DEBUG: Changed due to regular checksums: tracing_core::Event::child_of
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::enter
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::register_callsite
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::exit
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::max_level_hint
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::record
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::clone_span
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::record_follows_from
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::downcast_raw
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::event
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::try_close
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::current_span
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::new_span
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::drop_span
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::enabled
+     DEBUG: Changed due to regular checksums: tracing_core::Event::child_of
+     DEBUG: Changed due to regular checksums: tracing_core::Event::child_of
+    Finished test [unoptimized + debuginfo] target(s) in 1m 28s
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing-a2b896468e212730)
+  Executable tests/enabled.rs (target_dynamic/debug/deps/enabled-cdfa55de897bca05)
+  Executable tests/event.rs (target_dynamic/debug/deps/event-bfc11b75fdfbe51f)
+  Executable tests/filter_caching_is_lexically_scoped.rs (target_dynamic/debug/deps/filter_caching_is_lexically_scoped-bf9fdb0c4fec083f)
+  Executable tests/filters_are_not_reevaluated_for_the_same_span.rs (target_dynamic/debug/deps/filters_are_not_reevaluated_for_the_same_span-75d98f0260d20284)
+  Executable tests/filters_are_reevaluated_for_different_call_sites.rs (target_dynamic/debug/deps/filters_are_reevaluated_for_different_call_sites-a986006cbcf50485)
+  Executable tests/filters_dont_leak.rs (target_dynamic/debug/deps/filters_dont_leak-06fea7dd68cd650d)
+  Executable tests/future_send.rs (target_dynamic/debug/deps/future_send-d96295d302d740ae)
+  Executable tests/macro_imports.rs (target_dynamic/debug/deps/macro_imports-2131b3fafab4f2e6)
+  Executable tests/macros.rs (target_dynamic/debug/deps/macros-1e736f7983df0d02)
+  Executable tests/macros_incompatible_concat.rs (target_dynamic/debug/deps/macros_incompatible_concat-07ae05620fd668c9)
+  Executable tests/macros_redefined_core.rs (target_dynamic/debug/deps/macros_redefined_core-29e4c7052371d00b)
+  Executable tests/max_level_hint.rs (target_dynamic/debug/deps/max_level_hint-eabbdf020dd1ad6f)
+  Executable tests/multiple_max_level_hints.rs (target_dynamic/debug/deps/multiple_max_level_hints-7bbb10cb4418a183)
+  Executable tests/no_subscriber.rs (target_dynamic/debug/deps/no_subscriber-5e4669a79ec19c44)
+  Executable tests/scoped_clobbers_default.rs (target_dynamic/debug/deps/scoped_clobbers_default-3fe4c8bd2ffbb4e8)
+  Executable tests/span.rs (target_dynamic/debug/deps/span-06fca54adfcf8ead)
+  Executable tests/subscriber.rs (target_dynamic/debug/deps/subscriber-8b3ea00fded5a28a)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_appender-137b080c0e982ada)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_attributes-4b17c809ea0c2587)
+  Executable tests/async_fn.rs (target_dynamic/debug/deps/async_fn-a2e990c1f635d500)
+  Executable tests/destructuring.rs (target_dynamic/debug/deps/destructuring-aaa5219b1d06becf)
+  Executable tests/err.rs (target_dynamic/debug/deps/err-67d7a6f983dc8cff)
+  Executable tests/fields.rs (target_dynamic/debug/deps/fields-e4db796639128872)
+  Executable tests/instrument.rs (target_dynamic/debug/deps/instrument-f6e87d6d4f8f5eab)
+  Executable tests/levels.rs (target_dynamic/debug/deps/levels-4e6daa700aae4040)
+  Executable tests/names.rs (target_dynamic/debug/deps/names-d49f9bae14798cb8)
+  Executable tests/ret.rs (target_dynamic/debug/deps/ret-4aa68867eb9a3fca)
+  Executable tests/targets.rs (target_dynamic/debug/deps/targets-25f11de0968041f8)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_core-cc542933c5d41b65)
+  Executable tests/dispatch.rs (target_dynamic/debug/deps/dispatch-64af47a382bae56e)
+  Executable tests/global_dispatch.rs (target_dynamic/debug/deps/global_dispatch-ce423508ae6a51ab)
+  Executable tests/macros.rs (target_dynamic/debug/deps/macros-502c60301e6b6ad3)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_error-450d7c83f59a39b5)
+  Executable unittests examples/all-levels.rs (target_dynamic/debug/examples/all_levels-cec77148660dbe0c)
+  Executable unittests examples/appender-multifile.rs (target_dynamic/debug/examples/appender_multifile-923c049055769d13)
+  Executable unittests examples/async-fn.rs (target_dynamic/debug/examples/async_fn-8a2073d2d2e1c79d)
+  Executable unittests examples/attrs-args.rs (target_dynamic/debug/examples/attrs_args-2a4d16526ad738d2)
+  Executable unittests examples/attrs-basic.rs (target_dynamic/debug/examples/attrs_basic-c76d5ecc680863ee)
+  Executable unittests examples/attrs-literal-field-names.rs (target_dynamic/debug/examples/attrs_literal_field_names-e1b78e03e603f40a)
+  Executable unittests examples/counters.rs (target_dynamic/debug/examples/counters-29309b1459d46767)
+  Executable unittests examples/custom-error.rs (target_dynamic/debug/examples/custom_error-c6cdac8c9c28274c)
+  Executable unittests examples/echo.rs (target_dynamic/debug/examples/echo-94088e234d66df48)
+  Executable unittests examples/fmt.rs (target_dynamic/debug/examples/fmt-bffe505a288dd178)
+  Executable unittests examples/fmt-compact.rs (target_dynamic/debug/examples/fmt_compact-afd801933a2dd21a)
+  Executable unittests examples/fmt-custom-event.rs (target_dynamic/debug/examples/fmt_custom_event-a90d93a0353cbd5e)
+  Executable unittests examples/fmt-custom-field.rs (target_dynamic/debug/examples/fmt_custom_field-c7fce4bd03a49543)
+  Executable unittests examples/fmt-json.rs (target_dynamic/debug/examples/fmt_json-e15b71bf234aefae)
+  Executable unittests examples/fmt-multiple-writers.rs (target_dynamic/debug/examples/fmt_multiple_writers-39f3eb702904c015)
+  Executable unittests examples/fmt-pretty.rs (target_dynamic/debug/examples/fmt_pretty-a1766876fdf81478)
+  Executable unittests examples/fmt-source-locations.rs (target_dynamic/debug/examples/fmt_source_locations-8759f48f636107b6)
+  Executable unittests examples/fmt-stderr.rs (target_dynamic/debug/examples/fmt_stderr-c492253e65fb95c4)
+  Executable unittests examples/futures-proxy-server.rs (target_dynamic/debug/examples/futures_proxy_server-6a412e59c8e7e7a3)
+  Executable unittests examples/hyper-echo.rs (target_dynamic/debug/examples/hyper_echo-aca2f228408ce58b)
+  Executable unittests examples/inferno-flame.rs (target_dynamic/debug/examples/inferno_flame-ea0f683f85659e8e)
+  Executable unittests examples/instrumented-error.rs (target_dynamic/debug/examples/instrumented_error-d5d5b58c80f52b76)
+  Executable unittests examples/journald.rs (target_dynamic/debug/examples/journald-c8a339303bd7ddac)
+  Executable unittests examples/log.rs (target_dynamic/debug/examples/log-dbfb4c43824a5460)
+  Executable unittests examples/opentelemetry.rs (target_dynamic/debug/examples/opentelemetry-5b181a68c3cb3de7)
+  Executable unittests examples/opentelemetry-remote-context.rs (target_dynamic/debug/examples/opentelemetry_remote_context-f106dc2da1d19b13)
+  Executable unittests examples/panic_hook.rs (target_dynamic/debug/examples/panic_hook-7f73522363ed5b4e)
+  Executable unittests examples/serde-yak-shave.rs (target_dynamic/debug/examples/serde_yak_shave-731689233babd0ed)
+  Executable unittests examples/sloggish/main.rs (target_dynamic/debug/examples/sloggish-d818fab87b9844e3)
+  Executable unittests examples/spawny-thing.rs (target_dynamic/debug/examples/spawny_thing-4ed43ef01f6cc27e)
+  Executable unittests examples/subscriber-filter.rs (target_dynamic/debug/examples/subscriber_filter-b281924e8c189fa9)
+  Executable unittests examples/thread-info.rs (target_dynamic/debug/examples/thread_info-c8455d424ea14529)
+  Executable unittests examples/toggle-layers.rs (target_dynamic/debug/examples/toggle_layers-ecba1ba38252a95a)
+  Executable unittests examples/tokio-spawny-thing.rs (target_dynamic/debug/examples/tokio_spawny_thing-cfd508c4341452b6)
+  Executable unittests examples/tokio_panic_hook.rs (target_dynamic/debug/examples/tokio_panic_hook-8e1d7188e5e518cd)
+  Executable unittests examples/tower-client.rs (target_dynamic/debug/examples/tower_client-5ab6693998254316)
+  Executable unittests examples/tower-load.rs (target_dynamic/debug/examples/tower_load-c1d7c89cd7ec138e)
+  Executable unittests examples/tower-server.rs (target_dynamic/debug/examples/tower_server-7b01511e7ac46b67)
+  Executable unittests examples/valuable.rs (target_dynamic/debug/examples/valuable-71c24836d658082c)
+  Executable unittests examples/valuable_instrument.rs (target_dynamic/debug/examples/valuable_instrument-d5852ac191b711a9)
+  Executable unittests examples/valuable_json.rs (target_dynamic/debug/examples/valuable_json-1447c16e29f3069f)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_flame-dd45076dc181d7c6)
+  Executable tests/collapsed.rs (target_dynamic/debug/deps/collapsed-8c8cd399e22c0611)
+  Executable tests/concurrent.rs (target_dynamic/debug/deps/concurrent-7c17abdb26281db6)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_futures-a056dac71179e84c)
+  Executable tests/std_future.rs (target_dynamic/debug/deps/std_future-205f0a32e895801d)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_journald-e24a536200b71244)
+  Executable tests/journal.rs (target_dynamic/debug/deps/journal-73229b787353ebee)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_log-3dc15a083b6b3e04)
+  Executable tests/log_tracer.rs (target_dynamic/debug/deps/log_tracer-f8573e6335ebd9c7)
+  Executable tests/reexport_log_crate.rs (target_dynamic/debug/deps/reexport_log_crate-05d5baf75aa63d58)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_macros-5abf588f95433607)
+  Executable unittests examples/factorial.rs (target_dynamic/debug/examples/factorial-8efcf00667b12111)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_mock-2080b6966ddd4e97)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_opentelemetry-d7b7a20490362c19)
+  Executable tests/trace_state_propagation.rs (target_dynamic/debug/deps/trace_state_propagation-20f0e956a4e4e854)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_serde-74baba14583033a0)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_subscriber-f60a2b25345f314b)
+  Executable tests/cached_layer_filters_dont_break_other_layers.rs (target_dynamic/debug/deps/cached_layer_filters_dont_break_other_layers-05a29d98367cb1a8)
+  Executable tests/duplicate_spans.rs (target_dynamic/debug/deps/duplicate_spans-46536c6256e3e568)
+  Executable tests/env_filter/main.rs (target_dynamic/debug/deps/env_filter-2551d9f21caeb297)
+  Executable tests/field_filter.rs (target_dynamic/debug/deps/field_filter-f04b1015d795077f)
+  Executable tests/filter_log.rs (target_dynamic/debug/deps/filter_log-15c4107ed9e0f093)
+  Executable tests/fmt_max_level_hint.rs (target_dynamic/debug/deps/fmt_max_level_hint-2f6b0f52ab78a346)
+  Executable tests/hinted_layer_filters_dont_break_other_layers.rs (target_dynamic/debug/deps/hinted_layer_filters_dont_break_other_layers-eb80d954dc306291)
+  Executable tests/layer_filter_interests_are_cached.rs (target_dynamic/debug/deps/layer_filter_interests_are_cached-51aa574bb23c46ba)
+  Executable tests/layer_filters/main.rs (target_dynamic/debug/deps/layer_filters-0af32a0cc75a9826)
+  Executable tests/multiple_layer_filter_interests_cached.rs (target_dynamic/debug/deps/multiple_layer_filter_interests_cached-01a4aa41e0a02c73)
+  Executable tests/registry_max_level_hint.rs (target_dynamic/debug/deps/registry_max_level_hint-785070256e4c9933)
+  Executable tests/registry_with_subscriber.rs (target_dynamic/debug/deps/registry_with_subscriber-9be20470a6ac5233)
+  Executable tests/reload.rs (target_dynamic/debug/deps/reload-90d971a76abe245a)
+  Executable tests/same_len_filters.rs (target_dynamic/debug/deps/same_len_filters-52bd494e12460309)
+  Executable tests/support.rs (target_dynamic/debug/deps/support-24374445a412b65a)
+  Executable tests/unhinted_layer_filters_dont_break_other_layers.rs (target_dynamic/debug/deps/unhinted_layer_filters_dont_break_other_layers-2a475e8b04c113f6)
+  Executable tests/utils.rs (target_dynamic/debug/deps/utils-2e171944f8978f6e)
+  Executable tests/vec_subscriber_filter_interests_cached.rs (target_dynamic/debug/deps/vec_subscriber_filter_interests_cached-ef00157f23b39d36)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/tracing_tower-a66c45c989e1382d)
+Nodes that have changed:
+tracing_core::<NoSubscriber as Subscriber>::enabled, tracing_core::<NoSubscriber as Subscriber>::enter, tracing_core::<NoSubscriber as Subscriber>::event, tracing_core::<NoSubscriber as Subscriber>::exit, tracing_core::<NoSubscriber as Subscriber>::new_span, tracing_core::<NoSubscriber as Subscriber>::record, tracing_core::<NoSubscriber as Subscriber>::record_follows_from, tracing_core::<NoSubscriber as Subscriber>::register_callsite, tracing_core::Event::child_of, tracing_core::Subscriber::clone_span, tracing_core::Subscriber::current_span, tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::drop_span, tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::try_close
+
+#Tests that have been found: 451
+
+#Tests with traces:: 447
+
+Affected tests:
+async_fn::async_fn_nested: < "tracing_core::Subscriber::try_close" >
+async_fn::async_fn_only_enters_for_polls: < "tracing_core::Subscriber::try_close" >
+async_fn::async_fn_with_async_trait: < "tracing_core::Subscriber::try_close" >
+async_fn::async_fn_with_async_trait_and_fields_expressions: < "tracing_core::Subscriber::try_close" >
+async_fn::async_fn_with_async_trait_and_fields_expressions_with_generic_parameter: < "tracing_core::Subscriber::try_close" >
+async_fn::manual_box_pin: < "tracing_core::Subscriber::try_close" >
+async_fn::manual_impl_future: < "tracing_core::Subscriber::try_close" >
+async_fn::out_of_scope_fields: < "tracing_core::Subscriber::try_close" >
+cached_layer_filters_dont_break_other_layers::layer_filters: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+cached_layer_filters_dont_break_other_layers::layered_layer_filters: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+cached_layer_filters_dont_break_other_layers::mixed_layered: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+cached_layer_filters_dont_break_other_layers::out_of_order: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+collapsed::capture_supported: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+concurrent::capture_supported: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+destructuring::destructure_everything: < "tracing_core::Subscriber::try_close" >
+destructuring::destructure_nested_tuples: < "tracing_core::Subscriber::try_close" >
+destructuring::destructure_refs: < "tracing_core::Subscriber::try_close" >
+destructuring::destructure_structs: < "tracing_core::Subscriber::try_close" >
+destructuring::destructure_tuple_structs: < "tracing_core::Subscriber::try_close" >
+destructuring::destructure_tuples: < "tracing_core::Subscriber::try_close" >
+dispatch::nested_set_default: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+dispatch::set_default_dispatch: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+duplicate_spans::duplicate_spans: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::add_directive_enables_event: < "tracing_core::Subscriber::downcast_raw" >
+env_filter::level_filter_event: < "tracing_core::Subscriber::downcast_raw" >
+env_filter::level_filter_event_with_target: < "tracing_core::Subscriber::downcast_raw" >
+env_filter::level_filter_event_with_target_and_span_global: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::try_close" >
+env_filter::not_order_dependent: < "tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer::add_directive_enables_event: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer::level_filter_event: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer::level_filter_event_with_target: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+env_filter::per_layer::level_filter_event_with_target_and_span: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+env_filter::per_layer::multiple_dynamic_filters: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer::not_order_dependent: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer::same_name_spans: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer::span_name_filter_is_dynamic: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer_filter::add_directive_enables_event: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer_filter::level_filter_event: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer_filter::level_filter_event_with_target: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer_filter::level_filter_event_with_target_and_span: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer_filter::multiple_dynamic_filters: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+env_filter::per_layer_filter::not_order_dependent: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+env_filter::per_layer_filter::same_name_spans: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+env_filter::per_layer_filter::span_name_filter_is_dynamic: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+env_filter::same_name_spans: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::try_close" >
+env_filter::span_name_filter_is_dynamic: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::try_close" >
+err::impl_trait_return_type: < "tracing_core::Subscriber::try_close" >
+err::test: < "tracing_core::Subscriber::try_close" >
+err::test_async: < "tracing_core::Subscriber::try_close" >
+err::test_err_dbg: < "tracing_core::Subscriber::try_close" >
+err::test_err_display_default: < "tracing_core::Subscriber::try_close" >
+err::test_mut: < "tracing_core::Subscriber::try_close" >
+err::test_mut_async: < "tracing_core::Subscriber::try_close" >
+event::explicit_child: < "tracing_core::Subscriber::try_close, tracing_core::Event::child_of" >
+event::explicit_child_at_levels: < "tracing_core::Subscriber::try_close, tracing_core::Event::child_of" >
+field_filter::field_filter_events: no traces
+field_filter::field_filter_spans: no traces
+field_filter::record_after_created: < "tracing_core::Subscriber::try_close, tracing_core::Subscriber::downcast_raw" >
+fields::clashy_expr_field: < "tracing_core::Subscriber::try_close" >
+fields::empty_field: < "tracing_core::Subscriber::try_close" >
+fields::expr_field: < "tracing_core::Subscriber::try_close" >
+fields::fields: < "tracing_core::Subscriber::try_close" >
+fields::parameters_with_fields: < "tracing_core::Subscriber::try_close" >
+fields::self_expr_field: < "tracing_core::Subscriber::try_close" >
+fields::two_expr_fields: < "tracing_core::Subscriber::try_close" >
+filter_caching_is_lexically_scoped::filter_caching_is_lexically_scoped: < "tracing_core::Subscriber::try_close" >
+filter_log::log_is_enabled: < "tracing_core::Subscriber::downcast_raw" >
+filters_are_not_reevaluated_for_the_same_span::filters_are_not_reevaluated_for_the_same_span: < "tracing_core::Subscriber::try_close" >
+filters_are_reevaluated_for_different_call_sites::filters_are_reevaluated_for_different_call_sites: < "tracing_core::Subscriber::try_close" >
+filters_dont_leak::spans_dont_leak: < "tracing_core::Subscriber::try_close" >
+fmt_max_level_hint::fmt_sets_max_level_hint: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+global_dispatch::global_dispatch: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+hinted_layer_filters_dont_break_other_layers::layer_filters: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+hinted_layer_filters_dont_break_other_layers::layered_layer_filters: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+hinted_layer_filters_dont_break_other_layers::mixed_layered: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+hinted_layer_filters_dont_break_other_layers::out_of_order: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+instrument::fields: < "tracing_core::Subscriber::try_close" >
+instrument::generics: < "tracing_core::Subscriber::try_close" >
+instrument::impl_trait_return_type: < "tracing_core::Subscriber::try_close" >
+instrument::methods: < "tracing_core::Subscriber::try_close" >
+instrument::override_everything: < "tracing_core::Subscriber::try_close" >
+instrument::skip: < "tracing_core::Subscriber::try_close" >
+journal::internal_null_byte: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+journal::large_message: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+journal::multiline_message: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+journal::multiline_message_trailing_newline: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+journal::multiple_spans_metadata: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+journal::simple_message: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+journal::simple_metadata: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+journal::span_metadata: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+journal::spans_field_collision: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+layer_filter_interests_are_cached::layer_filter_interests_are_cached: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+layer_filters::basic_layer_filters: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::basic_layer_filters_spans: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::boxed::box_works: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::boxed::dyn_box_works: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::downcast_raw::downcast_ref_to_inner_layer_and_filter: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::downcast_raw::forward_downcast_raw_to_layer: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+layer_filters::filter_fn: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+layer_filters::filter_scopes::filters_interleaved_span_scopes: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::filter_scopes::filters_span_scopes: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::global_filter_interests_are_cached: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::global_filters_affect_layer_filters: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::global_filters_layers_still_work: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::targets::inner_layer_short_circuits: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::targets::log_events: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+layer_filters::trees::basic_trees: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::trees::filter_span_scopes: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::vec::all_filtered_max_level_hint: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::vec::mixed_max_level_hint: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::vec::with_filters_boxed: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+layer_filters::vec::with_filters_unboxed: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+levels::named_levels: < "tracing_core::Subscriber::try_close" >
+levels::numeric_levels: < "tracing_core::Subscriber::try_close" >
+multiple_layer_filter_interests_cached::multiple_layer_filter_interests_are_cached: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+names::custom_name_no_equals_test: < "tracing_core::Subscriber::try_close" >
+names::custom_name_test: < "tracing_core::Subscriber::try_close" >
+names::default_name_test: < "tracing_core::Subscriber::try_close" >
+no_subscriber::no_subscriber_disables_global: < "tracing_core::Subscriber::max_level_hint, tracing_core::<NoSubscriber as Subscriber>::enabled, tracing_core::<NoSubscriber as Subscriber>::register_callsite" >
+registry_max_level_hint::registry_sets_max_level_hint: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+registry_with_subscriber::future_with_subscriber: < "tracing_core::Subscriber::max_level_hint" >
+ret::test: < "tracing_core::Subscriber::try_close" >
+ret::test_async: < "tracing_core::Subscriber::try_close" >
+ret::test_dbg: < "tracing_core::Subscriber::try_close" >
+ret::test_impl_type: < "tracing_core::Subscriber::try_close" >
+ret::test_mut: < "tracing_core::Subscriber::try_close" >
+ret::test_ret_and_err: < "tracing_core::Subscriber::try_close" >
+ret::test_ret_and_ok: < "tracing_core::Subscriber::try_close" >
+ret::test_warn: < "tracing_core::Subscriber::try_close" >
+same_len_filters::same_length_targets: < "tracing_core::Subscriber::downcast_raw" >
+same_len_filters::same_num_fields_and_name_len: < "tracing_core::Subscriber::try_close, tracing_core::Subscriber::downcast_raw" >
+same_len_filters::same_num_fields_event: < "tracing_core::Subscriber::downcast_raw" >
+span::borrowed_field: < "tracing_core::Subscriber::try_close" >
+span::both_shorthands: < "tracing_core::Subscriber::try_close" >
+span::clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span: < "tracing_core::Subscriber::try_close" >
+span::cloning_a_span_calls_clone_span: < "tracing_core::Subscriber::try_close" >
+span::contextual_child: < "tracing_core::Subscriber::try_close" >
+span::contextual_root: < "tracing_core::Subscriber::try_close" >
+span::debug_shorthand: < "tracing_core::Subscriber::try_close" >
+span::display_shorthand: < "tracing_core::Subscriber::try_close" >
+span::dotted_field_name: < "tracing_core::Subscriber::try_close" >
+span::drop_span_when_exiting_dispatchers_context: < "tracing_core::Subscriber::try_close" >
+span::dropping_a_span_calls_drop_span: < "tracing_core::Subscriber::try_close" >
+span::enter: < "tracing_core::Subscriber::try_close" >
+span::entered: < "tracing_core::Subscriber::try_close" >
+span::entered_api: < "tracing_core::Subscriber::try_close" >
+span::event_outside_of_span: < "tracing_core::Subscriber::try_close" >
+span::explicit_child: < "tracing_core::Subscriber::try_close" >
+span::explicit_child_at_levels: < "tracing_core::Subscriber::try_close" >
+span::explicit_child_regardless_of_ctx: < "tracing_core::Subscriber::try_close" >
+span::explicit_root_span_is_root: < "tracing_core::Subscriber::try_close" >
+span::explicit_root_span_is_root_regardless_of_ctx: < "tracing_core::Subscriber::try_close" >
+span::float_values: < "tracing_core::Subscriber::try_close" >
+span::handles_to_different_spans_are_not_equal: < "tracing_core::Subscriber::try_close" >
+span::handles_to_different_spans_with_the_same_metadata_are_not_equal: < "tracing_core::Subscriber::try_close" >
+span::handles_to_the_same_span_are_equal: < "tracing_core::Subscriber::try_close" >
+span::move_field_out_of_struct: < "tracing_core::Subscriber::try_close" >
+span::moved_field: < "tracing_core::Subscriber::try_close" >
+span::new_span_after_event: < "tracing_core::Subscriber::try_close" >
+span::new_span_with_target_and_log_level: < "tracing_core::Subscriber::try_close" >
+span::record_new_value_for_field: < "tracing_core::Subscriber::try_close" >
+span::record_new_values_for_fields: < "tracing_core::Subscriber::try_close" >
+span::span_closes_after_event: < "tracing_core::Subscriber::try_close" >
+span::span_closes_when_exited: < "tracing_core::Subscriber::try_close" >
+span::spans_always_go_to_the_subscriber_that_tagged_them: < "tracing_core::Subscriber::try_close" >
+span::spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads: < "tracing_core::Subscriber::try_close" >
+std_future::enter_exit_is_reasonable: < "tracing_core::Subscriber::try_close" >
+std_future::error_ends_span: < "tracing_core::Subscriber::try_close" >
+subscriber::arced_subscriber: < "tracing_core::Subscriber::try_close" >
+subscriber::boxed_subscriber: < "tracing_core::Subscriber::try_close" >
+subscriber::event_macros_dont_infinite_loop: < "tracing_core::<NoSubscriber as Subscriber>::enabled, tracing_core::Subscriber::max_level_hint" >
+targets::custom_targets: < "tracing_core::Subscriber::try_close" >
+targets::default_targets: < "tracing_core::Subscriber::try_close" >
+trace_state_propagation::inject_context_into_outgoing_requests: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+trace_state_propagation::trace_root_with_children: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+trace_state_propagation::trace_with_active_otel_context: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+trace_state_propagation::trace_with_assigned_otel_context: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_appender::non_blocking::test::logs_dropped_if_lossy: no traces
+tracing_appender::non_blocking::test::multi_threaded_writes: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_appender::rolling::test::test_make_writer: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_core::dispatcher::test::default_dispatch: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_core::dispatcher::test::default_no_subscriber: < "tracing_core::Subscriber::downcast_raw" >
+tracing_core::dispatcher::test::dispatch_downcasts: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_core::dispatcher::test::dispatch_is: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_core::dispatcher::test::events_dont_infinite_loop: < "tracing_core::<NoSubscriber as Subscriber>::event, tracing_core::Subscriber::max_level_hint" >
+tracing_core::dispatcher::test::spans_dont_infinite_loop: < "tracing_core::<NoSubscriber as Subscriber>::new_span, tracing_core::Subscriber::max_level_hint" >
+tracing_error::backtrace::tests::capture_empty: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_error::backtrace::tests::capture_supported: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_error::backtrace::tests::capture_unsupported: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_futures::tests::futures_01_tests::future_enter_exit_is_reasonable: < "tracing_core::Subscriber::try_close" >
+tracing_futures::tests::futures_01_tests::future_error_ends_span: < "tracing_core::Subscriber::try_close" >
+tracing_futures::tests::futures_01_tests::span_follows_future_onto_threadpool: < "tracing_core::Subscriber::try_close, tracing_core::<NoSubscriber as Subscriber>::exit, tracing_core::<NoSubscriber as Subscriber>::enter, tracing_core::Subscriber::drop_span, tracing_core::<NoSubscriber as Subscriber>::new_span" >
+tracing_futures::tests::futures_01_tests::stream_enter_exit_is_reasonable: < "tracing_core::Subscriber::try_close" >
+tracing_opentelemetry::layer::tests::dynamic_span_names: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_opentelemetry::layer::tests::includes_timings: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_opentelemetry::layer::tests::span_kind: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_opentelemetry::layer::tests::span_status_code: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_opentelemetry::layer::tests::span_status_message: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_opentelemetry::layer::tests::trace_id_from_existing_context: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::filter::env::directive::test::directive_ordering_by_field_num: no traces
+tracing_subscriber::filter::env::tests::callsite_enabled_includes_span_directive: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::filter::env::tests::callsite_enabled_includes_span_directive_field: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::filter::env::tests::callsite_enabled_includes_span_directive_multiple_fields: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::filter::env::tests::callsite_enabled_no_span_directive: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::filter::env::tests::callsite_off: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::fmt_layer::test::fmt_layer_downcasts: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::fmt_layer::test::fmt_layer_downcasts_to_parts: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::fmt_layer::test::impls: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::fmt_layer::test::is_lookup_span: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::fmt_layer::test::make_writer_based_on_meta: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::fmt_layer::test::synthesize_span_active: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::fmt_layer::test::synthesize_span_close: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::fmt_layer::test::synthesize_span_close_no_timing: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::fmt_layer::test::synthesize_span_full: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::fmt_layer::test::synthesize_span_none: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_disabled_current_span_event: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_disabled_span_list_event: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_filename: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::json::test::json_flattened_event: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_line_number: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_nested_span: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_no_span: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_span_event_show_correct_context: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::json_span_event_with_no_fields: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::json::test::record_works: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::compact::overridden_parents: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint, tracing_core::Event::child_of" >
+tracing_subscriber::fmt::format::test::compact::overridden_parents_in_scope: < "tracing_core::Event::child_of, tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::compact::with_ansi_false: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::compact::with_ansi_true: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::compact::without_level: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::default::overridden_parents: < "tracing_core::Subscriber::downcast_raw, tracing_core::Event::child_of, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::test::default::overridden_parents_in_scope: < "tracing_core::Subscriber::max_level_hint, tracing_core::Event::child_of, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::default::with_ansi_false: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::default::with_ansi_true: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::default::with_thread_ids: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::test::default::without_level: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::disable_everything: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::pretty::pretty_default: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::test::pretty_default: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::with_filename: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::test::with_line_number: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::format::test::with_line_number_and_file_name: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::format::test::with_thread_ids: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::test::impls: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::test::is_lookup_span: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::test::subscriber_downcasts: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::test::subscriber_downcasts_to_parts: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::writer::test::combinators_and: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::fmt::writer::test::combinators_level_filters: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::writer::test::combinators_or_else: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::writer::test::combinators_or_else_chain: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::writer::test::custom_writer_closure: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::writer::test::custom_writer_mutex: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::fmt::writer::test::custom_writer_struct: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::box_layer_is_layer: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::downcasts_to_layer: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::downcasts_to_subscriber: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::layer_is_subscriber: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::registry_tests::context_event_span: < "tracing_core::Event::child_of, tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::many_plf_only_picks_max: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::mixed_interleaved: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::mixed_layered: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::mixed_with_unfiltered: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::mixed_with_unfiltered_layered: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::nested_plf_only_picks_max: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::plf_only_picks_max: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::plf_only_unhinted: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::plf_only_unhinted_nested_inner: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::plf_only_unhinted_nested_outer: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::unhinted_nested_inner: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::layer::tests::registry_tests::max_level_hints::unhinted_nested_inner_mixed: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::layer::tests::three_layers_are_layer: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::three_layers_are_subscriber: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::layer::tests::two_layers_are_subscriber: < "tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::registry::sharded::tests::child_closes_grandparent: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::registry::sharded::tests::child_closes_parent: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::registry::sharded::tests::multiple_layers_can_access_closed_span: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::registry::sharded::tests::single_layer_can_access_closed_span: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::registry::sharded::tests::span_enter_guards_are_dropped_out_of_order: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::registry::sharded::tests::spans_are_only_closed_when_the_last_ref_drops: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::registry::sharded::tests::spans_are_removed_from_registry: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+tracing_subscriber::registry::tests::spanref_scope_fromroot_iteration_order: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+tracing_subscriber::registry::tests::spanref_scope_iteration_order: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+unhinted_layer_filters_dont_break_other_layers::layer_filters: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+unhinted_layer_filters_dont_break_other_layers::layered_layer_filters: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+unhinted_layer_filters_dont_break_other_layers::mixed_layered: < "tracing_core::Subscriber::downcast_raw, tracing_core::Subscriber::max_level_hint" >
+unhinted_layer_filters_dont_break_other_layers::out_of_order: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+utils::builders_are_init_ext: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+utils::layered_is_init_ext: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+vec_subscriber_filter_interests_cached::vec_layer_filter_interests_are_cached: < "tracing_core::Subscriber::max_level_hint, tracing_core::Subscriber::downcast_raw" >
+
+     DEBUG: Changed due to regular checksums: tracing_core::Event::child_of
+     DEBUG: Changed due to regular checksums: tracing_core::Event::child_of
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::enter
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::register_callsite
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::exit
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::max_level_hint
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::record
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::clone_span
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::record_follows_from
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::downcast_raw
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::event
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::try_close
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::current_span
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::new_span
+     DEBUG: Changed due to vtable checksums: tracing_core::Subscriber::drop_span
+     DEBUG: Changed due to vtable checksums: tracing_core::<NoSubscriber as Subscriber>::enabled
+     DEBUG: Changed due to regular checksums: tracing_core::Event::child_of
+    Finished test [unoptimized + debuginfo] target(s) in 0.47s
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing-a2b896468e212730)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/enabled.rs (target_dynamic/debug/deps/enabled-cdfa55de897bca05)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/event.rs (target_dynamic/debug/deps/event-bfc11b75fdfbe51f)
+
+running 9 tests
+test both_shorthands ... ok
+test display_shorthand ... ok
+test debug_shorthand ... ok
+test borrowed_field ... ok
+test dotted_field_name ... ok
+test move_field_out_of_struct ... ok
+test explicit_child ... FAILED
+test moved_field ... ok
+test explicit_child_at_levels ... FAILED
+
+failures:
+
+---- explicit_child stdout ----
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "foo",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:342,
+    fields: {},
+    callsite: Identifier(0x564bfa20a148),
+    kind: Kind(SPAN),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "foo",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:342,
+    fields: {},
+    callsite: Identifier(0x564bfa20a148),
+    kind: Kind(SPAN),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] new_span: name="foo"; target="event"; id=Id(1);
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "event tracing/tests/event.rs:343",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:343,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a160),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "event tracing/tests/event.rs:343",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:343,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a160),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] drop_span: foo; id=Id(1); refs=1;
+thread 'rustyrts_test_thread' panicked at '[rustyrts_test_thread] expected an event', /home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-mock/src/subscriber.rs:405:25
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- explicit_child_at_levels stdout ----
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "foo",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:363,
+    fields: {},
+    callsite: Identifier(0x564bfa20a178),
+    kind: Kind(SPAN),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "foo",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:363,
+    fields: {},
+    callsite: Identifier(0x564bfa20a178),
+    kind: Kind(SPAN),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] new_span: name="foo"; target="event"; id=Id(1);
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "event tracing/tests/event.rs:364",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:364,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a190),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "event tracing/tests/event.rs:364",
+    target: "event",
+    level: Level(
+        Trace,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:364,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a190),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "event tracing/tests/event.rs:365",
+    target: "event",
+    level: Level(
+        Debug,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:365,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1a8),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "event tracing/tests/event.rs:365",
+    target: "event",
+    level: Level(
+        Debug,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:365,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1a8),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "event tracing/tests/event.rs:366",
+    target: "event",
+    level: Level(
+        Info,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:366,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1c0),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "event tracing/tests/event.rs:366",
+    target: "event",
+    level: Level(
+        Info,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:366,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1c0),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "event tracing/tests/event.rs:367",
+    target: "event",
+    level: Level(
+        Warn,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:367,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1d8),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "event tracing/tests/event.rs:367",
+    target: "event",
+    level: Level(
+        Warn,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:367,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1d8),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] register_callsite: Metadata {
+    name: "event tracing/tests/event.rs:368",
+    target: "event",
+    level: Level(
+        Error,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:368,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1f0),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled: Metadata {
+    name: "event tracing/tests/event.rs:368",
+    target: "event",
+    level: Level(
+        Error,
+    ),
+    module_path: "event",
+    location: tracing/tests/event.rs:368,
+    fields: {message},
+    callsite: Identifier(0x564bfa20a1f0),
+    kind: Kind(EVENT),
+}
+[rustyrts_test_thread] enabled -> true
+[rustyrts_test_thread] drop_span: foo; id=Id(1); refs=1;
+thread 'rustyrts_test_thread' panicked at '[rustyrts_test_thread] expected an event', /home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/tracing/tracing-mock/src/subscriber.rs:405:25
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    explicit_child
+    explicit_child_at_levels
+
+test result: FAILED. 7 passed; 2 failed; 0 ignored; 0 measured; 10 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p tracing --test event`
+     Running tests/filter_caching_is_lexically_scoped.rs (target_dynamic/debug/deps/filter_caching_is_lexically_scoped-bf9fdb0c4fec083f)
+
+running 1 test
+test filter_caching_is_lexically_scoped ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/filters_are_not_reevaluated_for_the_same_span.rs (target_dynamic/debug/deps/filters_are_not_reevaluated_for_the_same_span-75d98f0260d20284)
+
+running 1 test
+test filters_are_not_reevaluated_for_the_same_span ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/filters_are_reevaluated_for_different_call_sites.rs (target_dynamic/debug/deps/filters_are_reevaluated_for_different_call_sites-a986006cbcf50485)
+
+running 1 test
+test filters_are_reevaluated_for_different_call_sites ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/filters_dont_leak.rs (target_dynamic/debug/deps/filters_dont_leak-06fea7dd68cd650d)
+
+running 1 test
+test spans_dont_leak ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/future_send.rs (target_dynamic/debug/deps/future_send-d96295d302d740ae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/macro_imports.rs (target_dynamic/debug/deps/macro_imports-2131b3fafab4f2e6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/macros.rs (target_dynamic/debug/deps/macros-1e736f7983df0d02)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 46 filtered out; finished in 0.00s
+
+     Running tests/macros_incompatible_concat.rs (target_dynamic/debug/deps/macros_incompatible_concat-07ae05620fd668c9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/macros_redefined_core.rs (target_dynamic/debug/deps/macros_redefined_core-29e4c7052371d00b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/max_level_hint.rs (target_dynamic/debug/deps/max_level_hint-eabbdf020dd1ad6f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/multiple_max_level_hints.rs (target_dynamic/debug/deps/multiple_max_level_hints-7bbb10cb4418a183)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/no_subscriber.rs (target_dynamic/debug/deps/no_subscriber-5e4669a79ec19c44)
+
+running 1 test
+test no_subscriber_disables_global ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/scoped_clobbers_default.rs (target_dynamic/debug/deps/scoped_clobbers_default-3fe4c8bd2ffbb4e8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/span.rs (target_dynamic/debug/deps/span-06fca54adfcf8ead)
+
+running 34 tests
+test borrowed_field ... ok
+test both_shorthands ... ok
+test contextual_root ... ok
+test cloning_a_span_calls_clone_span ... ok
+test contextual_child ... ok
+test debug_shorthand ... ok
+test clone_and_drop_span_always_go_to_the_subscriber_that_tagged_the_span ... ok
+test drop_span_when_exiting_dispatchers_context ... ok
+test display_shorthand ... ok
+test dropping_a_span_calls_drop_span ... ok
+test dotted_field_name ... ok
+test enter ... ok
+test entered ... ok
+test entered_api ... ok
+test explicit_child ... ok
+test event_outside_of_span ... ok
+test explicit_root_span_is_root ... ok
+test float_values ... ok
+test handles_to_different_spans_are_not_equal ... ok
+test explicit_root_span_is_root_regardless_of_ctx ... ok
+test handles_to_different_spans_with_the_same_metadata_are_not_equal ... ok
+test explicit_child_regardless_of_ctx ... ok
+test explicit_child_at_levels ... ok
+test new_span_with_target_and_log_level ... ok
+test handles_to_the_same_span_are_equal ... ok
+test moved_field ... ok
+test move_field_out_of_struct ... ok
+test record_new_values_for_fields ... ok
+test span_closes_when_exited ... ok
+test record_new_value_for_field ... ok
+test new_span_after_event ... ok
+test span_closes_after_event ... ok
+test spans_always_go_to_the_subscriber_that_tagged_them ... ok
+test spans_always_go_to_the_subscriber_that_tagged_them_even_across_threads ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/subscriber.rs (target_dynamic/debug/deps/subscriber-8b3ea00fded5a28a)
+
+running 3 tests
+test event_macros_dont_infinite_loop ... ok
+test boxed_subscriber ... ok
+test arced_subscriber ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_appender-137b080c0e982ada)
+
+running 2 tests
+test rolling::test::test_make_writer ... ok
+test non_blocking::test::multi_threaded_writes ... ok
+
+test result: ok. 2 passed; 0 failed; 1 ignored; 0 measured; 8 filtered out; finished in 5.02s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_attributes-4b17c809ea0c2587)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/async_fn.rs (target_dynamic/debug/deps/async_fn-a2e990c1f635d500)
+
+running 8 tests
+test manual_impl_future ... ok
+test out_of_scope_fields ... ok
+test async_fn_nested ... ok
+test manual_box_pin ... ok
+test async_fn_only_enters_for_polls ... ok
+test async_fn_with_async_trait_and_fields_expressions ... ok
+test async_fn_with_async_trait_and_fields_expressions_with_generic_parameter ... ok
+test async_fn_with_async_trait ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/destructuring.rs (target_dynamic/debug/deps/destructuring-aaa5219b1d06becf)
+
+running 6 tests
+test destructure_everything ... ok
+test destructure_tuple_structs ... ok
+test destructure_refs ... ok
+test destructure_structs ... ok
+test destructure_nested_tuples ... ok
+test destructure_tuples ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/err.rs (target_dynamic/debug/deps/err-67d7a6f983dc8cff)
+
+running 7 tests
+test impl_trait_return_type ... ok
+test test ... ok
+test test_err_dbg ... ok
+test test_err_display_default ... ok
+test test_async ... ok
+test test_mut ... ok
+test test_mut_async ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/fields.rs (target_dynamic/debug/deps/fields-e4db796639128872)
+
+running 7 tests
+test expr_field ... ok
+test empty_field ... ok
+test parameters_with_fields ... ok
+test fields ... ok
+test self_expr_field ... ok
+test two_expr_fields ... ok
+test clashy_expr_field ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/instrument.rs (target_dynamic/debug/deps/instrument-f6e87d6d4f8f5eab)
+
+running 6 tests
+test generics ... ok
+test fields ... ok
+test impl_trait_return_type ... ok
+test methods ... ok
+test override_everything ... ok
+test skip ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/levels.rs (target_dynamic/debug/deps/levels-4e6daa700aae4040)
+
+running 2 tests
+test named_levels ... ok
+test numeric_levels ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/names.rs (target_dynamic/debug/deps/names-d49f9bae14798cb8)
+
+running 3 tests
+test custom_name_test ... ok
+test custom_name_no_equals_test ... ok
+test default_name_test ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/ret.rs (target_dynamic/debug/deps/ret-4aa68867eb9a3fca)
+
+running 8 tests
+test test ... ok
+test test_ret_and_err ... ok
+test test_dbg ... ok
+test test_impl_type ... ok
+test test_async ... ok
+test test_ret_and_ok ... ok
+test test_warn ... ok
+test test_mut ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/targets.rs (target_dynamic/debug/deps/targets-25f11de0968041f8)
+
+running 2 tests
+test custom_targets ... ok
+test default_targets ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_core-cc542933c5d41b65)
+
+running 6 tests
+test dispatcher::test::default_no_subscriber ... ok
+test dispatcher::test::default_dispatch ... ok
+test dispatcher::test::dispatch_downcasts ... ok
+test dispatcher::test::dispatch_is ... ok
+test dispatcher::test::spans_dont_infinite_loop ... ok
+test dispatcher::test::events_dont_infinite_loop ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.01s
+
+     Running tests/dispatch.rs (target_dynamic/debug/deps/dispatch-64af47a382bae56e)
+
+running 2 tests
+test set_default_dispatch ... ok
+test nested_set_default ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/global_dispatch.rs (target_dynamic/debug/deps/global_dispatch-ce423508ae6a51ab)
+
+running 1 test
+test global_dispatch ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/macros.rs (target_dynamic/debug/deps/macros-502c60301e6b6ad3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_error-450d7c83f59a39b5)
+
+running 3 tests
+test backtrace::tests::capture_empty ... ok
+test backtrace::tests::capture_unsupported ... ok
+test backtrace::tests::capture_supported ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/all-levels.rs (target_dynamic/debug/examples/all_levels-cec77148660dbe0c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/appender-multifile.rs (target_dynamic/debug/examples/appender_multifile-923c049055769d13)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/async-fn.rs (target_dynamic/debug/examples/async_fn-8a2073d2d2e1c79d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/attrs-args.rs (target_dynamic/debug/examples/attrs_args-2a4d16526ad738d2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/attrs-basic.rs (target_dynamic/debug/examples/attrs_basic-c76d5ecc680863ee)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/attrs-literal-field-names.rs (target_dynamic/debug/examples/attrs_literal_field_names-e1b78e03e603f40a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/counters.rs (target_dynamic/debug/examples/counters-29309b1459d46767)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/custom-error.rs (target_dynamic/debug/examples/custom_error-c6cdac8c9c28274c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/echo.rs (target_dynamic/debug/examples/echo-94088e234d66df48)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt.rs (target_dynamic/debug/examples/fmt-bffe505a288dd178)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-compact.rs (target_dynamic/debug/examples/fmt_compact-afd801933a2dd21a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-custom-event.rs (target_dynamic/debug/examples/fmt_custom_event-a90d93a0353cbd5e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-custom-field.rs (target_dynamic/debug/examples/fmt_custom_field-c7fce4bd03a49543)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-json.rs (target_dynamic/debug/examples/fmt_json-e15b71bf234aefae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-multiple-writers.rs (target_dynamic/debug/examples/fmt_multiple_writers-39f3eb702904c015)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-pretty.rs (target_dynamic/debug/examples/fmt_pretty-a1766876fdf81478)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-source-locations.rs (target_dynamic/debug/examples/fmt_source_locations-8759f48f636107b6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/fmt-stderr.rs (target_dynamic/debug/examples/fmt_stderr-c492253e65fb95c4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/futures-proxy-server.rs (target_dynamic/debug/examples/futures_proxy_server-6a412e59c8e7e7a3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/hyper-echo.rs (target_dynamic/debug/examples/hyper_echo-aca2f228408ce58b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/inferno-flame.rs (target_dynamic/debug/examples/inferno_flame-ea0f683f85659e8e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/instrumented-error.rs (target_dynamic/debug/examples/instrumented_error-d5d5b58c80f52b76)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/journald.rs (target_dynamic/debug/examples/journald-c8a339303bd7ddac)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/log.rs (target_dynamic/debug/examples/log-dbfb4c43824a5460)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/opentelemetry.rs (target_dynamic/debug/examples/opentelemetry-5b181a68c3cb3de7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/opentelemetry-remote-context.rs (target_dynamic/debug/examples/opentelemetry_remote_context-f106dc2da1d19b13)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/panic_hook.rs (target_dynamic/debug/examples/panic_hook-7f73522363ed5b4e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/serde-yak-shave.rs (target_dynamic/debug/examples/serde_yak_shave-731689233babd0ed)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/sloggish/main.rs (target_dynamic/debug/examples/sloggish-d818fab87b9844e3)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/spawny-thing.rs (target_dynamic/debug/examples/spawny_thing-4ed43ef01f6cc27e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/subscriber-filter.rs (target_dynamic/debug/examples/subscriber_filter-b281924e8c189fa9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/thread-info.rs (target_dynamic/debug/examples/thread_info-c8455d424ea14529)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/toggle-layers.rs (target_dynamic/debug/examples/toggle_layers-ecba1ba38252a95a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/tokio-spawny-thing.rs (target_dynamic/debug/examples/tokio_spawny_thing-cfd508c4341452b6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/tokio_panic_hook.rs (target_dynamic/debug/examples/tokio_panic_hook-8e1d7188e5e518cd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/tower-client.rs (target_dynamic/debug/examples/tower_client-5ab6693998254316)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/tower-load.rs (target_dynamic/debug/examples/tower_load-c1d7c89cd7ec138e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/tower-server.rs (target_dynamic/debug/examples/tower_server-7b01511e7ac46b67)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/valuable.rs (target_dynamic/debug/examples/valuable-71c24836d658082c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/valuable_instrument.rs (target_dynamic/debug/examples/valuable_instrument-d5852ac191b711a9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/valuable_json.rs (target_dynamic/debug/examples/valuable_json-1447c16e29f3069f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_flame-dd45076dc181d7c6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/collapsed.rs (target_dynamic/debug/deps/collapsed-8c8cd399e22c0611)
+
+running 1 test
+test capture_supported ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.62s
+
+     Running tests/concurrent.rs (target_dynamic/debug/deps/concurrent-7c17abdb26281db6)
+
+running 1 test
+test capture_supported ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.14s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_futures-a056dac71179e84c)
+
+running 4 tests
+test tests::futures_01_tests::future_enter_exit_is_reasonable ... ok
+test tests::futures_01_tests::stream_enter_exit_is_reasonable ... ok
+test tests::futures_01_tests::future_error_ends_span ... ok
+test tests::futures_01_tests::span_follows_future_onto_threadpool ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/std_future.rs (target_dynamic/debug/deps/std_future-205f0a32e895801d)
+
+running 2 tests
+test enter_exit_is_reasonable ... ok
+test error_ends_span ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_journald-e24a536200b71244)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/journal.rs (target_dynamic/debug/deps/journal-73229b787353ebee)
+
+running 9 tests
+test internal_null_byte ... ok
+test spans_field_collision ... ok
+test multiple_spans_metadata ... ok
+test span_metadata ... ok
+test simple_metadata ... ok
+test multiline_message ... ok
+test large_message ... ok
+test simple_message ... ok
+test multiline_message_trailing_newline ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_log-3dc15a083b6b3e04)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+
+     Running tests/log_tracer.rs (target_dynamic/debug/deps/log_tracer-f8573e6335ebd9c7)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/reexport_log_crate.rs (target_dynamic/debug/deps/reexport_log_crate-05d5baf75aa63d58)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_macros-5abf588f95433607)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests examples/factorial.rs (target_dynamic/debug/examples/factorial-8efcf00667b12111)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_mock-2080b6966ddd4e97)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_opentelemetry-d7b7a20490362c19)
+
+running 6 tests
+test layer::tests::includes_timings ... ok
+test layer::tests::span_status_message ... ok
+test layer::tests::dynamic_span_names ... ok
+test layer::tests::span_status_code ... ok
+test layer::tests::span_kind ... ok
+test layer::tests::trace_id_from_existing_context ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/trace_state_propagation.rs (target_dynamic/debug/deps/trace_state_propagation-20f0e956a4e4e854)
+
+running 4 tests
+test trace_with_assigned_otel_context ... ok
+test trace_with_active_otel_context ... ok
+test trace_root_with_children ... ok
+test inject_context_into_outgoing_requests ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_serde-74baba14583033a0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_subscriber-f60a2b25345f314b)
+
+running 84 tests
+test filter::env::tests::callsite_enabled_includes_span_directive ... ok
+test fmt::fmt_layer::test::is_lookup_span ... ok
+test fmt::fmt_layer::test::make_writer_based_on_meta ... ok
+test fmt::fmt_layer::test::fmt_layer_downcasts_to_parts ... ok
+test fmt::fmt_layer::test::fmt_layer_downcasts ... ok
+test filter::env::tests::callsite_off ... ok
+test filter::env::tests::callsite_enabled_includes_span_directive_multiple_fields ... ok
+test filter::env::tests::callsite_enabled_includes_span_directive_field ... ok
+test filter::env::tests::callsite_enabled_no_span_directive ... ok
+test fmt::fmt_layer::test::impls ... ok
+test fmt::format::json::test::json ... ok
+test fmt::format::json::test::json_disabled_span_list_event ... ok
+test fmt::format::json::test::json_disabled_current_span_event ... ok
+test fmt::fmt_layer::test::synthesize_span_active ... ok
+test fmt::fmt_layer::test::synthesize_span_close_no_timing ... ok
+test fmt::fmt_layer::test::synthesize_span_none ... ok
+test fmt::format::json::test::json_filename ... ok
+test fmt::format::json::test::json_flattened_event ... ok
+test fmt::format::json::test::json_line_number ... ok
+test fmt::fmt_layer::test::synthesize_span_close ... ok
+test fmt::fmt_layer::test::synthesize_span_full ... ok
+test fmt::format::json::test::json_nested_span ... ok
+test fmt::format::test::compact::with_ansi_false ... ok
+test fmt::format::json::test::json_span_event_with_no_fields ... ok
+test fmt::format::test::compact::with_ansi_true ... ok
+test fmt::format::json::test::record_works ... ok
+test fmt::format::json::test::json_no_span ... ok
+test fmt::format::test::compact::overridden_parents ... FAILED
+test fmt::format::json::test::json_span_event_show_correct_context ... ok
+test fmt::format::test::compact::overridden_parents_in_scope ... FAILED
+test fmt::format::test::compact::without_level ... ok
+test fmt::format::test::default::overridden_parents ... FAILED
+test fmt::format::test::default::without_level ... ok
+test fmt::format::test::default::overridden_parents_in_scope ... FAILED
+test fmt::format::test::default::with_ansi_true ... ok
+test fmt::format::test::disable_everything ... ok
+test fmt::format::test::pretty::pretty_default ... ok
+test fmt::format::test::default::with_ansi_false ... ok
+test fmt::format::test::default::with_thread_ids ... ok
+test fmt::format::test::with_filename ... ok
+test fmt::test::is_lookup_span ... ok
+test fmt::test::impls ... ok
+test fmt::format::test::pretty_default ... ok
+test fmt::test::subscriber_downcasts_to_parts ... ok
+test fmt::writer::test::combinators_and ... ok
+test fmt::writer::test::combinators_or_else ... ok
+test fmt::format::test::with_thread_ids ... ok
+test fmt::writer::test::combinators_level_filters ... ok
+test fmt::test::subscriber_downcasts ... ok
+test layer::tests::box_layer_is_layer ... ok
+test fmt::writer::test::combinators_or_else_chain ... ok
+test fmt::writer::test::custom_writer_closure ... ok
+test layer::tests::downcasts_to_layer ... ok
+test fmt::writer::test::custom_writer_mutex ... ok
+test fmt::writer::test::custom_writer_struct ... ok
+test layer::tests::layer_is_subscriber ... ok
+test layer::tests::downcasts_to_subscriber ... ok
+test layer::tests::registry_tests::max_level_hints::mixed_with_unfiltered ... ok
+test fmt::format::test::with_line_number_and_file_name ... ok
+test layer::tests::registry_tests::context_event_span ... FAILED
+test layer::tests::registry_tests::max_level_hints::mixed_layered ... ok
+test layer::tests::registry_tests::max_level_hints::many_plf_only_picks_max ... ok
+test layer::tests::registry_tests::max_level_hints::mixed_with_unfiltered_layered ... ok
+test layer::tests::registry_tests::max_level_hints::mixed_interleaved ... ok
+test fmt::format::test::with_line_number ... ok
+test layer::tests::registry_tests::max_level_hints::plf_only_picks_max ... ok
+test layer::tests::registry_tests::max_level_hints::nested_plf_only_picks_max ... ok
+test layer::tests::three_layers_are_layer ... ok
+test layer::tests::registry_tests::max_level_hints::plf_only_unhinted ... ok
+test layer::tests::two_layers_are_subscriber ... ok
+test layer::tests::three_layers_are_subscriber ... ok
+test layer::tests::registry_tests::max_level_hints::plf_only_unhinted_nested_inner ... ok
+test layer::tests::registry_tests::max_level_hints::plf_only_unhinted_nested_outer ... ok
+test registry::sharded::tests::child_closes_grandparent ... ok
+test registry::sharded::tests::multiple_layers_can_access_closed_span ... ok
+test registry::sharded::tests::single_layer_can_access_closed_span ... ok
+test layer::tests::registry_tests::max_level_hints::unhinted_nested_inner ... ok
+test layer::tests::registry_tests::max_level_hints::unhinted_nested_inner_mixed ... ok
+test registry::sharded::tests::child_closes_parent ... ok
+test registry::tests::spanref_scope_iteration_order ... ok
+test registry::sharded::tests::spans_are_removed_from_registry ... ok
+test registry::tests::spanref_scope_fromroot_iteration_order ... ok
+test registry::sharded::tests::span_enter_guards_are_dropped_out_of_order ... ok
+test registry::sharded::tests::spans_are_only_closed_when_the_last_ref_drops ... ok
+
+failures:
+
+---- fmt::format::test::compact::overridden_parents stdout ----
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `"fake time span1:span2: tracing_subscriber::fmt::format::test: hello span=1 span=2\n"`,
+ right: `""`', tracing-subscriber/src/fmt/format/mod.rs:1944:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- fmt::format::test::compact::overridden_parents_in_scope stdout ----
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `"fake time span1:span2: tracing_subscriber::fmt::format::test: hello span=1 span=2\n"`,
+ right: `""`', tracing-subscriber/src/fmt/format/mod.rs:1973:13
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- fmt::format::test::default::overridden_parents stdout ----
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `"fake time span1{span=1}:span2{span=2}: tracing_subscriber::fmt::format::test: hello\n"`,
+ right: `""`', tracing-subscriber/src/fmt/format/mod.rs:1944:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- fmt::format::test::default::overridden_parents_in_scope stdout ----
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `"fake time span1{span=1}:span2{span=2}: tracing_subscriber::fmt::format::test: hello\n"`,
+ right: `""`', tracing-subscriber/src/fmt/format/mod.rs:1973:13
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- layer::tests::registry_tests::context_event_span stdout ----
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("explicit")`', tracing-subscriber/src/layer/tests.rs:148:17
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    fmt::format::test::compact::overridden_parents
+    fmt::format::test::compact::overridden_parents_in_scope
+    fmt::format::test::default::overridden_parents
+    fmt::format::test::default::overridden_parents_in_scope
+    layer::tests::registry_tests::context_event_span
+
+test result: FAILED. 79 passed; 5 failed; 1 ignored; 0 measured; 48 filtered out; finished in 0.10s
+
+error: test failed, to rerun pass `-p tracing-subscriber --lib`
+     Running tests/cached_layer_filters_dont_break_other_layers.rs (target_dynamic/debug/deps/cached_layer_filters_dont_break_other_layers-05a29d98367cb1a8)
+
+running 4 tests
+test layer_filters ... ok
+test out_of_order ... ok
+test mixed_layered ... ok
+test layered_layer_filters ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/duplicate_spans.rs (target_dynamic/debug/deps/duplicate_spans-46536c6256e3e568)
+
+running 1 test
+test duplicate_spans ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/env_filter/main.rs (target_dynamic/debug/deps/env_filter-2551d9f21caeb297)
+
+running 23 tests
+test add_directive_enables_event ... ok
+test level_filter_event ... ok
+test not_order_dependent ... ok
+test per_layer::level_filter_event_with_target ... ok
+test per_layer::level_filter_event ... ok
+test per_layer::add_directive_enables_event ... ok
+test level_filter_event_with_target ... ok
+test level_filter_event_with_target_and_span_global ... ok
+test per_layer_filter::add_directive_enables_event ... ok
+test per_layer::not_order_dependent ... ok
+test per_layer::level_filter_event_with_target_and_span ... ok
+test per_layer_filter::level_filter_event ... ok
+test per_layer::same_name_spans ... ok
+test per_layer_filter::level_filter_event_with_target ... ok
+test per_layer::multiple_dynamic_filters ... ok
+test per_layer::span_name_filter_is_dynamic ... ok
+test per_layer_filter::level_filter_event_with_target_and_span ... ok
+test per_layer_filter::not_order_dependent ... ok
+test per_layer_filter::same_name_spans ... ok
+test same_name_spans ... ok
+test per_layer_filter::span_name_filter_is_dynamic ... ok
+test per_layer_filter::multiple_dynamic_filters ... ok
+test span_name_filter_is_dynamic ... ok
+
+test result: ok. 23 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.08s
+
+     Running tests/field_filter.rs (target_dynamic/debug/deps/field_filter-f04b1015d795077f)
+
+running 1 test
+test record_after_created ... ok
+
+test result: ok. 1 passed; 0 failed; 2 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/filter_log.rs (target_dynamic/debug/deps/filter_log-15c4107ed9e0f093)
+
+running 1 test
+test log_is_enabled ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/fmt_max_level_hint.rs (target_dynamic/debug/deps/fmt_max_level_hint-2f6b0f52ab78a346)
+
+running 1 test
+test fmt_sets_max_level_hint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/hinted_layer_filters_dont_break_other_layers.rs (target_dynamic/debug/deps/hinted_layer_filters_dont_break_other_layers-eb80d954dc306291)
+
+running 4 tests
+test layer_filters ... ok
+test layered_layer_filters ... ok
+test mixed_layered ... ok
+test out_of_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/layer_filter_interests_are_cached.rs (target_dynamic/debug/deps/layer_filter_interests_are_cached-51aa574bb23c46ba)
+
+running 1 test
+test layer_filter_interests_are_cached ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/layer_filters/main.rs (target_dynamic/debug/deps/layer_filters-0af32a0cc75a9826)
+
+running 20 tests
+test downcast_raw::downcast_ref_to_inner_layer_and_filter ... ok
+test downcast_raw::forward_downcast_raw_to_layer ... ok
+test boxed::dyn_box_works ... ok
+test boxed::box_works ... ok
+test basic_layer_filters ... ok
+test global_filter_interests_are_cached ... ok
+test basic_layer_filters_spans ... ok
+test filter_fn ... ok
+test global_filters_layers_still_work ... ok
+test targets::inner_layer_short_circuits ... ok
+test targets::log_events ... ok
+test vec::all_filtered_max_level_hint ... ok
+test vec::mixed_max_level_hint ... ok
+test global_filters_affect_layer_filters ... ok
+test vec::with_filters_boxed ... ok
+test filter_scopes::filters_interleaved_span_scopes ... ok
+test vec::with_filters_unboxed ... ok
+test filter_scopes::filters_span_scopes ... ok
+test trees::basic_trees ... ok
+test trees::filter_span_scopes ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/multiple_layer_filter_interests_cached.rs (target_dynamic/debug/deps/multiple_layer_filter_interests_cached-01a4aa41e0a02c73)
+
+running 1 test
+test multiple_layer_filter_interests_are_cached ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/registry_max_level_hint.rs (target_dynamic/debug/deps/registry_max_level_hint-785070256e4c9933)
+
+running 1 test
+test registry_sets_max_level_hint ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/registry_with_subscriber.rs (target_dynamic/debug/deps/registry_with_subscriber-9be20470a6ac5233)
+
+running 1 test
+test future_with_subscriber ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/reload.rs (target_dynamic/debug/deps/reload-90d971a76abe245a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/same_len_filters.rs (target_dynamic/debug/deps/same_len_filters-52bd494e12460309)
+
+running 3 tests
+test same_num_fields_event ... ok
+test same_length_targets ... ok
+test same_num_fields_and_name_len ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/support.rs (target_dynamic/debug/deps/support-24374445a412b65a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/unhinted_layer_filters_dont_break_other_layers.rs (target_dynamic/debug/deps/unhinted_layer_filters_dont_break_other_layers-2a475e8b04c113f6)
+
+running 4 tests
+test layer_filters ... ok
+test mixed_layered ... ok
+test layered_layer_filters ... ok
+test out_of_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/utils.rs (target_dynamic/debug/deps/utils-2e171944f8978f6e)
+
+running 2 tests
+test builders_are_init_ext ... ok
+test layered_is_init_ext ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.01s
+
+     Running tests/vec_subscriber_filter_interests_cached.rs (target_dynamic/debug/deps/vec_subscriber_filter_interests_cached-ef00157f23b39d36)
+
+running 1 test
+test vec_layer_filter_interests_are_cached ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/tracing_tower-a66c45c989e1382d)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+error: 2 targets failed:
+    `-p tracing --test event`
+    `-p tracing-subscriber --lib`

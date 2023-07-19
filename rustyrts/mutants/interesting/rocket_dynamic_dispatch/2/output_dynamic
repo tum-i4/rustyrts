@@ -1,0 +1,3094 @@
+Changed: core/lib/src/response/body.rs:112: replace Body<'r>::with_sized -> Self with Default::default()
+
+   Compiling rocket v0.5.0-rc.1 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/Rocket/core/lib)
+   Compiling rocket_sync_db_pools v0.1.0-rc.1 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/Rocket/contrib/sync_db_pools/lib)
+   Compiling rocket_dyn_templates v0.1.0-rc.1 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/Rocket/contrib/dyn_templates)
+     DEBUG: Changed due to regular checksums: rocket::Body::with_sized
+     DEBUG: Changed due to vtable checksums: tokio::<File as AsyncRead>::poll_read
+     DEBUG: Changed due to vtable checksums: tokio::<File as AsyncSeek>::start_seek
+     DEBUG: Changed due to vtable checksums: tokio::<Cursor<T> as AsyncRead>::poll_read
+     DEBUG: Changed due to vtable checksums: tokio::<File as AsyncSeek>::poll_complete
+     DEBUG: Changed due to vtable checksums: tokio::<Cursor<T> as AsyncSeek>::start_seek
+     DEBUG: Changed due to vtable checksums: tokio::<Cursor<T> as AsyncSeek>::poll_complete
+     DEBUG: Changed due to const checksums: rocket::Body::with_sized
+     DEBUG: Changed due to const checksums: rocket::Body::to_string::{closure#0}::{closure#0}
+     DEBUG: Changed due to const checksums: rocket::Body::to_bytes::{closure#0}
+   Compiling rocket_guide_tests v0.5.0-rc.1 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/Rocket/site/tests)
+   Compiling rocket_codegen v0.5.0-rc.1 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/Rocket/core/codegen)
+   Compiling rocket_sync_db_pools_codegen v0.1.0-rc.1 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/Rocket/contrib/sync_db_pools/codegen)
+   Compiling rocket_http v0.5.0-rc.1 (/home/simon/Dokumente/Semester10/GuidedResearch/evaluation/projects/mutants/Rocket/core/http)
+     DEBUG: Changed due to regular checksums: rocket::Body::size::{closure#0}
+    Finished test [unoptimized + debuginfo] target(s) in 2m 28s
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rocket-6aad98ca1dd70ae9)
+  Executable tests/absolute-uris-okay-issue-443.rs (target_dynamic/debug/deps/absolute_uris_okay_issue_443-8fd994bab4b8cf7b)
+  Executable tests/can-correct-bad-local-uri.rs (target_dynamic/debug/deps/can_correct_bad_local_uri-a3646fbbce0582ba)
+  Executable tests/catcher-cookies-1213.rs (target_dynamic/debug/deps/catcher_cookies_1213-fa4bef2575355b07)
+  Executable tests/conditionally-set-server-header-996.rs (target_dynamic/debug/deps/conditionally_set_server_header_996-10682005c4a5a98c)
+  Executable tests/config-secret-key-1500.rs (target_dynamic/debug/deps/config_secret_key_1500-682d6704b3e80790)
+  Executable tests/derive-reexports.rs (target_dynamic/debug/deps/derive_reexports-1e99ce937336b3bc)
+  Executable tests/encoded-uris.rs (target_dynamic/debug/deps/encoded_uris-745d2af17db8fc15)
+  Executable tests/fairing_before_head_strip-issue-546.rs (target_dynamic/debug/deps/fairing_before_head_strip_issue_546-e535f14d08860703)
+  Executable tests/file_server.rs (target_dynamic/debug/deps/file_server-51e13cef41a8d5b0)
+  Executable tests/flash-lazy-removes-issue-466.rs (target_dynamic/debug/deps/flash_lazy_removes_issue_466-d01f6462135a21ef)
+  Executable tests/form-validation-names.rs (target_dynamic/debug/deps/form_validation_names-80100b49fb202892)
+  Executable tests/form_method-issue-45.rs (target_dynamic/debug/deps/form_method_issue_45-90b6b74b61e52e43)
+  Executable tests/form_value_decoding-issue-82.rs (target_dynamic/debug/deps/form_value_decoding_issue_82-7375f00fb53a6b89)
+  Executable tests/form_value_from_encoded_str-issue-1425.rs (target_dynamic/debug/deps/form_value_from_encoded_str_issue_1425-74ee22379f429bae)
+  Executable tests/head_handling.rs (target_dynamic/debug/deps/head_handling-d9ed5028b85abc0c)
+  Executable tests/http_uri_serde.rs (target_dynamic/debug/deps/http_uri_serde-e0e20a2bba0deca9)
+  Executable tests/launch-inspect.rs (target_dynamic/debug/deps/launch_inspect-bde861122bc59019)
+  Executable tests/limits.rs (target_dynamic/debug/deps/limits-813965b0bd78d2d6)
+  Executable tests/local-client-access-runtime-in-drop.rs (target_dynamic/debug/deps/local_client_access_runtime_in_drop-2b9f5123e820ca42)
+  Executable tests/local-request-content-type-issue-505.rs (target_dynamic/debug/deps/local_request_content_type_issue_505-1ca8730fbfd3cba8)
+  Executable tests/local_request_private_cookie-issue-368.rs (target_dynamic/debug/deps/local_request_private_cookie_issue_368-266995103361c397)
+  Executable tests/many-cookie-jars-at-once.rs (target_dynamic/debug/deps/many_cookie_jars_at_once-a4da9ddc419a0d16)
+  Executable tests/mapped-base-issue-1262.rs (target_dynamic/debug/deps/mapped_base_issue_1262-f45b506a43e36d3c)
+  Executable tests/mount_point.rs (target_dynamic/debug/deps/mount_point-f3278e61b3287748)
+  Executable tests/nested-fairing-attaches.rs (target_dynamic/debug/deps/nested_fairing_attaches-3ca216bf08e01c8a)
+  Executable tests/on_launch_fairing_can_inspect_port.rs (target_dynamic/debug/deps/on_launch_fairing_can_inspect_port-f457d45bda8f01ed)
+  Executable tests/panic-handling.rs (target_dynamic/debug/deps/panic_handling-12f0f85f00d7fdfe)
+  Executable tests/precise-content-type-matching.rs (target_dynamic/debug/deps/precise_content_type_matching-75f242abb6be9452)
+  Executable tests/recursive-singleton-fairing.rs (target_dynamic/debug/deps/recursive_singleton_fairing-5719e2815880b8f0)
+  Executable tests/redirect_from_catcher-issue-113.rs (target_dynamic/debug/deps/redirect_from_catcher_issue_113-58a0e2fad983382c)
+  Executable tests/replace-content-type-518.rs (target_dynamic/debug/deps/replace_content_type_518-2ca6764f3154847a)
+  Executable tests/responder_lifetime-issue-345.rs (target_dynamic/debug/deps/responder_lifetime_issue_345-ebd0f0e271c2bf8a)
+  Executable tests/route_guard.rs (target_dynamic/debug/deps/route_guard-b4387e1c632f1d69)
+  Executable tests/scoped-uri.rs (target_dynamic/debug/deps/scoped_uri-531ae8c8bd26f7a3)
+  Executable tests/segments-issues-41-86.rs (target_dynamic/debug/deps/segments_issues_41_86-f3d13d320ec1ae06)
+  Executable tests/sentinel.rs (target_dynamic/debug/deps/sentinel-fc84d89833ec8fa2)
+  Executable tests/session-cookies-issue-1506.rs (target_dynamic/debug/deps/session_cookies_issue_1506-c93dcf698f8d54df)
+  Executable tests/shield.rs (target_dynamic/debug/deps/shield-e5dc8f8d21cb3650)
+  Executable tests/strict_and_lenient_forms.rs (target_dynamic/debug/deps/strict_and_lenient_forms-020398a3cb4340c8)
+  Executable tests/timer-on-attach.rs (target_dynamic/debug/deps/timer_on_attach-ca723b9ab90af25b)
+  Executable tests/tls-config-from-source-1503.rs (target_dynamic/debug/deps/tls_config_from_source_1503-bfe379751e10bbb0)
+  Executable tests/twice_managed_state.rs (target_dynamic/debug/deps/twice_managed_state-f17e4ca63c23078c)
+  Executable tests/typed-uri-docs-redef-issue-1373.rs (target_dynamic/debug/deps/typed_uri_docs_redef_issue_1373-d5b3a26c15584f6e)
+  Executable tests/unsound-local-request-1312.rs (target_dynamic/debug/deps/unsound_local_request_1312-a9c623e53e844234)
+  Executable tests/untracked-vs-tracked.rs (target_dynamic/debug/deps/untracked_vs_tracked-1bd510e2f6c1f2e7)
+  Executable tests/uri-percent-encoding-issue-808.rs (target_dynamic/debug/deps/uri_percent_encoding_issue_808-d4aadf084879ddd3)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rocket_codegen-b72fc5c6fa0ee0d8)
+  Executable tests/async-entry.rs (target_dynamic/debug/deps/async_entry-6a15854e6645b2dd)
+  Executable tests/async-routes.rs (target_dynamic/debug/deps/async_routes-fb2cd7da795e9e39)
+  Executable tests/catcher.rs (target_dynamic/debug/deps/catcher-796374eeae10bb23)
+  Executable tests/expansion.rs (target_dynamic/debug/deps/expansion-f12722b3d287eff9)
+  Executable tests/from_form.rs (target_dynamic/debug/deps/from_form-cad61839e557cdc0)
+  Executable tests/from_form_field.rs (target_dynamic/debug/deps/from_form_field-e7617fcc34f0fcbe)
+  Executable tests/responder.rs (target_dynamic/debug/deps/responder-9922b3b3c247b9bf)
+  Executable tests/route.rs (target_dynamic/debug/deps/route-ced249ad9ab37955)
+  Executable tests/route-data.rs (target_dynamic/debug/deps/route_data-5604dbf8a4ed39b9)
+  Executable tests/route-format.rs (target_dynamic/debug/deps/route_format-aaf920f4bde6d5a9)
+  Executable tests/route-ranking.rs (target_dynamic/debug/deps/route_ranking-72b9051b6100f5af)
+  Executable tests/route-raw.rs (target_dynamic/debug/deps/route_raw-72b77a5e6133bd65)
+  Executable tests/segment-ignore.rs (target_dynamic/debug/deps/segment_ignore-68d3d901532789f7)
+  Executable tests/typed-uris.rs (target_dynamic/debug/deps/typed_uris-979fbc56532764fb)
+  Executable tests/ui-fail.rs (target_dynamic/debug/deps/ui_fail-2839829680546584)
+  Executable tests/uri_display.rs (target_dynamic/debug/deps/uri_display-d0c7d3b65df78c2b)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rocket_dyn_templates-e9cc769311aee0ee)
+  Executable tests/templates.rs (target_dynamic/debug/deps/templates-ae2453e31144a302)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rocket_guide_tests-42e3020c59859d0e)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rocket_http-14371089913199ac)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rocket_sync_db_pools-6530d3ed4244499f)
+  Executable tests/databases.rs (target_dynamic/debug/deps/databases-bc41957a4a16f778)
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rocket_sync_db_pools_codegen-67c7bdbd06a37e42)
+  Executable tests/ui-fail.rs (target_dynamic/debug/deps/ui_fail-35a9024a4a706f1e)
+Nodes that have changed:
+rocket::Body::size::{closure#0}, rocket::Body::to_bytes::{closure#0}, rocket::Body::to_string::{closure#0}::{closure#0}, rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, tokio::<Cursor<T> as AsyncSeek>::poll_complete, tokio::<Cursor<T> as AsyncSeek>::start_seek, tokio::<File as AsyncRead>::poll_read, tokio::<File as AsyncSeek>::poll_complete, tokio::<File as AsyncSeek>::start_seek
+
+#Tests that have been found: 256
+
+#Tests with traces:: 256
+
+Affected tests:
+can_correct_bad_local_uri::can_correct_bad_local_uri: < "rocket::Body::with_sized" >
+catcher::test_simple_catchers: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+catcher::test_status_param: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+catcher_cookies_1213::tests::error_catcher_sets_cookies: < "rocket::Body::with_sized" >
+derive_reexports::test_derive_reexports: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+encoded_uris::encoded_uris::can_route_to_encoded_uri: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+expansion::test_index: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+expansion::test_reexpansion: < "rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+fairing_before_head_strip_issue_546::fairing_before_head_strip::auto_handled: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+fairing_before_head_strip_issue_546::fairing_before_head_strip::not_auto_handled: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+file_server::test_forwarding: < "tokio::<File as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+file_server::test_redirection: < "rocket::Body::with_sized" >
+file_server::test_static_all: < "tokio::<File as AsyncRead>::poll_read, rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+file_server::test_static_hidden: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<File as AsyncRead>::poll_read" >
+file_server::test_static_index: < "rocket::Body::with_sized, tokio::<File as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+file_server::test_static_no_index: < "tokio::<File as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+flash_lazy_removes_issue_466::flash_lazy_remove_tests::test: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+form_method_issue_45::tests::get_passes_through: < "rocket::Body::with_sized" >
+form_method_issue_45::tests::method_eval: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+form_value_decoding_issue_82::tests::test_proper_decoding: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+from_form::test_multipart: < "tokio::<Cursor<T> as AsyncRead>::poll_read" >
+head_handling::head_handling_tests::auto_head: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+head_handling::head_handling_tests::user_head: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+limits::limits_tests::contracted: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+limits::limits_tests::just_large_enough: < "rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+limits::limits_tests::large_enough: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+limits::limits_tests::much_too_small: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+local_request_content_type_issue_505::local_request_content_type_tests::has_ct: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+local_request_content_type_issue_505::local_request_content_type_tests::has_no_ct: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+local_request_private_cookie_issue_368::tests::private_cookie_is_returned: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+local_request_private_cookie_issue_368::tests::regular_cookie_is_not_returned: < "rocket::Body::with_sized" >
+many_cookie_jars_at_once::many_cookie_jars_tests::test_mutli_get: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+mapped_base_issue_1262::mapped_base_tests::only_prefix: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+mapped_base_issue_1262::mapped_base_tests::prefix_and_base: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+nested_fairing_attaches::nested_fairing_attaches_tests::test_counts: < "rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+panic_handling::catches_catcher_panic: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}" >
+panic_handling::catches_double_panic: < "rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+panic_handling::catches_early_catcher_panic: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+panic_handling::catches_early_route_panic: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+panic_handling::catches_route_panic: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+precise_content_type_matching::tests::exact_match_or_forward: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+precise_content_type_matching::tests::exact_match_or_none: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+replace_content_type_518::check_fairing_changes_content_type: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+responder::generic_responder: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+responder::responder_bar: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+responder::responder_baz: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+responder::responder_foo: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+rocket::response::stream::sse::sse_tests::test_bad_chars: < "tokio::<Cursor<T> as AsyncRead>::poll_read" >
+rocket::response::stream::sse::sse_tests::test_event_data: < "tokio::<Cursor<T> as AsyncRead>::poll_read" >
+rocket::response::stream::sse::sse_tests::test_event_fields: < "tokio::<Cursor<T> as AsyncRead>::poll_read" >
+rocket::response::stream::sse::sse_tests::test_event_stream: < "tokio::<Cursor<T> as AsyncRead>::poll_read" >
+rocket::response::stream::sse::sse_tests::test_heartbeat: < "tokio::<Cursor<T> as AsyncRead>::poll_read" >
+route::test_filtered_raw_query: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+route::test_full_route: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+route::test_inclusive_segments: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+route::test_query_collection: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+route_data::test_data: < "rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}" >
+route_format::test_custom_formats: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+route_format::test_formats: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+route_guard::route_guard_tests::check_mount_path: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+route_ranking::test_ranking: < "rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+route_raw::test_raw_ident: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+scoped_uri::test_hello_name: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+scoped_uri::test_inner_hello: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+segment_ignore::test_ignored_segments: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+segments_issues_41_86::tests::segments_works: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+shield::default_shield: < "rocket::Body::with_sized" >
+shield::shield_singleton: < "rocket::Body::with_sized" >
+strict_and_lenient_forms::strict_and_lenient_forms_tests::test_lenient_form: < "rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+strict_and_lenient_forms::strict_and_lenient_forms_tests::test_strict_form: < "rocket::Body::with_sized, rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read" >
+templates::tera_tests::test_template_metadata_with_tera: < "rocket::Body::with_sized" >
+untracked_vs_tracked::many_cookie_jars_tests::test_tracked: < "rocket::Body::to_bytes::{closure#0}, tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::with_sized" >
+untracked_vs_tracked::many_cookie_jars_tests::test_untracked: < "rocket::Body::with_sized" >
+uri_percent_encoding_issue_808::tests::uri_percent_encoding_get: < "tokio::<Cursor<T> as AsyncRead>::poll_read, rocket::Body::to_bytes::{closure#0}, rocket::Body::with_sized" >
+
+     DEBUG: Changed due to regular checksums: rocket::Body::with_sized
+     DEBUG: Changed due to vtable checksums: tokio::<File as AsyncRead>::poll_read
+     DEBUG: Changed due to vtable checksums: tokio::<File as AsyncSeek>::start_seek
+     DEBUG: Changed due to vtable checksums: tokio::<Cursor<T> as AsyncRead>::poll_read
+     DEBUG: Changed due to vtable checksums: tokio::<File as AsyncSeek>::poll_complete
+     DEBUG: Changed due to vtable checksums: tokio::<Cursor<T> as AsyncSeek>::start_seek
+     DEBUG: Changed due to vtable checksums: tokio::<Cursor<T> as AsyncSeek>::poll_complete
+     DEBUG: Changed due to const checksums: rocket::Body::with_sized
+     DEBUG: Changed due to const checksums: rocket::Body::to_string::{closure#0}::{closure#0}
+     DEBUG: Changed due to const checksums: rocket::Body::to_bytes::{closure#0}
+     DEBUG: Changed due to regular checksums: rocket::Body::size::{closure#0}
+    Finished test [unoptimized + debuginfo] target(s) in 0.83s
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rocket-6aad98ca1dd70ae9)
+
+running 5 tests
+test response::stream::sse::sse_tests::test_event_stream ... ok
+test response::stream::sse::sse_tests::test_event_fields ... ok
+test response::stream::sse::sse_tests::test_event_data ... ok
+test response::stream::sse::sse_tests::test_bad_chars ... ok
+test response::stream::sse::sse_tests::test_heartbeat ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 61 filtered out; finished in 1.04s
+
+     Running tests/absolute-uris-okay-issue-443.rs (target_dynamic/debug/deps/absolute_uris_okay_issue_443-8fd994bab4b8cf7b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/can-correct-bad-local-uri.rs (target_dynamic/debug/deps/can_correct_bad_local_uri-a3646fbbce0582ba)
+
+running 1 test
+test can_correct_bad_local_uri ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/catcher-cookies-1213.rs (target_dynamic/debug/deps/catcher_cookies_1213-fa4bef2575355b07)
+
+running 1 test
+test tests::error_catcher_sets_cookies ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/conditionally-set-server-header-996.rs (target_dynamic/debug/deps/conditionally_set_server_header_996-10682005c4a5a98c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/config-secret-key-1500.rs (target_dynamic/debug/deps/config_secret_key_1500-682d6704b3e80790)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/derive-reexports.rs (target_dynamic/debug/deps/derive_reexports-1e99ce937336b3bc)
+
+running 1 test
+test test_derive_reexports ... FAILED
+
+failures:
+
+---- test_derive_reexports stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) GET /
+   >> (number) GET /?<params..>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (number) GET /?<params..>
+   >> query string failed to match declared route
+   >> missing
+   >> Outcome: Forward
+   >> Matched: (index) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/derive-reexports.rs:55:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_derive_reexports
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p rocket --test derive-reexports`
+     Running tests/encoded-uris.rs (target_dynamic/debug/deps/encoded_uris-745d2af17db8fc15)
+
+running 1 test
+test encoded_uris::can_route_to_encoded_uri ... FAILED
+
+failures:
+
+---- encoded_uris::can_route_to_encoded_uri stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) GET /hello süper $?a&?&<value>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /hello%20s%C3%BCper%20%24?a&%3F&value=a+b:
+   >> Matched: (index) GET /hello süper $?a&?&<value>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/encoded-uris.rs:22:29
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    encoded_uris::can_route_to_encoded_uri
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket --test encoded-uris`
+     Running tests/fairing_before_head_strip-issue-546.rs (target_dynamic/debug/deps/fairing_before_head_strip_issue_546-e535f14d08860703)
+
+running 2 tests
+test fairing_before_head_strip::not_auto_handled ... FAILED
+test fairing_before_head_strip::auto_handled ... FAILED
+
+failures:
+
+---- fairing_before_head_strip::not_auto_handled stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (head) HEAD /
+Fairings:
+   >> Check HEAD 2 (response)
+   >> Check HEAD (request)
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+HEAD /:
+   >> Matched: (head) HEAD /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `[]`,
+ right: `[84, 104, 105, 115, 32, 105, 115, 32, 116, 104, 101, 32, 98, 111, 100, 121, 46, 32, 72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33]`', core/lib/tests/fairing_before_head_strip-issue-546.rs:43:21
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- fairing_before_head_strip::auto_handled stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (auto) GET /
+Fairings:
+   >> Check GET (response)
+   >> Shield (liftoff, response, singleton)
+   >> Check HEAD + Count (request)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+HEAD /:
+   >> No matching routes for HEAD /.
+   >> Autohandling HEAD request.
+   >> Matched: (auto) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `[]`,
+ right: `[84, 104, 105, 115, 32, 105, 115, 32, 116, 104, 101, 32, 98, 111, 100, 121, 46, 32, 72, 101, 108, 108, 111, 44, 32, 119, 111, 114, 108, 100, 33]`', core/lib/tests/fairing_before_head_strip-issue-546.rs:76:21
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    fairing_before_head_strip::auto_handled
+    fairing_before_head_strip::not_auto_handled
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket --test fairing_before_head_strip-issue-546`
+     Running tests/file_server.rs (target_dynamic/debug/deps/file_server-51e13cef41a8d5b0)
+
+running 7 tests
+test test_static_index ... FAILED
+test test_static_no_index ... FAILED
+test test_static_hidden ... FAILED
+test test_static_all ... FAILED
+test test_forwarding ... FAILED
+test test_redirection ... ok
+test test_ranking ... ok
+
+failures:
+
+---- test_static_index stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (FileServer: tests/static/) GET /dots/<path..> [10]
+   >> (FileServer: tests/static/) GET /both/<path..> [10]
+   >> (FileServer: tests/static/) GET /index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir/<path..> [10]
+   >> (FileServer: tests/static/) GET /default/<path..> [10]
+   >> (FileServer: tests/static/) GET /no_index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir_index/<path..> [10]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /index/index.html:
+   >> Matched: (FileServer: tests/static/) GET /index/<path..> [10]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Just a file here: index.html.\n")`', core/lib/tests/file_server.rs:60:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_static_no_index stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (FileServer: tests/static/) GET /dots/<path..> [10]
+   >> (FileServer: tests/static/) GET /both/<path..> [10]
+   >> (FileServer: tests/static/) GET /index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir/<path..> [10]
+   >> (FileServer: tests/static/) GET /default/<path..> [10]
+   >> (FileServer: tests/static/) GET /no_index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir_index/<path..> [10]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /no_index/index.html:
+   >> Matched: (FileServer: tests/static/) GET /no_index/<path..> [10]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Just a file here: index.html.\n")`', core/lib/tests/file_server.rs:60:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_static_hidden stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (FileServer: tests/static/) GET /dots/<path..> [10]
+   >> (FileServer: tests/static/) GET /both/<path..> [10]
+   >> (FileServer: tests/static/) GET /index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir/<path..> [10]
+   >> (FileServer: tests/static/) GET /default/<path..> [10]
+   >> (FileServer: tests/static/) GET /no_index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir_index/<path..> [10]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /dots/index.html:
+   >> Matched: (FileServer: tests/static/) GET /dots/<path..> [10]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Just a file here: index.html.\n")`', core/lib/tests/file_server.rs:60:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_static_all stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (FileServer: tests/static/) GET /dots/<path..> [10]
+   >> (FileServer: tests/static/) GET /both/<path..> [10]
+   >> (FileServer: tests/static/) GET /index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir/<path..> [10]
+   >> (FileServer: tests/static/) GET /default/<path..> [10]
+   >> (FileServer: tests/static/) GET /no_index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir_index/<path..> [10]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /both/index.html:
+   >> Matched: (FileServer: tests/static/) GET /both/<path..> [10]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Just a file here: index.html.\n")`', core/lib/tests/file_server.rs:60:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_forwarding stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (FileServer: tests/static/) GET /dots/<path..> [10]
+   >> (FileServer: tests/static/) GET /both/<path..> [10]
+   >> (FileServer: tests/static/) GET /index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir/<path..> [10]
+   >> (catch_one) GET /default/<value> [20]
+   >> (FileServer: tests/static/) GET /default/<path..> [10]
+   >> (catch_two) GET /default/<a>/<b> [20]
+   >> (FileServer: tests/static/) GET /no_index/<path..> [10]
+   >> (FileServer: tests/static/) GET /redir_index/<path..> [10]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /default/ireallydontexist:
+   >> Matched: (FileServer: tests/static/) GET /default/<path..> [10]
+   >> Response was `None`.
+   >> Outcome: Forward
+   >> Matched: (catch_one) GET /default/<value> [20]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/file_server.rs:137:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_forwarding
+    test_static_all
+    test_static_hidden
+    test_static_index
+    test_static_no_index
+
+test result: FAILED. 2 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p rocket --test file_server`
+     Running tests/flash-lazy-removes-issue-466.rs (target_dynamic/debug/deps/flash_lazy_removes_issue_466-d01f6462135a21ef)
+
+running 1 test
+test flash_lazy_remove_tests::test ... FAILED
+
+failures:
+
+---- flash_lazy_remove_tests::test stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (set) POST /
+   >> (used) GET /use
+   >> (unused) GET /unused
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /unused:
+   >> Matched: (unused) GET /unused
+   >> Flash: attempting to retrieve message.
+   >> Response was `None`.
+   >> Outcome: Failure
+   >> No 404 catcher registered. Using Rocket default.
+POST /:
+   >> Matched: (set) POST /
+   >> Outcome: Success
+GET /unused:
+   >> Matched: (unused) GET /unused
+   >> Flash: attempting to retrieve message.
+   >> Flash: retrieving message: Cookie { cookie_string: Some("_flash=7%3AsuccessHey!%20I'm%20a%20flash%20message.%20%3A%29; SameSite=Strict; Path=/; Max-Age=300"), name: Concrete("_flash"), value: Concrete("7:successHey! I'm a flash message. :)"), expires: None, max_age: Some(Duration { seconds: 300, nanoseconds: 0 }), domain: None, path: Some(Indexed(84, 85)), secure: None, http_only: None, same_site: Some(Strict) }
+   >> Outcome: Success
+GET /unused:
+   >> Matched: (unused) GET /unused
+   >> Flash: attempting to retrieve message.
+   >> Flash: retrieving message: Cookie { cookie_string: Some("_flash=7%3AsuccessHey!%20I'm%20a%20flash%20message.%20%3A%29; SameSite=Strict; Path=/; Max-Age=300"), name: Concrete("_flash"), value: Concrete("7:successHey! I'm a flash message. :)"), expires: None, max_age: Some(Duration { seconds: 300, nanoseconds: 0 }), domain: None, path: Some(Indexed(84, 85)), secure: None, http_only: None, same_site: Some(Strict) }
+   >> Outcome: Success
+GET /use:
+   >> Matched: (used) GET /use
+   >> Flash: attempting to retrieve message.
+   >> Flash: retrieving message: Cookie { cookie_string: Some("_flash=7%3AsuccessHey!%20I'm%20a%20flash%20message.%20%3A%29; SameSite=Strict; Path=/; Max-Age=300"), name: Concrete("_flash"), value: Concrete("7:successHey! I'm a flash message. :)"), expires: None, max_age: Some(Duration { seconds: 300, nanoseconds: 0 }), domain: None, path: Some(Indexed(84, 85)), secure: None, http_only: None, same_site: Some(Strict) }
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Hey! I'm a flash message. :)")`', core/lib/tests/flash-lazy-removes-issue-466.rs:53:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    flash_lazy_remove_tests::test
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p rocket --test flash-lazy-removes-issue-466`
+     Running tests/form-validation-names.rs (target_dynamic/debug/deps/form_validation_names-80100b49fb202892)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/form_method-issue-45.rs (target_dynamic/debug/deps/form_method_issue_45-90b6b74b61e52e43)
+
+running 2 tests
+test tests::get_passes_through ... ok
+test tests::method_eval ... FAILED
+
+failures:
+
+---- tests::method_eval stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (bug) PATCH /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+PATCH / application/x-www-form-urlencoded:
+   >> Matched: (bug) PATCH /
+   >> url-encoded field: ("_method", "patch")
+   >> url-encoded field: ("form_data", "Form+data")
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("OK")`', core/lib/tests/form_method-issue-45.rs:33:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::method_eval
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket --test form_method-issue-45`
+     Running tests/form_value_decoding-issue-82.rs (target_dynamic/debug/deps/form_value_decoding_issue_82-7375f00fb53a6b89)
+
+running 1 test
+test tests::test_proper_decoding ... FAILED
+
+failures:
+
+---- tests::test_proper_decoding stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (bug) POST /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+POST / application/x-www-form-urlencoded:
+   >> Matched: (bug) POST /
+   >> url-encoded field: ("form_data", "password")
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `Some("password")`,
+ right: `None`', core/lib/tests/form_value_decoding-issue-82.rs:28:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::test_proper_decoding
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p rocket --test form_value_decoding-issue-82`
+     Running tests/form_value_from_encoded_str-issue-1425.rs (target_dynamic/debug/deps/form_value_from_encoded_str_issue_1425-74ee22379f429bae)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/head_handling.rs (target_dynamic/debug/deps/head_handling-d9ed5028b85abc0c)
+
+running 2 tests
+test head_handling_tests::user_head ... FAILED
+test head_handling_tests::auto_head ... FAILED
+
+failures:
+
+---- head_handling_tests::user_head stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) GET /
+   >> (empty) GET /empty
+   >> (other) HEAD /other
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+HEAD /other:
+   >> Matched: (other) HEAD /other
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `Some(0)`,
+ right: `Some(17)`', core/lib/tests/head_handling.rs:59:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- head_handling_tests::auto_head stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) GET /
+   >> (empty) GET /empty
+   >> (other) HEAD /other
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+HEAD /:
+   >> No matching routes for HEAD /.
+   >> Autohandling HEAD request.
+   >> Matched: (index) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `Some(0)`,
+ right: `Some(13)`', core/lib/tests/head_handling.rs:43:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    head_handling_tests::auto_head
+    head_handling_tests::user_head
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket --test head_handling`
+     Running tests/http_uri_serde.rs (target_dynamic/debug/deps/http_uri_serde-e0e20a2bba0deca9)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/launch-inspect.rs (target_dynamic/debug/deps/launch_inspect-bde861122bc59019)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 4 filtered out; finished in 0.00s
+
+     Running tests/limits.rs (target_dynamic/debug/deps/limits-813965b0bd78d2d6)
+
+running 4 tests
+test limits_tests::contracted ... ok
+test limits_tests::just_large_enough ... FAILED
+test limits_tests::large_enough ... FAILED
+test limits_tests::much_too_small ... ok
+
+failures:
+
+---- limits_tests::just_large_enough stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 17B, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) POST /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+POST / application/x-www-form-urlencoded:
+   >> Matched: (index) POST /
+   >> url-encoded field: ("value", "Hello+world")
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Hello world")`', core/lib/tests/limits.rs:45:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- limits_tests::large_enough stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 128B, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) POST /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+POST / application/x-www-form-urlencoded:
+   >> Matched: (index) POST /
+   >> url-encoded field: ("value", "Hello+world")
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Hello world")`', core/lib/tests/limits.rs:34:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    limits_tests::just_large_enough
+    limits_tests::large_enough
+
+test result: FAILED. 2 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p rocket --test limits`
+     Running tests/local-client-access-runtime-in-drop.rs (target_dynamic/debug/deps/local_client_access_runtime_in_drop-2b9f5123e820ca42)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/local-request-content-type-issue-505.rs (target_dynamic/debug/deps/local_request_content_type_issue_505-1ca8730fbfd3cba8)
+
+running 2 tests
+test local_request_content_type_tests::has_no_ct ... FAILED
+test local_request_content_type_tests::has_ct ... FAILED
+
+failures:
+
+---- local_request_content_type_tests::has_no_ct stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (rg_ct) POST /
+   >> (data_has_ct) POST /data
+   >> (data_no_ct) POST /data [2]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+POST /:
+   >> Matched: (rg_ct) POST /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Absent")`', core/lib/tests/local-request-content-type-issue-505.rs:64:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- local_request_content_type_tests::has_ct stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (rg_ct) POST /
+   >> (data_has_ct) POST /data
+   >> (data_no_ct) POST /data [2]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+POST / application/json:
+   >> Matched: (rg_ct) POST /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Present")`', core/lib/tests/local-request-content-type-issue-505.rs:79:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    local_request_content_type_tests::has_ct
+    local_request_content_type_tests::has_no_ct
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p rocket --test local-request-content-type-issue-505`
+     Running tests/local_request_private_cookie-issue-368.rs (target_dynamic/debug/deps/local_request_private_cookie_issue_368-266995103361c397)
+
+running 2 tests
+test tests::regular_cookie_is_not_returned ... ok
+test tests::private_cookie_is_returned ... FAILED
+
+failures:
+
+---- tests::private_cookie_is_returned stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (return_private_cookie) GET /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (return_private_cookie) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("cookie_value")`', core/lib/tests/local_request_private_cookie-issue-368.rs:32:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::private_cookie_is_returned
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket --test local_request_private_cookie-issue-368`
+     Running tests/many-cookie-jars-at-once.rs (target_dynamic/debug/deps/many_cookie_jars_at_once-a4da9ddc419a0d16)
+
+running 1 test
+test many_cookie_jars_tests::test_mutli_get ... FAILED
+
+failures:
+
+---- many_cookie_jars_tests::test_mutli_get stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (multi_add) POST /
+   >> (multi_get) GET /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (multi_get) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/many-cookie-jars-at-once.rs:52:43
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    many_cookie_jars_tests::test_mutli_get
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket --test many-cookie-jars-at-once`
+     Running tests/mapped-base-issue-1262.rs (target_dynamic/debug/deps/mapped_base_issue_1262-f45b506a43e36d3c)
+
+running 2 tests
+test mapped_base_tests::only_prefix ... FAILED
+test mapped_base_tests::prefix_and_base ... FAILED
+
+failures:
+
+---- mapped_base_tests::only_prefix stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (b) GET /a/b/<id>
+   >> (b) GET /foo/a/b/<id>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /a/b/3:
+   >> Matched: (b) GET /a/b/<id>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/mapped-base-issue-1262.rs:40:43
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- mapped_base_tests::prefix_and_base stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (b) GET /a/b/<id>
+   >> (b) GET /foo/a/b/<id>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /foo/a/b/23:
+   >> Matched: (b) GET /foo/a/b/<id>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/mapped-base-issue-1262.rs:54:43
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    mapped_base_tests::only_prefix
+    mapped_base_tests::prefix_and_base
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p rocket --test mapped-base-issue-1262`
+     Running tests/mount_point.rs (target_dynamic/debug/deps/mount_point-f3278e61b3287748)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/nested-fairing-attaches.rs (target_dynamic/debug/deps/nested_fairing_attaches-3ca216bf08e01c8a)
+
+running 1 test
+test nested_fairing_attaches_tests::test_counts ... FAILED
+
+failures:
+
+---- nested_fairing_attaches_tests::test_counts stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) GET /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+   >> Outer (ignite)
+   >> Inner (request)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (index) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("1, 1")`', core/lib/tests/nested-fairing-attaches.rs:54:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    nested_fairing_attaches_tests::test_counts
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket --test nested-fairing-attaches`
+     Running tests/on_launch_fairing_can_inspect_port.rs (target_dynamic/debug/deps/on_launch_fairing_can_inspect_port-f457d45bda8f01ed)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/panic-handling.rs (target_dynamic/debug/deps/panic_handling-12f0f85f00d7fdfe)
+
+running 5 tests
+test catches_route_panic ... FAILED
+test catches_early_catcher_panic ... FAILED
+test catches_double_panic ... FAILED
+test catches_catcher_panic ... FAILED
+test catches_early_route_panic ... FAILED
+
+failures:
+
+---- catches_route_panic stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> GET /pre
+   >> (panic_route) GET /panic
+Catchers:
+   >> (panic_catcher) 404
+   >> (ise) 500
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /panic:
+   >> Matched: (panic_route) GET /panic
+thread 'rustyrts_test_thread' panicked at 'Panic in route', core/lib/tests/panic-handling.rs:14:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+   >> Handler panic_route panicked.
+   >> This is an application bug.
+   >> A panic in Rust must be treated as an exceptional event.
+   >> Panicking is not a suitable error handling mechanism.
+   >> Unwinding, the result of a panic, is an expensive operation.
+   >> Panics will severely degrade application performance.
+   >> Instead of panicking, return `Option` and/or `Result`.
+   >> Values of either type can be returned directly from handlers.
+   >> A panic is treated as an internal server error.
+   >> Outcome: Failure
+   >> Responding with registered (ise) 500 catcher.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/panic-handling.rs:43:39
+
+---- catches_early_catcher_panic stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> GET /pre
+   >> (panic_route) GET /panic
+Catchers:
+   >> 404
+   >> (ise) 500
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /idontexist:
+   >> No matching routes for GET /idontexist.
+   >> Responding with registered 404 catcher.
+thread 'rustyrts_test_thread' panicked at 'a panicking pre-future catcher', core/lib/tests/panic-handling.rs:81:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+   >> A handler panicked.
+   >> This is an application bug.
+   >> A panic in Rust must be treated as an exceptional event.
+   >> Panicking is not a suitable error handling mechanism.
+   >> Unwinding, the result of a panic, is an expensive operation.
+   >> Panics will severely degrade application performance.
+   >> Instead of panicking, return `Option` and/or `Result`.
+   >> Values of either type can be returned directly from handlers.
+   >> A panic is treated as an internal server error.
+   >> Catcher failed. Attemping 500 error catcher.
+   >> Responding with registered (ise) 500 catcher.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/panic-handling.rs:91:39
+
+---- catches_double_panic stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> GET /pre
+   >> (panic_route) GET /panic
+Catchers:
+   >> (panic_catcher) 404
+   >> (double_panic) 500
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /noroute:
+   >> No matching routes for GET /noroute.
+   >> Responding with registered (panic_catcher) 404 catcher.
+thread 'rustyrts_test_thread' panicked at 'Panic in catcher', core/lib/tests/panic-handling.rs:19:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+   >> Handler panic_catcher panicked.
+   >> This is an application bug.
+   >> A panic in Rust must be treated as an exceptional event.
+   >> Panicking is not a suitable error handling mechanism.
+   >> Unwinding, the result of a panic, is an expensive operation.
+   >> Panics will severely degrade application performance.
+   >> Instead of panicking, return `Option` and/or `Result`.
+   >> Values of either type can be returned directly from handlers.
+   >> A panic is treated as an internal server error.
+   >> Catcher failed. Attemping 500 error catcher.
+   >> Responding with registered (double_panic) 500 catcher.
+thread 'rustyrts_test_thread' panicked at 'so, so sorry...', core/lib/tests/panic-handling.rs:59:9
+   >> Handler double_panic panicked.
+   >> This is an application bug.
+   >> A panic in Rust must be treated as an exceptional event.
+   >> Panicking is not a suitable error handling mechanism.
+   >> Unwinding, the result of a panic, is an expensive operation.
+   >> Panics will severely degrade application performance.
+   >> Instead of panicking, return `Option` and/or `Result`.
+   >> Values of either type can be returned directly from handlers.
+   >> A panic is treated as an internal server error.
+   >> 500 catcher failed. Using Rocket default 500.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/panic-handling.rs:66:36
+
+---- catches_catcher_panic stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> GET /pre
+   >> (panic_route) GET /panic
+Catchers:
+   >> (panic_catcher) 404
+   >> (ise) 500
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /noroute:
+   >> No matching routes for GET /noroute.
+   >> Responding with registered (panic_catcher) 404 catcher.
+thread 'rustyrts_test_thread' panicked at 'Panic in catcher', core/lib/tests/panic-handling.rs:19:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+   >> Handler panic_catcher panicked.
+   >> This is an application bug.
+   >> A panic in Rust must be treated as an exceptional event.
+   >> Panicking is not a suitable error handling mechanism.
+   >> Unwinding, the result of a panic, is an expensive operation.
+   >> Panics will severely degrade application performance.
+   >> Instead of panicking, return `Option` and/or `Result`.
+   >> Values of either type can be returned directly from handlers.
+   >> A panic is treated as an internal server error.
+   >> Catcher failed. Attemping 500 error catcher.
+   >> Responding with registered (ise) 500 catcher.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/panic-handling.rs:52:39
+
+---- catches_early_route_panic stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> GET /pre
+   >> (panic_route) GET /panic
+Catchers:
+   >> (panic_catcher) 404
+   >> (ise) 500
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /pre:
+   >> Matched: GET /pre
+thread 'rustyrts_test_thread' panicked at 'hey now...', core/lib/tests/panic-handling.rs:28:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+   >> A handler panicked.
+   >> This is an application bug.
+   >> A panic in Rust must be treated as an exceptional event.
+   >> Panicking is not a suitable error handling mechanism.
+   >> Unwinding, the result of a panic, is an expensive operation.
+   >> Panics will severely degrade application performance.
+   >> Instead of panicking, return `Option` and/or `Result`.
+   >> Values of either type can be returned directly from handlers.
+   >> A panic is treated as an internal server error.
+   >> Outcome: Failure
+   >> Responding with registered (ise) 500 catcher.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/panic-handling.rs:75:39
+
+
+failures:
+    catches_catcher_panic
+    catches_double_panic
+    catches_early_catcher_panic
+    catches_early_route_panic
+    catches_route_panic
+
+test result: FAILED. 0 passed; 5 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket --test panic-handling`
+     Running tests/precise-content-type-matching.rs (target_dynamic/debug/deps/precise_content_type_matching-75f242abb6be9452)
+
+running 2 tests
+test tests::exact_match_or_none ... FAILED
+test tests::exact_match_or_forward ... FAILED
+
+failures:
+
+---- tests::exact_match_or_none stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (specified) POST /first/ application/json
+   >> (unspecified) POST /first/ [2]
+   >> (specified_json) POST /second/ application/json
+   >> (specified_html) POST /second/ text/html
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+POST /second application/json:
+   >> Matched: (specified_json) POST /second/ application/json
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("specified_json")`', core/lib/tests/precise-content-type-matching.rs:69:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- tests::exact_match_or_forward stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (specified) POST /first/ application/json
+   >> (unspecified) POST /first/ [2]
+   >> (specified_json) POST /second/ application/json
+   >> (specified_html) POST /second/ text/html
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+POST /first application/json:
+   >> Matched: (specified) POST /first/ application/json
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("specified")`', core/lib/tests/precise-content-type-matching.rs:62:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::exact_match_or_forward
+    tests::exact_match_or_none
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+error: test failed, to rerun pass `-p rocket --test precise-content-type-matching`
+     Running tests/recursive-singleton-fairing.rs (target_dynamic/debug/deps/recursive_singleton_fairing-5719e2815880b8f0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 2 filtered out; finished in 0.00s
+
+     Running tests/redirect_from_catcher-issue-113.rs (target_dynamic/debug/deps/redirect_from_catcher_issue_113-58a0e2fad983382c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/replace-content-type-518.rs (target_dynamic/debug/deps/replace_content_type_518-2ca6764f3154847a)
+
+running 1 test
+test check_fairing_changes_content_type ... FAILED
+
+failures:
+
+---- check_fairing_changes_content_type stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) POST / application/json
+   >> (other_index) POST / [2]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+   >> Change CT (request)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+POST / image/png:
+   >> Matched: (other_index) POST / [2]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/replace-content-type-518.rs:32:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    check_fairing_changes_content_type
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket --test replace-content-type-518`
+     Running tests/responder_lifetime-issue-345.rs (target_dynamic/debug/deps/responder_lifetime_issue_345-ebd0f0e271c2bf8a)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/route_guard.rs (target_dynamic/debug/deps/route_guard-b4387e1c632f1d69)
+
+running 1 test
+test route_guard_tests::check_mount_path ... FAILED
+
+failures:
+
+---- route_guard_tests::check_mount_path stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (files) GET /first/<path..>
+   >> (files) GET /second/<path..>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /first/some/path:
+   >> Matched: (files) GET /first/<path..>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("/first/some/path")`', core/lib/tests/route_guard.rs:22:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    route_guard_tests::check_mount_path
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket --test route_guard`
+     Running tests/scoped-uri.rs (target_dynamic/debug/deps/scoped_uri-531ae8c8bd26f7a3)
+
+running 2 tests
+test test_hello_name ... FAILED
+test test_inner_hello ... FAILED
+
+failures:
+
+---- test_hello_name stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (hello) GET /
+   >> (hello_name) GET /<name>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /Rust%202018:
+   >> Matched: (hello_name) GET /<name>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/scoped-uri.rs:39:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_inner_hello stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (hello) GET /
+   >> (hello_name) GET /<name>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (hello) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("Hello! Try /Rust%202018.")`', core/lib/tests/scoped-uri.rs:32:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_hello_name
+    test_inner_hello
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p rocket --test scoped-uri`
+     Running tests/segments-issues-41-86.rs (target_dynamic/debug/deps/segments_issues_41_86-f3d13d320ec1ae06)
+
+running 1 test
+test tests::segments_works ... FAILED
+
+failures:
+
+---- tests::segments_works stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (none) GET /<path..> [2]
+   >> (two) GET /two/<path..>
+   >> (test) GET /test/<path..>
+   >> (one_two) GET /one/two/<path..>
+   >> (dual) GET /static/<user>/is/<path..>
+   >> (two) GET /point/two/<path..>
+   >> (test) GET /point/test/<path..>
+   >> (one_two) GET /point/one/two/<path..>
+   >> (dual) GET /point/static/<user>/is/<path..>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /this/is/the/path/we/want:
+   >> Matched: (none) GET /<path..> [2]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("this/is/the/path/we/want")`', core/lib/tests/segments-issues-41-86.rs:53:13
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::segments_works
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+error: test failed, to rerun pass `-p rocket --test segments-issues-41-86`
+     Running tests/sentinel.rs (target_dynamic/debug/deps/sentinel-fc84d89833ec8fa2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/session-cookies-issue-1506.rs (target_dynamic/debug/deps/session_cookies_issue_1506-c93dcf698f8d54df)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/shield.rs (target_dynamic/debug/deps/shield-e5dc8f8d21cb3650)
+
+running 2 tests
+test default_shield ... ok
+test shield_singleton ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.01s
+
+     Running tests/strict_and_lenient_forms.rs (target_dynamic/debug/deps/strict_and_lenient_forms-020398a3cb4340c8)
+
+running 2 tests
+test strict_and_lenient_forms_tests::test_lenient_form ... FAILED
+test strict_and_lenient_forms_tests::test_strict_form ... FAILED
+
+failures:
+
+---- strict_and_lenient_forms_tests::test_lenient_form stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (strict) POST /strict
+   >> (lenient) POST /lenient
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+POST /lenient application/x-www-form-urlencoded:
+   >> Matched: (lenient) POST /lenient
+   >> url-encoded field: ("field", "just_some_value")
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("just_some_value")`', core/lib/tests/strict_and_lenient_forms.rs:63:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- strict_and_lenient_forms_tests::test_strict_form stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (strict) POST /strict
+   >> (lenient) POST /lenient
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+POST /strict application/x-www-form-urlencoded:
+   >> Matched: (strict) POST /strict
+   >> url-encoded field: ("field", "just_some_value")
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `None`,
+ right: `Some("just_some_value")`', core/lib/tests/strict_and_lenient_forms.rs:44:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    strict_and_lenient_forms_tests::test_lenient_form
+    strict_and_lenient_forms_tests::test_strict_form
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket --test strict_and_lenient_forms`
+     Running tests/timer-on-attach.rs (target_dynamic/debug/deps/timer_on_attach-ca723b9ab90af25b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/tls-config-from-source-1503.rs (target_dynamic/debug/deps/tls_config_from_source_1503-bfe379751e10bbb0)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/twice_managed_state.rs (target_dynamic/debug/deps/twice_managed_state-f17e4ca63c23078c)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/typed-uri-docs-redef-issue-1373.rs (target_dynamic/debug/deps/typed_uri_docs_redef_issue_1373-d5b3a26c15584f6e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/unsound-local-request-1312.rs (target_dynamic/debug/deps/unsound_local_request_1312-a9c623e53e844234)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/untracked-vs-tracked.rs (target_dynamic/debug/deps/untracked_vs_tracked-1bd510e2f6c1f2e7)
+
+running 2 tests
+test many_cookie_jars_tests::test_untracked ... ok
+test many_cookie_jars_tests::test_tracked ... FAILED
+
+failures:
+
+---- many_cookie_jars_tests::test_tracked stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: normal
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (add) POST /
+   >> (get) GET /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (get) GET /
+   >> Response was `None`.
+   >> Outcome: Failure
+   >> No 404 catcher registered. Using Rocket default.
+POST /:
+   >> Matched: (add) POST /
+   >> Outcome: Success
+GET /:
+   >> Matched: (get) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/untracked-vs-tracked.rs:39:43
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    many_cookie_jars_tests::test_tracked
+
+test result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket --test untracked-vs-tracked`
+     Running tests/uri-percent-encoding-issue-808.rs (target_dynamic/debug/deps/uri_percent_encoding_issue_808-d4aadf084879ddd3)
+
+running 1 test
+test tests::uri_percent_encoding_get ... FAILED
+
+failures:
+
+---- tests::uri_percent_encoding_get stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (uri_redirect) GET /uri
+   >> (raw_redirect) GET /raw
+   >> (hello) GET /hello/<name>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+GET /hello/John%5B%5D%7C%5C%25@%5E:
+   >> Matched: (hello) GET /hello/<name>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/lib/tests/uri-percent-encoding-issue-808.rs:57:43
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    tests::uri_percent_encoding_get
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket --test uri-percent-encoding-issue-808`
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rocket_codegen-b72fc5c6fa0ee0d8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/async-entry.rs (target_dynamic/debug/deps/async_entry-6a15854e6645b2dd)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/async-routes.rs (target_dynamic/debug/deps/async_routes-fb2cd7da795e9e39)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/catcher.rs (target_dynamic/debug/deps/catcher-796374eeae10bb23)
+
+running 2 tests
+test test_simple_catchers ... FAILED
+test test_status_param ... FAILED
+
+failures:
+
+---- test_simple_catchers stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Catchers:
+   >> (all) default
+   >> (not_found_0) /0 404
+   >> (not_found_1) /1 404
+   >> (not_found_2) /2 404
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /0:
+   >> No matching routes for GET /0.
+   >> Responding with registered (not_found_0) /0 404 catcher.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/catcher.rs:37:56
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_status_param stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (forward) GET /<code>
+Catchers:
+   >> (forward_400) 400
+   >> (forward_404) 404
+   >> (forward_444) 444
+   >> (forward_500) 500
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /400:
+   >> Matched: (forward) GET /<code>
+   >> Outcome: Failure
+   >> Responding with registered (forward_400) 400 catcher.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/catcher.rs:62:43
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_simple_catchers
+    test_status_param
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket_codegen --test catcher`
+     Running tests/expansion.rs (target_dynamic/debug/deps/expansion-f12722b3d287eff9)
+
+running 2 tests
+test test_index ... FAILED
+test test_reexpansion ... FAILED
+
+failures:
+
+---- test_index stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (index) GET /
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (index) GET /
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/expansion.rs:70:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_reexpansion stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (easy) GET /easy/<id>
+   >> (hard) GET /hard/<id>
+   >> (hi) GET /hello/<name>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /easy/327:
+   >> Matched: (easy) GET /easy/<id>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/expansion.rs:44:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_index
+    test_reexpansion
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket_codegen --test expansion`
+     Running tests/from_form.rs (target_dynamic/debug/deps/from_form-cad61839e557cdc0)
+
+running 1 test
+test test_multipart ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.02s
+
+     Running tests/from_form_field.rs (target_dynamic/debug/deps/from_form_field-e7617fcc34f0fcbe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running tests/responder.rs (target_dynamic/debug/deps/responder-9922b3b3c247b9bf)
+
+running 4 tests
+test responder_foo ... FAILED
+test responder_baz ... FAILED
+test generic_responder ... FAILED
+test responder_bar ... FAILED
+
+failures:
+
+---- responder_foo stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `""`,
+ right: `"hello"`', core/codegen/tests/responder.rs:38:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- responder_baz stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `""`,
+ right: `"just a custom"`', core/codegen/tests/responder.rs:112:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- generic_responder stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `""`,
+ right: `"\"hi\""`', core/codegen/tests/responder.rs:139:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- responder_bar stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+thread 'rustyrts_test_thread' panicked at 'assertion failed: `(left == right)`
+  left: `""`,
+ right: `"foo foo"`', core/codegen/tests/responder.rs:90:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    generic_responder
+    responder_bar
+    responder_baz
+    responder_foo
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket_codegen --test responder`
+     Running tests/route.rs (target_dynamic/debug/deps/route-ced249ad9ab37955)
+
+running 4 tests
+test test_filtered_raw_query ... FAILED
+test test_query_collection ... FAILED
+test test_inclusive_segments ... FAILED
+test test_full_route ... FAILED
+
+failures:
+
+---- test_filtered_raw_query stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (filtered_raw_query) GET /?bird=1&color=blue&<bird>&<color>&cat=bob&<rest..>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /?bird=2&bird=3&color=red&color=blue&color=green&cat=bob&cat=bob:
+   >> request GET /?bird=2&bird=3&color=red&color=blue&color=green&cat=bob&cat=bob missing static query ("bird", "1")
+   >> No matching routes for GET /?bird=2&bird=3&color=red&color=blue&color=green&cat=bob&cat=bob.
+   >> No 404 catcher registered. Using Rocket default.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route.rs:204:16
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_query_collection stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (query_collection) GET /?<color>&color=red&<q..>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /?color=blue&color=green&dog.name=Fido&dog.age=10:
+   >> request GET /?color=blue&color=green&dog.name=Fido&dog.age=10 missing static query ("color", "red")
+   >> No matching routes for GET /?color=blue&color=green&dog.name=Fido&dog.age=10.
+   >> No 404 catcher registered. Using Rocket default.
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route.rs:272:20
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_inclusive_segments stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (segments_empty) GET /<path..> [2]
+   >> (segments) GET /<_>/b/<path..>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /:
+   >> Matched: (segments_empty) GET /<path..> [2]
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route.rs:337:62
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_full_route stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (post1) POST /1/<a>/<name>/name/<path..>?sky=blue&<sky>&<query..> [138] application/json
+   >> (post2) POST /2/<a>/<name>/name/<path..>?sky=blue&<sky>&<query..> [138] application/json
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+POST /A%20A/Bob%20McDonald/name/this/path/here?sky=777&sky=blue&field=inside:
+   >> No matching routes for POST /A%20A/Bob%20McDonald/name/this/path/here?sky=777&sky=blue&field=inside.
+   >> No 404 catcher registered. Using Rocket default.
+POST /1/A%20A/Bob%20McDonald/name/this/path/here?sky=777&sky=blue&field=inside:
+   >> No matching routes for POST /1/A%20A/Bob%20McDonald/name/this/path/here?sky=777&sky=blue&field=inside.
+   >> No 404 catcher registered. Using Rocket default.
+POST /1/A%20A/Bob%20McDonald/name/this/path/here?sky=777&sky=blue&field=inside application/json:
+   >> Matched: (post1) POST /1/<a>/<name>/name/<path..>?sky=blue&<sky>&<query..> [138] application/json
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route.rs:120:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_filtered_raw_query
+    test_full_route
+    test_inclusive_segments
+    test_query_collection
+
+test result: FAILED. 0 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket_codegen --test route`
+     Running tests/route-data.rs (target_dynamic/debug/deps/route_data-5604dbf8a4ed39b9)
+
+running 1 test
+test test_data ... FAILED
+
+failures:
+
+---- test_data stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (form) POST /f
+   >> (simple) POST /s
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Frame-Options: SAMEORIGIN
+   >> X-Content-Type-Options: nosniff
+Rocket has launched into local orbit
+POST /f application/x-www-form-urlencoded:
+   >> Matched: (form) POST /f
+   >> url-encoded field: ("field", "this%20is%20here")
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route-data.rs:47:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_data
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+error: test failed, to rerun pass `-p rocket_codegen --test route-data`
+     Running tests/route-format.rs (target_dynamic/debug/deps/route_format-aaf920f4bde6d5a9)
+
+running 2 tests
+test test_custom_formats ... FAILED
+test test_formats ... FAILED
+
+failures:
+
+---- test_custom_formats stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (get_foo) GET / application/foo
+   >> (post_foo) POST / application/foo
+   >> (get_bar_baz) GET / [2] bar/baz
+   >> (put_bar_baz) PUT / bar/baz
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET / application/foo:
+   >> Matched: (get_foo) GET / application/foo
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route-format.rs:102:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- test_formats stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (json) POST / application/json
+   >> (xml) POST / text/xml; charset=utf-8
+   >> (json_long) POST / [2] application/json
+   >> (msgpack_long) POST / application/msgpack
+   >> (msgpack) POST / [2] application/msgpack
+   >> (plain) GET / text/plain; charset=utf-8
+   >> (binary) GET / [2] application/octet-stream
+   >> (other) GET / [3]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+POST / application/json:
+   >> Matched: (json) POST / application/json
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route-format.rs:47:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_custom_formats
+    test_formats
+
+test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket_codegen --test route-format`
+     Running tests/route-ranking.rs (target_dynamic/debug/deps/route_ranking-72b9051b6100f5af)
+
+running 1 test
+test test_ranking ... FAILED
+
+failures:
+
+---- test_ranking stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (get0) GET /<_number>
+   >> (get1) GET /<_number>
+   >> (get2) GET /<_number> [2]
+   >> (get3) GET /<_number> [3]
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+   >> Permissions-Policy: interest-cohort=()
+Rocket has launched into local orbit
+GET /0:
+   >> Matched: (get0) GET /<_number>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route-ranking.rs:29:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_ranking
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p rocket_codegen --test route-ranking`
+     Running tests/route-raw.rs (target_dynamic/debug/deps/route_raw-72b77a5e6133bd65)
+
+running 1 test
+test test_raw_ident ... FAILED
+
+failures:
+
+---- test_raw_ident stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (get) GET /<enum>?<type>
+   >> (swap) GET /swap/<raw>/<bare>
+Catchers:
+   >> (catch) 400
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /example?type=1:
+   >> Matched: (get) GET /<enum>?<type>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/route-raw.rs:35:39
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_raw_ident
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket_codegen --test route-raw`
+     Running tests/segment-ignore.rs (target_dynamic/debug/deps/segment_ignore-68d3d901532789f7)
+
+running 1 test
+test test_ignored_segments ... FAILED
+
+failures:
+
+---- test_ignored_segments stdout ----
+Configured for debug.
+   >> address: 127.0.0.1
+   >> port: 8000
+   >> workers: 8
+   >> ident: Rocket
+   >> keep-alive: 5s
+   >> limits: bytes = 8KiB, data-form = 2MiB, file = 1MiB, form = 32KiB, json = 1MiB, msgpack = 1MiB, string = 8KiB
+   >> tls: disabled
+   >> secret key: [generated]
+Warning: secrets enabled without a stable `secret_key`
+   >> disable `secrets` feature or configure a `secret_key`
+   >> this becomes an error in non-debug profiles
+   >> temp dir: /tmp
+   >> log level: debug
+   >> cli colors: true
+   >> shutdown: ctrlc = true, force = true, signals = [SIGTERM], grace = 2s, mercy = 3s
+Routes:
+   >> (ig_1) GET /<_>
+   >> (just_static) GET /static
+   >> (ig_2) GET /<_>/<_>
+   >> (ig_1_static) GET /static/<_>
+   >> (ig_3) GET /<_>/<_>/<_>
+   >> (ig_1_static_static) GET /static/<_>/static
+   >> (wrapped) GET /<a>/<_>/<_>/<b>
+Fairings:
+   >> Shield (liftoff, response, singleton)
+Shield:
+   >> Permissions-Policy: interest-cohort=()
+   >> X-Content-Type-Options: nosniff
+   >> X-Frame-Options: SAMEORIGIN
+Rocket has launched into local orbit
+GET /foo:
+   >> Matched: (ig_1) GET /<_>
+   >> Outcome: Success
+thread 'rustyrts_test_thread' panicked at 'called `Option::unwrap()` on a `None` value', core/codegen/tests/segment-ignore.rs:27:50
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    test_ignored_segments
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+error: test failed, to rerun pass `-p rocket_codegen --test segment-ignore`
+     Running tests/typed-uris.rs (target_dynamic/debug/deps/typed_uris-979fbc56532764fb)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.00s
+
+     Running tests/ui-fail.rs (target_dynamic/debug/deps/ui_fail-2839829680546584)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+     Running tests/uri_display.rs (target_dynamic/debug/deps/uri_display-d0c7d3b65df78c2b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 6 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rocket_dyn_templates-e9cc769311aee0ee)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.00s
+
+     Running tests/templates.rs (target_dynamic/debug/deps/templates-ae2453e31144a302)
+
+running 1 test
+test tera_tests::test_template_metadata_with_tera ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.04s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rocket_guide_tests-42e3020c59859d0e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rocket_http-14371089913199ac)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rocket_sync_db_pools-6530d3ed4244499f)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/databases.rs (target_dynamic/debug/deps/databases-bc41957a4a16f778)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rocket_sync_db_pools_codegen-67c7bdbd06a37e42)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/ui-fail.rs (target_dynamic/debug/deps/ui_fail-35a9024a4a706f1e)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+error: 32 targets failed:
+    `-p rocket --test derive-reexports`
+    `-p rocket --test encoded-uris`
+    `-p rocket --test fairing_before_head_strip-issue-546`
+    `-p rocket --test file_server`
+    `-p rocket --test flash-lazy-removes-issue-466`
+    `-p rocket --test form_method-issue-45`
+    `-p rocket --test form_value_decoding-issue-82`
+    `-p rocket --test head_handling`
+    `-p rocket --test limits`
+    `-p rocket --test local-request-content-type-issue-505`
+    `-p rocket --test local_request_private_cookie-issue-368`
+    `-p rocket --test many-cookie-jars-at-once`
+    `-p rocket --test mapped-base-issue-1262`
+    `-p rocket --test nested-fairing-attaches`
+    `-p rocket --test panic-handling`
+    `-p rocket --test precise-content-type-matching`
+    `-p rocket --test replace-content-type-518`
+    `-p rocket --test route_guard`
+    `-p rocket --test scoped-uri`
+    `-p rocket --test segments-issues-41-86`
+    `-p rocket --test strict_and_lenient_forms`
+    `-p rocket --test untracked-vs-tracked`
+    `-p rocket --test uri-percent-encoding-issue-808`
+    `-p rocket_codegen --test catcher`
+    `-p rocket_codegen --test expansion`
+    `-p rocket_codegen --test responder`
+    `-p rocket_codegen --test route`
+    `-p rocket_codegen --test route-data`
+    `-p rocket_codegen --test route-format`
+    `-p rocket_codegen --test route-ranking`
+    `-p rocket_codegen --test route-raw`
+    `-p rocket_codegen --test segment-ignore`
