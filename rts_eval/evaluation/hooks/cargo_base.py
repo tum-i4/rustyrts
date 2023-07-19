@@ -176,6 +176,7 @@ class CargoHook(Hook, ABC):
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_errored |= (proc.exit_code == -1
+                                or "thread caused non-unwinding panic. aborting." in proc.output
                                 or (not (proc.exit_code == 0 or
                                          any(line.startswith("{") and line.endswith("}") for line in
                                              proc.output.splitlines())
@@ -284,6 +285,7 @@ class CargoHook(Hook, ABC):
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_errored |= (proc.exit_code == -1
+                                or "thread caused non-unwinding panic. aborting." in proc.output
                                 or (not (proc.exit_code == 0 or
                                          any(line.startswith("{") and line.endswith("}") for line in
                                              proc.output.splitlines())
