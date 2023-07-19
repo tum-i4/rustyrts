@@ -175,8 +175,13 @@ class CargoHook(Hook, ABC):
                     env=self.env() | env_tmp_override()
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_errored |= not (proc.exit_code == 0 or any(
-                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+                has_errored |= (proc.exit_code == -1
+                                or (not (proc.exit_code == 0 or
+                                         any(line.startswith("{") and line.endswith("}") for line in
+                                             proc.output.splitlines())
+                                         )
+                                    )
+                                )
 
                 # ******************************************************************************************************
                 # Parse result
@@ -216,7 +221,6 @@ class CargoHook(Hook, ABC):
 
             for submodule in self.git_client.git_repo.submodules:
                 submodule.update(init=True, recursive=True, force=True)
-
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
@@ -279,8 +283,13 @@ class CargoHook(Hook, ABC):
                     # this effectively prevents those tests from failing, but there is just no other way
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_errored |= not (proc.exit_code == 0 or any(
-                    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+                has_errored |= (proc.exit_code == -1
+                                or (not (proc.exit_code == 0 or
+                                         any(line.startswith("{") and line.endswith("}") for line in
+                                             proc.output.splitlines())
+                                         )
+                                    )
+                                )
 
                 # ******************************************************************************************************
                 # Parse result
