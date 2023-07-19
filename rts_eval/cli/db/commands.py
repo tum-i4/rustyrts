@@ -140,36 +140,40 @@ def dump(ctx, output):
     """
     conn: DBConnection = ctx["connection"]
     try:
-        executable: str = "pg_dump"
-        # check for executables
-        if check_executable_exists(executable) is None:
-            raise Exception("Missing executable {}.".format(executable))
-
-        # input validation
-        if os.path.isdir(output):
-            raise Exception("No filepath provided.")
-
-        if ".dump" not in output:
-            output += ".backup.dump"
-
-        # create command
-        cmd = executable
-        if ctx["debug"]:
-            cmd += " --verbose"
-        cmd += " -Z 9 --format=custom --no-owner -f {} {}".format(output, conn.url)
-
-        # execute command
-        spinner = start_spinner("Trying to dump database...")
-        proc = subprocess.Popen(cmd, shell=True)
-        exit_code = proc.wait()
-        if exit_code != 0:
-            raise Exception("Failed to execute {}.".format(executable))
-        spinner.stop()
+        _dump(conn, ctx["debug"], output)
         click_echo_success(SUCCESS_DUMP_MSG)
     except Exception as e:
         _LOGGER.debug(e)
         click_echo_failure(FAILED_DUMP_MSG)
         raise e
+
+
+def _dump(conn, debug, output):
+    executable: str = "pg_dump"
+    # check for executables
+    if check_executable_exists(executable) is None:
+        raise Exception("Missing executable {}.".format(executable))
+
+    # input validation
+    if os.path.isdir(output):
+        raise Exception("No filepath provided.")
+
+    if ".dump" not in output:
+        output += ".backup.dump"
+
+    # create command
+    cmd = executable
+    if debug:
+        cmd += " --verbose"
+    cmd += " -Z 9 --format=custom --no-owner -f {} {}".format(output, conn.url)
+
+    # execute command
+    spinner = start_spinner("Trying to dump database...")
+    proc = subprocess.Popen(cmd, shell=True)
+    exit_code = proc.wait()
+    if exit_code != 0:
+        raise Exception("Failed to execute {}.".format(executable))
+    spinner.stop()
 
 
 @db.command(name="restore")

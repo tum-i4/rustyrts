@@ -166,7 +166,6 @@ commits = [
 
 walk(path, branch=branch, commits=commits)
 
-
 # %%
 # rayon
 from walkers.rustyrts_walker import walk
@@ -365,18 +364,47 @@ commits = [
 
 walk(path, branch=branch, commits=commits)
 
-## Not enough disk space
-## %%
-### exonum
-# from walkers.rustyrts_walker import walk
-#
-# path = "../projects/git_walk/exonum"
-# branch = "master"
-#
-# commits = None #[("2d2fa22e5f5bc451d08c155c2398956f11dce06e", None, None)]
-#
-# walk(path, branch=branch, commits=commits)
-#
+# %%
+## exonum
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/exonum"
+branch = "master"
+
+commits = [
+    ("cb1a0384651bd31a869ab1aa65e1806a53a3d7bb", None, None),
+    ("78fe27b23209beeb8f55ad2308835de730f03f38", None, None),
+    ("3bc48f285343b379738465ff7ae05efb5730b908", None, None),
+    ("a295f8744fa4d7511f0058766ef7cbd670cb1d84", None, None),
+    ("c36483f7af6c2e1626e48cb83f285310d7c2fa59", None, None),
+    ("262ece75ac53dd39cce23d427c03089f30a4c60b", None, None),
+    ("8f25d7822fd232c691747ae512f13da92f100ea3", None, None),
+    ("d01f37122b6dbca31e37b3422777f2f442160ed9", None, None),
+    ("53898fc17b2c1b20e4761d45194d54560c25633d", None, None),
+    ("28e8d8393005b2a9cda728168dc1963ab7c7ff4f", None, None),
+    ("65b576c311a3140a2f54f54d0853b54d282618ff", None, None),
+    ("f5a785aa5349ee30375ff51940a930c2e1cf4ed0", None, None),
+    ("7d73d1516935d7710dfec13d1e2ea1884a38ebb8", None, None),
+    ("59d7557dc36479bb60edadd6159baa9327b0b2f3", None, None),
+    ("3c93db7e6feceadb17f3f143c0ed856db2958ac0", None, None),
+    ("882e23d65c916429c19e85b91ee9b5826908a71d", None, None),
+    ("29f596b404a163e2f2414b6e19360600e89ce506", None, None),
+    ("b8e4797aab905cd389bb46d4d7238d721d80cdb8", None, None),
+    ("b614e41feecd3b6d775c492a3e56f49155b908ea", None, None),
+    ("87280613d8a66e74f1a7b00ba09f14cccb7e8dd5", None, None),
+    ("e75b31a73cf9f09139c77c920c3638eeecdcba2c", None, None),
+    ("bdbfb4abdf63dbc0c5fd9f627dccde5c4af5ffef", None, None),
+    ("05b435e5d930d8d05ad01839a6241fb62dc3950d", None, None),
+    ("47d43c73af945923cd22dd8b989a64d5178a86bd", None, None),
+    ("b7618adeecefdc774d0581b5fca180b1e4d7f7dc", None, None),
+    ("334a37e39369a2aa3d2922f2d03d6f0c24d175d2", None, None),
+    ("38710ad2f37a8d1f8067c1b6186604a33131f742", None, None),
+    ("517b82efcd2788531183858cca8d4abb3edbadf3", None, None),
+    ("57109131297cb926cb652910c1e0228effc16b58", None, None),
+    ("fbc3d17a0993a7cfe8dd7addb4609a551eb53148", None, None)
+]
+
+walk(path, branch=branch, commits=commits)
 
 # %%
 ## tantivy
@@ -427,7 +455,38 @@ from walkers.rustyrts_walker import walk
 path = "../projects/git_walk/meilisearch"
 branch = "main"
 
-commits = None  # [("cb9d78fc7f23e77df7ce61f980ab91da7dc74233", None, None)]
+commits = [
+    ("b99ef3d33644b24cccf9ff167f698b30b99625d1", None, None),
+    ("953b2ec4380736136c015ccbf4d508acdf7fc21a", None, None),
+    ("79fc3bb84e3659797fc3ca962854fc026e7b6684", None, None),
+    ("2b944ecd893c3421baf529ffa060aecb74e5a88f", None, None),
+    ("44f231d41ea1ebd349240413d4d38a05ea961d79", None, None),
+    ("337e75b0e4fa63566ed5ac516f504a723117ecb2", None, None),
+    ("c09e610bb5e921ff03b2b469c6691ba9be2d231f", None, None),
+    ("2ef58ccce9a5016f8563f4bfd8c73c5dda322582", None, None),
+    ("0990e95830a43dd7b0b4f513f86f442efedc42d5", None, None),
+    ("6af769af20039d258126f2983b36d0145a2cb38d", None, None),
+    ("80f7d873563e7f06acde532d4345f4a866390a14", None, None),
+    ("8dd79426565660e211431e43ff38e667b502092c", None, None),
+    ("f892d122de2f6d41c7228cc25be270fa0b689041", None, None),
+    ("ac2af4354d9d2c55d87199e7ea9928d4c1d8c574", None, None),
+    ("65ca80bdde170fba76a2d3175b1580ec0654c3cb", None, None),
+    ("da04edff8c6b032d70fe58500c530d8b44cd04e1", None, None),
+    ("2f3a439566a3257c6722d6b3eca367e84e559f1e", None, None),
+    ("cb71b714d71b025f0b08b9408191c22cb6700798", None, None),
+    ("9b660e1058eabe31ff1ebde64043f6970afee851", None, None),
+    ("d263f762bf88d7e2209d0d849578fd7463606eb4", None, None),
+    ("eab1156f8cee2d417ca5242578bc10ca387938ad", None, None),
+    ("2830853665a20f751389fb109802bbb1609348fc", None, None),
+    ("348d1123882b1c3433d43b179a30d1cf1457fda9", None, None),
+    ("5ac129bfa161a0aceda88382ace169c115c43f32", None, None),
+    ("b3f60ee8057f837a5de9107db42faa1cfd4fde17", None, None),
+    ("d1b364292322028d4ea4fea820b70c13a3bac222", None, None),
+    ("6a742ee62c250a0108ef6706c9c52b462b3a2c8f", None, None),
+    ("11f47249578871c7f61f3b2fa9c2184c635d2f77", None, None),
+    ("05ffe24d645d3b6dce270b94800a2b17ab024fbf", None, None),
+    ("cb1d184904e474d178d0041bfe6b9ded0638b0b6", None, None)
+]
 
 walk(path, branch=branch, commits=commits)
 
@@ -438,7 +497,38 @@ from walkers.rustyrts_walker import walk
 path = "../projects/git_walk/sled"
 branch = "main"
 
-commits = None  # [("69294e59c718289ab3cb6bd03ac3b9e1e072a1e7", "testing", "testing")]
+commits = [
+    ("be731ac81a0700f62c00dcbf75cde78058b531b1", None, None),
+    ("21db84efaf36e7e26447ed9c1b1d79fb6378e3c2", None, None),
+    ("9b6d9ae535c2ad909ca2a98af5d35d3c7f90713e", None, None),
+    ("720fe59c24d504417c769e7fc559163f8be042a0", None, None),
+    ("5e81efd203eb5c9323ecb9ec15e42040863294b6", None, None),
+    ("97fabf0b3858600f6b7204cf59962c6896580f41", None, None),
+    ("946117d8543c705b8b887a762036705a92bf1e58", None, None),
+    ("627e42c93d2bd460d383df51b3f86dcbc0c43f69", None, None),
+    ("e7307b9e5d41d2407da53c1420990ca6c889ed11", None, None),
+    ("6c26012e0c8531d70e43db9763d58b089f12af28", None, None),
+    ("5552747e197edf25e5b2390f216c0741f173f29e", None, None),
+    ("1926d3565726181bc2dac7572de95a6534ed2354", None, None),
+    ("27119c409276ceec07427d741292e5add703b4cc", None, None),
+    ("83a7cc0c80c8a21d4d9e7eb515eb906edcc12d7d", None, None),
+    ("849561abf2b6a7e564cb1ee8fd07ebd23b3f33df", None, None),
+    ("b22661175933b7c9db25c8b7375e9b9c8366281b", None, None),
+    ("3f5522da3c3c2b6a817f745353a07a3d6a988a34", None, None),
+    ("cbbe89611510c0955e0f45076a4ba40164f54985", None, None),
+    ("1755cbab043180e079c5af8446180444ed580e12", None, None),
+    ("b952f35b729bdb6a7bcd56ba7a0a1b1568d9912c", None, None),
+    ("7599608c40ce967b8ae5dde04dff8e658cf4ea2f", None, None),
+    ("712ac9444d16d02b28a745b49c7c95410cc00af6", None, None),
+    ("3b07619fb3f7964683a2fda1aa3b06c83f6169f6", None, None),
+    ("54e8436305e135818246336a113566ccc402edde", None, None),
+    ("491711ad4425505f42e72e5e0bcaaa274026b378", None, None),
+    ("0f2c9eac022ac087cadc364e6eb22df3d0334ef8", None, None),
+    ("2221066a26a6754efcbe8ed1ce5523fd69c54095", None, None),
+    ("4dbaf66018c7f47eac149b8a2775bdc9dcf1d4d4", None, None),
+    ("2d346fecb0b1bbfcb527b5ed77ac623989f20391", None, None),
+    ("d4eb8c48acd9b6acd3bb22f48a39b3a29bdfe04d", None, None)
+]
 
 walk(path, branch=branch, commits=commits)
 

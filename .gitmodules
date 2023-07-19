@@ -76,3 +76,6 @@
 [submodule "projects/util/rust-rocksdb"]
 	path = projects/util/rust-rocksdb
 	url = https://github.com/rust-rocksdb/rust-rocksdb.git
+[submodule "projects/small/budget"]
+	path = projects/small/budget
+	url = git@github.com:shterrett/budget.git

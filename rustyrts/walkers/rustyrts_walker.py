@@ -5,6 +5,7 @@ from typing import Optional
 
 from git import Repo
 
+from rts_eval.cli.db.commands import dump, _dump
 from rts_eval.db.base import DBConnection
 from rts_eval.evaluation.git_walker import GivenWalkerStrategy, RandomWalkerStrategy, GitWalker
 from rts_eval.evaluation.hooks.scc import SccHook
@@ -145,3 +146,6 @@ def walk(path, branch="main", logging_level="DEBUG", commits: Optional[list[(str
     # cleanup
     if tmp_path is not None:
         shutil.rmtree(tmp_path)
+
+    # backup
+    _dump(connection, False, "post_" + repository.path[repository.path.rfind("/")+1:])
