@@ -622,8 +622,6 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         cache_ret: &mut Option<Local>,
         cache_call: &mut Option<BasicBlock>,
     ) {
-        use crate::{constants::EDGE_CASE_FROM_RESIDUAL, names::def_id_name};
-
         trace!("Inserting post_main() into {:?}", self.source.def_id());
 
         let Some(def_id_post_fn) = get_def_id_post_main_fn(tcx) else {
@@ -696,13 +694,12 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                         .terminator()
                         .kind;
 
-                    if let TerminatorKind::Call { func, .. } = terminator_kind {
-                        if def_id_name(tcx, func.const_fn_def().unwrap().0, &[], false, true)
-                            == EDGE_CASE_FROM_RESIDUAL
-                        {
-                            // EDGE CASE: if the unwind attribute of a call to this function is inserted,
-                            // llvm will throw an error and abort compilation
-                            continue;
+                    if let TerminatorKind::Call { destination, .. } = terminator_kind {
+                        if let Some(local) = destination.as_local() {
+                            if local.as_usize() == 0 {
+                                // LLVM terminates with an error when calls that directly return something from main() are extended with a Resume terminator
+                                continue;
+                            }
                         }
                     }
 

@@ -52,8 +52,6 @@ pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 
 pub const SUFFIX_DYN: &str = "!dyn";
 
-pub const EDGE_CASE_FROM_RESIDUAL: &str = "core::FromResidual::from_residual";
-
 pub const EDGE_CASES_NO_TRACE: &[&str] = &[
     "__rg_alloc",
     "__rg_dealloc",
