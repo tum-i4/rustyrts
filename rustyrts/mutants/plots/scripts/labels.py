@@ -1,8 +1,6 @@
 import pandas as pd
 
-url_mutants = 'postgresql://postgres:rustyrts@localhost:5432/mutants'
-url_git = 'postgresql://postgres:rustyrts@localhost:5432/git'
-
+url_mutants = 'postgresql://postgres:rustyrts@localhost:5432/mutants_final2'
 
 def get_labels_mutants():
     df_labels = pd.read_sql(

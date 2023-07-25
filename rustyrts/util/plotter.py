@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def boxplot(df, labels, y_label, file, palette=None, hue='algorithm'):
     sns.set_style("whitegrid")
-    sns.set_context("talk", font_scale=2.2)
+    sns.set_context("talk", font_scale=2.0)
     plt.figure(figsize=(20, 15))
     ax = sns.boxplot(data=df,
                      x='repository',
@@ -40,7 +40,7 @@ def boxplot(df, labels, y_label, file, palette=None, hue='algorithm'):
 
 def barplot(df, labels, y_label, file, palette, hue='algorithm'):
     sns.set_style("whitegrid")
-    sns.set_context("talk", font_scale=2.2)
+    sns.set_context("talk", font_scale=2.0)
     plt.figure(figsize=(20, 10))
     ax = sns.barplot(data=df,
                      x='repository',

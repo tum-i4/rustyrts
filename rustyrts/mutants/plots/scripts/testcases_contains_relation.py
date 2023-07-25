@@ -3,7 +3,7 @@ import pandas as pd
 from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
 from rustyrts.util.plotter import boxplot
 
-y_label = 'Tests selected by dynamic but not by static RustyRTS'
+y_label = 'Tests that have been selected'
 file = '../contains_all_tests.pdf'
 
 labels = get_labels_mutants()
