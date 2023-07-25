@@ -30,12 +30,15 @@ class CargoTestTestReportLoader(TestReportLoader):
     @classmethod
     def parse_build_time(cls, log):
         build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log[:log.find("Running ")], re.MULTILINE)
+
+        count = 0
         build_time = 0
 
-        if sum(1 for _match in build_times) > 2:
-            _LOGGER.warning("Found more than two build times")
-
         for match in build_times:
+            count += 1
+            if count > 2:
+                _LOGGER.warning("Found more than two build times")
+
             minutes = match.group(2)
             seconds = match.group(4)
             build_time += 60.0 * float(minutes) if minutes else 0.0
