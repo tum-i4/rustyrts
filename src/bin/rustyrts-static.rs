@@ -7,6 +7,7 @@ extern crate rustc_session;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
 use rustyrts::callbacks_shared::export_checksums_and_changes;
+use rustyrts::constants::ENV_SKIP_ANALYSIS;
 use rustyrts::format::create_logger;
 use rustyrts::static_rts::callback::StaticRTSCallbacks;
 use rustyrts::utils;
@@ -28,45 +29,49 @@ fn main() {
     rustc_log::init_rustc_env_logger().unwrap();
     create_logger().init();
 
-    let result = rustc_driver::catch_fatal_errors(move || {
-        let mut rustc_args = env::args_os()
-            .enumerate()
-            .map(|(i, arg)| {
-                arg.into_string().unwrap_or_else(|arg| {
-                    early_error(
-                        ErrorOutputType::default(),
-                        &format!("Argument {} is not valid Unicode: {:?}", i, arg),
-                    )
+    let skip = env::var(ENV_SKIP_ANALYSIS).is_ok();
+
+    if !skip {
+        let result = rustc_driver::catch_fatal_errors(move || {
+            let mut rustc_args = env::args_os()
+                .enumerate()
+                .map(|(i, arg)| {
+                    arg.into_string().unwrap_or_else(|arg| {
+                        early_error(
+                            ErrorOutputType::default(),
+                            &format!("Argument {} is not valid Unicode: {:?}", i, arg),
+                        )
+                    })
                 })
-            })
-            .collect::<Vec<_>>();
+                .collect::<Vec<_>>();
 
-        if let Some(sysroot) = utils::compile_time_sysroot() {
-            let sysroot_flag = "--sysroot";
-            if !rustc_args.iter().any(|e| e == sysroot_flag) {
-                // We need to overwrite the default that librustc would compute.
-                rustc_args.push(sysroot_flag.to_owned());
-                rustc_args.push(sysroot);
+            if let Some(sysroot) = utils::compile_time_sysroot() {
+                let sysroot_flag = "--sysroot";
+                if !rustc_args.iter().any(|e| e == sysroot_flag) {
+                    // We need to overwrite the default that librustc would compute.
+                    rustc_args.push(sysroot_flag.to_owned());
+                    rustc_args.push(sysroot);
+                }
             }
-        }
 
-        rustc_args.push("--cap-lints".to_string());
-        rustc_args.push("allow".to_string());
+            rustc_args.push("--cap-lints".to_string());
+            rustc_args.push("allow".to_string());
 
-        let mut callbacks = StaticRTSCallbacks::new();
+            let mut callbacks = StaticRTSCallbacks::new();
 
-        let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
-        run_compiler.run()
-    });
+            let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
+            run_compiler.run()
+        });
 
-    let result = result.unwrap();
-    let exit_code = match result {
-        Ok(_) => {
-            export_checksums_and_changes(true);
-            EXIT_SUCCESS
-        }
-        Err(_) => EXIT_FAILURE,
-    };
+        let result = result.unwrap();
+        let exit_code = match result {
+            Ok(_) => {
+                export_checksums_and_changes(true);
+                EXIT_SUCCESS
+            }
+            Err(_) => EXIT_FAILURE,
+        };
 
-    process::exit(exit_code);
+        process::exit(exit_code);
+    }
 }
