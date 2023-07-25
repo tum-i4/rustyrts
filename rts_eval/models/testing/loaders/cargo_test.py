@@ -29,7 +29,7 @@ class CargoTestTestReportLoader(TestReportLoader):
 
     @classmethod
     def parse_build_time(cls, log):
-        build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log[:log.find("Running ")], re.MULTILINE)
+        build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log[:log.find("\n     Running ")], re.MULTILINE)
 
         count = 0
         build_time = 0
