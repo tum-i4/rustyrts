@@ -1,8 +1,12 @@
 import re
 from json import JSONDecodeError, JSONDecoder
 
+from ....util.logging.logger import get_logger
+
 from ..base import TestSuite
 from ..loader import TestReportLoader
+
+_LOGGER = get_logger(__name__)
 
 IGNORE_TEST_EVENTS = ["started", "timeout"]
 
@@ -25,8 +29,12 @@ class CargoTestTestReportLoader(TestReportLoader):
 
     @classmethod
     def parse_build_time(cls, log):
-        build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log, re.MULTILINE)
+        build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log[:log.find("Running ")], re.MULTILINE)
         build_time = 0
+
+        if sum(1 for _match in build_times) > 2:
+            _LOGGER.warning("Found more than two build times")
+
         for match in build_times:
             minutes = match.group(2)
             seconds = match.group(4)

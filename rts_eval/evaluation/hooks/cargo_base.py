@@ -32,7 +32,8 @@ class CargoHook(Hook, ABC):
             connection: DBConnection,
             report_name: Optional[str] = None,
             output_path: Optional[str] = None,
-            build=False
+            build_debug=False,
+            build_release=False
     ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
@@ -41,7 +42,8 @@ class CargoHook(Hook, ABC):
             self.cache_dir = os.path.join(tempfile.gettempdir(), ".cargo-hook")
         self.report_name = report_name
         self.connection = connection
-        self.build = build
+        self.build_debug = build_debug
+        self.build_release = build_release
 
     @abstractmethod
     def env(self):
@@ -114,12 +116,13 @@ class CargoHook(Hook, ABC):
                 if os.path.isfile(file):
                     content = open(file, "r").read()
                     if "target/debug" in content:
-                        self.build = True
-                        break
+                        self.build_debug = True
+                    if "target/debug" in content:
+                        self.build_release = True
 
-            if self.build:
+            if self.build_debug:
                 ########################################################################################################
-                # Build on parent commit
+                # Build debug on parent commit
                 # (Some tests in certain projects require artifacts that are build only by cargo build)
 
                 if not has_errored:
@@ -136,8 +139,9 @@ class CargoHook(Hook, ABC):
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
-                    has_errored |= not (proc.exit_code == 0 or any(
-                        line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+                    # Do not consider it an error if the build command fails
+                    # has_errored |= not (proc.exit_code == 0 or any(
+                    #    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
                     # ******************************************************************************************************
                     # Parse result
@@ -146,7 +150,50 @@ class CargoHook(Hook, ABC):
 
                     # create test report object
                     test_report: TestReport = TestReport(
-                        name=self.report_name + " - parent build",
+                        name=self.report_name + " - parent build debug",
+                        duration=proc.end_to_end_time,
+                        build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
+                        suites=[],
+                        commit=commit,
+                        commit_str=commit.commit_str,
+                        log=log,
+                        has_failed=proc.exit_code != 0,
+                        has_errored=has_errored
+                    )
+
+                    DBTestReport.create_or_update(report=test_report, session=session)
+
+            if self.build_release:
+                ########################################################################################################
+                # Build release on parent commit
+                # (Some tests in certain projects require artifacts that are build only by cargo build)
+
+                if not has_errored:
+                    # prepare cache dir/file
+                    cache_file = "run_{}.log".format(
+                        int(time() * 1000)
+                    )  # run identified by timestamp
+                    cache_file_path = os.path.join(self.cache_dir, cache_file)
+
+                    # Run build command on parent commit
+                    proc: SubprocessContainer = SubprocessContainer(
+                        command=self.build_command(features_parent) + " --release", output_filepath=cache_file_path,
+                        env=self.build_env()
+                    )
+                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
+
+                    # Do not consider it an error if the build command fails
+                    # has_errored |= not (proc.exit_code == 0 or any(
+                    #    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+
+                    # ******************************************************************************************************
+                    # Parse result
+
+                    log = proc.output
+
+                    # create test report object
+                    test_report: TestReport = TestReport(
+                        name=self.report_name + " - parent build release",
                         duration=proc.end_to_end_time,
                         build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
                         suites=[],
@@ -226,9 +273,9 @@ class CargoHook(Hook, ABC):
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
 
-            if self.build:
+            if self.build_debug:
                 ########################################################################################################
-                # Build on actual commit
+                # Build debug on actual commit
                 # (Some tests in certain projects require artifacts that are build only by cargo build)
 
                 if not has_errored:
@@ -243,8 +290,10 @@ class CargoHook(Hook, ABC):
                         command=self.build_command(features), output_filepath=cache_file_path, env=self.build_env()
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                    has_errored |= not (proc.exit_code == 0 or any(
-                        line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+
+                    # Do not consider it an error if the build command fails
+                    # has_errored |= not (proc.exit_code == 0 or any(
+                    #    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
 
                     # ******************************************************************************************************
                     # Parse result
@@ -253,7 +302,49 @@ class CargoHook(Hook, ABC):
 
                     # create test report object
                     test_report: TestReport = TestReport(
-                        name=self.report_name + " - build",
+                        name=self.report_name + " - build debug",
+                        duration=proc.end_to_end_time,
+                        build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
+                        suites=[],
+                        commit=commit,
+                        commit_str=commit.commit_str,
+                        log=log,
+                        has_failed=proc.exit_code != 0,
+                        has_errored=has_errored
+                    )
+
+                    DBTestReport.create_or_update(report=test_report, session=session)
+
+            if self.build_release:
+                ########################################################################################################
+                # Build release on actual commit
+                # (Some tests in certain projects require artifacts that are build only by cargo build)
+
+                if not has_errored:
+                    # prepare cache dir/file
+                    cache_file = "run_{}.log".format(
+                        int(time() * 1000)
+                    )  # run identified by timestamp
+                    cache_file_path = os.path.join(self.cache_dir, cache_file)
+
+                    # Run build command on actual commit
+                    proc: SubprocessContainer = SubprocessContainer(
+                        command=self.build_command(features), output_filepath=cache_file_path, env=self.build_env()
+                    )
+                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
+
+                    # Do not consider it an error if the build command fails
+                    # has_errored |= not (proc.exit_code == 0 or any(
+                    #    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
+
+                    # ******************************************************************************************************
+                    # Parse result
+
+                    log = proc.output
+
+                    # create test report object
+                    test_report: TestReport = TestReport(
+                        name=self.report_name + " - build release",
                         duration=proc.end_to_end_time,
                         build_duration=CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None,
                         suites=[],

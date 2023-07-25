@@ -22,11 +22,36 @@ commits = None
 walk(path, branch=branch, commits=commits)
 
 
+# Not enough disk space
+# %%
+## exonum
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/exonum"
+branch = "master"
+
+commits = None
+
+walk(path, branch=branch, commits=commits)
+
+
 # %%
 ## feroxbuster
 from walkers.rustyrts_walker import walk
 
 path = "../projects/git_walk/feroxbuster"
+branch = "main"
+
+commits = None
+
+walk(path, branch=branch, commits=commits)
+
+
+# %%
+## meilisearch
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/meilisearch"
 branch = "main"
 
 commits = None
@@ -71,6 +96,31 @@ walk(path, branch=branch, commits=commits)
 
 
 # %%
+## sled
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/sled"
+branch = "main"
+
+commits = None
+
+walk(path, branch=branch, commits=commits)
+
+
+
+# %%
+## tantivy
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/tantivy"
+branch = "main"
+
+commits = None
+
+walk(path, branch=branch, commits=commits)
+
+
+# %%
 ## wasmer
 from walkers.rustyrts_walker import walk
 
@@ -93,64 +143,15 @@ commits = None
 
 walk(path, branch=branch, commits=commits)
 
-
-# Not enough disk space
-# %%
-## exonum
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/exonum"
-branch = "master"
-
-commits = None
-
-walk(path, branch=branch, commits=commits)
-
-
-# %%
-## tantivy
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/tantivy"
-branch = "main"
-
-commits = None
-
-walk(path, branch=branch, commits=commits)
-
-
-# %%
-## meilisearch
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/meilisearch"
-branch = "main"
-
-commits = None
-
-walk(path, branch=branch, commits=commits)
-
-
-# %%
-## sled
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/sled"
-branch = "main"
-
-commits = None
-
-walk(path, branch=branch, commits=commits)
-
-
-# %%
-## penumbra
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/penumbra"
-branch = "main"
-
-commits = None
-
-walk(path, branch=branch, commits=commits)
-
+#
+## %%
+### penumbra
+#from walkers.rustyrts_walker import walk
+#
+#path = "../projects/git_walk/penumbra"
+#branch = "main"
+#
+#commits = None
+#
+#walk(path, branch=branch, commits=commits)
+#

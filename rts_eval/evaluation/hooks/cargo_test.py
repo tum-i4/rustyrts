@@ -25,19 +25,19 @@ class CargoTestHook(CargoHook):
         self.test_options = test_options if test_options else []
 
     def env(self):
-        return os.environ | self.env_vars
-
-    def build_env(self):
         os.makedirs(self.target_dir, exist_ok=True)
         env = {"CARGO_TARGET_DIR": self.target_dir}
         return os.environ | self.env_vars | env
+
+    def build_env(self):
+        return os.environ | self.env_vars
 
     def clean_command(self):
         return "cargo clean"
 
     def build_command(self, features):
         build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
-        return "cargo build --tests --examples {0}".format(build_options)
+        return "cargo build --all-targets {0}".format(build_options)
 
     def test_command_parent(self, features):
         return self.test_command(features)

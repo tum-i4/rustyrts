@@ -26,7 +26,7 @@ commits = [
     ("f45038bbfe338661f3b958b10c37dd64d3d70650", None, None),
     ("9aab382ea89395fcc627c5375ddd8721cc47c514", None, None),
     ("21a08ca7969e9a08035a4b9e78d8419f3cce3c64", None, None),
-    ("df6fde883c17c39ee30b71858a65c36eb0ed71c0", None, None),
+    ("df6fde883c17c39ee30b71858a65c36eb0ed71c0", None, None),  # timeout (cargo rustyrts dynamic - parent)
     ("162121bf8d51d497565961d73dde22ba1c36f3a4", None, None),
     ("a35804b89f5b08b11304d4fa3e4ca37c9a4f6627", None, None),
     ("a2d4ff157ea981a09d56e4284fd484e88a5c498d", None, None),
@@ -83,6 +83,48 @@ commits = [
 walk(path, branch=branch, commits=commits)
 
 # %%
+## exonum
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/exonum"
+branch = "master"
+
+commits = [
+    ("cb1a0384651bd31a869ab1aa65e1806a53a3d7bb", None, None),
+    ("78fe27b23209beeb8f55ad2308835de730f03f38", None, None),
+    ("3bc48f285343b379738465ff7ae05efb5730b908", None, None),
+    ("a295f8744fa4d7511f0058766ef7cbd670cb1d84", None, None),
+    ("c36483f7af6c2e1626e48cb83f285310d7c2fa59", None, None),
+    ("262ece75ac53dd39cce23d427c03089f30a4c60b", None, None),
+    ("8f25d7822fd232c691747ae512f13da92f100ea3", None, None),
+    ("d01f37122b6dbca31e37b3422777f2f442160ed9", None, None),
+    ("53898fc17b2c1b20e4761d45194d54560c25633d", None, None),
+    ("28e8d8393005b2a9cda728168dc1963ab7c7ff4f", None, None),
+    ("65b576c311a3140a2f54f54d0853b54d282618ff", None, None),
+    ("f5a785aa5349ee30375ff51940a930c2e1cf4ed0", None, None),
+    ("7d73d1516935d7710dfec13d1e2ea1884a38ebb8", None, None),
+    ("59d7557dc36479bb60edadd6159baa9327b0b2f3", None, None),
+    ("3c93db7e6feceadb17f3f143c0ed856db2958ac0", None, None),
+    ("882e23d65c916429c19e85b91ee9b5826908a71d", None, None),
+    ("29f596b404a163e2f2414b6e19360600e89ce506", None, None),
+    ("b8e4797aab905cd389bb46d4d7238d721d80cdb8", None, None),
+    ("b614e41feecd3b6d775c492a3e56f49155b908ea", None, None),
+    ("87280613d8a66e74f1a7b00ba09f14cccb7e8dd5", None, None),
+    ("e75b31a73cf9f09139c77c920c3638eeecdcba2c", None, None),
+    ("bdbfb4abdf63dbc0c5fd9f627dccde5c4af5ffef", None, None),
+    ("05b435e5d930d8d05ad01839a6241fb62dc3950d", None, None),
+    ("47d43c73af945923cd22dd8b989a64d5178a86bd", None, None),  # build error (cargo rustyrts static - parent)
+    ("b7618adeecefdc774d0581b5fca180b1e4d7f7dc", None, None),  # timeout (cargo test - parent)
+    ("334a37e39369a2aa3d2922f2d03d6f0c24d175d2", None, None),  # timeout (cargo test - parent)
+    ("38710ad2f37a8d1f8067c1b6186604a33131f742", None, None),  # timeout (cargo test - parent)
+    ("517b82efcd2788531183858cca8d4abb3edbadf3", None, None),  # timeout (cargo test - parent)
+    ("57109131297cb926cb652910c1e0228effc16b58", None, None),
+    ("fbc3d17a0993a7cfe8dd7addb4609a551eb53148", None, None)
+]
+
+walk(path, branch=branch, commits=commits)
+
+# %%
 ## feroxbuster
 from walkers.rustyrts_walker import walk
 
@@ -98,20 +140,20 @@ commits = [
     ("e8f4bbccf4f589e80210c2db7f4f08cb64e9f89d", None, None),
     ("f29cd16616d43f906a3e5d04fbf08a7704399aa3", None, None),
     ("d0cdf5766bf98cf5e99615549523b1b0f9b58d13", None, None),
-    ("addf867f59efdee5b473d005f641a68b58a2d4ea", None, None),
-    ("5b8090381eca686cf71a7079509e636c4c8417e1", None, None),
+    ("addf867f59efdee5b473d005f641a68b58a2d4ea", None, None),  # timeout (cargo test - parent)
+    ("5b8090381eca686cf71a7079509e636c4c8417e1", None, None),  # compilation error (cargo test - parent build)
     ("3a128df2fc416e7b3a7f3dc827e4dfa7dfc6ef0a", None, None),
     ("0b16f368a4d84527c57922f966326aff90f03058", None, None),
     ("1e4d3802f809e544af8ae9a5de8d452547559301", None, None),
-    ("4f5786ddebdd8aff663893331964b5ac2dd5573f", None, None),
+    ("4f5786ddebdd8aff663893331964b5ac2dd5573f", None, None),  # compilation error (cargo test - parent build)
     ("4f31ed1847f3f5e3272617ecbd0567c70628d203", None, None),
     ("02b25dc5535b4b7ebf75b24832340a38b0d92531", None, None),
-    ("662521af10836c764ffc355a11437d34d2f638f0", None, None),
+    ("662521af10836c764ffc355a11437d34d2f638f0", None, None),  # compilation error (cargo test - parent build)
     ("9881d65cc362f733034d2ceaf486d543e358ec3d", None, None),
     ("4b0b26da0283b9550af65f834b067f310f9209a5", None, None),
     ("ac56225405d2e627b2613ee5aa4ab080e964d225", None, None),
     ("98767596067285a69be6b059846ac0fe168a3188", None, None),
-    ("29ad28d3f8d0ce17a943df636b94d6223a9d5bd4", None, None),
+    ("29ad28d3f8d0ce17a943df636b94d6223a9d5bd4", None, None),  # compilation error (cargo test - parent build)
     ("b844985528f90691148bb483ec843d81ac40901c", None, None),
     ("ef0b5d37809799fad56ad60cdd5485ef678fb590", None, None),
     ("71efd78f034fa3511272be9ac0dc9f9552743bfb", None, None),
@@ -120,6 +162,48 @@ commits = [
     ("b7ddf7431dc9e2a7a45a14a8f6cfae9ffc5bfb3d", None, None),
     ("16d34bbee0221804f54077bc2797bda2efefe5a3", None, None),
     ("e8f4438a528dba1b8ebf7c435f241f754d28cffd", None, None)
+]
+
+walk(path, branch=branch, commits=commits)
+
+# %%
+## meilisearch
+from walkers.rustyrts_walker import walk
+
+path = "../projects/git_walk/meilisearch"
+branch = "main"
+
+commits = [
+    ("b99ef3d33644b24cccf9ff167f698b30b99625d1", None, None),
+    ("953b2ec4380736136c015ccbf4d508acdf7fc21a", None, None),
+    ("79fc3bb84e3659797fc3ca962854fc026e7b6684", None, None),
+    ("2b944ecd893c3421baf529ffa060aecb74e5a88f", None, None),
+    ("44f231d41ea1ebd349240413d4d38a05ea961d79", None, None),
+    ("337e75b0e4fa63566ed5ac516f504a723117ecb2", None, None),  # timeout (cargo test - parent)
+    ("c09e610bb5e921ff03b2b469c6691ba9be2d231f", None, None),
+    ("2ef58ccce9a5016f8563f4bfd8c73c5dda322582", None, None),
+    ("0990e95830a43dd7b0b4f513f86f442efedc42d5", None, None),
+    ("6af769af20039d258126f2983b36d0145a2cb38d", None, None),
+    ("80f7d873563e7f06acde532d4345f4a866390a14", None, None),
+    ("8dd79426565660e211431e43ff38e667b502092c", None, None),
+    ("f892d122de2f6d41c7228cc25be270fa0b689041", None, None),
+    ("ac2af4354d9d2c55d87199e7ea9928d4c1d8c574", None, None),
+    ("65ca80bdde170fba76a2d3175b1580ec0654c3cb", None, None),
+    ("da04edff8c6b032d70fe58500c530d8b44cd04e1", None, None),
+    ("2f3a439566a3257c6722d6b3eca367e84e559f1e", None, None),
+    ("cb71b714d71b025f0b08b9408191c22cb6700798", None, None),
+    ("9b660e1058eabe31ff1ebde64043f6970afee851", None, None),
+    ("d263f762bf88d7e2209d0d849578fd7463606eb4", None, None),
+    ("eab1156f8cee2d417ca5242578bc10ca387938ad", None, None),
+    ("2830853665a20f751389fb109802bbb1609348fc", None, None),
+    ("348d1123882b1c3433d43b179a30d1cf1457fda9", None, None),
+    ("5ac129bfa161a0aceda88382ace169c115c43f32", None, None),
+    ("b3f60ee8057f837a5de9107db42faa1cfd4fde17", None, None),
+    ("d1b364292322028d4ea4fea820b70c13a3bac222", None, None),
+    ("6a742ee62c250a0108ef6706c9c52b462b3a2c8f", None, None),
+    ("11f47249578871c7f61f3b2fa9c2184c635d2f77", None, None),
+    ("05ffe24d645d3b6dce270b94800a2b17ab024fbf", None, None),
+    ("cb1d184904e474d178d0041bfe6b9ded0638b0b6", None, None)
 ]
 
 walk(path, branch=branch, commits=commits)
@@ -218,190 +302,76 @@ branch = "master"
 commits = [
     ("04decd5e6b36574ca30369c26481d5a51d739971", None, None),
     ("9a481d1ecf0f11b4a5bd0220eec3fd93c997b033", None, None),
-    ("572f1c08b6ba43bdd57c5cb99f79a08ecd821c1c", None, None),
-    ("f55be75a17dab2ca23b34c45e7597fe19a5fc8e4", None, None),
-    ("3e1e6227ca525f8631e0bff2215fa3de1b4f4cc1", None, None),
-    ("12d0970f7e4c4d7f91cccb12525fceea3c4c0669", None, None),
-    ("9153e96e88236e2f867dee8f0f291af5cfaf90f4", None, None),
-    ("095843119e703a756047dfe25514fdcc93425341", None, None),
+    ("572f1c08b6ba43bdd57c5cb99f79a08ecd821c1c", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("f55be75a17dab2ca23b34c45e7597fe19a5fc8e4", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("3e1e6227ca525f8631e0bff2215fa3de1b4f4cc1", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("12d0970f7e4c4d7f91cccb12525fceea3c4c0669", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("9153e96e88236e2f867dee8f0f291af5cfaf90f4", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("095843119e703a756047dfe25514fdcc93425341", None, None),  # bug (cargo rustyrts dynamic - parent build)
     ("6746a08b442d25dc63a90ace1682ebd9ec9b50b8", None, None),
-    ("8ed8e4f25abc95d06487c34e0b2b85778aa6a4b4", None, None),
-    ("9a4553b833e8fa57a361d934c3498efa485d27c9", None, None),
+    ("8ed8e4f25abc95d06487c34e0b2b85778aa6a4b4", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("9a4553b833e8fa57a361d934c3498efa485d27c9", None, None),  # bug (cargo rustyrts dynamic - parent build)
     ("d96c489120551d36f5bdb362ce313052350821f7", None, None),
     ("461c0cc07af36fc95bafa6d5a8a9d86735fc64ff", None, None),
     ("78d6b88f211cc9faf88815ce7fb1a91546cfce15", None, None),
-    ("de7662c852353febce09196199202ee7f6e8e6c3", None, None),
-    ("59bd6e2eea151f097a65f2634dc5488b3c272d92", None, None),
-    ("43cad21623bc5de59598a565097be9c7d8642818", None, None),
-    ("21359c3ab5fc497d11b2c0f0435c7635336a726e", None, None),
-    ("81847524702dd7cb1eeae25a53444b325295b129", None, None),
-    ("364162f8759a407a06b360e383de5404875e6000", None, None),
-    ("d2fd252f9de23d5801b1ca10c067654bf7d6ef4f", None, None),
-    ("046ae1d361d8941a664919e7668a65ae735d4a1b", None, None),
+    ("de7662c852353febce09196199202ee7f6e8e6c3", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("59bd6e2eea151f097a65f2634dc5488b3c272d92", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("43cad21623bc5de59598a565097be9c7d8642818", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("21359c3ab5fc497d11b2c0f0435c7635336a726e", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("81847524702dd7cb1eeae25a53444b325295b129", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("364162f8759a407a06b360e383de5404875e6000", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("d2fd252f9de23d5801b1ca10c067654bf7d6ef4f", None, None),  # bug (cargo rustyrts dynamic - parent build)
+    ("046ae1d361d8941a664919e7668a65ae735d4a1b", None, None),  # bug (cargo rustyrts dynamic - parent build)
     ("30b7e92afaa6dc6b276d60b8e7b47485ca7c2ee3", None, None),
-    ("cdd7118cbf23e21c376092b3b2734407004b8dbf", None, None),
+    ("cdd7118cbf23e21c376092b3b2734407004b8dbf", None, None),  # bug (cargo rustyrts dynamic - parent build)
     ("0448b7364666ba59b39bbd5564fe8a34b67b8f01", None, None),
-    ("32f5276465266522ebc01b8417feeba99bf00f6f", None, None),
+    ("32f5276465266522ebc01b8417feeba99bf00f6f", None, None),  # bug (cargo rustyrts dynamic - parent build)
     ("3cd57c425a1f7001cc86222f928f53a7114564df", None, None),
     ("a6a052f4078825ba307843df1770c92d96827075", None, None),
-    ("a1a7b07ad33b7dcadedc2af26c3a5f8ef3daca27", None, None),
+    ("a1a7b07ad33b7dcadedc2af26c3a5f8ef3daca27", None, None),  # bug (cargo rustyrts dynamic - parent build)
     ("91bbc55eedbc0f6947b69a0158a7b6c81264024e", None, None)
 ]
 
 walk(path, branch=branch, commits=commits)
 
 # %%
-## wasmer
+## sled
 from walkers.rustyrts_walker import walk
 
-path = "../projects/git_walk/wasmer"
-branch = "master"
-
-# Feature test-llvm has lead to a compilation error and has therefore not been considered here
-commits = [
-    ("65265dbd73c01c8660ed79b570ebef9de8e07a2c", "test-singlepass,test-cranelift,test-no-traps",
-     "test-singlepass,test-cranelift,test-no-traps"),
-    ("6f2957b4b364c0c664d66e40588282ad5e95a785", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("44339c18fe782c19ad25a2ae63bd11e0cb4fe011", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("8defffa672cbfcf282ec35262d7baf3939494415", "test-singlepass,test-cranelift", "test-singlepass,test-cranelift"),
-    ("c91e545e03d1a24b083d3ea7368ea0d160e45a4b", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
-    ("94374e4e98e402052c60a97a983336183c811146", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("499eb499f01f9870bb1bbd8e768d6a6b6a020a2f", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("8074253fe24c62a3e6bbd9ea8e808409eaf9bf24", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("9353d09cfabd8a297f3184ec9a5a3787b539c607", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("36419ec7e48a9efecac336bd9cf4b120bc5e13f1", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("03b34144bff602c549dcfbee52520d33252d0e04", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("bb6f483fac97dbad4a85286970c78809cba4abc3", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
-    ("a91d2474619388f72b682196ccf70d75289e1745", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("54b4495b3f9a9e3dd60cc1bf00d20d07eb777bab", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
-    ("df30d25d3952ce4b04a75c4353fe8f90df987b1e", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("66bfb88d8374be4ffdbfae3257bfc30c6bde0c1f", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("9e83e8a4663e4f5f8e95a8d823e96b8a6390ec50", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("19c4c623a819f3f3bac28af91d749254fa82fcfc", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("f8c0910c337a0e571abcf457f42e936aa98e275e", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("9ecedc3925f7c764916025c78bdc626cf45ef46b", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
-    ("c03d61b78a1a0bbd5f542cf1235e88b6a639ee6a", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("59d065ee32a24e8f82e6c762c4d6ecaa3a481879", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("88b4093646f60e680dc3fa3be9877c2ad77257a0", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("1f08f66ba6e8815b92a53fa065a166f82c865c1f", "test-singlepass,test-cranelift,test-native,test-jit,test-no-traps",
-     "test-singlepass,test-cranelift,test-native,test-jit,test-no-traps"),
-    ("156f0483b3c7868bcf3fb56f84b1c35cd8eb9531", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("9ae02d5c0b66bcaff799ad4c64ab70057bc01e09", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("1dad3dd1cb6b94b0197938134839cf8fe9fbe9a5", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("3d6241236c50bf4f8f378c50abeb84b733116a00", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("1dd6d8d3eb4f2633e1f05acce50803302f8a3498", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),
-    ("59b37e4b75a5b0d5cd701858defbfbc99dbace13", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage")
-]
-
-walk(path, branch=branch, commits=commits)
-
-# %%
-## zenoh
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/zenoh"
-branch = "master"
+path = "../projects/git_walk/sled"
+branch = "main"
 
 commits = [
-    ("431ffd48f6dd4192f63a168efbd84bcfa7142749", None, None),
-    ("472cc34acb9d85f781a1c6fe735fa124c88ce97b", None, None),
-    ("0e791bc11d6819f68d143072f7bf1bb60b341ebf", None, None),
-    ("f7ff3f4278b96ef60eb14f8907c36d5cc2795dee", None, None),
-    ("7ec9427f8cb091387802d6a7e1dd910248941ef8", None, None),
-    ("974441cd7addd8bb22ed7a819652fee9115b9d1e", None, None),
-    ("85409a54adb7598bf5d07b95ccc4d01a2f0331e3", None, None),
-    ("e144f3d502ac69f9ab2a9b612525a7f67b3f2a1e", None, None),
-    ("eab33b2a9f6a136f5a2b9823358d58690741b0be", None, None),
-    ("26c77ce77dee5f850358df3a696c45690cdfe5e9", None, None),
-    ("8b78e6a090cad12a8f0271667025085538cfb389", None, None),
-    ("3d94ac1a22268fa06ee0c76cdd385ba1ce454a4a", None, None),
-    ("3302c23929e4e66f5aced4df5e03b4eafd8b2f3f", None, None),
-    ("2a806883239b1a377e5012b610973562c1127f6e", None, None),
-    ("65fed69e8500e066375568f69d1616779a83e509", None, None),
-    ("38f7334a9e8fac86f631b254d5e64a5053e5b671", None, None),
-    ("0cb17cd9017eb9555819ad9c3d65ccfb10feee0a", None, None),
-    ("059c5bf3cfca916a3dbaa7d4ca752edff9a3205d", None, None),
-    ("59d6b90306c377982e45c2941b935a5efddf436a", None, None),
-    ("1617651e0a961bfa406f3deb58647906b34c02fc", None, None),
-    ("91eba62fe07fbabfe2a0421ba57caa20e7e88db6", None, None),
-    ("9405b41e8756c3652837b3f40d3075c6b7ee9bdc", None, None),
-    ("bd237c2e3efbe690f61df1126b7e016a216f6cbd", None, None),
-    ("ba371c8a76755c64379ed144ec55311775141d1e", None, None),
-    ("14dcff357dd57410dab339c9b0db9a3d5dff8c0d", None, None),
-    ("a8b6de0d27b384ee0f48154b2a3b93c0acc2b7e6", None, None),
-    ("89b88cbe40e4d40b8c2351cd903ef127395ceae8", None, None),
-    ("5bd713eb8ed1ea4d68010c1c4f7d2dcd2a95922b", None, None),
-    ("3fcace64b931531fd44385d9b491909586033063", None, None),
-    ("6f98a5ee336f98cb592838451c382b154499d0c4", None, None)
-]
-
-walk(path, branch=branch, commits=commits)
-
-# %%
-## exonum
-from walkers.rustyrts_walker import walk
-
-path = "../projects/git_walk/exonum"
-branch = "master"
-
-commits = [
-    ("cb1a0384651bd31a869ab1aa65e1806a53a3d7bb", None, None),
-    ("78fe27b23209beeb8f55ad2308835de730f03f38", None, None),
-    ("3bc48f285343b379738465ff7ae05efb5730b908", None, None),
-    ("a295f8744fa4d7511f0058766ef7cbd670cb1d84", None, None),
-    ("c36483f7af6c2e1626e48cb83f285310d7c2fa59", None, None),
-    ("262ece75ac53dd39cce23d427c03089f30a4c60b", None, None),
-    ("8f25d7822fd232c691747ae512f13da92f100ea3", None, None),
-    ("d01f37122b6dbca31e37b3422777f2f442160ed9", None, None),
-    ("53898fc17b2c1b20e4761d45194d54560c25633d", None, None),
-    ("28e8d8393005b2a9cda728168dc1963ab7c7ff4f", None, None),
-    ("65b576c311a3140a2f54f54d0853b54d282618ff", None, None),
-    ("f5a785aa5349ee30375ff51940a930c2e1cf4ed0", None, None),
-    ("7d73d1516935d7710dfec13d1e2ea1884a38ebb8", None, None),
-    ("59d7557dc36479bb60edadd6159baa9327b0b2f3", None, None),
-    ("3c93db7e6feceadb17f3f143c0ed856db2958ac0", None, None),
-    ("882e23d65c916429c19e85b91ee9b5826908a71d", None, None),
-    ("29f596b404a163e2f2414b6e19360600e89ce506", None, None),
-    ("b8e4797aab905cd389bb46d4d7238d721d80cdb8", None, None),
-    ("b614e41feecd3b6d775c492a3e56f49155b908ea", None, None),
-    ("87280613d8a66e74f1a7b00ba09f14cccb7e8dd5", None, None),
-    ("e75b31a73cf9f09139c77c920c3638eeecdcba2c", None, None),
-    ("bdbfb4abdf63dbc0c5fd9f627dccde5c4af5ffef", None, None),
-    ("05b435e5d930d8d05ad01839a6241fb62dc3950d", None, None),
-    ("47d43c73af945923cd22dd8b989a64d5178a86bd", None, None),
-    ("b7618adeecefdc774d0581b5fca180b1e4d7f7dc", None, None),
-    ("334a37e39369a2aa3d2922f2d03d6f0c24d175d2", None, None),
-    ("38710ad2f37a8d1f8067c1b6186604a33131f742", None, None),
-    ("517b82efcd2788531183858cca8d4abb3edbadf3", None, None),
-    ("57109131297cb926cb652910c1e0228effc16b58", None, None),
-    ("fbc3d17a0993a7cfe8dd7addb4609a551eb53148", None, None)
+    ("be731ac81a0700f62c00dcbf75cde78058b531b1", None, None),
+    ("21db84efaf36e7e26447ed9c1b1d79fb6378e3c2", None, None),
+    ("9b6d9ae535c2ad909ca2a98af5d35d3c7f90713e", None, None),
+    ("720fe59c24d504417c769e7fc559163f8be042a0", None, None),
+    ("5e81efd203eb5c9323ecb9ec15e42040863294b6", None, None),
+    ("97fabf0b3858600f6b7204cf59962c6896580f41", None, None),
+    ("946117d8543c705b8b887a762036705a92bf1e58", None, None),  # timeout (cargo test - parent)
+    ("627e42c93d2bd460d383df51b3f86dcbc0c43f69", None, None),
+    ("e7307b9e5d41d2407da53c1420990ca6c889ed11", None, None),
+    ("6c26012e0c8531d70e43db9763d58b089f12af28", None, None),
+    ("5552747e197edf25e5b2390f216c0741f173f29e", None, None),
+    ("1926d3565726181bc2dac7572de95a6534ed2354", None, None),  # timeout (cargo rustyrts static - parent)
+    ("27119c409276ceec07427d741292e5add703b4cc", None, None),
+    ("83a7cc0c80c8a21d4d9e7eb515eb906edcc12d7d", None, None),  # timeout (cargo rustyrts dynamic - parent)
+    ("849561abf2b6a7e564cb1ee8fd07ebd23b3f33df", None, None),
+    ("b22661175933b7c9db25c8b7375e9b9c8366281b", None, None),
+    ("3f5522da3c3c2b6a817f745353a07a3d6a988a34", None, None),
+    ("cbbe89611510c0955e0f45076a4ba40164f54985", None, None),
+    ("1755cbab043180e079c5af8446180444ed580e12", None, None),
+    ("b952f35b729bdb6a7bcd56ba7a0a1b1568d9912c", None, None),
+    ("7599608c40ce967b8ae5dde04dff8e658cf4ea2f", None, None),
+    ("712ac9444d16d02b28a745b49c7c95410cc00af6", None, None),
+    ("3b07619fb3f7964683a2fda1aa3b06c83f6169f6", None, None),
+    ("54e8436305e135818246336a113566ccc402edde", None, None),
+    ("491711ad4425505f42e72e5e0bcaaa274026b378", None, None),
+    ("0f2c9eac022ac087cadc364e6eb22df3d0334ef8", None, None),
+    ("2221066a26a6754efcbe8ed1ce5523fd69c54095", None, None),
+    ("4dbaf66018c7f47eac149b8a2775bdc9dcf1d4d4", None, None),
+    ("2d346fecb0b1bbfcb527b5ed77ac623989f20391", None, None),
+    ("d4eb8c48acd9b6acd3bb22f48a39b3a29bdfe04d", None, None)
 ]
 
 walk(path, branch=branch, commits=commits)
@@ -449,85 +419,119 @@ commits = [
 walk(path, branch=branch, commits=commits)
 
 # %%
-## meilisearch
+## wasmer
 from walkers.rustyrts_walker import walk
 
-path = "../projects/git_walk/meilisearch"
-branch = "main"
+path = "../projects/git_walk/wasmer"
+branch = "master"
 
+# Feature test-llvm has lead to a compilation error and has therefore not been considered here
+#
+# We selected test-no-traps or coverage if present,
+#   to prevent using signals that would lead to a timeout in rustyrts dynamic
+#
 commits = [
-    ("b99ef3d33644b24cccf9ff167f698b30b99625d1", None, None),
-    ("953b2ec4380736136c015ccbf4d508acdf7fc21a", None, None),
-    ("79fc3bb84e3659797fc3ca962854fc026e7b6684", None, None),
-    ("2b944ecd893c3421baf529ffa060aecb74e5a88f", None, None),
-    ("44f231d41ea1ebd349240413d4d38a05ea961d79", None, None),
-    ("337e75b0e4fa63566ed5ac516f504a723117ecb2", None, None),
-    ("c09e610bb5e921ff03b2b469c6691ba9be2d231f", None, None),
-    ("2ef58ccce9a5016f8563f4bfd8c73c5dda322582", None, None),
-    ("0990e95830a43dd7b0b4f513f86f442efedc42d5", None, None),
-    ("6af769af20039d258126f2983b36d0145a2cb38d", None, None),
-    ("80f7d873563e7f06acde532d4345f4a866390a14", None, None),
-    ("8dd79426565660e211431e43ff38e667b502092c", None, None),
-    ("f892d122de2f6d41c7228cc25be270fa0b689041", None, None),
-    ("ac2af4354d9d2c55d87199e7ea9928d4c1d8c574", None, None),
-    ("65ca80bdde170fba76a2d3175b1580ec0654c3cb", None, None),
-    ("da04edff8c6b032d70fe58500c530d8b44cd04e1", None, None),
-    ("2f3a439566a3257c6722d6b3eca367e84e559f1e", None, None),
-    ("cb71b714d71b025f0b08b9408191c22cb6700798", None, None),
-    ("9b660e1058eabe31ff1ebde64043f6970afee851", None, None),
-    ("d263f762bf88d7e2209d0d849578fd7463606eb4", None, None),
-    ("eab1156f8cee2d417ca5242578bc10ca387938ad", None, None),
-    ("2830853665a20f751389fb109802bbb1609348fc", None, None),
-    ("348d1123882b1c3433d43b179a30d1cf1457fda9", None, None),
-    ("5ac129bfa161a0aceda88382ace169c115c43f32", None, None),
-    ("b3f60ee8057f837a5de9107db42faa1cfd4fde17", None, None),
-    ("d1b364292322028d4ea4fea820b70c13a3bac222", None, None),
-    ("6a742ee62c250a0108ef6706c9c52b462b3a2c8f", None, None),
-    ("11f47249578871c7f61f3b2fa9c2184c635d2f77", None, None),
-    ("05ffe24d645d3b6dce270b94800a2b17ab024fbf", None, None),
-    ("cb1d184904e474d178d0041bfe6b9ded0638b0b6", None, None)
+    ("65265dbd73c01c8660ed79b570ebef9de8e07a2c", "test-llvm,test-no-traps",
+     "test-singlepass,test-no-traps"),  # only one compiler possible
+    ("6f2957b4b364c0c664d66e40588282ad5e95a785", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("44339c18fe782c19ad25a2ae63bd11e0cb4fe011", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("8defffa672cbfcf282ec35262d7baf3939494415", "test-singlepass", "test-singlepass"),  # test-cranelift excluded, only one compiler possible
+    ("c91e545e03d1a24b083d3ea7368ea0d160e45a4b", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
+    ("94374e4e98e402052c60a97a983336183c811146", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("499eb499f01f9870bb1bbd8e768d6a6b6a020a2f", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("8074253fe24c62a3e6bbd9ea8e808409eaf9bf24", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),  # timeout (cargo test - parent)
+    ("9353d09cfabd8a297f3184ec9a5a3787b539c607", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("36419ec7e48a9efecac336bd9cf4b120bc5e13f1", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("03b34144bff602c549dcfbee52520d33252d0e04", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("bb6f483fac97dbad4a85286970c78809cba4abc3", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
+    ("a91d2474619388f72b682196ccf70d75289e1745", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("54b4495b3f9a9e3dd60cc1bf00d20d07eb777bab", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
+    ("df30d25d3952ce4b04a75c4353fe8f90df987b1e", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("66bfb88d8374be4ffdbfae3257bfc30c6bde0c1f", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("9e83e8a4663e4f5f8e95a8d823e96b8a6390ec50", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("19c4c623a819f3f3bac28af91d749254fa82fcfc", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("f8c0910c337a0e571abcf457f42e936aa98e275e", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("9ecedc3925f7c764916025c78bdc626cf45ef46b", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
+    ("c03d61b78a1a0bbd5f542cf1235e88b6a639ee6a", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("59d065ee32a24e8f82e6c762c4d6ecaa3a481879", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("88b4093646f60e680dc3fa3be9877c2ad77257a0", "test-singlepass,test-native,test-jit,coverage",
+     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("1f08f66ba6e8815b92a53fa065a166f82c865c1f", "test-singlepass,test-native,test-jit,test-no-traps",
+     "test-singlepass,test-native,test-jit,test-no-traps"),  # test-cranelift excluded, only one compiler possible
+    ("156f0483b3c7868bcf3fb56f84b1c35cd8eb9531", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("9ae02d5c0b66bcaff799ad4c64ab70057bc01e09", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("1dad3dd1cb6b94b0197938134839cf8fe9fbe9a5", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),  # compilation error (cargo test - parent build)
+    ("3d6241236c50bf4f8f378c50abeb84b733116a00", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage"),
+    ("1dd6d8d3eb4f2633e1f05acce50803302f8a3498", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
+     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),  # compilation error (cargo test - parent build)
+    ("59b37e4b75a5b0d5cd701858defbfbc99dbace13", "test-singlepass,test-cranelift,test-universal,coverage",
+     "test-singlepass,test-cranelift,test-universal,coverage")
 ]
 
 walk(path, branch=branch, commits=commits)
 
 # %%
-## sled
+## zenoh
 from walkers.rustyrts_walker import walk
 
-path = "../projects/git_walk/sled"
-branch = "main"
+path = "../projects/git_walk/zenoh"
+branch = "master"
 
 commits = [
-    ("be731ac81a0700f62c00dcbf75cde78058b531b1", None, None),
-    ("21db84efaf36e7e26447ed9c1b1d79fb6378e3c2", None, None),
-    ("9b6d9ae535c2ad909ca2a98af5d35d3c7f90713e", None, None),
-    ("720fe59c24d504417c769e7fc559163f8be042a0", None, None),
-    ("5e81efd203eb5c9323ecb9ec15e42040863294b6", None, None),
-    ("97fabf0b3858600f6b7204cf59962c6896580f41", None, None),
-    ("946117d8543c705b8b887a762036705a92bf1e58", None, None),
-    ("627e42c93d2bd460d383df51b3f86dcbc0c43f69", None, None),
-    ("e7307b9e5d41d2407da53c1420990ca6c889ed11", None, None),
-    ("6c26012e0c8531d70e43db9763d58b089f12af28", None, None),
-    ("5552747e197edf25e5b2390f216c0741f173f29e", None, None),
-    ("1926d3565726181bc2dac7572de95a6534ed2354", None, None),
-    ("27119c409276ceec07427d741292e5add703b4cc", None, None),
-    ("83a7cc0c80c8a21d4d9e7eb515eb906edcc12d7d", None, None),
-    ("849561abf2b6a7e564cb1ee8fd07ebd23b3f33df", None, None),
-    ("b22661175933b7c9db25c8b7375e9b9c8366281b", None, None),
-    ("3f5522da3c3c2b6a817f745353a07a3d6a988a34", None, None),
-    ("cbbe89611510c0955e0f45076a4ba40164f54985", None, None),
-    ("1755cbab043180e079c5af8446180444ed580e12", None, None),
-    ("b952f35b729bdb6a7bcd56ba7a0a1b1568d9912c", None, None),
-    ("7599608c40ce967b8ae5dde04dff8e658cf4ea2f", None, None),
-    ("712ac9444d16d02b28a745b49c7c95410cc00af6", None, None),
-    ("3b07619fb3f7964683a2fda1aa3b06c83f6169f6", None, None),
-    ("54e8436305e135818246336a113566ccc402edde", None, None),
-    ("491711ad4425505f42e72e5e0bcaaa274026b378", None, None),
-    ("0f2c9eac022ac087cadc364e6eb22df3d0334ef8", None, None),
-    ("2221066a26a6754efcbe8ed1ce5523fd69c54095", None, None),
-    ("4dbaf66018c7f47eac149b8a2775bdc9dcf1d4d4", None, None),
-    ("2d346fecb0b1bbfcb527b5ed77ac623989f20391", None, None),
-    ("d4eb8c48acd9b6acd3bb22f48a39b3a29bdfe04d", None, None)
+    ("431ffd48f6dd4192f63a168efbd84bcfa7142749", None, None),
+    ("472cc34acb9d85f781a1c6fe735fa124c88ce97b", None, None),
+    ("0e791bc11d6819f68d143072f7bf1bb60b341ebf", None, None),
+    ("f7ff3f4278b96ef60eb14f8907c36d5cc2795dee", None, None),
+    ("7ec9427f8cb091387802d6a7e1dd910248941ef8", None, None),
+    ("974441cd7addd8bb22ed7a819652fee9115b9d1e", None, None),
+    ("85409a54adb7598bf5d07b95ccc4d01a2f0331e3", None, None),
+    ("e144f3d502ac69f9ab2a9b612525a7f67b3f2a1e", None, None),
+    ("eab33b2a9f6a136f5a2b9823358d58690741b0be", None, None),
+    ("26c77ce77dee5f850358df3a696c45690cdfe5e9", None, None),
+    ("8b78e6a090cad12a8f0271667025085538cfb389", None, None),
+    ("3d94ac1a22268fa06ee0c76cdd385ba1ce454a4a", None, None),  # error due to patching rustyrts
+    ("3302c23929e4e66f5aced4df5e03b4eafd8b2f3f", None, None),
+    ("2a806883239b1a377e5012b610973562c1127f6e", None, None),
+    ("65fed69e8500e066375568f69d1616779a83e509", None, None),
+    ("38f7334a9e8fac86f631b254d5e64a5053e5b671", None, None),
+    ("0cb17cd9017eb9555819ad9c3d65ccfb10feee0a", None, None),
+    ("059c5bf3cfca916a3dbaa7d4ca752edff9a3205d", None, None),
+    ("59d6b90306c377982e45c2941b935a5efddf436a", None, None),
+    ("1617651e0a961bfa406f3deb58647906b34c02fc", None, None),
+    ("91eba62fe07fbabfe2a0421ba57caa20e7e88db6", None, None),
+    ("9405b41e8756c3652837b3f40d3075c6b7ee9bdc", None, None),
+    ("bd237c2e3efbe690f61df1126b7e016a216f6cbd", None, None),
+    ("ba371c8a76755c64379ed144ec55311775141d1e", None, None),
+    ("14dcff357dd57410dab339c9b0db9a3d5dff8c0d", None, None),
+    ("a8b6de0d27b384ee0f48154b2a3b93c0acc2b7e6", None, None),
+    ("89b88cbe40e4d40b8c2351cd903ef127395ceae8", None, None),
+    ("5bd713eb8ed1ea4d68010c1c4f7d2dcd2a95922b", None, None),
+    ("3fcace64b931531fd44385d9b491909586033063", None, None),
+    ("6f98a5ee336f98cb592838451c382b154499d0c4", None, None)
 ]
 
 walk(path, branch=branch, commits=commits)

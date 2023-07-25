@@ -53,7 +53,7 @@ class CargoRustyRTSHook(CargoHook):
 
     def build_command(self, features):
         build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
-        return "cargo build --tests --examples {0}".format(
+        return "cargo build --all-targets {0}".format(
             build_options
         )
 
