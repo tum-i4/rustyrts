@@ -26,7 +26,7 @@ commits = [
     ("f45038bbfe338661f3b958b10c37dd64d3d70650", None, None),
     ("9aab382ea89395fcc627c5375ddd8721cc47c514", None, None),
     ("21a08ca7969e9a08035a4b9e78d8419f3cce3c64", None, None),
-    ("df6fde883c17c39ee30b71858a65c36eb0ed71c0", None, None),  # timeout (cargo rustyrts dynamic - parent)
+    ("df6fde883c17c39ee30b71858a65c36eb0ed71c0", None, None),
     ("162121bf8d51d497565961d73dde22ba1c36f3a4", None, None),
     ("a35804b89f5b08b11304d4fa3e4ca37c9a4f6627", None, None),
     ("a2d4ff157ea981a09d56e4284fd484e88a5c498d", None, None),
@@ -113,11 +113,11 @@ commits = [
     ("e75b31a73cf9f09139c77c920c3638eeecdcba2c", None, None),
     ("bdbfb4abdf63dbc0c5fd9f627dccde5c4af5ffef", None, None),
     ("05b435e5d930d8d05ad01839a6241fb62dc3950d", None, None),
-    ("47d43c73af945923cd22dd8b989a64d5178a86bd", None, None),  # build error (cargo rustyrts static - parent)
-    ("b7618adeecefdc774d0581b5fca180b1e4d7f7dc", None, None),  # timeout (cargo test - parent)
-    ("334a37e39369a2aa3d2922f2d03d6f0c24d175d2", None, None),  # timeout (cargo test - parent)
-    ("38710ad2f37a8d1f8067c1b6186604a33131f742", None, None),  # timeout (cargo test - parent)
-    ("517b82efcd2788531183858cca8d4abb3edbadf3", None, None),  # timeout (cargo test - parent)
+    ("47d43c73af945923cd22dd8b989a64d5178a86bd", None, None),
+    ("b7618adeecefdc774d0581b5fca180b1e4d7f7dc", None, None),
+    ("334a37e39369a2aa3d2922f2d03d6f0c24d175d2", None, None),
+    ("38710ad2f37a8d1f8067c1b6186604a33131f742", None, None),
+    ("517b82efcd2788531183858cca8d4abb3edbadf3", None, None),
     ("57109131297cb926cb652910c1e0228effc16b58", None, None),
     ("fbc3d17a0993a7cfe8dd7addb4609a551eb53148", None, None)
 ]
@@ -132,36 +132,36 @@ path = "../projects/git_walk/feroxbuster"
 branch = "main"
 
 commits = [
-    ("d3561a58236c289e6cb33ac6a5e6e7d881744e53", None, None),
-    ("ce7f3b79b8a661fc40a3ba94d836fd0dd048b427", None, None),
-    ("7839118379dc515cdbbc1e44253ce8de25ebad68", None, None),
-    ("955fb0ee964f120e9f3238b12cf948c906b80778", None, None),
-    ("8d11bb1800776680a7bc7d4b23fe60571a282dd8", None, None),
-    ("e8f4bbccf4f589e80210c2db7f4f08cb64e9f89d", None, None),
-    ("f29cd16616d43f906a3e5d04fbf08a7704399aa3", None, None),
-    ("d0cdf5766bf98cf5e99615549523b1b0f9b58d13", None, None),
-    ("addf867f59efdee5b473d005f641a68b58a2d4ea", None, None),  # timeout (cargo test - parent)
-    ("5b8090381eca686cf71a7079509e636c4c8417e1", None, None),  # compilation error (cargo test - parent build)
+    ("216e0e6595fbf9329656983b047f2b2b7d78977d", None, None),
+    ("f6047e98197a77e70ce4f599bfaffd35b9e0c67c", None, None),
+    ("36994d208df230b0238342ba56005dd7c3d8598d", None, None),
+    ("3de31f0393bd46944031560e9c772e20c12714ea", None, None),
+    ("bb4a335299e91972a644612d81b37eb50b25938a", None, None),
+    ("c23850208b9e4f0d74af77f7762856fbd2fd5443", None, None),
+    ("7f145f11df685c2a177947d91bdb0ca62b639b33", None, None),
+    ("53281c0921a57d7adadb00596bf0828ccb07a3e4", None, None),
+    ("65967591322d3abfe5f135d1dcb0097d074f87ce", None, None),
+    ("acf16c92cd7756aaf9afa066344018caf42568cd", None, None),
+    ("329d04252f9bcb302bdd5508cd14ee72df75b909", None, None),
+    ("5578e8db5c16b3d07b05bbeedf54a2b917b806ec", None, None),
+    ("fddade6a1173795e3cb60987d33670e99e3e5f71", None, None),
+    ("43e5ad14c9a543e920659a218d92587a71111f01", None, None),
+    ("f173147352978d3e7a0ab65ac620d7a480d1d593", None, None),
+    ("d36379ba1bafff25e12bff2c6293f83bb6bc50ff", None, None),
+    ("fe5612ce71558b826a9f1f6535de309dea117db2", None, None),
+    ("6c3e41fc3d7dd676e472c343b4f17208e2e92204", None, None),
+    ("3f5ff1ad3e4847f5bd5e525c82db511444a37b50", None, None),
+    ("28ecd60f61c52c2960b4505b8e05a5a7590bc96a", None, None),
+    ("eddab0de13014e97cd68f708b7f5c6eb6f452d37", None, None),
+    ("4f557511b4974ee51ccdaee788907ac1edbc9674", None, None),
+    ("c99f6146e34db48163a584658892892398473662", None, None),
+    ("4debe68ed67539d146101cd9c4acb3e85d49c42f", None, None),
     ("3a128df2fc416e7b3a7f3dc827e4dfa7dfc6ef0a", None, None),
-    ("0b16f368a4d84527c57922f966326aff90f03058", None, None),
-    ("1e4d3802f809e544af8ae9a5de8d452547559301", None, None),
-    ("4f5786ddebdd8aff663893331964b5ac2dd5573f", None, None),  # compilation error (cargo test - parent build)
-    ("4f31ed1847f3f5e3272617ecbd0567c70628d203", None, None),
-    ("02b25dc5535b4b7ebf75b24832340a38b0d92531", None, None),
-    ("662521af10836c764ffc355a11437d34d2f638f0", None, None),  # compilation error (cargo test - parent build)
-    ("9881d65cc362f733034d2ceaf486d543e358ec3d", None, None),
-    ("4b0b26da0283b9550af65f834b067f310f9209a5", None, None),
-    ("ac56225405d2e627b2613ee5aa4ab080e964d225", None, None),
-    ("98767596067285a69be6b059846ac0fe168a3188", None, None),
-    ("29ad28d3f8d0ce17a943df636b94d6223a9d5bd4", None, None),  # compilation error (cargo test - parent build)
-    ("b844985528f90691148bb483ec843d81ac40901c", None, None),
-    ("ef0b5d37809799fad56ad60cdd5485ef678fb590", None, None),
-    ("71efd78f034fa3511272be9ac0dc9f9552743bfb", None, None),
-    ("4578630b1309b57eb546d96ed8d2d7b1681c8601", None, None),
-    ("7c4bc213a3599e1e44ae7e73dbbf3445c8b2ce66", None, None),
-    ("b7ddf7431dc9e2a7a45a14a8f6cfae9ffc5bfb3d", None, None),
-    ("16d34bbee0221804f54077bc2797bda2efefe5a3", None, None),
-    ("e8f4438a528dba1b8ebf7c435f241f754d28cffd", None, None)
+    ("f3b2193b2f536bd0674ba2d085f39a3ffa5631a2", None, None),
+    ("9b1a24bca3e0e1ec1d1310b0881ccb852de4b0df", None, None),
+    ("b456215a00816fb4372c1a260b76ed0fca175a0b", None, None),
+    ("7f0dcb6b46ac00c27dbff4913548f2d70b7ba8a0", None, None),
+    ("82f8f687fd18f46b21e81f31ea189dc9fe29a1cc", None, None)
 ]
 
 walk(path, branch=branch, commits=commits)
@@ -425,33 +425,39 @@ from walkers.rustyrts_walker import walk
 path = "../projects/git_walk/wasmer"
 branch = "master"
 
-# Feature test-llvm has lead to a compilation error and has therefore not been considered here
+# Only one feature out of {test-native, test-jit} is feasible (otherwise compiler error)
+# Sometimes only one feature out of {test-singlepass, test-cranelift, test-llvm} is feasible (otherwise compiler error)
+#
+# Feature test-llvm has lead to a compilation error and has therefore not been considered
+# Feature test-native has sometimes lead to a segfault and has therefore not been considered
+#
+# We selected to use test-singlepass and test-jit if applicable
 #
 # We selected test-no-traps or coverage if present,
 #   to prevent using signals that would lead to a timeout in rustyrts dynamic
 #
 commits = [
-    ("65265dbd73c01c8660ed79b570ebef9de8e07a2c", "test-llvm,test-no-traps",
-     "test-singlepass,test-no-traps"),  # only one compiler possible
-    ("6f2957b4b364c0c664d66e40588282ad5e95a785", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
-    ("44339c18fe782c19ad25a2ae63bd11e0cb4fe011", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
-    ("8defffa672cbfcf282ec35262d7baf3939494415", "test-singlepass", "test-singlepass"),  # test-cranelift excluded, only one compiler possible
+    ("65265dbd73c01c8660ed79b570ebef9de8e07a2c", "test-singlepass,test-no-traps",
+     "test-singlepass,test-no-traps"),
+    ("6f2957b4b364c0c664d66e40588282ad5e95a785", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
+    ("44339c18fe782c19ad25a2ae63bd11e0cb4fe011", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
+    ("8defffa672cbfcf282ec35262d7baf3939494415", "test-singlepass", "test-singlepass"),
     ("c91e545e03d1a24b083d3ea7368ea0d160e45a4b", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
      "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
-    ("94374e4e98e402052c60a97a983336183c811146", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("94374e4e98e402052c60a97a983336183c811146", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
     ("499eb499f01f9870bb1bbd8e768d6a6b6a020a2f", "test-singlepass,test-cranelift,test-universal,coverage",
      "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("8074253fe24c62a3e6bbd9ea8e808409eaf9bf24", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),  # timeout (cargo test - parent)
-    ("9353d09cfabd8a297f3184ec9a5a3787b539c607", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("8074253fe24c62a3e6bbd9ea8e808409eaf9bf24", "test-singlepass,test-universal,coverage",
+     "test-singlepass,test-universal,coverage"),
+    ("9353d09cfabd8a297f3184ec9a5a3787b539c607", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
     ("36419ec7e48a9efecac336bd9cf4b120bc5e13f1", "test-singlepass,test-cranelift,test-universal,coverage",
      "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("03b34144bff602c549dcfbee52520d33252d0e04", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
+    ("03b34144bff602c549dcfbee52520d33252d0e04", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
     ("bb6f483fac97dbad4a85286970c78809cba4abc3", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
      "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
     ("a91d2474619388f72b682196ccf70d75289e1745", "test-singlepass,test-cranelift,test-universal,coverage",
@@ -470,24 +476,24 @@ commits = [
      "test-singlepass,test-cranelift,test-universal,coverage"),
     ("9ecedc3925f7c764916025c78bdc626cf45ef46b", "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
      "test-singlepass,test-cranelift,test-dylib,test-universal,coverage"),
-    ("c03d61b78a1a0bbd5f542cf1235e88b6a639ee6a", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
-    ("59d065ee32a24e8f82e6c762c4d6ecaa3a481879", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
-    ("88b4093646f60e680dc3fa3be9877c2ad77257a0", "test-singlepass,test-native,test-jit,coverage",
-     "test-singlepass,test-native,test-jit,coverage"),  # test-cranelift excluded, only one compiler possible
-    ("1f08f66ba6e8815b92a53fa065a166f82c865c1f", "test-singlepass,test-native,test-jit,test-no-traps",
-     "test-singlepass,test-native,test-jit,test-no-traps"),  # test-cranelift excluded, only one compiler possible
+    ("c03d61b78a1a0bbd5f542cf1235e88b6a639ee6a", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
+    ("59d065ee32a24e8f82e6c762c4d6ecaa3a481879", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
+    ("88b4093646f60e680dc3fa3be9877c2ad77257a0", "test-singlepass,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
+    ("1f08f66ba6e8815b92a53fa065a166f82c865c1f", "test-singlepass,test-jit,test-no-traps",
+     "test-singlepass,test-jit,test-no-traps"),
     ("156f0483b3c7868bcf3fb56f84b1c35cd8eb9531", "test-singlepass,test-cranelift,test-universal,coverage",
      "test-singlepass,test-cranelift,test-universal,coverage"),
     ("9ae02d5c0b66bcaff799ad4c64ab70057bc01e09", "test-singlepass,test-cranelift,test-universal,coverage",
      "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("1dad3dd1cb6b94b0197938134839cf8fe9fbe9a5", "test-singlepass,test-cranelift,test-universal,coverage",
-     "test-singlepass,test-cranelift,test-universal,coverage"),  # compilation error (cargo test - parent build)
+    ("1dad3dd1cb6b94b0197938134839cf8fe9fbe9a5", "test-singlepass,test-universal,coverage",
+     "test-singlepass,test-universal,coverage"),
     ("3d6241236c50bf4f8f378c50abeb84b733116a00", "test-singlepass,test-cranelift,test-universal,coverage",
      "test-singlepass,test-cranelift,test-universal,coverage"),
-    ("1dd6d8d3eb4f2633e1f05acce50803302f8a3498", "test-singlepass,test-cranelift,test-native,test-jit,coverage",
-     "test-singlepass,test-cranelift,test-native,test-jit,coverage"),  # compilation error (cargo test - parent build)
+    ("1dd6d8d3eb4f2633e1f05acce50803302f8a3498", "test-singlepass,test-cranelift,test-jit,coverage",
+     "test-singlepass,test-jit,coverage"),
     ("59b37e4b75a5b0d5cd701858defbfbc99dbace13", "test-singlepass,test-cranelift,test-universal,coverage",
      "test-singlepass,test-cranelift,test-universal,coverage")
 ]
