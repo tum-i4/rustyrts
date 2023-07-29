@@ -107,8 +107,7 @@ class TestSuite:
     def filtered_out_count(self) -> int:
         if self._filtered_out_count:
             return self._filtered_out_count
-        # ignored cases are not printed in dynamic rustyrts which is why we need to consider parsed ignored tests here
-        return self.total_count - self.passed_count - self.failed_count - self.measured_count - len([case for case in self.cases if case.status == 'IGNORED'])
+        return self.total_count - self.passed_count - self.failed_count - self.measured_count
 
     def get_setup_time(self) -> float:
         return self.duration - sum([tc.duration for tc in self.cases])
@@ -147,7 +146,7 @@ class TestSuite:
             ),
             crashed=test_suite["crashed"] if "crashed" in test_suite else False,
             total_count=(
-                test_suite["test_count"] if "_total_count" in test_suite else len(test_suite["cases"])
+                test_suite["test_count"] if "_total_count" in test_suite else len([case for case in test_suite["cases"] if case.status != 'IGNORED'])
             ),
             passed_count=(
                 test_suite["passed"]
