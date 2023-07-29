@@ -118,7 +118,8 @@ class CargoTestTestReportLoader(TestReportLoader):
 
 
 def extract_json_data(input: str, decoder=JSONDecoder()):
-    input = "".join([line for line in input.splitlines() if line.startswith("{")])
+    # Do not cut off any entries that happen to start in the middle of the line!
+    # input = "".join([line for line in input.splitlines() if line.startswith("{")])
     while input:
         try:
             if "{" not in input:
