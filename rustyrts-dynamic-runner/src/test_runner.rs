@@ -1,4 +1,6 @@
+use libc::close;
 use std::io::{self, stdout};
+use std::os::fd::AsRawFd;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::process::{self};
 use std::sync::{Arc, Mutex};
@@ -206,6 +208,11 @@ fn execute_tests_unix(
                         Fork::Child => {
                             drop(rx);
                             install_kill_hook();
+
+                            unsafe {
+                                close(std::io::stdout().as_raw_fd());
+                                close(std::io::stderr().as_raw_fd());
+                            }
 
                             let completed_test = run_test(
                                 &test,
