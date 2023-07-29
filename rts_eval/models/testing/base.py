@@ -146,7 +146,7 @@ class TestSuite:
             ),
             crashed=test_suite["crashed"] if "crashed" in test_suite else False,
             total_count=(
-                test_suite["test_count"] if "_total_count" in test_suite else len([case for case in test_suite["cases"] if case["event"] != 'IGNORED'])
+                test_suite["test_count"] if "_total_count" in test_suite else len([case for case in test_suite["cases"] if case["event"] != 'ignored'])
             ),
             passed_count=(
                 test_suite["passed"]
