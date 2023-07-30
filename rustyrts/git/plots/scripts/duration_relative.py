@@ -1,10 +1,10 @@
 import pandas as pd
 
-from rustyrts.git.plots.scripts.labels import get_labels_git, url_git
+from rustyrts.git.plots.scripts.labels import get_labels_git, url_git, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = "relative e2e testing time [%]"
-file = "../duration_relative.png"
+file = "../duration_relative" + output_format
 
 labels = get_labels_git()
 

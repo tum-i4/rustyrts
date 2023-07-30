@@ -1,8 +1,11 @@
+-- this view shows every testcase that has failed on the mutant
 create materialized view testcases_failed
 AS
 SELECT overview.commit,
        overview.retest_all_mutant_id,
-       overview.descr                                                       as descr,
+       overview.descr                                            as descr,
+
+       -- WARNING: in case there are multiple tests with same suite name and testcase name, those may multiply in this view
 
        coalesce(STRING_AGG(retest_all_failed.name,
                            E'\n'
@@ -10,11 +13,11 @@ SELECT overview.commit,
 
        coalesce(STRING_AGG(dynamic_failed.name,
                            E'\n'
-                           ORDER BY dynamic_failed.name), '')       as dynamic_failed,
+                           ORDER BY dynamic_failed.name), '')    as dynamic_failed,
 
        coalesce(STRING_AGG(static_failed.name,
                            E'\n'
-                           ORDER BY static_failed.name), '')         as static_failed
+                           ORDER BY static_failed.name), '')     as static_failed
 
 
 FROM (((mutant_testcase_overview overview left outer join "MutantsTestCase" retest_all_failed

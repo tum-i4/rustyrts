@@ -1,6 +1,10 @@
+-- this view shows every testcase that has been executed on the actual commit
 create materialized view testcases_selected
 AS
 SELECT overview.commit,
+
+       -- WARNING: in case there are multiple tests with same suite name and testcase name, those may multiply in this view
+
        coalesce(STRING_AGG(retest_all_failed.name,
                            E'\n'
                            ORDER BY retest_all_failed.name), '') as retest_all,

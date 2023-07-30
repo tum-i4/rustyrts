@@ -1,3 +1,4 @@
+-- this view calculates some absolute and relative e2e testing time statistics
 CREATE MATERIALIZED VIEW duration as
 (
 SELECT r.path,

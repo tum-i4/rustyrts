@@ -1,10 +1,10 @@
 import pandas as pd
 
-from rustyrts.git.plots.scripts.labels import url_git, get_labels_git
+from rustyrts.git.plots.scripts.labels import url_git, get_labels_git, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = 'Newly failed tests, that have been selected [%]'
-file = '../failed_and_selected_relative.png'
+file = '../failed_and_selected_relative' + output_format
 
 labels = get_labels_git()
 

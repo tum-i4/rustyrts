@@ -1,3 +1,5 @@
+-- this view just joins Mutant, TestSuite (retest-all, dynamic, static) and TestCase
+-- only if these are comparable
 CREATE MATERIALIZED VIEW mutant_testcase_overview
 AS
 SELECT mutant.commit,
@@ -16,7 +18,7 @@ SELECT mutant.commit,
        dynamic_test_cases.id                as dynamic_testcase_id,
        dynamic_test_cases.status            as dynamic_testcase_status,
 
-       static_test_cases.testsuite_name     as static_suite_name, -- TODO:
+       static_test_cases.testsuite_name     as static_suite_name,
        static_test_cases.name               as static_name,
        static_test_cases.id                 as static_testcase_id,
        static_test_cases.status             as static_testcase_status
@@ -31,4 +33,8 @@ FROM ((mutant_extended mutant
          left outer join mutant_testcase_extended static_test_cases
                          on mutant.static_id = static_test_cases.mutant_id
                              and retest_all_test_cases.name = static_test_cases.name
-                             and retest_all_test_cases.testsuite_name = static_test_cases.testsuite_name;
+                             and retest_all_test_cases.testsuite_name = static_test_cases.testsuite_name
+
+WHERE retest_all_test_cases.crashed = false -- filter suites that are not comparable)
+  and (dynamic_test_cases.crashed is null or dynamic_test_cases.crashed = false)
+  and (static_test_cases.crashed is null or static_test_cases.crashed = false)

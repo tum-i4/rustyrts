@@ -1,3 +1,4 @@
+-- this view just joins the TestReports of retest-all, dynamic and static on every commit
 CREATE VIEW testreport_extended
 AS
 SELECT c.id                       as commit,
@@ -29,13 +30,9 @@ WHERE c.id = retest_all_report.commit_id
   AND retest_all_report.has_errored = false
   AND dynamic_report.has_errored = false
   AND static_report.has_errored = false
-
--- filter reports that are not comparable
---AND not exists(SELECT * FROM "TestSuite" s WHERE s.report_id = retest_all_report.id AND s.crashed = True)
---AND not exists(SELECT * FROM "TestSuite" s WHERE s.report_id = dynamic_report.id AND s.crashed = True)
---AND not exists(SELECT * FROM "TestSuite" s WHERE s.report_id = static_report.id AND s.crashed = True)
 ;
 
+-- this view just joins the TestReports of retest-all, dynamic and static on every parent commit
 CREATE VIEW testreport_parent_extended
 AS
 SELECT c.id                       as commit,
@@ -67,9 +64,4 @@ WHERE c.id = retest_all_report.commit_id
   AND retest_all_report.has_errored = false
   AND dynamic_report.has_errored = false
   AND static_report.has_errored = false
-
--- filter reports that are not comparable
---AND not exists(SELECT * FROM "TestSuite" s WHERE s.report_id = retest_all_report.id AND s.crashed = True)
---AND not exists(SELECT * FROM "TestSuite" s WHERE s.report_id = dynamic_report.id AND s.crashed = True)
---AND not exists(SELECT * FROM "TestSuite" s WHERE s.report_id = static_report.id AND s.crashed = True)
 ;

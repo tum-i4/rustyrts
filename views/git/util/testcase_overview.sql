@@ -1,3 +1,5 @@
+-- this view just joins TestReport, TestSuite (retest-all, dynamic, static) and TestCase
+-- only if these are comparable
 CREATE MATERIALIZED VIEW testcase_overview
 AS
 SELECT report.commit,
@@ -24,20 +26,23 @@ SELECT report.commit,
 
 FROM ((testreport_extended report
     join testcase_extended retest_all_test_cases
-       on report.retest_all_id = retest_all_test_cases.report_id
-           and retest_all_test_cases.crashed = false) -- filter reports that are not comparable
+       on report.retest_all_id = retest_all_test_cases.report_id)
     left outer join testcase_extended dynamic_test_cases
       on report.dynamic_id = dynamic_test_cases.report_id
           and retest_all_test_cases.name = dynamic_test_cases.name
-          and retest_all_test_cases.testsuite_name = dynamic_test_cases.testsuite_name
-          and dynamic_test_cases.crashed = false)
+          and retest_all_test_cases.testsuite_name = dynamic_test_cases.testsuite_name)
          left outer join testcase_extended static_test_cases
                          on report.static_id = static_test_cases.report_id
                              and retest_all_test_cases.name = static_test_cases.name
                              and retest_all_test_cases.testsuite_name = static_test_cases.testsuite_name
-                             AND static_test_cases.crashed = false
+
+WHERE retest_all_test_cases.crashed = false -- filter suites that are not comparable
+  and (dynamic_test_cases.crashed is null or dynamic_test_cases.crashed = false)
+  and (static_test_cases.crashed is null or static_test_cases.crashed = false)
 ;
 
+-- this view just joins TestReport, TestSuite (retest-all, dynamic, static on the parent commit) and TestCase
+-- only if these are comparable
 CREATE MATERIALIZED VIEW testcase_parent_overview
 AS
 SELECT report.commit,
@@ -64,16 +69,17 @@ SELECT report.commit,
 
 FROM ((testreport_parent_extended report
     join testcase_extended retest_all_test_cases
-       on report.retest_all_id = retest_all_test_cases.report_id
-           and retest_all_test_cases.crashed = false) -- filter reports that are not comparable
+       on report.retest_all_id = retest_all_test_cases.report_id)
     left outer join testcase_extended dynamic_test_cases
       on report.dynamic_id = dynamic_test_cases.report_id
           and retest_all_test_cases.name = dynamic_test_cases.name
-          and retest_all_test_cases.testsuite_name = dynamic_test_cases.testsuite_name
-          and dynamic_test_cases.crashed = false)
+          and retest_all_test_cases.testsuite_name = dynamic_test_cases.testsuite_name)
          left outer join testcase_extended static_test_cases
                          on report.static_id = static_test_cases.report_id
                              and retest_all_test_cases.name = static_test_cases.name
                              and retest_all_test_cases.testsuite_name = static_test_cases.testsuite_name
-                             AND static_test_cases.crashed = false
+
+WHERE retest_all_test_cases.crashed = false -- filter suites that are not comparable
+  and (dynamic_test_cases.crashed is null or dynamic_test_cases.crashed = false)
+  and (static_test_cases.crashed is null or static_test_cases.crashed = false)
 ;

@@ -1,11 +1,11 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
+from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants, output_format
 from rustyrts.util.plotter import boxplot
 
 
 y_label = 'Failed tests, that have been selected [%]'
-file = '../failed_and_selected_relative.png'
+file = '../failed_and_selected_relative' + output_format
 
 labels = get_labels_mutants()
 

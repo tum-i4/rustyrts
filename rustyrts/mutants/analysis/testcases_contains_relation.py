@@ -2,7 +2,6 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
-from rustyrts.util.plotter import boxplot
 
 table_ddl = """
 create sequence "AnalysisTestsNotContained_id_seq"

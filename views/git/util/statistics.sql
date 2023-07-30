@@ -1,3 +1,4 @@
+-- this view calculates some statistics about retest-all
 create materialized view statistics
 AS
 

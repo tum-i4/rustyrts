@@ -1,36 +1,10 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import url_mutants, get_labels_mutants
+from rustyrts.mutants.plots.scripts.labels import url_mutants, get_labels_mutants, output_format
 from rustyrts.util.plotter import boxplot
 
-table_ddl = """
-create sequence "AnalysisTestsNotSelected_id_seq"
-    as integer;
-
-alter sequence "AnalysisTestsNotSelected_id_seq" owner to postgres;
-
-create table "AnalysisTestsNotSelected"
-(
-    id                 integer default nextval('"AnalysisTestsNotSelected_id_seq"'::regclass) not null
-        constraint "AnalysisTestsNotSelected_pk"
-            primary key,
-    commit             integer                                                                not null
-        constraint "AnalysisTestsNotSelected_Commit_null_fk"
-            references "Commit",
-    test_name          varchar                                                                not null,
-    not_selected_count integer                                                                not null,
-    reason             varchar,
-    comment            varchar,
-    algorithm          varchar                                                                not null
-);
-
-alter table "AnalysisTestsNotSelected"
-    owner to postgres;
-
-"""
-
 y_label = 'Failed tests, not selected'
-file = '../failed_but_not_selected_absolute.pdf'
+file = '../failed_but_not_selected_absolute' + output_format
 
 labels = get_labels_mutants()
 
@@ -80,7 +54,6 @@ for (retest_all_mutant, dynamic_mutant, static_mutant) in zip(failed_retest_all,
         {'repository': repository, 'mutant': descr, 'algorithm': 'dynamic', 'y': len(diff_dynamic)})
     not_selected_static.append(
         {'repository': repository, 'mutant': descr, 'algorithm': 'static', 'y': len(diff_static)})
-
 
 df_failed_retest_all = pd.DataFrame(should_be_selected)
 df_not_selected_dynamic = pd.DataFrame(not_selected_dynamic)

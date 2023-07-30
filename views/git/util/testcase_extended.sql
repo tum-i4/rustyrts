@@ -1,3 +1,4 @@
+-- this view just joins TestSuite and TestCase
 CREATE VIEW testcase_extended
 AS
 SELECT testcase.*,

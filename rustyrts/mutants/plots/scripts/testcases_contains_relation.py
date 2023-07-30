@@ -1,10 +1,10 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
+from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = 'Tests that have been selected'
-file = '../contains_all_tests.pdf'
+file = '../contains_all_tests' + output_format
 
 labels = get_labels_mutants()
 

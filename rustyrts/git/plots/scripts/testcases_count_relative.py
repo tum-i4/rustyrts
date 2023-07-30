@@ -1,10 +1,10 @@
 import pandas as pd
 
-from rustyrts.git.plots.scripts.labels import url_git, get_labels_git
+from rustyrts.git.plots.scripts.labels import url_git, get_labels_git, output_format
 from rustyrts.util.plotter import boxplot
 
 labels = get_labels_git()
-file = "../selected_tests_relative.png"
+file = "../selected_tests_relative" + output_format
 
 df_dynamic = pd.read_sql(
     'SELECT c.repo_id as repository, dynamic_count * 100.0 / retest_all_count as y, \'dynamic\' as algorithm '

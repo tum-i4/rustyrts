@@ -1,6 +1,9 @@
+-- this view shows every testcase that has not failed on the parent commit, but has failed on the actual commit
 create materialized view testcases_newly_failed
 AS
 SELECT overview.commit,
+
+       -- WARNING: in case there are multiple tests with same suite name and testcase name, those may multiply in this view
 
        coalesce(STRING_AGG(retest_all_failed.name,
                            E'\n'

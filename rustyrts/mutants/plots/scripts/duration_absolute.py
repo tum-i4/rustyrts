@@ -1,12 +1,12 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
+from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = "absolute e2e testing time [s]"
-file = "../duration_absolute.pdf"
+file = "../duration_absolute" + output_format
 
-labels = get_labels_mutants()
+labels = get_labels_mutants(count=False)
 
 df_retest_all = pd.read_sql(
     'SELECT commit as repository, retest_all_duration as y, \'retest-all\' as algorithm FROM mutant_extended', url_mutants)

@@ -1,3 +1,4 @@
+-- this view just joins the Mutants of retest-all, dynamic and static on every commit
 CREATE VIEW mutant_extended
 AS
 SELECT c.id                            as commit,
@@ -50,11 +51,6 @@ WHERE c.id = retest_all.commit_id
   AND retest_all_mutant.test_result != 'TIMEOUT'
   AND dynamic_mutant.test_result != 'TIMEOUT'
   AND static_mutant.test_result != 'TIMEOUT'
-
-  -- filter mutants that are not comparable
-  AND not exists(SELECT * FROM "MutantsTestSuite" s WHERE s.mutant_id = retest_all_mutant.id AND s.crashed = True)
-  AND not exists(SELECT * FROM "MutantsTestSuite" s WHERE s.mutant_id = dynamic_mutant.id AND s.crashed = True)
-  AND not exists(SELECT * FROM "MutantsTestSuite" s WHERE s.mutant_id = static_mutant.id AND s.crashed = True)
 
   -- remove the baseline
   AND retest_all_mutant.descr != 'baseline'

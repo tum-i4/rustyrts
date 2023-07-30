@@ -1,3 +1,4 @@
+-- this view just joins MutantsTestSuite and MutantsTestCase
 CREATE VIEW mutant_testcase_extended
 AS
 SELECT testcase.*,

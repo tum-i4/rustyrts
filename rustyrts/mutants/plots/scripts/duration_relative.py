@@ -1,10 +1,10 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants
+from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = "relative e2e testing time [%]"
-file = "../duration_relative.pdf"
+file = "../duration_relative" + output_format
 
 labels = get_labels_mutants()
 
