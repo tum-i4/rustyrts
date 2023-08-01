@@ -179,7 +179,6 @@ commits = [
     ("79fc3bb84e3659797fc3ca962854fc026e7b6684", None, None),
     ("2b944ecd893c3421baf529ffa060aecb74e5a88f", None, None),
     ("44f231d41ea1ebd349240413d4d38a05ea961d79", None, None),
-    ("337e75b0e4fa63566ed5ac516f504a723117ecb2", None, None),  # timeout (cargo test - parent)
     ("c09e610bb5e921ff03b2b469c6691ba9be2d231f", None, None),
     ("2ef58ccce9a5016f8563f4bfd8c73c5dda322582", None, None),
     ("0990e95830a43dd7b0b4f513f86f442efedc42d5", None, None),
@@ -203,7 +202,8 @@ commits = [
     ("6a742ee62c250a0108ef6706c9c52b462b3a2c8f", None, None),
     ("11f47249578871c7f61f3b2fa9c2184c635d2f77", None, None),
     ("05ffe24d645d3b6dce270b94800a2b17ab024fbf", None, None),
-    ("cb1d184904e474d178d0041bfe6b9ded0638b0b6", None, None)
+    ("cb1d184904e474d178d0041bfe6b9ded0638b0b6", None, None),
+    ("c9246145274634f3df1b17bd578dae7eb6f94ddd", None, None)
 ]
 
 walk(path, branch=branch, commits=commits)
