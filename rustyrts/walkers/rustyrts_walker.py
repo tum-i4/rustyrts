@@ -77,66 +77,66 @@ def walk(path, branch="main", logging_level="DEBUG",
             # ***********************************************************************************************************
             # Multi threaded
 
-            CargoTestHook(repository=repository,
-                          connection=connection,
-                          git_client=git_client,
-                          report_name="cargo test",
-                          env_vars=env_vars.copy(),
-                          build_options=build_options.copy(),
-                          test_options=test_options.copy()
-                          ),
-
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts dynamic",
-                              mode=RustyRTSMode.DYNAMIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy(),
-                              test_options=test_options.copy()
-                              ),
-
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts static",
-                              mode=RustyRTSMode.STATIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy(),
-                              test_options=test_options.copy()
-                              ),
-
-            # ***********************************************************************************************************
-            # Single threaded
-
             #            CargoTestHook(repository=repository,
             #                          connection=connection,
             #                          git_client=git_client,
-            #                          report_name="cargo test single threaded",
+            #                          report_name="cargo test",
             #                          env_vars=env_vars.copy(),
-            #                          build_options=build_options.copy() + ["--jobs 1"],
-            #                          test_options=test_options.copy() + ["--test-threads 1"]
+            #                          build_options=build_options.copy(),
+            #                          test_options=test_options.copy()
             #                          ),
             #
             #            CargoRustyRTSHook(repository=repository,
             #                              connection=connection,
             #                              git_client=git_client,
-            #                              report_name="cargo rustyrts dynamic single threaded",
+            #                              report_name="cargo rustyrts dynamic",
             #                              mode=RustyRTSMode.DYNAMIC,
             #                              env_vars=env_vars.copy(),
-            #                              build_options=build_options.copy() + ["--jobs 1"],
-            #                              test_options=test_options.copy() + ["--test-threads 1"]
+            #                              build_options=build_options.copy(),
+            #                              test_options=test_options.copy()
             #                              ),
             #
             #            CargoRustyRTSHook(repository=repository,
             #                              connection=connection,
             #                              git_client=git_client,
-            #                              report_name="cargo rustyrts static single threaded",
+            #                              report_name="cargo rustyrts static",
             #                              mode=RustyRTSMode.STATIC,
             #                              env_vars=env_vars.copy(),
-            #                              build_options=build_options.copy() + ["--jobs 1"],
-            #                              test_options=test_options.copy() + ["--test-threads 1"]
+            #                              build_options=build_options.copy(),
+            #                              test_options=test_options.copy()
             #                              ),
+
+            # ***********************************************************************************************************
+            # Single threaded
+
+            CargoTestHook(repository=repository,
+                          connection=connection,
+                          git_client=git_client,
+                          report_name="cargo test single threaded",
+                          env_vars=env_vars.copy(),
+                          build_options=build_options.copy() + ["--jobs 1"],
+                          test_options=test_options.copy() + ["--test-threads 1"]
+                          ),
+
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts dynamic single threaded",
+                              mode=RustyRTSMode.DYNAMIC,
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy() + ["--jobs 1"],
+                              test_options=test_options.copy() + ["--test-threads 1"]
+                              ),
+
+            CargoRustyRTSHook(repository=repository,
+                              connection=connection,
+                              git_client=git_client,
+                              report_name="cargo rustyrts static single threaded",
+                              mode=RustyRTSMode.STATIC,
+                              env_vars=env_vars.copy(),
+                              build_options=build_options.copy() + ["--jobs 1"],
+                              test_options=test_options.copy() + ["--test-threads 1"]
+                              ),
         ],
     )
     # create walker
