@@ -10,15 +10,15 @@ labels = get_labels_git()
 
 df_retest_all = pd.read_sql(
     'SELECT c.repo_id as repository, retest_all_duration as y, \'retest-all\' as algorithm FROM testreport_extended join "Commit" c '
-    'on c.id = commit', url_git)
+    'on c.id = commit ORDER BY commit', url_git)
 
 df_dynamic = pd.read_sql(
     'SELECT c.repo_id as repository, dynamic_duration as y, \'dynamic\' as algorithm FROM testreport_extended join "Commit" c '
-    'on c.id = commit', url_git)
+    'on c.id = commit ORDER BY commit', url_git)
 
 df_static = pd.read_sql(
     'SELECT c.repo_id as repository, static_duration as y, \'static\' as algorithm FROM testreport_extended join "Commit" c '
-    'on c.id = commit', url_git)
+    'on c.id = commit ORDER BY commit', url_git)
 
 df = pd.concat([df_retest_all, df_dynamic, df_static])
 

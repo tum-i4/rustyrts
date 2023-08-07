@@ -1,7 +1,7 @@
 import pandas as pd
 
 from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants, output_format
-from rustyrts.util.plotter import boxplot
+from rustyrts.util.plotter import stripplot
 
 y_label = 'Tests that have been selected'
 file = '../contains_all_tests' + output_format
@@ -45,4 +45,4 @@ df_not_selected_static = pd.DataFrame(not_selected_static)
 
 df = pd.concat([df_not_selected_static[['repository', 'algorithm', 'y']]])
 
-boxplot(df, labels, y_label, file, ["#E37222"], hue='algorithm')
+stripplot(df, labels, y_label, file, ["#E37222"], hue='algorithm', legend_loc="upper left", legend_anchor=(0.5, 0.7, 0.4, 0.3))

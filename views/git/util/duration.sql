@@ -1,5 +1,5 @@
 -- this view calculates some absolute and relative e2e testing time statistics
-CREATE MATERIALIZED VIEW duration as
+CREATE VIEW duration as
 (
 SELECT r.path,
        r.id as repo_id,

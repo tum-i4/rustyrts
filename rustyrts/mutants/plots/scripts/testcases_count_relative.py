@@ -1,7 +1,7 @@
 import pandas as pd
 
 from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants, output_format
-from rustyrts.util.plotter import boxplot
+from rustyrts.util.plotter import boxplot_with_observations
 
 labels = get_labels_mutants()
 file = "../selected_tests_relative" + output_format
@@ -16,4 +16,4 @@ df_static = pd.read_sql(
 
 df = pd.concat([df_dynamic, df_static])
 
-boxplot(df, labels, "relative number of tests [%]", file, ["#E37222", "#A2AD00"], hue='algorithm')
+boxplot_with_observations(df, labels, "relative number of tests [%]", file, ["#E37222", "#A2AD00"], hue='algorithm')
