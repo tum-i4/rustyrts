@@ -60,7 +60,8 @@ def boxplot_with_observations(df, labels, y_label, file, palette=None, hue='algo
                   jitter=.3,
                   size=8,
                   linewidth=1,
-                  palette=palette)
+                  palette=palette,
+                  legend=False)
 
     ax.set_xticklabels(labels=labels, rotation='vertical')
     ax.set_xlabel("")

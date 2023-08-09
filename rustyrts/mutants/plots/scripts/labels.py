@@ -1,6 +1,6 @@
 import pandas as pd
 
-url_mutants = 'postgresql://postgres:rustyrts@localhost:5432/mutants_pre'
+url_mutants = 'postgresql://postgres:rustyrts@localhost:5432/mutants' # TODO: adapt this
 output_format = ".svg"
 
 

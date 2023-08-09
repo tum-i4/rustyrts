@@ -8,6 +8,8 @@ SELECT mutant.commit,
        mutant.dynamic_id                    as dynamic_mutant_id,
        mutant.static_id                     as static_mutant_id,
 
+       retest_all_test_cases.target         as target,
+
        retest_all_test_cases.testsuite_name as retest_all_suite_name,
        retest_all_test_cases.name           as retest_all_name,
        retest_all_test_cases.id             as retest_all_testcase_id,
