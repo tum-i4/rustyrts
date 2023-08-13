@@ -23,6 +23,12 @@ use crate::pipe::create_pipes;
 use crate::util::waitpid_wrapper;
 
 #[cfg(unix)]
+use once_cell::sync::OnceCell;
+
+#[cfg(unix)]
+static PATH_CHILD_TRACES: OnceCell<std::path::PathBuf> = OnceCell::new();
+
+#[cfg(unix)]
 const UNUSUAL_EXIT_CODE: libc::c_int = 15;
 
 #[no_mangle]
@@ -275,6 +281,26 @@ fn execute_tests_single_threaded(
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
     for test in tests {
         formatter.write_test_start(&test.desc).unwrap();
+
+        // When running on unix-like systems, we need to clear the traces from child processes
+        //
+        // Since we only have one parent process that runs all test,
+        // these traces would accumulate and falsify the traces otherwise
+        #[cfg(unix)]
+        {
+            use crate::fs_utils::{get_dynamic_path, get_process_traces_path};
+            use std::fs::remove_file;
+
+            use std::process::id;
+
+            let path_child_traces = PATH_CHILD_TRACES.get_or_init(|| {
+                let pid = id();
+                let path_buf = get_dynamic_path(true);
+                get_process_traces_path(path_buf.clone(), &pid)
+            });
+
+            remove_file(path_child_traces);
+        }
 
         let completed_test = run_test(
             &test,
