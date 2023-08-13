@@ -4,7 +4,7 @@ from rustyrts.git.plots.scripts.labels import get_labels_git, url_git, output_fo
 from rustyrts.util.plotter import boxplot, stripplot
 
 y_label = 'Tests that have been selected'
-file = '../contains_all_tests' + output_format
+file = '../contains_all_tests'
 
 labels = get_labels_git()
 
@@ -42,7 +42,22 @@ for (dynamic_report, static_report) in zip(selected_dynamic, selected_static):
         {'repository': repository, 'commit': commit, 'algorithm': 'dynamic but not static', 'y': len(diff)})
 
 df_not_selected_static = pd.DataFrame(not_selected_static)
-
 df = pd.concat([df_not_selected_static[['repository', 'algorithm', 'y']]])
 
-stripplot(df, labels, y_label, file, ["#E37222"], hue='algorithm')
+filter_normal = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12]
+filter_special = [8]
+
+labels1 = labels[:7] + labels[8:]
+labels2 = [labels[7]]
+
+df_1 = df[(df["repository"].isin(filter_normal))]
+df_2 = df[(df["repository"].isin(filter_special))]
+
+
+
+#stripplot(df, labels, y_label, file, ["#E37222"], hue='algorithm')
+stripplot(df_1, labels1, y_label, file + "_1" + output_format,
+          ["#E37222"], hue='algorithm', figsize=(18, 15), legend_anchor=(0.3,0.9,0.7,0.1))
+stripplot(df_2, labels2, "", file + "_2" + output_format,["#E37222"],
+          hue='algorithm', figsize=(3, 15),
+          legend=False)
