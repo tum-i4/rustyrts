@@ -1,11 +1,8 @@
-use std::env;
+use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
+use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use std::{collections::HashSet, fs::read_to_string};
-
-use fs_utils::{
-    get_dynamic_path, get_process_traces_path, get_target_dir, get_traces_path, write_to_file,
-};
 
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
@@ -13,7 +10,27 @@ use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
 mod constants;
 mod fs_utils;
 
-static NODES: Mutex<Option<HashSet<(&'static str, &'static u8)>>> = Mutex::new(None);
+static NODES: Mutex<Option<HashSet<Traced>>> = Mutex::new(None);
+
+//######################################################################################################################
+// Newtype tuple to specify Hash, PartialEq and Eq
+
+struct Traced(&'static str, &'static u8);
+
+impl Hash for Traced {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (self.1 as *const u8 as usize).hash(state);
+    }
+}
+
+impl PartialEq for Traced {
+    fn eq(&self, other: &Self) -> bool {
+        self.1 as *const u8 as usize == other.1 as *const u8 as usize
+    }
+}
+
+impl Eq for Traced {}
+
 //######################################################################################################################
 // Functions for tracing
 
@@ -27,7 +44,7 @@ pub fn trace(input: &'static str, bit: &'static u8) {
         if !flag.fetch_or(true, AcqRel) {
             let mut handle = NODES.lock().unwrap();
             if let Some(ref mut set) = *handle {
-                set.insert((input, bit));
+                set.insert(Traced(input, bit));
             }
         }
     }
@@ -37,7 +54,7 @@ pub fn trace(input: &'static str, bit: &'static u8) {
 pub fn pre_test() {
     let mut handle = NODES.lock().unwrap();
     if let Some(set) = handle.replace(HashSet::new()) {
-        set.into_iter().for_each(|(_, bit)| {
+        set.into_iter().for_each(|Traced(_, bit)| {
             // Reset bit-flag
 
             // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
@@ -83,7 +100,7 @@ where
 
         let mut all = HashSet::new();
 
-        set.iter().for_each(|(node, _)| {
+        set.iter().for_each(|Traced(node, _)| {
             // Append node to acc
             all.insert(node.to_string());
         });

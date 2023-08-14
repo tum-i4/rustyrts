@@ -159,6 +159,8 @@ fn custom_vtable_entries_monomorphized<'tcx>(
                     instance.substs
                 };
 
+                // TODO: it should be feasible to exclude closures here
+
                 let name = def_id_name(tcx, instance.def_id(), substs, false, true).to_owned()
                     + SUFFIX_DYN;
 
