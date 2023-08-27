@@ -1,80 +1,63 @@
-use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
-use std::hash::Hash;
-use std::path::PathBuf;
-use std::sync::Mutex;
-use std::{collections::HashSet, fs::read_to_string};
+#![feature(string_leak)]
 
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::{AcqRel, Acquire, Release};
+use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
+use std::borrow::Cow;
+use std::path::PathBuf;
+use std::sync::atomic::AtomicPtr;
+use std::sync::atomic::Ordering;
+use std::sync::RwLock;
+use std::{collections::HashSet, fs::read_to_string};
 
 mod constants;
 mod fs_utils;
 
-static NODES: Mutex<Option<HashSet<Traced>>> = Mutex::new(None);
+static LIST: RwLock<AtomicPtr<Traced>> =
+    RwLock::new(AtomicPtr::new(std::ptr::null::<Traced>() as *mut Traced));
 
 //######################################################################################################################
-// Newtype tuple to specify Hash, PartialEq and Eq
+// Tuple type
 
-struct Traced(&'static str, &'static u8);
+struct Traced(&'static str, AtomicPtr<Traced>);
 
-impl Hash for Traced {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        (self.1 as *const u8 as usize).hash(state);
-    }
-}
-
-impl PartialEq for Traced {
-    fn eq(&self, other: &Self) -> bool {
-        self.1 as *const u8 as usize == other.1 as *const u8 as usize
-    }
-}
-
-impl Eq for Traced {}
-
-//######################################################################################################################
+//##########>############################################################################################################
 // Functions for tracing
 
 #[no_mangle]
-pub fn trace(input: &'static str, bit: &'static u8) {
-    // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
-    // and therefore also AtomicBool.
-    let flag: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
+pub fn trace(input: &'static mut (&str, u64)) {
+    let traced: &mut Traced = unsafe { std::mem::transmute(input) };
 
-    if !flag.load(Acquire) {
-        if !flag.fetch_or(true, AcqRel) {
-            let mut handle = NODES.lock().unwrap();
-            if let Some(ref mut set) = *handle {
-                set.insert(Traced(input, bit));
+    // Append to list
+    let handle = LIST.read().unwrap();
+    handle
+        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |prev| {
+            if let Ok(_) =
+                traced
+                    .1
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |supposed_to_be_null| {
+                        if supposed_to_be_null == std::ptr::null::<Traced>() as *mut Traced {
+                            Some(prev)
+                        } else {
+                            None
+                        }
+                    })
+            {
+                Some(traced)
+            } else {
+                None
             }
-        }
-    }
+        })
+        .map(|_| ())
+        .unwrap_or_default();
 }
 
 #[no_mangle]
 pub fn pre_test() {
-    let mut handle = NODES.lock().unwrap();
-    if let Some(set) = handle.replace(HashSet::new()) {
-        set.into_iter().for_each(|Traced(_, bit)| {
-            // Reset bit-flag
-
-            // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
-            // and therefore also AtomicBool.
-            let flag: &'static AtomicBool = unsafe { std::mem::transmute(bit) };
-            flag.store(false, Release);
-        });
-    }
+    reset_list();
 }
 
 #[no_mangle]
 #[cfg(unix)]
-pub fn pre_main() {
-    // Do not overwrite the HashSet in case it is present
-    // This may be the case if main() is called directly by a test fn
-    let mut handle = NODES.lock().unwrap();
-    if handle.is_none() {
-        *handle = Some(HashSet::new());
-    }
-}
+pub fn pre_main() {}
 
 #[no_mangle]
 pub fn post_test(test_name: &str) {
@@ -90,43 +73,49 @@ pub fn post_main() {
     export_traces(|path_buf| get_process_traces_path(path_buf, &ppid), true);
 }
 
-pub fn export_traces<F>(path_buf_init: F, append: bool)
+fn reset_list<'a>() -> HashSet<Cow<'a, str>> {
+    let mut set = HashSet::new();
+
+    let handle = LIST.write().unwrap();
+    while let Ok(prev) = handle.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |prev| {
+        let Traced(_str, next_ptr) = unsafe { prev.as_ref() }?;
+        Some(next_ptr.load(Ordering::SeqCst))
+    }) {
+        let Traced(name, ptr) = unsafe { prev.as_ref() }.unwrap();
+        set.insert(Cow::Borrowed(name.clone()));
+        ptr.store(std::ptr::null::<Traced>() as *mut Traced, Ordering::SeqCst);
+    }
+
+    set
+}
+
+fn export_traces<F>(path_buf_init: F, append: bool)
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
-    let handle = NODES.lock().unwrap();
-    if let Some(ref set) = *handle {
-        let path_buf = get_dynamic_path(true);
+    let path_buf = get_dynamic_path(true);
+    let mut traces = reset_list();
 
-        let mut all = HashSet::new();
-
-        set.iter().for_each(|Traced(node, _)| {
-            // Append node to acc
-            all.insert(node.to_string());
-        });
-
-        #[cfg(unix)]
-        {
-            use std::process::id;
-
-            let pid = id();
-            let path_child_traces = get_process_traces_path(path_buf.clone(), &pid);
-            if path_child_traces.is_file() {
-                read_to_string(path_child_traces)
-                    .unwrap()
-                    .lines()
-                    .for_each(|l| {
-                        all.insert(l.to_string());
-                    });
-            }
+    #[cfg(unix)]
+    {
+        use std::process::id;
+        let pid = id();
+        let path_child_traces = get_process_traces_path(path_buf.clone(), &pid);
+        if path_child_traces.is_file() {
+            read_to_string(path_child_traces)
+                .unwrap()
+                .lines()
+                .for_each(|l| {
+                    traces.insert(Cow::Owned(l.to_string()));
+                });
         }
-
-        let output = all.into_iter().fold(String::new(), |mut acc, node| {
-            acc.push_str(&node);
-            acc.push_str("\n");
-            acc
-        });
-
-        write_to_file(output, path_buf, path_buf_init, append);
     }
+
+    let output = traces.into_iter().fold(String::new(), |mut acc, node| {
+        acc.push_str(&node);
+        acc.push_str("\n");
+        acc
+    });
+
+    write_to_file(output, path_buf, path_buf_init, append);
 }

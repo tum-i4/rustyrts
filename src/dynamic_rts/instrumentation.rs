@@ -12,7 +12,7 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     trace!("Visiting {}", outer);
 
     let mut cache_str = None;
-    let mut cache_u8 = None;
+    let mut cache_tuple_of_str_and_ptr = None;
     let mut cache_ret = None;
 
     let attrs = &tcx.hir_crate(()).owners[tcx
@@ -58,7 +58,7 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         body.insert_post_main(tcx, &mut cache_ret, &mut None);
     }
 
-    body.insert_trace(tcx, &outer, &mut cache_str, &mut cache_u8, &mut cache_ret);
+    body.insert_trace(tcx, &outer, &mut cache_tuple_of_str_and_ptr, &mut cache_ret);
 
     #[cfg(unix)]
     body.check_calls_to_exit(tcx, &mut cache_ret);
