@@ -1,6 +1,6 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, output_format, url_mutants
+from rustyrts.mutants.plots._scripts.labels import get_labels_mutants, output_format, url_mutants
 from rustyrts.util.plotter import boxplot
 
 y_label = "absolute number of tests"

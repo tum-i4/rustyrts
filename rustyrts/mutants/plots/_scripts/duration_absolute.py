@@ -1,6 +1,6 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import get_labels_mutants, url_mutants, output_format
+from rustyrts.mutants.plots._scripts.labels import get_labels_mutants, url_mutants, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = "absolute e2e testing time [s]"

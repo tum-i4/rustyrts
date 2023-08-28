@@ -1,6 +1,6 @@
 import pandas as pd
 
-from rustyrts.git.plots.scripts.labels import get_labels_git, url_git, output_format
+from rustyrts.git.plots._scripts.labels import get_labels_git, url_git, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = "relative e2e testing time [%]"
@@ -18,4 +18,4 @@ df_static = pd.read_sql(
 
 df = pd.concat([df_dynamic, df_static])
 
-boxplot(df, labels, y_label, file, ["#E37222", "#A2AD00"])
+boxplot(df, labels, y_label, file, ["#E37222", "#A2AD00"], single_threaded=("single" in url_git))

@@ -7,4 +7,6 @@ SELECT testcase.*,
        testsuite.report_id
 FROM "TestCase" testcase,
      "TestSuite" testsuite
-WHERE testcase.suite_id = testsuite.id;
+WHERE testcase.suite_id = testsuite.id
+  AND testcase.status != 'IGNORED' -- filter ignored tests
+;

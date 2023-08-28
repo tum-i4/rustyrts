@@ -1,0 +1,116 @@
+
+   Compiling rayon v1.5.0 (/home/ge56poh/rustyrts/evaluation/projects/git_walk/rayon)
+   Compiling rayon-core v1.9.0 (/home/ge56poh/rustyrts/evaluation/projects/git_walk/rayon/rayon-core)
+    Finished test [unoptimized + debuginfo] target(s) in 1m 05s
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rayon-a0dbb6fc6423d00f)
+  Executable tests/chars.rs (target_dynamic/debug/deps/chars-697136ac76fadb64)
+  Executable tests/clones.rs (target_dynamic/debug/deps/clones-c462bcef2f42b566)
+  Executable tests/collect.rs (target_dynamic/debug/deps/collect-1f260f2979cd4557)
+  Executable tests/cross-pool.rs (target_dynamic/debug/deps/cross_pool-71da71465aa481cb)
+  Executable tests/debug.rs (target_dynamic/debug/deps/debug-ac05df41fa8376cd)
+  Executable tests/intersperse.rs (target_dynamic/debug/deps/intersperse-85a6004d18f4ae5f)
+  Executable tests/issue671.rs (target_dynamic/debug/deps/issue671-27d4bf561235f044)
+  Executable tests/issue671-unzip.rs (target_dynamic/debug/deps/issue671_unzip-1e5470fcf6ed3fe8)
+  Executable tests/iter_panic.rs (target_dynamic/debug/deps/iter_panic-6a512a28ecb47d04)
+  Executable tests/named-threads.rs (target_dynamic/debug/deps/named_threads-601b125eaaf711b3)
+  Executable tests/octillion.rs (target_dynamic/debug/deps/octillion-70345fc5f5d406c3)
+  Executable tests/producer_split_at.rs (target_dynamic/debug/deps/producer_split_at-c55f23ecda8712a2)
+  Executable tests/sort-panic-safe.rs (target_dynamic/debug/deps/sort_panic_safe-5db3c906ab4df742)
+  Executable tests/str.rs (target_dynamic/debug/deps/str-957c9a9f02a9c513)
+  Executable unittests examples/cpu_monitor.rs (target_dynamic/debug/examples/cpu_monitor-204f23717cfc77d1)
+Nodes that have changed:
+core::Option::<T>::get_or_insert, core::Option::<T>::unwrap_unchecked, rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}
+
+#Tests that have been found: 288
+
+#Tests with traces:: 287
+
+Affected tests:
+chars::closed_correctness: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_adaptors: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+collect::collect_drop_on_unwind: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+intersperse::check_intersperse: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+issue671::type_length_limit: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+issue671_unzip::type_length_limit: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+iter_panic::iter_panic: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+named_threads::named_threads: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+octillion::find_first_octillion: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::collect::test::left_panics: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_repeat_unbounded: no traces
+sort_panic_safe::sort_panic_safe: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+str::execute_strings: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+
+   Compiling rayon v1.5.0 (/home/ge56poh/rustyrts/evaluation/projects/git_walk/rayon)
+    Finished test [unoptimized + debuginfo] target(s) in 8.59s
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rayon-a0dbb6fc6423d00f)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "iter::collect::test::left_panics" }
+{ "type": "test", "name": "iter::collect::test::left_panics", "event": "ok", "exec_time": 0.522720842 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 1, "measured": 0, "filtered_out": 185, "exec_time": 0.523486305 }
+     Running tests/chars.rs (target_dynamic/debug/deps/chars-697136ac76fadb64)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "closed_correctness" }
+{ "type": "test", "name": "closed_correctness", "event": "ok", "exec_time": 0.110925994 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 1, "exec_time": 0.111163268 }
+     Running tests/clones.rs (target_dynamic/debug/deps/clones-c462bcef2f42b566)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "clone_adaptors" }
+{ "type": "test", "name": "clone_adaptors", "event": "ok", "exec_time": 0.566288707 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 18, "exec_time": 0.566591377 }
+     Running tests/collect.rs (target_dynamic/debug/deps/collect-1f260f2979cd4557)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "collect_drop_on_unwind" }
+{ "type": "test", "name": "collect_drop_on_unwind", "event": "ok", "exec_time": 0.511884382 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 1, "exec_time": 0.512234738 }
+     Running tests/cross-pool.rs (target_dynamic/debug/deps/cross_pool-71da71465aa481cb)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 1, "exec_time": 0.000056709 }
+     Running tests/debug.rs (target_dynamic/debug/deps/debug-ac05df41fa8376cd)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 20, "exec_time": 0.000099456 }
+     Running tests/intersperse.rs (target_dynamic/debug/deps/intersperse-85a6004d18f4ae5f)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "check_intersperse" }
+{ "type": "test", "name": "check_intersperse", "event": "ok", "exec_time": 0.398637129 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 4, "exec_time": 0.398889424 }
+     Running tests/issue671.rs (target_dynamic/debug/deps/issue671-27d4bf561235f044)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "type_length_limit" }
+{ "type": "test", "name": "type_length_limit", "event": "ok", "exec_time": 0.406792145 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.407009907 }
+     Running tests/issue671-unzip.rs (target_dynamic/debug/deps/issue671_unzip-1e5470fcf6ed3fe8)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "type_length_limit" }
+{ "type": "test", "name": "type_length_limit", "event": "ok", "exec_time": 0.432669875 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.432916117 }
+     Running tests/iter_panic.rs (target_dynamic/debug/deps/iter_panic-6a512a28ecb47d04)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "iter_panic" }
+{ "type": "test", "name": "iter_panic", "event": "ok", "exec_time": 0.333479007 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 1, "exec_time": 0.333746208 }
+     Running tests/named-threads.rs (target_dynamic/debug/deps/named_threads-601b125eaaf711b3)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "named_threads" }
+{ "type": "test", "name": "named_threads", "event": "ok", "exec_time": 0.336759317 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.337014562 }
+     Running tests/octillion.rs (target_dynamic/debug/deps/octillion-70345fc5f5d406c3)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "find_first_octillion" }
+{ "type": "test", "name": "find_first_octillion", "event": "ok", "exec_time": 0.431879308 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 10, "exec_time": 0.432107137 }
+     Running tests/producer_split_at.rs (target_dynamic/debug/deps/producer_split_at-c55f23ecda8712a2)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 33, "exec_time": 0.000114365 }
+     Running tests/sort-panic-safe.rs (target_dynamic/debug/deps/sort_panic_safe-5db3c906ab4df742)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "sort_panic_safe" }
+{ "type": "test", "name": "sort_panic_safe", "event": "ok", "exec_time": 10.187350785 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 10.187624731 }
+     Running tests/str.rs (target_dynamic/debug/deps/str-957c9a9f02a9c513)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "execute_strings" }
+{ "type": "test", "name": "execute_strings", "event": "ok", "exec_time": 0.518470578 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 1, "exec_time": 0.518685116 }
+     Running unittests examples/cpu_monitor.rs (target_dynamic/debug/examples/cpu_monitor-204f23717cfc77d1)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.0000643 }

@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-from rustyrts.mutants.plots.scripts.labels import url_mutants, get_labels_mutants
+from rustyrts.mutants.plots._scripts.labels import url_mutants, get_labels_mutants
 
 table_ddl = """
 create sequence "AnalysisTestsNotSelected_id_seq"

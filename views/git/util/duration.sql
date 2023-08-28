@@ -19,6 +19,6 @@ SELECT r.path,
        ROUND(CAST(stddev(t.static_duration / t.retest_all_duration) as numeric), 2)  as static_stddev_relative
 
 FROM testreport_extended t
-         join "Commit" C on t.repo_id = C.repo_id
+         join "Commit" c on t.commit = c.id
          join "Repository" r on r.id = c.repo_id
 GROUP BY r.id);

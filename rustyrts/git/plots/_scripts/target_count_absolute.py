@@ -1,6 +1,6 @@
 import pandas as pd
 
-from rustyrts.git.plots.scripts.labels import url_git, get_labels_git, output_format
+from rustyrts.git.plots._scripts.labels import url_git, get_labels_git, output_format
 from rustyrts.util.plotter import boxplot
 
 y_label = "absolute number of tests"
@@ -41,7 +41,9 @@ df_static_integration = pd.read_sql(
 df_dynamic = pd.concat([df_retest_all_unit, df_retest_all_integration, df_dynamic_unit, df_dynamic_integration])
 df_static = pd.concat([df_retest_all_unit, df_retest_all_integration, df_static_unit, df_static_integration])
 
-boxplot(df_dynamic, labels, y_label, file + "_dynamic" + output_format, ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"])
-boxplot(df_static, labels, y_label, file + "_static" + output_format, ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"])
+boxplot(df_dynamic, labels, y_label, file + "_dynamic" + output_format, ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
+        single_threaded=("single" in url_git))
+boxplot(df_static, labels, y_label, file + "_static" + output_format, ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
+        single_threaded=("single" in url_git))
 
-#boxplot(df, labels, y_label, file, ["#DAD7CB", "#E37222", "#A2AD00"])
+# boxplot(df, labels, y_label, file, ["#DAD7CB", "#E37222", "#A2AD00"])

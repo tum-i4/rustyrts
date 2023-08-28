@@ -1,6 +1,6 @@
 import pandas as pd
 
-from rustyrts.git.plots.scripts.labels import get_labels_git, url_git, output_format
+from rustyrts.git.plots._scripts.labels import get_labels_git, url_git, output_format
 from rustyrts.util.plotter import boxplot, stripplot
 
 y_label = 'Tests that have been selected'
@@ -57,7 +57,7 @@ df_2 = df[(df["repository"].isin(filter_special))]
 
 #stripplot(df, labels, y_label, file, ["#E37222"], hue='algorithm')
 stripplot(df_1, labels1, y_label, file + "_1" + output_format,
-          ["#E37222"], hue='algorithm', figsize=(18, 15), legend_anchor=(0.3,0.9,0.7,0.1))
+          ["#E37222"], hue='algorithm', figsize=(18, 15), legend_anchor=(0.3,0.9,0.7,0.1), single_threaded=("single" in url_git))
 stripplot(df_2, labels2, "", file + "_2" + output_format,["#E37222"],
           hue='algorithm', figsize=(3, 15),
           legend=False)

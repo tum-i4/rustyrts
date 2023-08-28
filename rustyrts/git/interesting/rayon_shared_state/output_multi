@@ -1,0 +1,608 @@
+   Compiling rayon v1.5.0 (/home/ge56poh/rustyrts/evaluation/projects/git_walk/rayon)
+   Compiling rayon-core v1.9.0 (/home/ge56poh/rustyrts/evaluation/projects/git_walk/rayon/rayon-core)
+    Finished test [unoptimized + debuginfo] target(s) in 25.36s
+  Executable unittests src/lib.rs (target_dynamic/debug/deps/rayon-207877767f9f28e8)
+  Executable tests/chars.rs (target_dynamic/debug/deps/chars-736af8cd2867d5c6)
+  Executable tests/clones.rs (target_dynamic/debug/deps/clones-7db73bd0c48aff25)
+  Executable tests/collect.rs (target_dynamic/debug/deps/collect-1a0a739d974bfa6c)
+  Executable tests/cross-pool.rs (target_dynamic/debug/deps/cross_pool-6db92374d14fbd3f)
+  Executable tests/debug.rs (target_dynamic/debug/deps/debug-254c7106ced53ce8)
+  Executable tests/intersperse.rs (target_dynamic/debug/deps/intersperse-aac960f8653bb72b)
+  Executable tests/issue671.rs (target_dynamic/debug/deps/issue671-fbf2062d391f8884)
+  Executable tests/issue671-unzip.rs (target_dynamic/debug/deps/issue671_unzip-d6d8804eca9eab91)
+  Executable tests/iter_panic.rs (target_dynamic/debug/deps/iter_panic-be104a2eb06eec24)
+  Executable tests/named-threads.rs (target_dynamic/debug/deps/named_threads-28b6d463c71e2e84)
+  Executable tests/octillion.rs (target_dynamic/debug/deps/octillion-70a542375e20aae9)
+  Executable tests/producer_split_at.rs (target_dynamic/debug/deps/producer_split_at-73e98c4eb3acb1f8)
+  Executable tests/sort-panic-safe.rs (target_dynamic/debug/deps/sort_panic_safe-64644ca74f7edd90)
+  Executable tests/str.rs (target_dynamic/debug/deps/str-0dc33503f753a8c7)
+  Executable unittests examples/cpu_monitor.rs (target_dynamic/debug/examples/cpu_monitor-fe26dad8d7e0f466)
+Nodes that have changed:
+core::Option::<T>::get_or_insert, core::Option::<T>::unwrap_unchecked, rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}
+
+#Tests that have been found: 288
+
+#Tests with traces:: 287
+
+Affected tests:
+chars::closed_correctness: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+chars::half_open_correctness: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+clones::clone_adaptors: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_binary_heap: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_btree_map: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_btree_set: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_hash_map: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_hash_set: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_linked_list: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+clones::clone_multizip: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_range: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_range_inclusive: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+clones::clone_repeat: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_splitter: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+clones::clone_str: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+clones::clone_vec: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+clones::clone_vec_deque: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+collect::collect_drop_on_unwind: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+collect::collect_drop_on_unwind_zst: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+intersperse::check_intersperse: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+intersperse::check_intersperse_again: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+intersperse::check_intersperse_producer: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+intersperse::check_intersperse_rev: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+intersperse::check_intersperse_unindexed: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+issue671::type_length_limit: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+issue671_unzip::type_length_limit: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+iter_panic::iter_panic: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+named_threads::named_threads: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+octillion::find_first_octillion: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+octillion::find_first_octillion_flat: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+octillion::find_first_octillion_inclusive: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::collect::test::left_panics: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::collect::test::right_panics: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_binary_heap: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_btree_map: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_btree_set: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_chain: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_chunks: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_chunks_empty: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_chunks_even_size: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_chunks_mut: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_chunks_uneven: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_cmp_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_cmp_gt_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_cmp_gt_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_cmp_lengths: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_cmp_lt_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_cmp_lt_to_seq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_cmp_rng_to_seq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_cmp_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_count: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_drops: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_either: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_either_extend: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_empty: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_empty_flat_map_sum: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_enumerate: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_enumerate_rev: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_eq_direct: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_eq_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_extend_heap: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_extend_items: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_extend_pairs: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_find_is_present: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_find_not_present: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_flat_map_nested_ranges: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_flatten_vec: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_flatten_vec_empty: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_fold_with: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_for_each_with: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_ge_equal_direct: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_ge_equal_to_seq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_ge_greater_direct: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_ge_greater_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_gt_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_gt_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_hash_map: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_hash_set: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_increment: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_inspect: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_interleave_eq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_interleave_shortest: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_interleave_uneven: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_le_equal_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_le_equal_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_le_less_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_le_less_to_seq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_lengths: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_linked_list: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_lt_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_lt_to_seq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_map_with: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_move: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_ne_to_seq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_once: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_options: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partial_cmp_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partial_cmp_gt_direct: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_partial_cmp_gt_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partial_cmp_late_nan_direct: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_partial_cmp_late_nane_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partial_cmp_lt_direct: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_partial_cmp_lt_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partial_cmp_none_direct: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partial_cmp_none_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partial_cmp_rng_to_seq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_partial_cmp_to_seq: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_partition: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_partition_map: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_repeat_find_any: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_repeat_take: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_repeat_unbounded: no traces
+rayon::iter::test::check_repeat_zip: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_repeatn_zip_left: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_repeatn_zip_right: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_results: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_rev: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_skip: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_slice_split: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_slice_split_mut: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_split: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_step_by: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_step_by_rev: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_step_by_unaligned: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_sum_filtered_ints: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_sum_filtermap_ints: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_take: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_unzip: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_unzip_into_vecs: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_update: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_vec_deque: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_while_some: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_windows: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_zip: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_zip_eq: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_zip_eq_into_mut_par_iter: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_zip_eq_into_par_iter: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_zip_eq_range: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::check_zip_into_mut_par_iter: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_zip_into_par_iter: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::check_zip_range: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::execute: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::execute_cloned: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::execute_pseudo_indexed_range: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::execute_range: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::execute_unindexed_range: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::find_any: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::find_first_or_last: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::find_map_first_or_last_or_any: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::fold_is_full: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::fold_map_reduce: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::map_reduce: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::map_reduce_with: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::map_sum: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::min_max: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::min_max_by: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::min_max_by_key: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::par_iter_collect_binaryheap: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect_btreemap: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect_btreeset: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect_cows: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect_hashmap: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::par_iter_collect_hashset: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::par_iter_collect_linked_list: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect_linked_list_flat_map_filter: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::iter::test::par_iter_collect_option: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect_result: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_collect_vecdeque: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::par_iter_unindexed_flat_map: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::iter::test::scope_mix: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::slice::test::test_par_sort: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+rayon::slice::test::test_par_sort_stability: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+rayon::slice::test::test_par_sort_unstable: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+sort_panic_safe::sort_panic_safe: < "rayon_core::set_global_registry::{closure#0}, rayon_core::set_global_registry::{closure#0}::{closure#0}" >
+str::execute_strings: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+str::execute_strings_split: < "rayon_core::set_global_registry::{closure#0}::{closure#0}, rayon_core::set_global_registry::{closure#0}" >
+
+   Compiling rayon v1.5.0 (/home/ge56poh/rustyrts/evaluation/projects/git_walk/rayon)
+    Finished test [unoptimized + debuginfo] target(s) in 2.09s
+     Running unittests src/lib.rs (target_dynamic/debug/deps/rayon-207877767f9f28e8)
+{ "type": "suite", "event": "started", "test_count": 142 }
+{ "type": "test", "event": "started", "name": "iter::collect::test::left_panics" }
+{ "type": "test", "event": "started", "name": "iter::test::check_btree_set" }
+{ "type": "test", "event": "started", "name": "iter::test::check_chunks" }
+{ "type": "test", "event": "started", "name": "iter::test::check_chunks_uneven" }
+{ "type": "test", "event": "started", "name": "iter::test::check_chain" }
+{ "type": "test", "event": "started", "name": "iter::collect::test::right_panics" }
+{ "type": "test", "event": "started", "name": "iter::test::check_chunks_empty" }
+{ "type": "test", "event": "started", "name": "iter::test::check_chunks_mut" }
+{ "type": "test", "event": "started", "name": "iter::test::check_chunks_even_size" }
+{ "type": "test", "event": "started", "name": "iter::test::check_binary_heap" }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_btree_map" }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_gt_to_seq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_gt_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_lengths" }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_lt_direct" }
+{ "type": "test", "name": "iter::collect::test::left_panics", "event": "ok", "exec_time": 0.143980798 }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_lt_to_seq" }
+{ "type": "test", "name": "iter::test::check_chunks", "event": "ok", "exec_time": 0.142970124 }
+{ "type": "test", "name": "iter::test::check_cmp_gt_to_seq", "event": "ok", "exec_time": 0.12361039 }
+{ "type": "test", "name": "iter::test::check_chunks_empty", "event": "ok", "exec_time": 0.136339308 }
+{ "type": "test", "name": "iter::test::check_btree_set", "event": "ok", "exec_time": 0.143423601 }
+{ "type": "test", "event": "started", "name": "iter::test::check_drops" }
+{ "type": "test", "name": "iter::collect::test::right_panics", "event": "ok", "exec_time": 0.131013715 }
+{ "type": "test", "event": "started", "name": "iter::test::check_either" }
+{ "type": "test", "name": "iter::test::check_chain", "event": "ok", "exec_time": 0.141704414 }
+{ "type": "test", "name": "iter::test::check_chunks_uneven", "event": "ok", "exec_time": 0.142324431 }
+{ "type": "test", "event": "started", "name": "iter::test::check_empty" }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_rng_to_seq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_cmp_to_seq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_count" }
+{ "type": "test", "event": "started", "name": "iter::test::check_either_extend" }
+{ "type": "test", "name": "iter::test::check_cmp_lt_direct", "event": "ok", "exec_time": 0.175783906 }
+{ "type": "test", "event": "started", "name": "iter::test::check_empty_flat_map_sum" }
+{ "type": "test", "name": "iter::test::check_drops", "event": "ok", "exec_time": 0.038306561 }
+{ "type": "test", "event": "started", "name": "iter::test::check_enumerate" }
+{ "type": "test", "name": "iter::test::check_cmp_gt_direct", "event": "ok", "exec_time": 0.130468794 }
+{ "type": "test", "event": "started", "name": "iter::test::check_enumerate_rev" }
+{ "type": "test", "name": "iter::test::check_btree_map", "event": "ok", "exec_time": 0.166465519 }
+{ "type": "test", "name": "iter::test::check_either", "event": "ok", "exec_time": 0.037452069 }
+{ "type": "test", "name": "iter::test::check_binary_heap", "event": "ok", "exec_time": 0.132413286 }
+{ "type": "test", "event": "started", "name": "iter::test::check_eq_direct" }
+{ "type": "test", "name": "iter::test::check_chunks_even_size", "event": "ok", "exec_time": 0.129217368 }
+{ "type": "test", "event": "started", "name": "iter::test::check_extend_items" }
+{ "type": "test", "name": "iter::test::check_empty", "event": "ok", "exec_time": 0.036787265 }
+{ "type": "test", "event": "started", "name": "iter::test::check_extend_pairs" }
+{ "type": "test", "event": "started", "name": "iter::test::check_eq_to_seq" }
+{ "type": "test", "name": "iter::test::check_chunks_mut", "event": "ok", "exec_time": 0.17067143 }
+{ "type": "test", "event": "started", "name": "iter::test::check_find_is_present" }
+{ "type": "test", "name": "iter::test::check_cmp_lengths", "event": "ok", "exec_time": 0.169760587 }
+{ "type": "test", "event": "started", "name": "iter::test::check_find_not_present" }
+{ "type": "test", "event": "started", "name": "iter::test::check_extend_heap" }
+{ "type": "test", "name": "iter::test::check_cmp_lt_to_seq", "event": "ok", "exec_time": 0.039821119 }
+{ "type": "test", "event": "started", "name": "iter::test::check_flat_map_nested_ranges" }
+{ "type": "test", "name": "iter::test::check_cmp_direct", "event": "ok", "exec_time": 0.174181711 }
+{ "type": "test", "event": "started", "name": "iter::test::check_flatten_vec" }
+{ "type": "test", "name": "iter::test::check_extend_heap", "event": "ok", "exec_time": 0.05424684 }
+{ "type": "test", "name": "iter::test::check_either_extend", "event": "ok", "exec_time": 0.085640578 }
+{ "type": "test", "event": "started", "name": "iter::test::check_flatten_vec_empty" }
+{ "type": "test", "name": "iter::test::check_enumerate", "event": "ok", "exec_time": 0.059815644 }
+{ "type": "test", "event": "started", "name": "iter::test::check_fold_with" }
+{ "type": "test", "event": "started", "name": "iter::test::check_for_each_with" }
+{ "type": "test", "name": "iter::test::check_find_not_present", "event": "ok", "exec_time": 0.056626505 }
+{ "type": "test", "event": "started", "name": "iter::test::check_ge_equal_direct" }
+{ "type": "test", "name": "iter::test::check_find_is_present", "event": "ok", "exec_time": 0.05033386 }
+{ "type": "test", "event": "started", "name": "iter::test::check_ge_equal_to_seq" }
+{ "type": "test", "name": "iter::test::check_eq_to_seq", "event": "ok", "exec_time": 0.055220213 }
+{ "type": "test", "name": "iter::test::check_eq_direct", "event": "ok", "exec_time": 0.051575047 }
+{ "type": "test", "event": "started", "name": "iter::test::check_ge_greater_direct" }
+{ "type": "test", "name": "iter::test::check_extend_pairs", "event": "ok", "exec_time": 0.058534081 }
+{ "type": "test", "name": "iter::test::check_flat_map_nested_ranges", "event": "ok", "exec_time": 0.054655675 }
+{ "type": "test", "event": "started", "name": "iter::test::check_ge_greater_to_seq" }
+{ "type": "test", "name": "iter::test::check_flatten_vec", "event": "ok", "exec_time": 0.052785094 }
+{ "type": "test", "name": "iter::test::check_empty_flat_map_sum", "event": "ok", "exec_time": 0.060976735 }
+{ "type": "test", "event": "started", "name": "iter::test::check_hash_set" }
+{ "type": "test", "event": "started", "name": "iter::test::check_gt_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_gt_to_seq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_hash_map" }
+{ "type": "test", "name": "iter::test::check_enumerate_rev", "event": "ok", "exec_time": 0.057164283 }
+{ "type": "test", "event": "started", "name": "iter::test::check_increment" }
+{ "type": "test", "name": "iter::test::check_extend_items", "event": "ok", "exec_time": 0.062311272 }
+{ "type": "test", "event": "started", "name": "iter::test::check_inspect" }
+{ "type": "test", "name": "iter::test::check_count", "event": "ok", "exec_time": 0.0345341 }
+{ "type": "test", "event": "started", "name": "iter::test::check_interleave_eq" }
+{ "type": "test", "name": "iter::test::check_fold_with", "event": "ok", "exec_time": 0.019563684 }
+{ "type": "test", "event": "started", "name": "iter::test::check_interleave_shortest" }
+{ "type": "test", "name": "iter::test::check_cmp_to_seq", "event": "ok", "exec_time": 0.035681423 }
+{ "type": "test", "name": "iter::test::check_flatten_vec_empty", "event": "ok", "exec_time": 0.018772927 }
+{ "type": "test", "event": "started", "name": "iter::test::check_le_equal_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_interleave_uneven" }
+{ "type": "test", "name": "iter::test::check_hash_set", "event": "ok", "exec_time": 0.004201086 }
+{ "type": "test", "name": "iter::test::check_cmp_rng_to_seq", "event": "ok", "exec_time": 0.12154093 }
+{ "type": "test", "event": "started", "name": "iter::test::check_le_less_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_le_equal_to_seq" }
+{ "type": "test", "name": "iter::test::check_ge_equal_to_seq", "event": "ok", "exec_time": 0.015877606 }
+{ "type": "test", "event": "started", "name": "iter::test::check_le_less_to_seq" }
+{ "type": "test", "name": "iter::test::check_ge_equal_direct", "event": "ok", "exec_time": 0.088646032 }
+{ "type": "test", "name": "iter::test::check_gt_to_seq", "event": "ok", "exec_time": 0.014476192 }
+{ "type": "test", "name": "iter::test::check_increment", "event": "ok", "exec_time": 0.078984625 }
+{ "type": "test", "name": "iter::test::check_hash_map", "event": "ok", "exec_time": 0.015801983 }
+{ "type": "test", "name": "iter::test::check_inspect", "event": "ok", "exec_time": 0.080955213 }
+{ "type": "test", "event": "started", "name": "iter::test::check_lt_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_map_with" }
+{ "type": "test", "name": "iter::test::check_ge_greater_to_seq", "event": "ok", "exec_time": 0.013191392 }
+{ "type": "test", "name": "iter::test::check_le_equal_to_seq", "event": "ok", "exec_time": 0.078714057 }
+{ "type": "test", "name": "iter::test::check_for_each_with", "event": "ok", "exec_time": 0.087332747 }
+{ "type": "test", "event": "started", "name": "iter::test::check_once" }
+{ "type": "test", "name": "iter::test::check_gt_direct", "event": "ok", "exec_time": 0.086334947 }
+{ "type": "test", "event": "started", "name": "iter::test::check_lengths" }
+{ "type": "test", "event": "started", "name": "iter::test::check_linked_list" }
+{ "type": "test", "name": "iter::test::check_interleave_eq", "event": "ok", "exec_time": 0.080448364 }
+{ "type": "test", "event": "started", "name": "iter::test::check_lt_to_seq" }
+{ "type": "test", "name": "iter::test::check_le_less_direct", "event": "ok", "exec_time": 0.075938947 }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_gt_direct" }
+{ "type": "test", "name": "iter::test::check_ge_greater_direct", "event": "ok", "exec_time": 0.087833511 }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_gt_to_seq" }
+{ "type": "test", "name": "iter::test::check_interleave_shortest", "event": "ok", "exec_time": 0.080129556 }
+{ "type": "test", "name": "iter::test::check_le_equal_direct", "event": "ok", "exec_time": 0.079895677 }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_late_nane_to_seq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_ne_to_seq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_options" }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_late_nan_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_move" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_late_nan_direct", "event": "ok", "exec_time": 0.03011046 }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_lt_direct" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_late_nane_to_seq", "event": "ok", "exec_time": 0.029467478 }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_lt_to_seq" }
+{ "type": "test", "name": "iter::test::check_move", "event": "ok", "exec_time": 0.029549313 }
+{ "type": "test", "name": "iter::test::check_partial_cmp_gt_direct", "event": "ok", "exec_time": 0.034159626 }
+{ "type": "test", "name": "iter::test::check_lt_direct", "event": "ok", "exec_time": 0.039002363 }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_rng_to_seq" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_gt_to_seq", "event": "ok", "exec_time": 0.029796388 }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_none_direct" }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_none_to_seq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_partial_cmp_to_seq" }
+{ "type": "test", "name": "iter::test::check_linked_list", "event": "ok", "exec_time": 0.036987167 }
+{ "type": "test", "name": "iter::test::check_interleave_uneven", "event": "ok", "exec_time": 0.120971493 }
+{ "type": "test", "name": "iter::test::check_lt_to_seq", "event": "ok", "exec_time": 0.033831614 }
+{ "type": "test", "name": "iter::test::check_once", "event": "ok", "exec_time": 0.038056456 }
+{ "type": "test", "event": "started", "name": "iter::test::check_repeat_take" }
+{ "type": "test", "event": "started", "name": "iter::test::check_partition" }
+{ "type": "test", "event": "started", "name": "iter::test::check_partition_map" }
+{ "type": "test", "event": "started", "name": "iter::test::check_repeat_find_any" }
+{ "type": "test", "name": "iter::test::check_map_with", "event": "ok", "exec_time": 0.080627153 }
+{ "type": "test", "event": "started", "name": "iter::test::check_repeat_zip" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_direct", "event": "ok", "exec_time": 0.060184866 }
+{ "type": "test", "event": "started", "name": "iter::test::check_repeatn_zip_left" }
+{ "type": "test", "name": "iter::test::check_repeat_find_any", "event": "ok", "exec_time": 0.028022632 }
+{ "type": "test", "name": "iter::test::check_ne_to_seq", "event": "ok", "exec_time": 0.056778663 }
+{ "type": "test", "event": "started", "name": "iter::test::check_results" }
+{ "type": "test", "name": "iter::test::check_options", "event": "ok", "exec_time": 0.032127685 }
+{ "type": "test", "event": "started", "name": "iter::test::check_rev" }
+{ "type": "test", "event": "started", "name": "iter::test::check_repeatn_zip_right" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_none_direct", "event": "ok", "exec_time": 0.02933056 }
+{ "type": "test", "name": "iter::test::check_partial_cmp_lt_to_seq", "event": "ok", "exec_time": 0.033511991 }
+{ "type": "test", "name": "iter::test::check_partial_cmp_lt_direct", "event": "ok", "exec_time": 0.025324088 }
+{ "type": "test", "event": "started", "name": "iter::test::check_slice_split_mut" }
+{ "type": "test", "event": "started", "name": "iter::test::check_skip" }
+{ "type": "test", "name": "iter::test::check_le_less_to_seq", "event": "ok", "exec_time": 0.081954158 }
+{ "type": "test", "event": "started", "name": "iter::test::check_slice_split" }
+{ "type": "test", "event": "started", "name": "iter::test::check_split" }
+{ "type": "test", "name": "iter::test::check_partition_map", "event": "ok", "exec_time": 0.028857017 }
+{ "type": "test", "event": "started", "name": "iter::test::check_step_by" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_to_seq", "event": "ok", "exec_time": 0.030454427 }
+{ "type": "test", "event": "started", "name": "iter::test::check_step_by_rev" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_none_to_seq", "event": "ok", "exec_time": 0.047943409 }
+{ "type": "test", "event": "started", "name": "iter::test::check_step_by_unaligned" }
+{ "type": "test", "name": "iter::test::check_repeat_take", "event": "ok", "exec_time": 0.025304059 }
+{ "type": "test", "event": "started", "name": "iter::test::check_sum_filtered_ints" }
+{ "type": "test", "name": "iter::test::check_partition", "event": "ok", "exec_time": 0.045985479 }
+{ "type": "test", "event": "started", "name": "iter::test::check_sum_filtermap_ints" }
+{ "type": "test", "name": "iter::test::check_repeat_zip", "event": "ok", "exec_time": 0.005975627 }
+{ "type": "test", "event": "started", "name": "iter::test::check_take" }
+{ "type": "test", "name": "iter::test::check_repeatn_zip_right", "event": "ok", "exec_time": 0.313271991 }
+{ "type": "test", "event": "started", "name": "iter::test::check_unzip" }
+{ "type": "test", "name": "iter::test::check_split", "event": "ok", "exec_time": 0.313312404 }
+{ "type": "test", "name": "iter::test::check_skip", "event": "ok", "exec_time": 0.317259738 }
+{ "type": "test", "name": "iter::test::check_results", "event": "ok", "exec_time": 0.317283037 }
+{ "type": "test", "name": "iter::test::check_repeatn_zip_left", "event": "ok", "exec_time": 0.315680449 }
+{ "type": "test", "event": "started", "name": "iter::test::check_unzip_into_vecs" }
+{ "type": "test", "event": "started", "name": "iter::test::check_update" }
+{ "type": "test", "event": "started", "name": "iter::test::check_vec_deque" }
+{ "type": "test", "event": "started", "name": "iter::test::check_while_some" }
+{ "type": "test", "name": "iter::test::check_step_by", "event": "ok", "exec_time": 0.293246773 }
+{ "type": "test", "event": "started", "name": "iter::test::check_windows" }
+{ "type": "test", "name": "iter::test::check_step_by_rev", "event": "ok", "exec_time": 0.306336362 }
+{ "type": "test", "name": "iter::test::check_sum_filtered_ints", "event": "ok", "exec_time": 0.302769637 }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip" }
+{ "type": "test", "name": "iter::test::check_step_by_unaligned", "event": "ok", "exec_time": 0.304502041 }
+{ "type": "test", "name": "iter::test::check_sum_filtermap_ints", "event": "ok", "exec_time": 0.301545204 }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip_eq_into_par_iter" }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip_eq" }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip_eq_into_mut_par_iter" }
+{ "type": "test", "name": "iter::test::check_rev", "event": "ok", "exec_time": 0.313272332 }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip_eq_range" }
+{ "type": "test", "name": "iter::test::check_partial_cmp_rng_to_seq", "event": "ok", "exec_time": 0.38104612 }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip_into_mut_par_iter" }
+{ "type": "test", "name": "iter::test::check_slice_split_mut", "event": "ok", "exec_time": 0.336898849 }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip_into_par_iter" }
+{ "type": "test", "name": "iter::test::check_take", "event": "ok", "exec_time": 0.299914437 }
+{ "type": "test", "event": "started", "name": "iter::test::check_zip_range" }
+{ "type": "test", "name": "iter::test::check_slice_split", "event": "ok", "exec_time": 0.337383889 }
+{ "type": "test", "event": "started", "name": "iter::test::execute" }
+{ "type": "test", "name": "iter::test::check_zip", "event": "ok", "exec_time": 0.156840748 }
+{ "type": "test", "event": "started", "name": "iter::test::execute_cloned" }
+{ "type": "test", "name": "iter::test::check_zip_eq_into_mut_par_iter", "event": "ok", "exec_time": 0.160818428 }
+{ "type": "test", "event": "started", "name": "iter::test::execute_pseudo_indexed_range" }
+{ "type": "test", "name": "iter::test::check_zip_eq_range", "event": "ok", "exec_time": 0.156823465 }
+{ "type": "test", "name": "iter::test::check_zip_range", "event": "ok", "exec_time": 0.146690107 }
+{ "type": "test", "name": "iter::test::check_update", "event": "ok", "exec_time": 0.160810597 }
+{ "type": "test", "event": "started", "name": "iter::test::find_any" }
+{ "type": "test", "name": "iter::test::check_zip_eq_into_par_iter", "event": "ok", "exec_time": 0.155787277 }
+{ "type": "test", "name": "iter::test::check_zip_eq", "event": "ok", "exec_time": 0.160823587 }
+{ "type": "test", "event": "started", "name": "iter::test::find_map_first_or_last_or_any" }
+{ "type": "test", "event": "started", "name": "iter::test::execute_unindexed_range" }
+{ "type": "test", "name": "iter::test::check_while_some", "event": "ok", "exec_time": 0.160860742 }
+{ "type": "test", "name": "iter::test::check_vec_deque", "event": "ok", "exec_time": 0.156828811 }
+{ "type": "test", "name": "iter::test::check_windows", "event": "ok", "exec_time": 0.160839009 }
+{ "type": "test", "event": "started", "name": "iter::test::map_reduce" }
+{ "type": "test", "name": "iter::test::check_unzip_into_vecs", "event": "ok", "exec_time": 0.160828076 }
+{ "type": "test", "event": "started", "name": "iter::test::find_first_or_last" }
+{ "type": "test", "event": "started", "name": "iter::test::execute_range" }
+{ "type": "test", "event": "started", "name": "iter::test::fold_is_full" }
+{ "type": "test", "event": "started", "name": "iter::test::fold_map_reduce" }
+{ "type": "test", "event": "started", "name": "iter::test::map_reduce_with" }
+{ "type": "test", "name": "iter::test::execute_pseudo_indexed_range", "event": "ok", "exec_time": 0.015926571 }
+{ "type": "test", "event": "started", "name": "iter::test::map_sum" }
+{ "type": "test", "name": "iter::test::check_zip_into_par_iter", "event": "ok", "exec_time": 0.169016247 }
+{ "type": "test", "event": "started", "name": "iter::test::min_max" }
+{ "type": "test", "name": "iter::test::check_zip_into_mut_par_iter", "event": "ok", "exec_time": 0.167300894 }
+{ "type": "test", "event": "started", "name": "iter::test::min_max_by" }
+{ "type": "test", "name": "iter::test::execute_range", "event": "ok", "exec_time": 0.016680801 }
+{ "type": "test", "name": "iter::test::execute", "event": "ok", "exec_time": 0.166474981 }
+{ "type": "test", "event": "started", "name": "iter::test::min_max_by_key" }
+{ "type": "test", "name": "iter::test::check_unzip", "event": "ok", "exec_time": 0.177962287 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect" }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_binaryheap" }
+{ "type": "test", "name": "iter::test::execute_unindexed_range", "event": "ok", "exec_time": 0.015317073 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_btreemap" }
+{ "type": "test", "name": "iter::test::map_reduce", "event": "ok", "exec_time": 0.014719048 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_btreeset" }
+{ "type": "test", "name": "iter::test::find_map_first_or_last_or_any", "event": "ok", "exec_time": 0.054984149 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_cows" }
+{ "type": "test", "name": "iter::test::find_any", "event": "ok", "exec_time": 0.053440953 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_hashmap" }
+{ "type": "test", "name": "iter::test::map_sum", "event": "ok", "exec_time": 0.037790938 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_hashset" }
+{ "type": "test", "name": "iter::test::execute_cloned", "event": "ok", "exec_time": 0.055171693 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_linked_list" }
+{ "type": "test", "name": "iter::test::par_iter_collect_binaryheap", "event": "ok", "exec_time": 0.037097877 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_linked_list_flat_map_filter" }
+{ "type": "test", "name": "iter::test::par_iter_collect_btreeset", "event": "ok", "exec_time": 0.018865172 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_option" }
+{ "type": "test", "name": "iter::test::par_iter_collect", "event": "ok", "exec_time": 0.036639581 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_result" }
+{ "type": "test", "name": "iter::test::fold_map_reduce", "event": "ok", "exec_time": 0.015277343 }
+{ "type": "test", "name": "iter::test::fold_is_full", "event": "ok", "exec_time": 0.015332699 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_unindexed_flat_map" }
+{ "type": "test", "name": "iter::test::find_first_or_last", "event": "ok", "exec_time": 0.178003471 }
+{ "type": "test", "name": "iter::test::map_reduce_with", "event": "ok", "exec_time": 0.055091927 }
+{ "type": "test", "event": "started", "name": "iter::test::scope_mix" }
+{ "type": "test", "name": "iter::test::par_iter_collect_option", "event": "ok", "exec_time": 0.092961789 }
+{ "type": "test", "name": "iter::test::par_iter_collect_hashmap", "event": "ok", "exec_time": 0.108665179 }
+{ "type": "test", "event": "started", "name": "slice::test::test_par_sort_unstable" }
+{ "type": "test", "name": "iter::test::par_iter_collect_btreemap", "event": "ok", "exec_time": 0.139266355 }
+{ "type": "test", "event": "started", "name": "iter::test::par_iter_collect_vecdeque" }
+{ "type": "test", "name": "iter::test::par_iter_collect_result", "event": "ok", "exec_time": 0.07740513 }
+{ "type": "test", "event": "started", "name": "slice::test::test_par_sort" }
+{ "type": "test", "event": "started", "name": "slice::test::test_par_sort_stability" }
+{ "type": "test", "name": "iter::test::par_iter_collect_hashset", "event": "ok", "exec_time": 0.112679824 }
+{ "type": "test", "name": "iter::test::par_iter_collect_linked_list", "event": "ok", "exec_time": 0.110811425 }
+{ "type": "test", "name": "iter::test::par_iter_collect_cows", "event": "ok", "exec_time": 0.107247452 }
+{ "type": "test", "name": "iter::test::scope_mix", "event": "ok", "exec_time": 0.080888535 }
+{ "type": "test", "name": "iter::test::par_iter_unindexed_flat_map", "event": "ok", "exec_time": 0.066409813 }
+{ "type": "test", "name": "iter::test::par_iter_collect_vecdeque", "event": "ok", "exec_time": 0.067984592 }
+{ "type": "test", "name": "iter::test::par_iter_collect_linked_list_flat_map_filter", "event": "ok", "exec_time": 0.496734405 }
+{ "type": "test", "name": "slice::test::test_par_sort_unstable", "event": "ok", "exec_time": 3.8224084400000002 }
+{ "type": "test", "name": "slice::test::test_par_sort", "event": "ok", "exec_time": 4.014030215 }
+{ "type": "test", "name": "iter::test::min_max", "event": "ok", "exec_time": 5.199792817 }
+{ "type": "test", "name": "iter::test::min_max_by", "event": "ok", "exec_time": 5.200364701 }
+{ "type": "test", "name": "iter::test::min_max_by_key", "event": "ok", "exec_time": 5.199440289 }
+{ "type": "test", "name": "iter::test::check_lengths", "event": "ok", "exec_time": 7.011090673 }
+{ "type": "test", "name": "slice::test::test_par_sort_stability", "event": "ok", "exec_time": 13.158012909 }
+{ "type": "suite", "event": "ok", "passed": 142, "failed": 0, "ignored": 1, "measured": 0, "filtered_out": 44, "exec_time": 14.312876071 }
+     Running tests/chars.rs (target_dynamic/debug/deps/chars-736af8cd2867d5c6)
+{ "type": "suite", "event": "started", "test_count": 2 }
+{ "type": "test", "event": "started", "name": "half_open_correctness" }
+{ "type": "test", "event": "started", "name": "closed_correctness" }
+{ "type": "test", "name": "half_open_correctness", "event": "ok", "exec_time": 0.227198217 }
+{ "type": "test", "name": "closed_correctness", "event": "ok", "exec_time": 0.226406646 }
+{ "type": "suite", "event": "ok", "passed": 2, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.31395831 }
+     Running tests/clones.rs (target_dynamic/debug/deps/clones-7db73bd0c48aff25)
+{ "type": "suite", "event": "started", "test_count": 15 }
+{ "type": "test", "event": "started", "name": "clone_adaptors" }
+{ "type": "test", "event": "started", "name": "clone_btree_set" }
+{ "type": "test", "event": "started", "name": "clone_linked_list" }
+{ "type": "test", "event": "started", "name": "clone_binary_heap" }
+{ "type": "test", "event": "started", "name": "clone_hash_map" }
+{ "type": "test", "event": "started", "name": "clone_hash_set" }
+{ "type": "test", "event": "started", "name": "clone_btree_map" }
+{ "type": "test", "event": "started", "name": "clone_multizip" }
+{ "type": "test", "event": "started", "name": "clone_range" }
+{ "type": "test", "event": "started", "name": "clone_range_inclusive" }
+{ "type": "test", "event": "started", "name": "clone_repeat" }
+{ "type": "test", "event": "started", "name": "clone_splitter" }
+{ "type": "test", "event": "started", "name": "clone_str" }
+{ "type": "test", "event": "started", "name": "clone_vec" }
+{ "type": "test", "event": "started", "name": "clone_vec_deque" }
+{ "type": "test", "name": "clone_repeat", "event": "ok", "exec_time": 0.280971103 }
+{ "type": "test", "name": "clone_range_inclusive", "event": "ok", "exec_time": 0.286652711 }
+{ "type": "test", "name": "clone_btree_set", "event": "ok", "exec_time": 0.299889459 }
+{ "type": "test", "name": "clone_binary_heap", "event": "ok", "exec_time": 0.298769213 }
+{ "type": "test", "name": "clone_splitter", "event": "ok", "exec_time": 0.284925254 }
+{ "type": "test", "name": "clone_range", "event": "ok", "exec_time": 0.26361512 }
+{ "type": "test", "name": "clone_linked_list", "event": "ok", "exec_time": 0.299523614 }
+{ "type": "test", "name": "clone_hash_set", "event": "ok", "exec_time": 0.273305529 }
+{ "type": "test", "name": "clone_hash_map", "event": "ok", "exec_time": 0.298382822 }
+{ "type": "test", "name": "clone_btree_map", "event": "ok", "exec_time": 0.282762743 }
+{ "type": "test", "name": "clone_adaptors", "event": "ok", "exec_time": 0.304135789 }
+{ "type": "test", "name": "clone_str", "event": "ok", "exec_time": 0.288151264 }
+{ "type": "test", "name": "clone_vec", "event": "ok", "exec_time": 0.282149054 }
+{ "type": "test", "name": "clone_vec_deque", "event": "ok", "exec_time": 0.284878173 }
+{ "type": "test", "name": "clone_multizip", "event": "ok", "exec_time": 0.28700302 }
+{ "type": "suite", "event": "ok", "passed": 15, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 4, "exec_time": 0.308344912 }
+     Running tests/collect.rs (target_dynamic/debug/deps/collect-1a0a739d974bfa6c)
+{ "type": "suite", "event": "started", "test_count": 2 }
+{ "type": "test", "event": "started", "name": "collect_drop_on_unwind" }
+{ "type": "test", "event": "started", "name": "collect_drop_on_unwind_zst" }
+{ "type": "test", "name": "collect_drop_on_unwind_zst", "event": "ok", "exec_time": 0.391663978 }
+{ "type": "test", "name": "collect_drop_on_unwind", "event": "ok", "exec_time": 0.392238365 }
+{ "type": "suite", "event": "ok", "passed": 2, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.939852127 }
+     Running tests/cross-pool.rs (target_dynamic/debug/deps/cross_pool-6db92374d14fbd3f)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 1, "exec_time": 0.001185895 }
+     Running tests/debug.rs (target_dynamic/debug/deps/debug-254c7106ced53ce8)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 20, "exec_time": 0.00133025 }
+     Running tests/intersperse.rs (target_dynamic/debug/deps/intersperse-aac960f8653bb72b)
+{ "type": "suite", "event": "started", "test_count": 5 }
+{ "type": "test", "event": "started", "name": "check_intersperse" }
+{ "type": "test", "event": "started", "name": "check_intersperse_rev" }
+{ "type": "test", "event": "started", "name": "check_intersperse_again" }
+{ "type": "test", "event": "started", "name": "check_intersperse_producer" }
+{ "type": "test", "event": "started", "name": "check_intersperse_unindexed" }
+{ "type": "test", "name": "check_intersperse", "event": "ok", "exec_time": 0.560588391 }
+{ "type": "test", "name": "check_intersperse_rev", "event": "ok", "exec_time": 0.560169506 }
+{ "type": "test", "name": "check_intersperse_producer", "event": "ok", "exec_time": 0.559571874 }
+{ "type": "test", "name": "check_intersperse_unindexed", "event": "ok", "exec_time": 0.558706089 }
+{ "type": "test", "name": "check_intersperse_again", "event": "ok", "exec_time": 0.553136663 }
+{ "type": "suite", "event": "ok", "passed": 5, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.564489544 }
+     Running tests/issue671.rs (target_dynamic/debug/deps/issue671-fbf2062d391f8884)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "type_length_limit" }
+{ "type": "test", "name": "type_length_limit", "event": "ok", "exec_time": 0.250394718 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.253493706 }
+     Running tests/issue671-unzip.rs (target_dynamic/debug/deps/issue671_unzip-d6d8804eca9eab91)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "type_length_limit" }
+{ "type": "test", "name": "type_length_limit", "event": "ok", "exec_time": 0.540333763 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.543651923 }
+     Running tests/iter_panic.rs (target_dynamic/debug/deps/iter_panic-be104a2eb06eec24)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "iter_panic" }
+{ "type": "test", "name": "iter_panic", "event": "ok", "exec_time": 0.435185019 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 1, "exec_time": 0.438269221 }
+     Running tests/named-threads.rs (target_dynamic/debug/deps/named_threads-28b6d463c71e2e84)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "named_threads" }
+{ "type": "test", "name": "named_threads", "event": "ok", "exec_time": 0.462267133 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.465565952 }
+     Running tests/octillion.rs (target_dynamic/debug/deps/octillion-70a542375e20aae9)
+{ "type": "suite", "event": "started", "test_count": 3 }
+{ "type": "test", "event": "started", "name": "find_first_octillion" }
+{ "type": "test", "event": "started", "name": "find_first_octillion_flat" }
+{ "type": "test", "event": "started", "name": "find_first_octillion_inclusive" }
+{ "type": "test", "name": "find_first_octillion_inclusive", "event": "ok", "exec_time": 0.544317926 }
+{ "type": "test", "name": "find_first_octillion", "event": "ok", "exec_time": 0.545324631 }
+{ "type": "test", "name": "find_first_octillion_flat", "event": "ok", "exec_time": 0.544802771 }
+{ "type": "suite", "event": "ok", "passed": 3, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 8, "exec_time": 0.54926556 }
+     Running tests/producer_split_at.rs (target_dynamic/debug/deps/producer_split_at-73e98c4eb3acb1f8)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 33, "exec_time": 0.001961319 }
+     Running tests/sort-panic-safe.rs (target_dynamic/debug/deps/sort_panic_safe-64644ca74f7edd90)
+{ "type": "suite", "event": "started", "test_count": 1 }
+{ "type": "test", "event": "started", "name": "sort_panic_safe" }
+{ "type": "test", "name": "sort_panic_safe", "event": "ok", "exec_time": 11.231332003 }
+{ "type": "suite", "event": "ok", "passed": 1, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 11.234985679 }
+     Running tests/str.rs (target_dynamic/debug/deps/str-0dc33503f753a8c7)
+{ "type": "suite", "event": "started", "test_count": 2 }
+{ "type": "test", "event": "started", "name": "execute_strings" }
+{ "type": "test", "event": "started", "name": "execute_strings_split" }
+{ "type": "test", "name": "execute_strings", "event": "ok", "exec_time": 0.323472449 }
+{ "type": "test", "name": "execute_strings_split", "event": "ok", "exec_time": 0.322715779 }
+{ "type": "suite", "event": "ok", "passed": 2, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.32687599 }
+     Running unittests examples/cpu_monitor.rs (target_dynamic/debug/examples/cpu_monitor-fe26dad8d7e0f466)
+{ "type": "suite", "event": "started", "test_count": 0 }
+{ "type": "suite", "event": "ok", "passed": 0, "failed": 0, "ignored": 0, "measured": 0, "filtered_out": 0, "exec_time": 0.00114361 }
+

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from rustyrts.git.plots.scripts.labels import url_git, get_labels_git, output_format
+from rustyrts.git.plots._scripts.labels import url_git, get_labels_git, output_format
 from rustyrts.util.plotter import boxplot_with_observations, stripplot, boxplot
 
 y_label = "relative number of tests [%]"
@@ -20,6 +20,9 @@ df_static = pd.read_sql(
 
 df = pd.concat([df_dynamic, df_static])
 
-boxplot_with_observations(df, labels, y_label, file + output_format, ["#E37222", "#A2AD00"])
-boxplot(df, labels, y_label, file + "_boxplot" + output_format, ["#E37222", "#A2AD00"])
-stripplot(df, labels, y_label, file + "_stripplot" + output_format, ["#E37222", "#A2AD00"])
+boxplot_with_observations(df, labels, y_label, file + output_format, ["#E37222", "#A2AD00"],
+                          single_threaded=("single" in url_git))
+boxplot(df, labels, y_label, file + "_boxplot" + output_format, ["#E37222", "#A2AD00"],
+        single_threaded=("single" in url_git))
+stripplot(df, labels, y_label, file + "_stripplot" + output_format, ["#E37222", "#A2AD00"],
+          single_threaded=("single" in url_git))

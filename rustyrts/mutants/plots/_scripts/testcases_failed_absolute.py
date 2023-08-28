@@ -1,6 +1,6 @@
 import pandas as pd
 
-from rustyrts.mutants.plots.scripts.labels import url_mutants, get_labels_mutants, output_format
+from rustyrts.mutants.plots._scripts.labels import url_mutants, get_labels_mutants, output_format
 from rustyrts.util.plotter import stripplot
 
 y_label_selected = 'Failed tests, selected'
