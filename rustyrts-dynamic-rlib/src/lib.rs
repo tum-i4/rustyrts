@@ -15,7 +15,7 @@ static LIST: RwLock<AtomicPtr<Traced>> =
     RwLock::new(AtomicPtr::new(std::ptr::null::<Traced>() as *mut Traced));
 
 //######################################################################################################################
-// Tuple type
+// Tuple type for tracing
 
 struct Traced(&'static str, AtomicPtr<Traced>);
 
@@ -23,31 +23,33 @@ struct Traced(&'static str, AtomicPtr<Traced>);
 // Functions for tracing
 
 #[no_mangle]
-pub fn trace(input: &'static mut (&str, u64)) {
+pub fn trace(input: &'static mut (&str, usize)) {
     let traced: &mut Traced = unsafe { std::mem::transmute(input) };
 
-    // Append to list
-    let handle = LIST.read().unwrap();
-    handle
-        .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |prev| {
-            if let Ok(_) =
-                traced
-                    .1
-                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |supposed_to_be_null| {
-                        if supposed_to_be_null == std::ptr::null::<Traced>() as *mut Traced {
+    if traced.1.load(Ordering::Acquire).is_null() {
+        // Append to list
+        let handle = LIST.read().unwrap(); // Only read access here, thus multiple threads can insert in parallel
+        handle
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
+                if let Ok(_) = traced.1.fetch_update(
+                    Ordering::AcqRel,
+                    Ordering::Acquire,
+                    |supposed_to_be_null| {
+                        if supposed_to_be_null.is_null() {
                             Some(prev)
                         } else {
                             None
                         }
-                    })
-            {
-                Some(traced)
-            } else {
-                None
-            }
-        })
-        .map(|_| ())
-        .unwrap_or_default();
+                    },
+                ) {
+                    Some(traced)
+                } else {
+                    None
+                }
+            })
+            .map(|_| ())
+            .unwrap_or_default();
+    }
 }
 
 #[no_mangle]
@@ -77,13 +79,13 @@ fn reset_list<'a>() -> HashSet<Cow<'a, str>> {
     let mut set = HashSet::new();
 
     let handle = LIST.write().unwrap();
-    while let Ok(prev) = handle.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |prev| {
+    while let Ok(prev) = handle.fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
         let Traced(_str, next_ptr) = unsafe { prev.as_ref() }?;
-        Some(next_ptr.load(Ordering::SeqCst))
+        Some(next_ptr.load(Ordering::Acquire))
     }) {
         let Traced(name, ptr) = unsafe { prev.as_ref() }.unwrap();
         set.insert(Cow::Borrowed(name.clone()));
-        ptr.store(std::ptr::null::<Traced>() as *mut Traced, Ordering::SeqCst);
+        ptr.store(std::ptr::null::<Traced>() as *mut Traced, Ordering::Release);
     }
 
     set
