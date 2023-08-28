@@ -1,5 +1,3 @@
-#![feature(string_leak)]
-
 use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
 use std::borrow::Cow;
 use std::path::PathBuf;
@@ -63,7 +61,12 @@ pub fn pre_main() {}
 
 #[no_mangle]
 pub fn post_test(test_name: &str) {
-    export_traces(|path_buf| get_traces_path(path_buf, test_name), false);
+    let traces = reset_list();
+    export_traces(
+        traces,
+        |path_buf| get_traces_path(path_buf, test_name),
+        false,
+    );
 }
 
 #[no_mangle]
@@ -71,12 +74,31 @@ pub fn post_test(test_name: &str) {
 pub fn post_main() {
     use std::os::unix::process::parent_id;
 
+    let traces = read_list();
+
     let ppid = parent_id();
-    export_traces(|path_buf| get_process_traces_path(path_buf, &ppid), true);
+    export_traces(
+        traces,
+        |path_buf| get_process_traces_path(path_buf, &ppid),
+        true,
+    );
+}
+
+fn read_list<'a>() -> HashSet<Cow<'a, str>> {
+    let mut traces = HashSet::new();
+
+    let handle = LIST.read().unwrap();
+    let mut ptr = handle.load(Ordering::Acquire);
+    while let Some(traced) = unsafe { ptr.as_ref() } {
+        traces.insert(Cow::Borrowed(traced.0.clone()));
+        ptr = traced.1.load(Ordering::Acquire);
+    }
+
+    traces
 }
 
 fn reset_list<'a>() -> HashSet<Cow<'a, str>> {
-    let mut set = HashSet::new();
+    let mut traces = HashSet::new();
 
     let handle = LIST.write().unwrap();
     while let Ok(prev) = handle.fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
@@ -84,19 +106,19 @@ fn reset_list<'a>() -> HashSet<Cow<'a, str>> {
         Some(next_ptr.load(Ordering::Acquire))
     }) {
         let Traced(name, ptr) = unsafe { prev.as_ref() }.unwrap();
-        set.insert(Cow::Borrowed(name.clone()));
+        traces.insert(Cow::Borrowed(name.clone()));
         ptr.store(std::ptr::null::<Traced>() as *mut Traced, Ordering::Release);
     }
 
-    set
+    traces
 }
 
-fn export_traces<F>(path_buf_init: F, append: bool)
+fn export_traces<'a, F>(traces: HashSet<Cow<'a, str>>, path_buf_init: F, append: bool)
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
     let path_buf = get_dynamic_path(true);
-    let mut traces = reset_list();
+    let mut traces = traces;
 
     #[cfg(unix)]
     {
