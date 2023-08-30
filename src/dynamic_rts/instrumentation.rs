@@ -2,8 +2,13 @@ use super::mir_util::Traceable;
 use crate::callbacks_shared::TEST_MARKER;
 use crate::names::def_id_name;
 use log::trace;
+use once_cell::sync::OnceCell;
+use rustc_hir::def_id::DefId;
 use rustc_hir::AttributeMap;
 use rustc_middle::{mir::Body, ty::TyCtxt};
+
+#[cfg(unix)]
+static ENTRY_FN: OnceCell<Option<DefId>> = OnceCell::new();
 
 pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.instance.def_id();
@@ -45,17 +50,14 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 
-    // We collect all relevant nodes in a vec, in order to not modify/move elements while visiting them
-    //let mut visitor = MirInspectingVisitor::new(tcx);
-    //visitor.visit_body(&body);
-    //let acc = visitor.finalize();
-
     #[cfg(unix)]
-    if outer.ends_with("::main") && body.arg_count == 0 {
-        // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
-        // 1. insert_post, 2. trace, 3. insert_pre
+    if let Some(entry_def) = ENTRY_FN.get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id)) {
+        if def_id == *entry_def {
+            // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
+            // 1. insert_post, 2. trace, 3. insert_pre
 
-        body.insert_post_main(tcx, &mut cache_ret, &mut None);
+            body.insert_post_main(tcx, &mut cache_ret, &mut None);
+        }
     }
 
     body.insert_trace(tcx, &outer, &mut cache_str, &mut cache_u8, &mut cache_ret);
@@ -64,7 +66,9 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     body.check_calls_to_exit(tcx, &mut cache_ret);
 
     #[cfg(unix)]
-    if outer.ends_with("::main") && body.arg_count == 0 {
-        body.insert_pre_main(tcx, &mut cache_ret);
+    if let Some(entry_def) = ENTRY_FN.get().unwrap() {
+        if def_id == *entry_def {
+            body.insert_pre_main(tcx, &mut cache_ret);
+        }
     }
 }
