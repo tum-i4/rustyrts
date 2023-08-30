@@ -112,7 +112,8 @@ class CargoTestTestReportLoader(TestReportLoader):
             suite = TestSuite.from_dict(suite_dict)
             test_suites.append(suite)
 
-            event = next(all_tests_iter, None)
+            if event is not None and event["event"] != "started":
+                event = next(all_tests_iter, None)
 
         return test_suites
 
