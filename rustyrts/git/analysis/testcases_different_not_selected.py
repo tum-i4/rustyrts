@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-from rustyrts.git.plots.scripts.labels import get_labels_git, url_git
+from rustyrts.git.plots._scripts.labels import get_labels_git, url_git
 
 table_ddl = """
 create sequence "AnalysisDifferentNotSelected_id_seq"
@@ -42,7 +42,7 @@ def get_test_diff(retest_all, other):
     return list(set(retest_all_tests) - set(other_tests))
 
 
-df_failed_retest_all = pd.read_sql(
+df_different_retest_all = pd.read_sql(
     'SELECT c.repo_id as repository, commit, retest_all_different FROM testcases_newly_different join "Commit" c ON c.id = commit ORDER BY commit',
     url_git)
 
@@ -61,13 +61,13 @@ for i in range(1, len(labels) + 1):
     not_selected_dynamic[i] = {}
     not_selected_static[i] = {}
 
-failed_retest_all = df_failed_retest_all.to_dict(orient='records')
+different_retest_all = df_different_retest_all.to_dict(orient='records')
 selected_dynamic = df_selected_dynamic.to_dict(orient='records')
 selected_static = df_selected_static.to_dict(orient='records')
 
-assert len(failed_retest_all) == len(selected_dynamic) and len(failed_retest_all) == len(selected_static)
+assert len(different_retest_all) == len(selected_dynamic) and len(different_retest_all) == len(selected_static)
 
-for (retest_all_report, dynamic_report, static_report) in zip(failed_retest_all, selected_dynamic, selected_static):
+for (retest_all_report, dynamic_report, static_report) in zip(different_retest_all, selected_dynamic, selected_static):
     assert retest_all_report['commit'] == dynamic_report['commit']
     assert retest_all_report['commit'] == static_report['commit']
 

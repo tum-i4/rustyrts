@@ -6,7 +6,7 @@ from rustyrts.util.plotter import boxplot
 y_label = "absolute e2e testing time [s]"
 file = "../duration_absolute" + output_format
 
-labels = get_labels_mutants(count=False)
+labels = get_labels_mutants()
 
 df_retest_all = pd.read_sql(
     'SELECT commit as repository, retest_all_duration as y, \'retest-all\' as algorithm FROM mutant_extended', url_mutants)

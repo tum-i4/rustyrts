@@ -1,7 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 
-from rustyrts.git.plots.scripts.labels import get_labels_git, url_git
+from rustyrts.git.plots._scripts.labels import get_labels_git, url_git
 
 table_ddl = """
 create sequence "AnalysisFailedNotSelected_id_seq"

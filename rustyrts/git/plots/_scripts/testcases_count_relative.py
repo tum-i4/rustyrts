@@ -21,8 +21,8 @@ df_static = pd.read_sql(
 df = pd.concat([df_dynamic, df_static])
 
 boxplot_with_observations(df, labels, y_label, file + output_format, ["#E37222", "#A2AD00"],
-                          single_threaded=("single" in url_git))
+                          single_threaded=("single" in url_git), figsize=(22, 15), legend_anchor=(1.0, 0.8, 0.1, 0.1))
 boxplot(df, labels, y_label, file + "_boxplot" + output_format, ["#E37222", "#A2AD00"],
-        single_threaded=("single" in url_git))
+        single_threaded=("single" in url_git), figsize=(22, 15), legend_anchor=(1.0, 0.8, 0.1, 0.1))
 stripplot(df, labels, y_label, file + "_stripplot" + output_format, ["#E37222", "#A2AD00"],
-          single_threaded=("single" in url_git))
+          single_threaded=("single" in url_git), figsize=(22, 15), legend_anchor=(1.0, 0.8, 0.1, 0.1))

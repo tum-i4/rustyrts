@@ -1,6 +1,6 @@
 import pandas as pd
 
-url_git = 'postgresql://postgres:rustyrts@localhost:5432/git_singlethreaded' # TODO: adapt this
+url_git = 'postgresql://postgres:rustyrts@localhost:5432/git_single_threaded' # TODO: adapt this
 output_format = ".svg"
 
 
