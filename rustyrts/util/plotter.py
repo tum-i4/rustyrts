@@ -150,7 +150,7 @@ def stripplot(df, labels, y_label, file, palette=None, hue='algorithm', figsize=
 def scatterplot(df_raw, labels, x_label, y_label, file, palette=None, hue='algorithm', figsize=(20, 15),
                 x_scale='linear',
                 y_scale='linear', legend=True,
-                legend_loc='best', legend_anchor=None, single_threaded=False):
+                legend_loc='best', legend_anchor=None, regression=False, single_threaded=False):
     df = pd.concat(df_raw)
 
     sns.set_style("whitegrid")
@@ -164,12 +164,12 @@ def scatterplot(df_raw, labels, x_label, y_label, file, palette=None, hue='algor
                          edgecolor="black",
                          palette=palette,
                          legend='full')
-
-    # for i in range(len(df_raw)):
-    #    ax = sns.regplot(
-    #        data=df_raw[i], x="x", y="y", logx=True, label=labels[i],
-    #        scatter=False, truncate=False, order=1, color=palette[i],
-    #    )
+    if regression:
+        for i in range(len(df_raw)):
+            ax = sns.regplot(
+                data=df_raw[i], x="x", y="y", logx=True, label=labels[i],
+                scatter=False, truncate=False, order=1, color=palette[i],
+            )
 
     ax.set_xscale(x_scale)
     ax.set_yscale(y_scale)
