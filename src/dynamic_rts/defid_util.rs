@@ -1,40 +1,38 @@
 use crate::names::def_id_name;
 use log::warn;
 use once_cell::sync::OnceCell;
-use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_middle::{
     middle::exported_symbols::{ExportedSymbol, SymbolExportInfo},
     ty::TyCtxt,
 };
-use rustc_span::def_id::CrateNum;
 
 const RLIB_CRATE_NAME: &str = "rustyrts_dynamic_rlib";
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 const STD_CRATE_NAME: &str = "std";
 
 const PRE_TEST_FN_NAME: &str = "pre_test";
 const POST_TEST_FN_NAME: &str = "post_test";
 const TRACE_FN_NAME: &str = "trace";
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 const POST_MAIN_FN_NAME: &str = "post_main";
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 const PRE_MAIN_FN_NAME: &str = "pre_main";
 
-#[cfg(target_family = "unix")]
-const EXIT_FN_NAME: &str = "process::exit";
+#[cfg(unix)]
+const EXIT_FN_NAME: &str = "std::exit";
 
 static RLIB_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 static STD_CRATE: OnceCell<Option<CrateNum>> = OnceCell::new();
 
-#[cfg(target_family = "unix")]
 static PRE_FN_TEST_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 static PRE_FN_MAIN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
 static TRACE_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
@@ -42,7 +40,7 @@ static TRACE_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 static POST_FN_TEST_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 static POST_FN_MAIN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 static EXIT_FN_DEF_ID: OnceCell<Option<DefId>> = OnceCell::new();
 
 pub(crate) fn get_crate_by_name(tcx: TyCtxt, name: &str) -> Option<CrateNum> {
@@ -61,7 +59,7 @@ pub(crate) fn get_rlib_crate(tcx: TyCtxt) -> Option<CrateNum> {
     *rlib_crate
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub(crate) fn get_std_crate(tcx: TyCtxt) -> Option<CrateNum> {
     let std_crate = STD_CRATE.get_or_init(|| get_crate_by_name(tcx, STD_CRATE_NAME));
     *std_crate
@@ -90,7 +88,7 @@ pub(crate) fn get_def_id_exported(tcx: TyCtxt, krate: CrateNum, name: &str) -> O
         };
 
         if let Some(def_id) = maybe_def_id {
-            let def_path_str = def_id_name(tcx, def_id);
+            let def_path_str = def_id_name(tcx, def_id, &[], false, true);
             if def_path_str.ends_with(name) {
                 return Some(def_id);
             }
@@ -121,7 +119,7 @@ pub(crate) fn get_def_id_pre_test_fn(tcx: TyCtxt) -> Option<DefId> {
     *PRE_FN_TEST_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, PRE_TEST_FN_NAME))
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub(crate) fn get_def_id_pre_main_fn(tcx: TyCtxt) -> Option<DefId> {
     *PRE_FN_MAIN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, PRE_MAIN_FN_NAME))
 }
@@ -130,12 +128,12 @@ pub(crate) fn get_def_id_post_test_fn(tcx: TyCtxt) -> Option<DefId> {
     *POST_FN_TEST_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, POST_TEST_FN_NAME))
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub(crate) fn get_def_id_post_main_fn(tcx: TyCtxt) -> Option<DefId> {
     *POST_FN_MAIN_DEF_ID.get_or_init(|| get_def_id_from_rlib_crate(tcx, POST_MAIN_FN_NAME))
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub(crate) fn get_def_id_exit_fn(tcx: TyCtxt) -> Option<DefId> {
     *EXIT_FN_DEF_ID.get_or_init(|| {
         let std_crate = get_std_crate(tcx)?;

@@ -1,107 +1,87 @@
-use once_cell::sync::OnceCell;
+use itertools::Itertools;
+use log::trace;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
-use rustc_hir::ConstContext;
 use rustc_interface::{interface, Queries};
+use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::query::{query_keys, query_stored};
-use rustc_middle::{mir::visit::MutVisitor, ty::TyCtxt};
+use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_session::config::CrateType;
 use rustc_span::source_map::{FileLoader, RealFileLoader};
 use std::mem::transmute;
-use std::sync::atomic::{AtomicBool, AtomicUsize};
+use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;
 
-use crate::callbacks_shared::{excluded, prepare_analysis, run_analysis_shared};
-use crate::checksums::{get_checksum, insert_hashmap, Checksums};
+use crate::callbacks_shared::{
+    excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
+    NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
+};
+
+use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
+use crate::dynamic_rts::instrumentation::modify_body;
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
+use crate::static_rts::callback::PATH_BUF;
+use rustc_hir::def_id::LOCAL_CRATE;
 
-use super::visitor::MirManipulatorVisitor;
-
-static mut NEW_CHECKSUMS: OnceCell<Mutex<Checksums>> = OnceCell::new();
-static mut NEW_CHECKSUMS_CTFE: OnceCell<Mutex<Checksums>> = OnceCell::new();
+use super::file_loader::{InstrumentationFileLoaderProxy, TestRunnerFileLoaderProxy};
 
 static OLD_OPTIMIZED_MIR_PTR: AtomicUsize = AtomicUsize::new(0);
-static OLD_MIR_FOR_CTFE_PTR: AtomicUsize = AtomicUsize::new(0);
-static EXTERN_CRATE_INSERTED: AtomicBool = AtomicBool::new(false);
 
-pub struct FileLoaderProxy {
-    delegate: RealFileLoader,
-}
-
-impl FileLoader for FileLoaderProxy {
-    fn file_exists(&self, path: &std::path::Path) -> bool {
-        self.delegate.file_exists(path)
-    }
-
-    fn read_file(&self, path: &std::path::Path) -> std::io::Result<String> {
-        let content = self.delegate.read_file(path)?;
-        if !EXTERN_CRATE_INSERTED.load(SeqCst) {
-            EXTERN_CRATE_INSERTED.store(true, SeqCst);
-
-            let extended_content = format!(
-                "#![feature(test)]
-                #![feature(custom_test_frameworks)]
-                #![test_runner(rustyrts_runner_wrapper)]
-                
-                {}
-
-                #[allow(unused_extern_crates)]
-                extern crate rustyrts_dynamic_rlib;
-
-                #[allow(unused_extern_crates)]
-                extern crate test as rustyrts_test;
-                
-                #[link(name = \"rustyrts_dynamic_runner\")]
-                #[allow(improper_ctypes)]
-                #[allow(dead_code)]
-                extern {{
-                    fn rustyrts_runner(tests: &[&rustyrts_test::TestDescAndFn]);
-                }}
-                
-                #[allow(dead_code)]
-                fn rustyrts_runner_wrapper(tests: &[&rustyrts_test::TestDescAndFn]) 
-                {{ 
-                    unsafe {{ rustyrts_runner(tests); }}
-                }}",
-                content
-            )
-            .to_string();
-
-            Ok(extended_content)
-        } else {
-            Ok(content)
-        }
-    }
-}
-
-pub struct DynamicRTSCallbacks {
-    target_path: String,
-}
+pub struct DynamicRTSCallbacks {}
 
 impl DynamicRTSCallbacks {
-    pub fn new(target_path: String) -> Self {
-        Self { target_path }
+    pub fn new() -> Self {
+        PATH_BUF.get_or_init(|| get_dynamic_path(true));
+        Self {}
     }
 }
 
 impl Callbacks for DynamicRTSCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
-        let file_loader = FileLoaderProxy {
-            delegate: RealFileLoader,
-        };
-        config.file_loader = Some(Box::new(file_loader));
+        // There is no point in analyzing a proc macro that is executed a compile time
+        if config
+            .opts
+            .crate_types
+            .iter()
+            .any(|t| *t == CrateType::ProcMacro)
+        {
+            trace!(
+                "Excluding crate {}",
+                config.opts.crate_name.as_ref().unwrap()
+            );
+            EXCLUDED.get_or_init(|| true);
+        }
 
+        let file_loader =
+            if !no_instrumentation(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
+                Box::new(TestRunnerFileLoaderProxy {
+                    delegate: InstrumentationFileLoaderProxy {
+                        delegate: RealFileLoader,
+                    },
+                }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+            } else {
+                Box::new(RealFileLoader {})
+                    as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+            };
+        config.file_loader = Some(file_loader);
+
+        if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
+            NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
+            NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
+            NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
+        }
+
+        // We need to replace this in any case, since we also want to instrument rlib crates
+        // Further, the only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers, _extern_providers| {
             // SAFETY: We store the address of the original optimized_mir function as a usize.
             OLD_OPTIMIZED_MIR_PTR.store(unsafe { transmute(providers.optimized_mir) }, SeqCst);
-            OLD_MIR_FOR_CTFE_PTR.store(unsafe { transmute(providers.mir_for_ctfe) }, SeqCst);
+            OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
 
             providers.optimized_mir = custom_optimized_mir;
-            providers.mir_for_ctfe = custom_mir_for_ctfe;
+            providers.vtable_entries = custom_vtable_entries;
         });
-
-        let path_buf = get_dynamic_path(&self.target_path);
-        prepare_analysis(path_buf.clone());
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -109,10 +89,11 @@ impl Callbacks for DynamicRTSCallbacks {
         _compiler: &'compiler interface::Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
-        queries
-            .global_ctxt()
-            .unwrap()
-            .enter(|tcx| self.run_analysis(tcx));
+        queries.global_ctxt().unwrap().enter(|tcx| {
+            if !excluded(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
+                self.run_analysis(tcx)
+            }
+        });
 
         Compilation::Continue
     }
@@ -137,67 +118,13 @@ fn custom_optimized_mir<'tcx>(
         >(content)
     };
 
-    let mut result = orig_function(tcx, def);
-
-    if !excluded(tcx) {
-        //##############################################################
-        // 1. We compute the checksum before modifying the MIR
-
-        let name = def_id_name(tcx, result.source.def_id());
-        let checksum = get_checksum(tcx, result);
-
-        let new_checksums = unsafe { NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new())) };
-
-        {
-            let mut handle = new_checksums.lock().unwrap();
-            insert_hashmap(handle.inner_mut(), name, checksum);
-        }
-
-        //##############################################################
-        // 2. Here the MIR is modified to trace this function at runtime
-
-        let mut visitor = MirManipulatorVisitor::new(tcx);
-        visitor.visit_body(&mut result);
-    }
-
-    result
-}
-
-/// This function is executed instead of mir_for_ctfe() in the compiler
-fn custom_mir_for_ctfe<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: query_keys::mir_for_ctfe<'tcx>,
-) -> query_stored::mir_for_ctfe<'tcx> {
-    let content = OLD_MIR_FOR_CTFE_PTR.load(SeqCst);
-
-    // SAFETY: At this address, the original mir_for_ctfe() function has been stored before.
-    // We reinterpret it as a function.
-    let orig_function = unsafe {
-        transmute::<
-            usize,
-            fn(
-                _: TyCtxt<'tcx>,
-                _: query_keys::mir_for_ctfe<'tcx>,
-            ) -> query_stored::mir_for_ctfe<'tcx>, // notice the mutable reference here
-        >(content)
-    };
-
     let result = orig_function(tcx, def);
 
-    if !excluded(tcx) {
+    if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
         //##############################################################
-        // 1. We compute the checksum
+        // 1. Here the MIR is modified to trace this function at runtime
 
-        let name = def_id_name(tcx, result.source.def_id());
-        let checksum = get_checksum(tcx, result);
-
-        let new_checksums =
-            unsafe { NEW_CHECKSUMS_CTFE.get_or_init(|| Mutex::new(Checksums::new())) };
-
-        {
-            let mut handle = new_checksums.lock().unwrap();
-            insert_hashmap(handle.inner_mut(), name, checksum);
-        }
+        modify_body(tcx, result);
     }
 
     result
@@ -205,39 +132,65 @@ fn custom_mir_for_ctfe<'tcx>(
 
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        if !excluded(tcx) {
-            let path_buf = get_dynamic_path(&self.target_path);
+        //##############################################################################################################
+        // Collect all MIR bodies that are relevant for code generation
 
-            //##############################################################################################################
-            // 1. Invoke optimized_mir or mir_for_ctfe for every MIR body, to compute checksums
+        let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+        let bodies = code_gen_units
+            .iter()
+            .flat_map(|c| c.items().keys())
+            .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+            .map(|m| {
+                let MonoItem::Fn(instance) = m else {unreachable!()};
+                instance
+            })
+            .filter(|i| tcx.is_mir_available(i.def_id()))
+            //.filter(|i| i.def_id().is_local()) // It is not feasible to only analyze local MIR
+            .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
+            .collect_vec();
 
-            for def_id in tcx.mir_keys(()) {
-                let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
+        //##############################################################################################################
+        // Continue at shared analysis
 
-                if has_body {
-                    let _body = match tcx.hir().body_const_context(*def_id) {
-                        Some(ConstContext::ConstFn) | None => tcx.optimized_mir(*def_id),
-                        Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
-                            tcx.mir_for_ctfe(*def_id)
-                        }
-                    };
-                }
+        run_analysis_shared(tcx, bodies);
+    }
+}
+
+fn custom_vtable_entries<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    key: PolyTraitRef<'tcx>,
+) -> &'tcx [VtblEntry<'tcx>] {
+    let content = OLD_VTABLE_ENTRIES.load(SeqCst);
+
+    // SAFETY: At this address, the original vtable_entries() function has been stored before.
+    // We reinterpret it as a function.
+    let orig_function = unsafe {
+        transmute::<usize, fn(_: TyCtxt<'tcx>, _: PolyTraitRef<'tcx>) -> &'tcx [VtblEntry<'tcx>]>(
+            content,
+        )
+    };
+
+    let result = orig_function(tcx, key);
+
+    if !excluded(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
+        for entry in result {
+            if let VtblEntry::Method(instance) = entry {
+                let def_id = instance.def_id();
+
+                // TODO: it should be feasible to exclude closures here
+
+                let name = def_id_name(tcx, def_id, &[], false, true); // IMPORTANT: no substs here
+                let checksum = get_checksum_vtbl_entry(tcx, &entry);
+                trace!("Considering {:?} in checksums of {}", instance, name);
+
+                insert_hashmap(
+                    &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
+                    &name,
+                    checksum,
+                )
             }
-
-            //##############################################################################################################
-            // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
-            // 3. Import old checksums
-            // 4. Determine names of changed nodes and write this information to the filesystem
-            run_analysis_shared(
-                tcx,
-                path_buf,
-                unsafe { NEW_CHECKSUMS.take() }
-                    .map(|mutex| mutex.into_inner().unwrap())
-                    .unwrap_or_else(|| Checksums::new()),
-                unsafe { NEW_CHECKSUMS_CTFE.take() }
-                    .map(|mutex| mutex.into_inner().unwrap())
-                    .unwrap_or_else(|| Checksums::new()),
-            );
         }
     }
+
+    result
 }

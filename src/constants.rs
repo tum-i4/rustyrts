@@ -2,6 +2,8 @@
 
 pub const DESC_FLAG: &str = "--descriptions";
 
+pub const VERBOSE_COUNT: usize = 5;
+
 //######################################################################################################################
 // Environment variables
 
@@ -14,15 +16,17 @@ pub const ENV_RUSTC_WRAPPER: &str = "RUSTC_WRAPPER";
 /// Is set by cargo
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
-/// Used to transmit the directory of the current project
-/// that is not obvious when compiling dependencies
-pub const ENV_PROJECT_DIR: &str = "PROJECT_DIR";
-
 /// Used to buffer arguments to rustc
 pub const ENV_RUSTYRTS_ARGS: &str = "rustyrts_args";
 
 /// Used to specify whether rustyrts should provide verbose output
 pub const ENV_RUSTYRTS_VERBOSE: &str = "RUSTYRTS_VERBOSE";
+
+/// Used to specify the log level
+pub const ENV_RUSTYRTS_LOG: &str = "RUSTYRTS_LOG";
+
+/// Used to skip the analysis in the second invocation of the compiler wrapper
+pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP";
 
 //######################################################################################################################
 // File endings or names
@@ -30,18 +34,31 @@ pub const ENV_RUSTYRTS_VERBOSE: &str = "RUSTYRTS_VERBOSE";
 pub const DIR_STATIC: &str = ".rts_static";
 pub const DIR_DYNAMIC: &str = ".rts_dynamic";
 
-pub const FILE_AFFECTED: &str = "affected";
 pub const FILE_COMPLETE_GRAPH: &str = "!complete_graph.dot";
 
 pub const ENDING_TRACE: &str = ".trace";
 pub const ENDING_CHANGES: &str = ".changes";
 pub const ENDING_CHECKSUM: &str = ".checksum";
-pub const ENDING_CHECKSUM_CTFE: &str = ".checksum_ctfe";
+pub const ENDING_CHECKSUM_VTBL: &str = ".checksum_vtbl";
+pub const ENDING_CHECKSUM_CONST: &str = ".checksum_const";
 pub const ENDING_TEST: &str = ".test";
 pub const ENDING_GRAPH: &str = ".dot";
-pub const ENDING_REEXPORTS: &str = ".exp";
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
 
-pub const EDGE_CASE_FROM_RESIDUAL: &str = "ops::FromResidual::from_residual";
+//######################################################################################################################
+// Edge cases that need special treatment
+
+pub const SUFFIX_DYN: &str = "!dyn";
+
+pub const EDGE_CASES_NO_TRACE: &[&str] = &[
+    "__rg_alloc",
+    "__rg_dealloc",
+    "__rg_realloc",
+    "__rg_alloc_zeroed",
+    "as GlobalAlloc>::alloc",
+    "as GlobalAlloc>::dealloc",
+    "as GlobalAlloc>::realloc",
+    "as GlobalAlloc>::alloc_zeroed",
+];

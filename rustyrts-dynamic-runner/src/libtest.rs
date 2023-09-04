@@ -896,6 +896,8 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
 //######################################################################################################################
 // From formatters/json.rs
 // Source: https://github.com/rust-lang/rust/blob/f37f8549940386a9d066ba199983affff47afbb4/library/test/src/formatters/mod.rs#L20
+// Changes: added some calls to flush(), hoping to fix weird bug
+// (first part of the json has been printed twice and obstructed one other line)
 
 pub(crate) struct JsonFormatter<T> {
     out: OutputLocation<T>,
@@ -910,13 +912,17 @@ impl<T: Write> JsonFormatter<T> {
         assert!(!s.contains('\n'));
 
         self.out.write_all(s.as_ref())?;
-        self.out.write_all(b"\n")
+        self.out.flush()?;
+
+        self.out.write_all(b"\n")?;
+        self.out.flush()
     }
 
     fn write_message(&mut self, s: &str) -> io::Result<()> {
         assert!(!s.contains('\n'));
 
-        self.out.write_all(s.as_ref())
+        self.out.write_all(s.as_ref())?;
+        self.out.flush()
     }
 
     fn write_event(
@@ -944,7 +950,8 @@ impl<T: Write> JsonFormatter<T> {
         if let Some(extra) = extra {
             self.write_message(&*format!(r#", {}"#, extra))?;
         }
-        self.writeln_message(" }")
+        self.writeln_message(" }")?;
+        self.out.flush()
     }
 }
 

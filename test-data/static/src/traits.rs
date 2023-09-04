@@ -2,6 +2,10 @@ pub trait Animal {
     fn sound(&self) -> &str;
 
     fn set_treat(&mut self, treat: Treat);
+
+    fn walk(&self) {
+        println!("walking...");
+    }
 }
 
 pub enum Treat {

@@ -15,6 +15,12 @@ name = "rustyrts-static"
 [[bin]]
 name = "rustyrts-dynamic"
 
+[features]
+default = ["print_paths"]
+
+print_paths = []
+monomorphize = []
+
 [dependencies]
 log = "0.4"
 serde_json = "1.0.61"

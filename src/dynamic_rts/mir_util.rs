@@ -1,9 +1,8 @@
 use std::mem::transmute;
 
-use super::defid_util::{
-    get_def_id_post_test_fn, get_def_id_pre_main_fn, get_def_id_pre_test_fn, get_def_id_trace_fn,
-};
-use log::error;
+use super::defid_util::{get_def_id_post_test_fn, get_def_id_pre_test_fn, get_def_id_trace_fn};
+use crate::constants::EDGE_CASES_NO_TRACE;
+use log::{error, trace};
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -17,8 +16,8 @@ use rustc_middle::{
 };
 use rustc_span::Span;
 
-#[cfg(target_family = "unix")]
-use super::defid_util::get_def_id_post_main_fn;
+#[cfg(unix)]
+use super::defid_util::{get_def_id_post_main_fn, get_def_id_pre_main_fn};
 
 //######################################################################################################################
 // Functions for inserting locals
@@ -213,7 +212,7 @@ pub trait Traceable<'tcx> {
 
     fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
 
     fn insert_post_test(
@@ -225,10 +224,10 @@ pub trait Traceable<'tcx> {
         cache_call: &mut Option<BasicBlock>,
     );
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn check_calls_to_exit(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_post_main(
         &mut self,
         tcx: TyCtxt<'tcx>,
@@ -246,57 +245,68 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         cache_u8: &mut Option<(Local, Ty<'tcx>)>,
         cache_ret: &mut Option<Local>,
     ) {
-        let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
-            error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
-            return;
-        };
+        if !EDGE_CASES_NO_TRACE.iter().any(|c| name.ends_with(c)) {
+            trace!(
+                "Inserting trace(\"{}\") into {:?}",
+                name,
+                self.source.def_id()
+            );
 
-        let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
-        let (local_str, ty_ref_str) = *cache_str.get_or_insert_with(|| insert_local_str(tcx, self));
-        let (local_u8, ty_ref_u8) = *cache_u8.get_or_insert_with(|| insert_local_u8(tcx, self));
+            let Some(def_id_trace_fn) = get_def_id_trace_fn(tcx) else {
+                error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
+                return;
+            };
 
-        let span = self.span;
+            let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+            let (local_str, ty_ref_str) =
+                *cache_str.get_or_insert_with(|| insert_local_str(tcx, self));
+            let (local_u8, ty_ref_u8) = *cache_u8.get_or_insert_with(|| insert_local_u8(tcx, self));
 
-        //*******************************************************
-        // Create assign statements
+            let span = self.span;
 
-        let place_elem_list = tcx.mk_place_elems([].iter());
+            //*******************************************************
+            // Create assign statements
 
-        let (assign_statement_str, place_ref_str) =
-            insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
+            let place_elem_list = tcx.mk_place_elems([].iter());
 
-        let (assign_statement_u8, place_ref_u8) =
-            insert_assign_u8(tcx, local_u8, place_elem_list, 0u8, ty_ref_u8, span);
+            let (assign_statement_str, place_ref_str) =
+                insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
 
-        //*******************************************************
-        // Create new basic block
+            let (assign_statement_u8, place_ref_u8) =
+                insert_assign_u8(tcx, local_u8, place_elem_list, 0u8, ty_ref_u8, span);
 
-        let basic_blocks = self.basic_blocks.as_mut();
+            //*******************************************************
+            // Create new basic block
 
-        let mut args_vec = Vec::new();
-        args_vec.push(Operand::Move(place_ref_str));
-        args_vec.push(Operand::Move(place_ref_u8));
-        let terminator = create_call(
-            tcx,
-            def_id_trace_fn,
-            span,
-            args_vec,
-            local_ret,
-            place_elem_list,
-            Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb0
-        );
+            let basic_blocks = self.basic_blocks.as_mut();
 
-        let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-        new_basic_block_data.statements.push(assign_statement_str);
-        new_basic_block_data.statements.push(assign_statement_u8);
+            let mut args_vec = Vec::new();
+            args_vec.push(Operand::Move(place_ref_str));
+            args_vec.push(Operand::Move(place_ref_u8));
+            let terminator = create_call(
+                tcx,
+                def_id_trace_fn,
+                span,
+                args_vec,
+                local_ret,
+                place_elem_list,
+                Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb0
+            );
 
-        let index = basic_blocks.push(new_basic_block_data);
+            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
+            new_basic_block_data.statements.push(assign_statement_str);
+            new_basic_block_data.statements.push(assign_statement_u8);
 
-        // Swap bb0 and the new basic block
-        basic_blocks.swap(BasicBlock::from_usize(0), index);
+            let index = basic_blocks.push(new_basic_block_data);
+
+            // Swap bb0 and the new basic block
+            basic_blocks.swap(BasicBlock::from_usize(0), index);
+        }
     }
 
     fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
+        trace!("Inserting pre_test() into {:?}", self.source.def_id());
+
         let Some(def_id_pre_fn) = get_def_id_pre_test_fn(tcx) else {
             error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
@@ -332,8 +342,10 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         basic_blocks.swap(BasicBlock::from_usize(0), index);
     }
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
+        trace!("Inserting pre_main() into {:?}", self.source.def_id());
+
         let Some(def_id_pre_fn) = get_def_id_pre_main_fn(tcx) else {
             error!("Crate {} will not be traced.", tcx.crate_name(LOCAL_CRATE));
             return;
@@ -380,6 +392,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         cache_ret: &mut Option<Local>,
         cache_call: &mut Option<BasicBlock>,
     ) {
+        trace!("Inserting post_test() into {:?}", self.source.def_id());
+
         let Some(def_id_post_fn) = get_def_id_post_test_fn(tcx) else {
             return;
         };
@@ -523,7 +537,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         }
     }
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn check_calls_to_exit(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
         use super::defid_util::get_def_id_exit_fn;
 
@@ -601,14 +615,14 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         }
     }
 
-    #[cfg(target_family = "unix")]
+    #[cfg(unix)]
     fn insert_post_main(
         &mut self,
         tcx: TyCtxt<'tcx>,
         cache_ret: &mut Option<Local>,
         cache_call: &mut Option<BasicBlock>,
     ) {
-        use crate::{constants::EDGE_CASE_FROM_RESIDUAL, names::def_id_name};
+        trace!("Inserting post_main() into {:?}", self.source.def_id());
 
         let Some(def_id_post_fn) = get_def_id_post_main_fn(tcx) else {
             return;
@@ -680,15 +694,12 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                         .terminator()
                         .kind;
 
-                    if let TerminatorKind::Call { func, .. } = terminator_kind {
-                        if def_id_name(tcx, func.const_fn_def().unwrap().0)
-                            .split_once("::")
-                            .map(|(_, second)| second == EDGE_CASE_FROM_RESIDUAL)
-                            .unwrap_or(false)
-                        {
-                            // EDGE CASE: if the unwind attribute of a call to this function is inserted,
-                            // llvm will throw an error and abort compilation
-                            continue;
+                    if let TerminatorKind::Call { destination, .. } = terminator_kind {
+                        if let Some(local) = destination.as_local() {
+                            if local.as_usize() == 0 {
+                                // LLVM terminates with an error when calls that directly return something from main() are extended with a Resume terminator
+                                continue;
+                            }
                         }
                     }
 

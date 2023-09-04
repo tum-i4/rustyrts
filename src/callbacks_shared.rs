@@ -1,105 +1,117 @@
 use itertools::Itertools;
-use log::{debug, error, trace};
-use rustc_hir::{
-    def::{DefKind, Res},
-    def_id::LOCAL_CRATE,
-    ConstContext,
-};
-use rustc_middle::ty::{TyCtxt, Visibility};
+use log::{debug, trace};
+use once_cell::sync::OnceCell;
+use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_middle::mir::Body;
+use rustc_middle::ty::{GenericArg, List, TyCtxt};
+use rustc_span::def_id::DefId;
+use std::collections::HashMap;
+use std::env;
 use std::{
-    collections::{BTreeMap, HashMap},
-    fs::{read, read_dir, DirEntry},
-    path::PathBuf,
+    collections::HashSet,
+    fs::read,
+    sync::{atomic::AtomicUsize, Mutex},
 };
 
+use crate::checksums::{get_checksum_body, insert_hashmap};
+use crate::const_visitor::ConstVisitor;
+use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::{
     checksums::Checksums,
-    constants::ENDING_REEXPORTS,
+    constants::ENV_TARGET_DIR,
     fs_utils::{
-        get_changes_path, get_checksums_ctfe_path, get_checksums_path, get_reexports_path,
-        get_test_path, read_lines_filter_map, write_to_file,
+        get_changes_path, get_checksums_const_path, get_checksums_path, get_checksums_vtbl_path,
+        get_test_path, write_to_file,
     },
-    names::{def_id_name, exported_name, REEXPORTS},
+    names::def_id_name,
+    static_rts::callback::PATH_BUF,
 };
+
+pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
+
+pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
+pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
+
+pub(crate) static NEW_CHECKSUMS: OnceCell<Mutex<Checksums>> = OnceCell::new();
+pub(crate) static NEW_CHECKSUMS_VTBL: OnceCell<Mutex<Checksums>> = OnceCell::new();
+pub(crate) static NEW_CHECKSUMS_CONST: OnceCell<Mutex<Checksums>> = OnceCell::new();
 
 const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
 
 pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
 
-pub(crate) fn excluded<'tcx>(tcx: TyCtxt<'tcx>) -> bool {
-    let local_crate_name = tcx.crate_name(LOCAL_CRATE);
-    EXCLUDED_CRATES
-        .iter()
-        .any(|krate| *krate == local_crate_name.as_str())
+pub(crate) static EXCLUDED: OnceCell<bool> = OnceCell::new();
+static NO_INSTRUMENTATION: OnceCell<bool> = OnceCell::new();
+
+pub(crate) fn excluded<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
+    *EXCLUDED.get_or_init(|| {
+        let exclude = env::var(ENV_SKIP_ANALYSIS).is_ok() || no_instrumentation(getter_crate_name);
+        if exclude {
+            trace!("Excluding crate {}", getter_crate_name());
+        }
+        exclude
+    })
 }
 
-pub(crate) fn prepare_analysis(path_buf: PathBuf) {
-    REEXPORTS.get_or_init(|| {
-        let files: Vec<DirEntry> = read_dir(path_buf.as_path())
-            .unwrap()
-            .map(|maybe_path| maybe_path.unwrap())
-            .collect();
+pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
+    *NO_INSTRUMENTATION.get_or_init(|| {
+        let excluded_crate = EXCLUDED_CRATES
+            .iter()
+            .any(|krate| *krate == getter_crate_name());
 
-        let mut prefix_map = BTreeMap::new();
-        let mut fn_map = HashMap::new();
-        let mut adt_map = HashMap::new();
+        let trybuild = std::env::var(ENV_TARGET_DIR)
+            .map(|d| d.ends_with("trybuild"))
+            .unwrap_or(false);
 
-        read_lines_filter_map(
-            &files,
-            ENDING_REEXPORTS,
-            |line| !line.is_empty(),
-            |line| {
-                line.split_once(" | ")
-                    .map(|(s1, s2)| (s1.to_string(), s2.to_string()))
-                    .unwrap()
-            },
-        )
-        .into_iter()
-        .for_each(|(s1, s2)| {
-            if s1.ends_with("::") {
-                if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
-                    error!("{} overwritten by {}", x, s2.clone());
-                }
-            } else {
-                if s1.ends_with("!adt") {
-                    // If this is an Adt, insert in both adt_map and prefix_map
-                    // Because either the Adt may be used (directly) or its associated functions (via prefix)
-                    let s1 = s1.strip_suffix("!adt").unwrap().to_string();
-
-                    if let Some(x) = prefix_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                    if let Some(x) = adt_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                } else {
-                    if let Some(x) = fn_map.insert(s1.clone(), s2.clone()) {
-                        error!("{} overwritten by {}", x, s2.clone());
-                    }
-                }
-            }
-        });
-        (prefix_map, fn_map, adt_map)
-    });
+        let no_instrumentation = excluded_crate || trybuild;
+        if no_instrumentation {
+            trace!("Not instrumenting crate {}", getter_crate_name());
+        }
+        no_instrumentation
+    })
 }
 
 pub(crate) fn run_analysis_shared<'tcx>(
     tcx: TyCtxt<'tcx>,
-    path_buf: PathBuf,
-    mut new_checksums: Checksums,
-    mut new_checksums_ctfe: Checksums,
+    bodies: Vec<(&'tcx Body<'tcx>, &'tcx List<GenericArg<'tcx>>)>,
 ) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
     let crate_id = tcx.sess.local_stable_crate_id().to_u64();
 
+    CRATE_NAME.get_or_init(|| crate_name.clone());
+    CRATE_ID.get_or_init(|| crate_id);
+
+    let mut bodies_map: HashMap<DefId, &'tcx Body> = HashMap::new();
+
+    for (body, _substs) in &bodies {
+        bodies_map.insert(body.source.def_id(), body);
+    }
+    let dedup_bodies: Vec<&'tcx Body> = bodies_map.values().map(|b| *b).collect();
+
+    //##########################################################################################################
+    // 2. Calculate checksum of every MIR body and the consts that it uses
+
+    let mut const_visitor = ConstVisitor::new(tcx);
+    for (body, substs) in &bodies {
+        const_visitor.visit(&body, substs);
+    }
+
+    let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+
+    for body in dedup_bodies {
+        let name = def_id_name(tcx, body.source.def_id(), List::empty(), false, true); // IMPORTANT: no substs here
+        let checksum = get_checksum_body(tcx, body);
+        insert_hashmap(&mut *new_checksums, &name, checksum);
+    }
+
     //##############################################################################################################
-    // 2. Determine which functions represent tests and store the names of those nodes on the filesystem
+    // 3. Determine which functions represent tests and store the names of those nodes on the filesystem
 
     let mut tests: Vec<String> = Vec::new();
     for def_id in tcx.mir_keys(()) {
         for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                tests.push(def_id_name(tcx, def_id.to_def_id()));
+                tests.push(def_id_name(tcx, def_id.to_def_id(), &[], false, false));
             }
         }
     }
@@ -107,191 +119,180 @@ pub(crate) fn run_analysis_shared<'tcx>(
     if tests.len() > 0 {
         write_to_file(
             tests.join("\n").to_string(),
-            path_buf.clone(),
+            PATH_BUF.get().unwrap().clone(),
             |buf| get_test_path(buf, &crate_name, crate_id),
             false,
         );
     }
 
-    debug!("Exported tests for {}", crate_name);
+    trace!("Exported tests for {}", crate_name);
+}
 
-    //##################################################################################################################
-    // 3. Import checksums
+pub fn export_checksums_and_changes(from_new_revision: bool) {
+    if let Some(crate_name) = CRATE_NAME.get() {
+        let crate_id = *CRATE_ID.get().unwrap();
 
-    let old_checksums = {
-        let checksums_path_buf = get_checksums_path(path_buf.clone(), &crate_name, crate_id);
+        let new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+        let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
+        let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
 
-        let maybe_checksums = read(checksums_path_buf);
+        //##############################################################################################################
+        // Import checksums
 
-        if let Ok(checksums) = maybe_checksums {
-            Checksums::from(checksums.as_slice())
-        } else {
-            Checksums::new()
-        }
-    };
+        let old_checksums = {
+            let checksums_path_buf =
+                get_checksums_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 
-    let old_checksums_ctfe = {
-        let checksums_path_buf = get_checksums_ctfe_path(path_buf.clone(), &crate_name, crate_id);
+            let maybe_checksums = read(checksums_path_buf);
 
-        let maybe_checksums = read(checksums_path_buf);
+            if let Ok(checksums) = maybe_checksums {
+                Checksums::from(checksums.as_slice())
+            } else {
+                Checksums::new()
+            }
+        };
 
-        if let Ok(checksums) = maybe_checksums {
-            Checksums::from(checksums.as_slice())
-        } else {
-            Checksums::new()
-        }
-    };
+        let old_checksums_vtbl = {
+            let checksums_path_buf =
+                get_checksums_vtbl_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 
-    debug!("Imported checksums for {}", crate_name);
+            let maybe_checksums = read(checksums_path_buf);
 
-    //##################################################################################################################
-    // 4. Calculate new checksums and names of changed nodes and write this information to filesystem
+            if let Ok(checksums) = maybe_checksums {
+                Checksums::from(checksums.as_slice())
+            } else {
+                Checksums::new()
+            }
+        };
 
-    let mut changed_nodes = Vec::new();
+        let old_checksums_const = {
+            let checksums_path_buf =
+                get_checksums_const_path(PATH_BUF.get().unwrap().clone(), &crate_name, crate_id);
 
-    for def_id in tcx.mir_keys(()) {
-        let has_body = tcx.hir().maybe_body_owned_by(*def_id).is_some();
+            let maybe_checksums = read(checksums_path_buf);
 
-        if has_body {
-            let name = def_id_name(tcx, def_id.to_def_id());
-            let changed = match tcx.hir().body_const_context(*def_id) {
-                Some(ConstContext::ConstFn) | None => {
-                    let maybe_new = new_checksums.inner().get(&name);
-                    let maybe_old = old_checksums.inner().get(&name);
+            if let Ok(checksums) = maybe_checksums {
+                Checksums::from(checksums.as_slice())
+            } else {
+                Checksums::new()
+            }
+        };
 
-                    match (maybe_new, maybe_old) {
-                        (None, None) => unreachable!(),
-                        (None, Some(checksums)) => {
-                            new_checksums
-                                .inner_mut()
-                                .insert(name.clone(), checksums.clone());
-                            false
-                        }
-                        (Some(_), None) => true,
-                        (Some(new), Some(old)) => new != old,
-                    }
-                }
-                Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
-                    let maybe_new = new_checksums_ctfe.inner().get(&name);
-                    let maybe_old = old_checksums_ctfe.inner().get(&name);
+        trace!("Imported checksums for {}", crate_name);
 
-                    match (maybe_new, maybe_old) {
-                        (None, None) => unreachable!(),
-                        (None, Some(checksums)) => {
-                            new_checksums_ctfe
-                                .inner_mut()
-                                .insert(name.clone(), checksums.clone());
-                            false
-                        }
-                        (Some(_), None) => true,
-                        (Some(new), Some(old)) => new != old,
-                    }
+        //##############################################################################################################
+        // 4. Calculate names of changed nodes and write this information to filesystem
+
+        let mut changed_nodes = HashSet::new();
+
+        trace!("Checksums: {:?}", new_checksums);
+
+        // We only consider nodes from the new revision
+        // (Dynamic: if something in the old revision has been removed, there must be a change to some other function)
+        for name in new_checksums.keys() {
+            trace!("Checking {}", name);
+            let changed = {
+                let maybe_new = new_checksums.get(name);
+                let maybe_old = old_checksums.get(name);
+
+                match (maybe_new, maybe_old) {
+                    (None, _) => unreachable!(),
+                    (Some(_), None) => true,
+                    (Some(new), Some(old)) => new != old,
                 }
             };
 
             if changed {
-                changed_nodes.push(name);
+                debug!("Changed due to regular checksums: {}", name);
+                changed_nodes.insert(name.clone());
             }
         }
-    }
 
-    write_to_file(
-        new_checksums.to_string().to_string(),
-        path_buf.clone(),
-        |buf| get_checksums_path(buf, &crate_name, crate_id),
-        false,
-    );
+        // To properly handle dynamic dispatch, we need to differentiate
+        // We consider nodes from the "primary" revision
+        // In case of dynamic, this is the old revision (because traces are from the old revision)
+        // In case of static, this is the new revision (because graph is build over new revision)
+        let (primary_vtbl_checksums, secondary_vtbl_checksums) = if from_new_revision {
+            (&*new_checksums_vtbl, &old_checksums_vtbl)
+        } else {
+            (&old_checksums_vtbl, &*new_checksums_vtbl)
+        };
 
-    write_to_file(
-        new_checksums_ctfe.to_string().to_string(),
-        path_buf.clone(),
-        |buf| get_checksums_ctfe_path(buf, &crate_name, crate_id),
-        false,
-    );
+        // We consider nodes from the "primary" revision
+        for name in primary_vtbl_checksums.keys() {
+            let changed = {
+                let maybe_primary = primary_vtbl_checksums.get(name);
+                let maybe_secondary = secondary_vtbl_checksums.get(name);
 
-    write_to_file(
-        changed_nodes.join("\n").to_string(),
-        path_buf.clone(),
-        |buf| get_changes_path(buf, &crate_name, crate_id),
-        false,
-    );
-
-    debug!("Exported changes for {}", crate_name);
-
-    //##################################################################################################################
-    // 5. Write a mapping of reexports to file for subsequent crates
-
-    process_reexports(tcx, path_buf.clone(), &crate_name, crate_id);
-}
-
-fn process_reexports(tcx: TyCtxt, path_buf: PathBuf, crate_name: &str, crate_id: u64) {
-    let resolutions = tcx.resolutions(());
-
-    let reexport_map = &resolutions.reexport_map;
-    let mut mapping = vec![];
-
-    for (mod_def_id, reexports) in reexport_map {
-        for mod_child in reexports {
-            if let Visibility::Public = mod_child.vis {
-                if let Res::Def(kind, def_id) = mod_child.res {
-                    if let DefKind::Mod
-                    | DefKind::Fn
-                    | DefKind::Struct
-                    | DefKind::Enum
-                    | DefKind::Trait
-                    | DefKind::Ctor(..) = kind
-                    {
-                        let (exported_name, local_name) = match kind {
-                            DefKind::Mod => {
-                                let local_name = format!(
-                                    "{}::{}",
-                                    tcx.crate_name(def_id.krate),
-                                    tcx.def_path_str(def_id)
-                                );
-                                let exported_name =
-                                    exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, local_name)
-                            }
-                            _ => {
-                                let local_name = def_id_name(tcx, def_id);
-                                let exported_name =
-                                    exported_name(tcx, *mod_def_id, mod_child.ident.name);
-                                (exported_name, local_name)
-                            }
-                        };
-
-                        if !exported_name.ends_with("_") {
-                            trace!(
-                                "Found reexport: {} as {:?}",
-                                local_name,
-                                exported_name.clone()
-                            );
-
-                            match kind {
-                                DefKind::Fn | DefKind::Ctor(..) => {
-                                    mapping.push((exported_name, local_name));
-                                }
-                                DefKind::Struct | DefKind::Enum | DefKind::Trait => {
-                                    mapping.push((exported_name + "!adt", local_name));
-                                }
-                                _ => {
-                                    mapping.push((exported_name + "::", local_name + "::"));
-                                }
-                            }
-                        }
-                    }
+                match (maybe_primary, maybe_secondary) {
+                    (None, _) => panic!("Did not find checksum for vtable entry {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
+                    (Some(_), None) => {
+                        // We consider functions that are not in the secondary set
+                        // In case of dynamic: functions that do no longer have an entry pointing to them
+                        // In case of static: functions that now have an entry pointing to them
+                        true
+                    },
+                    (Some(primary), Some(secondary)) => {
+                        // Respectively if there is an entry that is missing in the secondary set
+                        primary.difference(secondary).count() != 0
+                     },
                 }
+            };
+
+            if changed {
+                // Set to info, to recognize discrepancies between dynamic and static later on
+                debug!("Changed due to vtable checksums: {}", name);
+                changed_nodes.insert(name.clone());
             }
         }
-    }
 
-    write_to_file(
-        mapping
-            .iter()
-            .map(|(l, e)| format!("{} | {}", l, e))
-            .join("\n"),
-        path_buf,
-        |path_buf| get_reexports_path(path_buf, crate_name, crate_id),
-        false,
-    );
+        // We only consider nodes from the new revision
+        for name in new_checksums_const.keys() {
+            let changed = {
+                let maybe_new = new_checksums_const.get(name);
+                let maybe_old = old_checksums_const.get(name);
+
+                match (maybe_new, maybe_old) {
+                    (None, _) => unreachable!(),
+                    (Some(_), None) => true,
+                    (Some(new), Some(old)) => new != old,
+                }
+            };
+
+            if changed {
+                debug!("Changed due to const checksums: {}", name);
+                changed_nodes.insert(name.clone());
+            }
+        }
+
+        write_to_file(
+            Into::<Vec<u8>>::into(&*new_checksums),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_checksums_path(buf, &crate_name, crate_id),
+            false,
+        );
+
+        write_to_file(
+            Into::<Vec<u8>>::into(&*new_checksums_vtbl),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_checksums_vtbl_path(buf, &crate_name, crate_id),
+            false,
+        );
+
+        write_to_file(
+            Into::<Vec<u8>>::into(&*new_checksums_const),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_checksums_const_path(buf, &crate_name, crate_id),
+            false,
+        );
+
+        write_to_file(
+            changed_nodes.into_iter().join("\n").to_string(),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_changes_path(buf, &crate_name, crate_id),
+            false,
+        );
+
+        trace!("Exported changes for {}", crate_name);
+    }
 }

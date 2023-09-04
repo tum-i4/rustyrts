@@ -1,18 +1,23 @@
 use super::graph::{DependencyGraph, EdgeType};
+use crate::callbacks_shared::TEST_MARKER;
+use crate::constants::SUFFIX_DYN;
 use crate::names::def_id_name;
-use rustc_hir::def_id::DefId;
-use rustc_hir::ConstContext;
-use rustc_middle::mir::interpret::{ConstValue, GlobalAlloc, Scalar};
+use log::warn;
+use rustc_hir::def::DefKind;
+use rustc_hir::AttributeMap;
 use rustc_middle::mir::visit::{TyContext, Visitor};
-use rustc_middle::mir::ConstantKind;
-use rustc_middle::mir::{self, Body, Location};
-use rustc_middle::ty::{GenericArgKind, ImplSubject, Ty, TyCtxt, TyKind};
+use rustc_middle::mir::Body;
+use rustc_middle::ty::{GenericArg, Instance, InstanceDef, List, Ty, TyCtxt, TyKind};
+use rustc_span::def_id::DefId;
 
 /// MIR Visitor responsible for creating the dependency graph and comparing checksums
 pub(crate) struct GraphVisitor<'tcx, 'g> {
     tcx: TyCtxt<'tcx>,
     graph: &'g mut DependencyGraph<String>,
-    processed_def_id: Option<DefId>,
+    processed_instance: Option<(DefId, &'tcx List<GenericArg<'tcx>>)>,
+
+    #[cfg(not(feature = "monomorphize"))]
+    original_substs: Option<&'tcx List<GenericArg<'tcx>>>,
 }
 
 impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
@@ -23,189 +28,241 @@ impl<'tcx, 'g> GraphVisitor<'tcx, 'g> {
         GraphVisitor {
             tcx,
             graph,
-            processed_def_id: None,
+            processed_instance: None,
+
+            #[cfg(not(feature = "monomorphize"))]
+            original_substs: None,
         }
     }
 
-    pub fn visit(&mut self, def_id: DefId) {
-        let has_body = self
-            .tcx
-            .hir()
-            .maybe_body_owned_by(def_id.expect_local())
-            .is_some();
+    pub fn visit(&mut self, body: &'tcx Body<'tcx>, substs: &'tcx List<GenericArg<'tcx>>) {
+        let def_id = body.source.def_id();
 
-        if has_body {
-            let body = match self.tcx.hir().body_const_context(def_id.expect_local()) {
-                Some(ConstContext::ConstFn) | None => self.tcx.optimized_mir(def_id),
-                Some(ConstContext::Static(..)) | Some(ConstContext::Const) => {
-                    self.tcx.mir_for_ctfe(def_id)
-                }
-            };
+        #[cfg(feature = "monomorphize")]
+        {
+            self.processed_instance = Some((def_id, substs));
+        }
+        #[cfg(not(feature = "monomorphize"))]
+        {
+            self.processed_instance = Some((def_id, List::empty()));
+            self.original_substs = Some(substs);
+        }
 
-            //##########################################################################################################
-            // Visit body
-            self.visit_body(body);
+        //##########################################################################################################
+        // Visit body and contained promoted mir
+
+        self.visit_body(body);
+
+        for body in self.tcx.promoted_mir(def_id) {
+            self.visit_body(body)
+        }
+
+        self.processed_instance = None;
+
+        #[cfg(not(feature = "monomorphize"))]
+        {
+            self.original_substs = None;
         }
     }
 
-    pub(crate) fn process_traits(&mut self) {
-        for (_, impls) in self.tcx.all_local_trait_impls(()) {
-            for def_id in impls {
-                let implementors = self.tcx.impl_item_implementor_ids(def_id.to_def_id());
+    fn get_outer(&self) -> (DefId, &'tcx List<GenericArg<'tcx>>) {
+        self.processed_instance
+            .expect("Cannot find currently analyzed body")
+    }
 
-                if let ImplSubject::Trait(trait_ref) = self.tcx.impl_subject(def_id.to_def_id()) {
-                    for subst in trait_ref.substs {
-                        if let GenericArgKind::Type(ty) = subst.unpack() {
-                            if let TyKind::Adt(adt_def, _) = ty.kind() {
-                                for (_, &impl_fn) in implementors {
-                                    self.graph.add_edge(
-                                        def_id_name(self.tcx, adt_def.did()),
-                                        def_id_name(self.tcx, impl_fn),
-                                        EdgeType::Impl,
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-
-                for (&trait_fn, &impl_fn) in implementors {
-                    self.graph.add_edge(
-                        def_id_name(self.tcx, trait_fn),
-                        def_id_name(self.tcx, impl_fn),
-                        EdgeType::Impl,
-                    );
-                }
-            }
-        }
+    #[cfg(not(feature = "monomorphize"))]
+    fn get_orig(&self) -> &'tcx List<GenericArg<'tcx>> {
+        self.original_substs
+            .expect("Cannot find currently original substs")
     }
 }
 
 impl<'tcx, 'g> Visitor<'tcx> for GraphVisitor<'tcx, 'g> {
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        let def_id = body.source.instance.def_id();
+        let (outer, outer_substs) = self.get_outer();
 
-        self.graph.add_node(def_id_name(self.tcx, def_id));
+        if outer.is_local() {
+            let attrs = &self.tcx.hir_crate(()).owners[self
+                .tcx
+                .local_def_id_to_hir_id(outer.expect_local())
+                .owner
+                .def_id]
+                .as_owner()
+                .map_or(AttributeMap::EMPTY, |o| &o.attrs)
+                .map;
 
-        let old_processed_body = self.processed_def_id.replace(def_id);
-        self.super_body(body);
-        self.processed_def_id = old_processed_body;
-    }
+            for (_, list) in attrs.iter() {
+                for attr in *list {
+                    if attr.name_or_empty().to_ident_string() == TEST_MARKER {
+                        let def_path = def_id_name(self.tcx, outer, outer_substs, false, false);
+                        let trimmed_def_path =
+                            def_id_name(self.tcx, outer, outer_substs, false, true);
 
-    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
-        self.super_constant(constant, location);
-        let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
-
-        match constant.literal {
-            ConstantKind::Unevaluated(content, _ty) => {
-                // This takes care of borrows of e.g. "const var: u64"
-                let def_id = content.def.did;
-
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, def_id),
-                    EdgeType::Unevaluated,
-                );
-            }
-            ConstantKind::Val(cons, _ty) => {
-                match cons {
-                    ConstValue::Scalar(Scalar::Ptr(ptr, _)) => {
-                        match self.tcx.global_alloc(ptr.provenance) {
-                            GlobalAlloc::Static(def_id) => {
-                                // This takes care of borrows of e.g. "static var: u64"
-                                let (accessor, accessed_maybe_more) =
-                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
-
-                                // // This is not necessary since for a node that writes into a variable,
-                                // // there must exist a path from test to this node already
-                                //
-                                //if ty.is_mutable_ptr() {
-                                //    // If the borrow is mut, we also add an edge in the reverse direction
-                                //    self.graph.add_edge(
-                                //        accessed.clone(),
-                                //        accessor.clone(),
-                                //        EdgeType::Scalar,
-                                //    );
-                                //}
-
-                                // Since we assume that a borrow is actually read, we always add an edge here
-                                self.graph.add_edge(
-                                    accessor.clone(),
-                                    accessed_maybe_more,
-                                    EdgeType::Scalar,
-                                );
-                            }
-                            GlobalAlloc::Function(instance) => {
-                                // TODO: I have not yet found out when this is useful, but since there is a defId stored in here, it might be important
-                                // Perhaps this refers to extern fns?
-                                let def_id = instance.def_id();
-                                let (accessor, accessed_maybe_more) =
-                                    (def_id_name(self.tcx, outer), def_id_name(self.tcx, def_id));
-                                self.graph.add_edge(
-                                    accessor.clone(),
-                                    accessed_maybe_more,
-                                    EdgeType::FnPtr,
-                                );
-                            }
-                            _ => {}
-                        }
+                        self.graph.add_edge(
+                            def_path[0..def_path.len() - 13].to_string(),
+                            trimmed_def_path[0..trimmed_def_path.len() - 13].to_string(),
+                            EdgeType::Trimmed,
+                        )
                     }
-                    _ => {}
                 }
             }
-            _ => (),
         }
+
+        #[cfg(feature = "monomorphize")]
+        {
+            let name_after_monomorphization =
+                def_id_name(self.tcx, outer, outer_substs, false, true);
+            let name_not_monomorphized = def_id_name(self.tcx, outer, &[], false, true);
+
+            self.graph.add_edge(
+                name_after_monomorphization,
+                name_not_monomorphized,
+                EdgeType::Monomorphization,
+            );
+        }
+
+        if let DefKind::AssocFn = self.tcx.def_kind(outer) {
+            let name = def_id_name(self.tcx, outer, &outer_substs, false, true);
+
+            // 5. (only associated functions) function + !dyn -> function
+            self.graph
+                .add_edge(name.clone() + SUFFIX_DYN, name, EdgeType::DynFn)
+        }
+
+        if let Some(impl_def) = self.tcx.impl_of_method(outer) {
+            if let Some(_) = self.tcx.impl_trait_ref(impl_def) {
+                let implementors = self.tcx.impl_item_implementor_ids(impl_def);
+
+                // 4. function in `trait` definition + !dyn -> function in trait impl (`impl <trait> for ..`) + !dyn
+                for (trait_fn, impl_fn) in implementors {
+                    if *impl_fn == outer {
+                        let name_trait_fn =
+                            def_id_name(self.tcx, *trait_fn, &[], false, true) + SUFFIX_DYN; // No substs here, even with monomorphize
+                        let name_impl_fn =
+                            def_id_name(self.tcx, outer, outer_substs, false, true) + SUFFIX_DYN;
+
+                        self.graph
+                            .add_edge(name_trait_fn, name_impl_fn, EdgeType::TraitImpl);
+                    }
+                }
+            }
+        }
+
+        self.super_body(body);
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
+    #[allow(unused_mut)]
+    fn visit_ty(&mut self, mut ty: Ty<'tcx>, _ty_context: TyContext) {
         self.super_ty(ty);
-        let Some(outer) = self.processed_def_id else {panic!("Cannot find currently analyzed body")};
+        let (outer, mut outer_substs) = self.get_outer();
+        let outer_name = def_id_name(self.tcx, outer, outer_substs, false, true);
 
-        match ty.kind() {
-            TyKind::Closure(def_id, _) => {
+        #[cfg(not(feature = "monomorphize"))]
+        let orig_substs = self.get_orig();
+
+        #[cfg(feature = "monomorphize")]
+        let orig_substs = outer_substs;
+
+        // 6. function -> destructor (`drop()` function) of referenced abstract datatype
+        if let Some(adt_def) = ty.ty_adt_def() {
+            if let Some(destructor) = self.tcx.adt_destructor(adt_def.did()) {
                 self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::Closure,
+                    outer_name.clone(),
+                    def_id_name(self.tcx, destructor.did, &[], false, true),
+                    EdgeType::Drop,
                 );
             }
-            TyKind::Generator(def_id, _, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::Generator,
-                );
+        }
+
+        #[allow(unused_variables)]
+        if let Some((def_id, substs, edge_type)) = match ty.kind() {
+            // 1. function  -> contained Closure
+            TyKind::Closure(def_id, substs) => Some((*def_id, *substs, EdgeType::Closure)),
+            // 2. function  -> contained Generator
+            TyKind::Generator(def_id, substs, _) => Some((*def_id, *substs, EdgeType::Generator)),
+
+            TyKind::FnDef(_def_id, _substs) => {
+                // We need to resolve ty here, to precisely resolve statically dispatched function calls
+                let param_env = self
+                    .tcx
+                    .param_env(outer)
+                    .with_reveal_all_normalized(self.tcx);
+                ty = self
+                    .tcx
+                    .subst_and_normalize_erasing_regions(orig_substs, param_env, ty);
+
+                let TyKind::FnDef(mut def_id, mut substs) = ty.kind() else {unreachable!()};
+
+                let maybe_resolved = if let Ok(Some(instance)) =
+                    Instance::resolve(self.tcx, param_env, def_id, &substs)
+                {
+                    match instance.def {
+                        InstanceDef::Virtual(def_id, _) => {
+                            // 3.4 caller function -> callee `fn` + !dyn (for functions in `trait {..} called by dynamic dispatch)
+                            Some(Some((def_id, List::empty(), EdgeType::FnDefDyn)))
+                            // No substs here, even with monomorphize
+                        }
+                        InstanceDef::Item(item) if !self.tcx.is_closure(instance.def_id()) => {
+                            // Assign resolved function
+                            def_id = item.did;
+                            substs = instance.substs;
+                            None
+                        }
+                        _ => Some(None),
+                    }
+                } else {
+                    warn!(
+                        "Failed to resolve instance, may lead to unsafe behavior {:?} - {:?}",
+                        def_id, substs
+                    );
+                    None
+                };
+
+                maybe_resolved.unwrap_or_else(|| {
+                    if let DefKind::AssocFn = self.tcx.def_kind(def_id) {
+                        if let Some(_trait_def_id) = self.tcx.trait_of_item(def_id) {
+                            // 3.1 caller function -> callee `fn` (for functions in `trait {..})
+                            Some((def_id, substs, EdgeType::FnDefTrait))
+                        } else {
+                            // 3.2 caller function -> callee `fn` (for assoc `fn`s in `impl .. {..})
+                            Some((def_id, substs, EdgeType::FnDefImpl))
+                        }
+                    } else {
+                        // 3.3 caller function  -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
+                        Some((def_id, substs, EdgeType::FnDef))
+                    }
+                })
             }
-            TyKind::FnDef(def_id, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, *def_id),
-                    EdgeType::FnDef,
-                );
+            _ => None,
+        } {
+            #[cfg(feature = "monomorphize")]
+            {
+                let mut name = def_id_name(self.tcx, def_id, substs, false, true);
+                if edge_type == EdgeType::FnDefDyn {
+                    name += SUFFIX_DYN;
+                }
+
+                self.graph.add_edge(outer_name.clone(), name, edge_type);
             }
-            TyKind::Adt(adt_def, _) => {
-                self.graph.add_edge(
-                    def_id_name(self.tcx, outer),
-                    def_id_name(self.tcx, adt_def.did()),
-                    EdgeType::Adt,
-                );
+
+            #[cfg(not(feature = "monomorphize"))]
+            {
+                let mut name = def_id_name(self.tcx, def_id, &[], false, true);
+                if edge_type == EdgeType::FnDefDyn {
+                    name += SUFFIX_DYN;
+                }
+
+                self.graph.add_edge(outer_name.clone(), name, edge_type);
             }
-            //TyKind::Foreign(def_id) => {
-            //    // this has effectively no impact because we do not track modifications of extern types
-            //    self.graph.add_edge(
-            //        def_path_debug_str_custom(self.tcx, outer),
-            //        def_path_debug_str_custom(self.tcx, *def_id),
-            //        EdgeType::Foreign,
-            //    );
-            //}
-            _ => {}
         }
     }
 }
 
 #[cfg(test)]
 mod test {
+    use itertools::Itertools;
     use log::info;
+    use rustc_middle::mir::mono::MonoItem;
     use std::{fs, io::Error, path::PathBuf, string::String};
     use test_log::test;
 
@@ -214,6 +271,7 @@ mod test {
     use rustc_session::config::{self, CheckCfg, OptLevel};
     use rustc_span::source_map;
 
+    use crate::constants::SUFFIX_DYN;
     use crate::static_rts::graph::{DependencyGraph, EdgeType};
 
     use super::GraphVisitor;
@@ -257,12 +315,24 @@ mod test {
         rustc_interface::run_compiler(config, |compiler| {
             compiler.enter(|queries| {
                 queries.global_ctxt().unwrap().enter(|tcx| {
+                    let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+                    let bodies = code_gen_units
+                        .iter()
+                        .flat_map(|c| c.items().keys())
+                        .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+                        .map(|m| {
+                            let MonoItem::Fn(instance) = m else {unreachable!()};
+                            instance
+                        })
+                        .filter(|i: &&rustc_middle::ty::Instance| tcx.is_mir_available(i.def_id()))
+                        .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
+                        .collect_vec();
+
                     let mut visitor = GraphVisitor::new(tcx, &mut graph);
 
-                    for def_id in tcx.iter_local_def_id() {
-                        visitor.visit(def_id.to_def_id());
+                    for (body, substs) in bodies {
+                        visitor.visit(body, substs);
                     }
-                    visitor.process_traits();
                 })
             });
         });
@@ -279,13 +349,9 @@ mod test {
     ) {
         let error_str = format!("Did not find edge {} -> {} ({:?})", start, end, edge_type);
 
-        let start = graph
-            .get_nodes()
-            .iter()
-            .find(|s| s.ends_with(start))
-            .unwrap();
+        let start = graph.get_nodes().iter().find(|s| **s == start).unwrap();
 
-        let end = graph.get_nodes().iter().find(|s| s.ends_with(end)).unwrap();
+        let end = graph.get_nodes().iter().find(|s| **s == end).unwrap();
 
         let maybe_edges = graph.get_edges_to(end);
         assert!(maybe_edges.is_some(), "{}", error_str);
@@ -331,8 +397,8 @@ mod test {
     fn test_function_call() {
         let graph = compile_and_visit("call.rs");
 
-        let start = "::test::test";
-        let end = "::func";
+        let start = "rust_out::test";
+        let end = "rust_out::func";
         let edge_type = EdgeType::FnDef;
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
@@ -342,64 +408,9 @@ mod test {
     fn test_closure() {
         let graph = compile_and_visit("closure.rs");
 
-        let start = "::test::test";
-        let end = "::test::test::{closure#0}";
+        let start = "rust_out::test";
+        let end = "rust_out::test::{closure#0}";
         let edge_type = EdgeType::Closure;
-        assert_contains_edge(&graph, &start, &end, &edge_type);
-        assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-    }
-
-    #[test]
-    fn test_scalar() {
-        let graph = compile_and_visit("scalar.rs");
-        let edge_type = EdgeType::Scalar;
-
-        {
-            // const ptr, no edge in reverse direction
-            let end = "::FOO";
-
-            let start = "::test::test_direct_read";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start = "::test::test_indirect_ptr_read";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let start = "::test::test_indirect_ref_read";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
-
-        {
-            // mut ptr, additional edge in reverse direction
-            let start = "::BAR";
-
-            let end = "::test::test_direct_write";
-            //assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_contains_edge(&graph, &end, &start, &edge_type);
-
-            let end = "::test::test_indirect_ptr_write";
-            //assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_contains_edge(&graph, &end, &start, &edge_type);
-
-            let end = "::test::test_indirect_ref_write";
-            //assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_contains_edge(&graph, &end, &start, &edge_type);
-
-            let end = "::test::test_indirect_ref_write";
-            //assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_contains_edge(&graph, &end, &start, &edge_type);
-        }
-    }
-
-    #[test]
-    fn test_unevaluated() {
-        let graph = compile_and_visit("unevaluated.rs");
-
-        let start = "::test::test_const_read";
-        let end = "::BAZ";
-        let edge_type = EdgeType::Unevaluated;
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
     }
@@ -408,105 +419,151 @@ mod test {
     fn test_fndef() {
         let graph = compile_and_visit("fndef.rs");
 
-        let start = "::test::test_indirect";
-        let end = "::incr";
+        let start = "rust_out::test_indirect";
+        let end = "rust_out::incr";
         let edge_type = EdgeType::FnDef;
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-        let start = "::test::test_higher_order";
-        let end = "::incr";
+        let start = "rust_out::test_higher_order";
+        let end = "rust_out::incr";
         let edge_type = EdgeType::FnDef;
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
     }
 
     #[test]
+    #[cfg(not(feature = "monomorphize"))]
     fn test_impls() {
         let graph = compile_and_visit("impls.rs");
 
-        let edge_type = EdgeType::FnDef;
+        let edge_type = EdgeType::FnDefImpl;
+        let end: &str = "rust_out::Foo::new";
 
-        let start = "::test::test_static";
-        let end = "::Foo::new";
+        let start = "rust_out::test_static";
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-        let start = "::test::test_const";
-        let end = "::Foo::get";
+        let start = "rust_out::test_const";
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
 
-        let start = "::test::test_mut";
-        let end = "::Foo::set";
+        let start = "rust_out::test_mut";
         assert_contains_edge(&graph, &start, &end, &edge_type);
         assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
     }
 
     #[test]
+    #[cfg(not(feature = "monomorphize"))]
     fn test_traits() {
         let graph = compile_and_visit("traits.rs");
 
         println!("{}", graph.to_string());
 
         {
-            let end = "::Animal::sound";
-            let edge_type = EdgeType::FnDef;
+            let start = "rust_out::test_direct";
+            let end = "rust_out::<Lion as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
 
-            let start = "::test::test_direct";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::sound_generic";
+            let end = "rust_out::<Dog as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
 
-            let start = "::sound_generic";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::sound_dyn";
+            let end = "rust_out::Animal::sound".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefDyn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
 
-            let start = "::sound_dyn";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::Animal::sound".to_owned() + SUFFIX_DYN;
+            let end = "rust_out::<Lion as Animal>::sound".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
+
+            let start = "rust_out::Animal::walk".to_owned() + SUFFIX_DYN;
+            let end = "rust_out::Animal::walk";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::DynFn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::DynFn);
         }
 
         {
-            let end = "::Animal::set_treat";
-            let edge_type = EdgeType::FnDef;
+            let start = "rust_out::test_mut_direct";
+            let end = "rust_out::<Lion as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
 
-            let start = "::test::test_mut_direct";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::set_treat_generic";
+            let end = "rust_out::<Dog as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
 
-            let start = "::set_treat_generic";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::set_treat_dyn";
+            let end = "rust_out::Animal::set_treat".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefDyn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
 
-            let start = "::set_treat_dyn";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::Animal::set_treat".to_owned() + SUFFIX_DYN;
+            let end = "rust_out::<Dog as Animal>::set_treat".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "monomorphize")]
+    fn test_traits() {
+        let graph = compile_and_visit("traits.rs");
+
+        println!("{}", graph.to_string());
+
+        {
+            let start = "rust_out::test_direct";
+            let end = "rust_out::<Lion as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
+
+            let start = "rust_out::sound_generic::<Lion>";
+            let end = "rust_out::<Lion as Animal>::sound";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
+
+            let start = "rust_out::sound_dyn";
+            let end = "rust_out::Animal::sound".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefDyn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
+
+            let start = "rust_out::Animal::sound".to_owned() + SUFFIX_DYN;
+            let end = "rust_out::<Lion as Animal>::sound".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
+
+            let start = "rust_out::<Lion as Animal>::walk".to_owned() + SUFFIX_DYN;
+            let end = "rust_out::<Lion as Animal>::walk";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::DynFn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::DynFn);
         }
 
         {
-            let start = "::Animal::set_treat";
-            let edge_type = EdgeType::Impl;
+            let start = "rust_out::test_mut_direct";
+            let end = "rust_out::<Dog as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
 
-            let end = "::<Lion as Animal>::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::set_treat_generic::<Dog>";
+            let end = "rust_out::<Dog as Animal>::set_treat";
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefImpl);
 
-            let end = "::<Dog as Animal>::set_treat";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-        }
+            let start = "rust_out::set_treat_dyn";
+            let end = "rust_out::Animal::set_treat".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::FnDefDyn);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::FnDefDyn);
 
-        {
-            let start = "::Animal::sound";
-            let edge_type = EdgeType::Impl;
-
-            let end = "::<Lion as Animal>::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
-
-            let end = "::<Dog as Animal>::sound";
-            assert_contains_edge(&graph, &start, &end, &edge_type);
-            assert_does_not_contain_edge(&graph, &end, &start, &edge_type);
+            let start = "rust_out::Animal::set_treat".to_owned() + SUFFIX_DYN;
+            let end = "rust_out::<Dog as Animal>::set_treat".to_owned() + SUFFIX_DYN;
+            assert_contains_edge(&graph, &start, &end, &EdgeType::TraitImpl);
+            assert_does_not_contain_edge(&graph, &end, &start, &EdgeType::TraitImpl);
         }
     }
 }

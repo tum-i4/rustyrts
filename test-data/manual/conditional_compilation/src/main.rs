@@ -1,3 +1,6 @@
+// The purpose of this crate is, to validate that RustyRTS is able to recognized changes in features
+// and conditional compilation
+
 static mut VAR: bool = false;
 
 pub fn main() {}

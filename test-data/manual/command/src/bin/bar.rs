@@ -1,15 +1,15 @@
 use command::library_fn;
+use std::process::ExitCode;
 
 #[cfg(unix)]
-pub fn main() {
-    library_fn();
-    library_fn();
-    library_fn();
-    library_fn();
+pub fn main() -> ExitCode {
+    use std::{
+        path::PathBuf,
+        process::{Command, ExitCode},
+    };
 
-    delegate_exit(library_fn());
-}
+    let path = PathBuf::from("target_dynamic/debug/foo");
 
-fn delegate_exit(code: u8) {
-    std::process::exit(code as i32);
+    let status = Command::new(path).status().unwrap();
+    return ExitCode::from(status.code().unwrap() as u8);
 }

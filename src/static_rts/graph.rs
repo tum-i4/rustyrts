@@ -4,18 +4,39 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
-    Unevaluated,
-    Scalar,
     Closure,
     Generator,
     FnDef,
-    FnPtr, // TODO: not sure if this is necessary
-    Impl,
-    Adt,
-    //Foreign,
-    //Opaque,
+    FnDefTrait,
+    FnDefImpl,
+    FnDefDyn,
+    TraitImpl,
+    DynFn,
+    Drop,
+
+    Trimmed,
+    Monomorphization,
+}
+
+impl AsRef<str> for EdgeType {
+    fn as_ref(&self) -> &str {
+        match self {
+            EdgeType::Closure => "[color = blue]",
+            EdgeType::Generator => "[color = green]",
+            EdgeType::FnDef => "[color = black]",
+            EdgeType::FnDefTrait => "[color = cyan]",
+            EdgeType::FnDefImpl => "[color = yellow]",
+            EdgeType::FnDefDyn => "[color = pink]",
+            EdgeType::TraitImpl => "[color = magenta]",
+            EdgeType::DynFn => "[color = magenta]",
+            EdgeType::Drop => "[color = yellow]",
+
+            EdgeType::Trimmed => "[color = red]",
+            EdgeType::Monomorphization => "[color = red]",
+        }
+    }
 }
 
 impl FromStr for EdgeType {
@@ -23,16 +44,19 @@ impl FromStr for EdgeType {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "Unevaluated" => Ok(Self::Unevaluated),
-            "Scalar" => Ok(Self::Scalar),
             "Closure" => Ok(Self::Closure),
             "Generator" => Ok(Self::Generator),
             "FnDef" => Ok(Self::FnDef),
-            "FnPtr" => Ok(Self::FnPtr),
-            "Impl" => Ok(Self::Impl),
-            "Adt" => Ok(Self::Adt),
-            //"Foreign" => Ok(Self::Foreign),
-            //"Opaque" => Ok(Self::Opaque),
+            "FnDefTrait" => Ok(Self::FnDefTrait),
+            "FnDefImpl" => Ok(Self::FnDefImpl),
+            "FnDefDyn" => Ok(Self::FnDefDyn),
+            "TraitDef" => Ok(Self::FnDef),
+            "TraitImpl" => Ok(Self::TraitImpl),
+            "DynFn" => Ok(Self::DynFn),
+            "Drop" => Ok(Self::Drop),
+
+            "Trimmed" => Ok(Self::Trimmed),
+            "Monomorphization" => Ok(Self::Monomorphization),
             _ => Err(()),
         }
     }
@@ -83,6 +107,54 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
         self.backwards_edges.get(to_node)
     }
 
+    #[allow(unused)]
+    pub fn affected_tests<'b: 'c, 'c, S>(
+        &'b self,
+        starting_points: S,
+        tests: HashSet<&T>,
+    ) -> (HashSet<&'b T>, HashMap<&'c T, Vec<&'b T>>)
+    where
+        S: IntoIterator<Item = &'b T>,
+    {
+        let mut reached = HashSet::new();
+        let mut affected = HashMap::new();
+        let mut acc = Vec::new();
+
+        for ele in starting_points {
+            if reached.insert(ele) {
+                self.affected_tests_helper(ele, &tests, &mut reached, &mut affected, &mut acc);
+            }
+        }
+
+        (reached, affected)
+    }
+
+    fn affected_tests_helper<'b: 'c, 'c>(
+        &'b self,
+        node: &'b T,
+        tests: &HashSet<&T>,
+        reached: &mut HashSet<&'b T>,
+        affected: &mut HashMap<&'c T, Vec<&'b T>>,
+        acc: &mut Vec<&'b T>,
+    ) {
+        acc.push(node);
+
+        if tests.contains(node) && !affected.keys().contains(&node) {
+            affected.insert(node, acc.clone());
+        }
+
+        if let Some(edges) = self.backwards_edges.get(node) {
+            for (start, _types) in edges {
+                if reached.insert(start) {
+                    self.affected_tests_helper(start, tests, reached, affected, acc);
+                }
+            }
+        }
+
+        acc.pop();
+    }
+
+    #[allow(unused)]
     pub fn reachable_nodes<'b, S>(&'b self, starting_points: S) -> HashSet<&'b T>
     where
         S: IntoIterator<Item = &'b T>,
@@ -157,6 +229,51 @@ impl DependencyGraph<String> {
                 }
             }
         }
+    }
+
+    pub fn pretty(&self, checksum_nodes: HashSet<String>) -> String {
+        let mut result = String::new();
+
+        result.push_str("digraph {\n");
+
+        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&b, &a)) {
+            let format = if checksum_nodes.contains(node) {
+                " [penwidth = 2.5]"
+            } else {
+                ""
+            };
+            result.push_str(format!("\"{}\"{}\n", node, format).as_str())
+        }
+
+        let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
+
+        for (end, edge) in self.backwards_edges.iter() {
+            for (start, types) in edge.iter() {
+                unsorted.push((start, end, types));
+            }
+        }
+
+        for (start, end, types) in unsorted
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0).then(Ord::cmp(&b.1, &a.1)))
+        {
+            for typ in *types {
+                result.push_str(
+                    format!(
+                        "\"{}\" -> \"{}\" {} // {:?}\n",
+                        start,
+                        end,
+                        typ.as_ref(),
+                        typ
+                    )
+                    .as_str(),
+                )
+            }
+        }
+
+        result.push_str("}\n");
+
+        result
     }
 }
 
@@ -245,9 +362,13 @@ mod test {
         graph.add_edge(
             "start1".to_string(),
             "end1".to_string(),
-            EdgeType::Unevaluated,
+            EdgeType::TraitImpl,
         );
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Scalar);
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::TraitImpl,
+        );
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
         graph.add_edge(
             "start1".to_string(),
@@ -255,8 +376,16 @@ mod test {
             EdgeType::Generator,
         );
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnDef);
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnPtr);
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Impl);
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::FnDefTrait,
+        );
+        graph.add_edge(
+            "start1".to_string(),
+            "end1".to_string(),
+            EdgeType::FnDefImpl,
+        );
 
         let serialized = graph.to_string();
         let deserialized = DependencyGraph::from_str(&serialized).unwrap();

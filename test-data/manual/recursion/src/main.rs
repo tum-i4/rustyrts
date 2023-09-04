@@ -2,6 +2,8 @@ fn main() {
     println!("Hello, world!");
 }
 
+// The purpose of this crate is, to verify that recursive methods do only occur once in the traces of dynamic RustyRTS
+
 fn recursive(input: usize, count: usize) -> usize {
     if input == 1 {
         return count;

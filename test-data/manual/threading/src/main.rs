@@ -3,6 +3,10 @@ use std::sync::mpsc::channel;
 use std::thread;
 use threadpool::ThreadPool;
 
+// The purpose of this crate is, to demonstrate why it is necessary to execute tests in separate processes
+// in dynamic RustyRTS
+// The traces of test should not contain test2 and vice versa
+
 fn main() {}
 
 // This is the `main` thread

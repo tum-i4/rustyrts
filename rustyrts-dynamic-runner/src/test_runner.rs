@@ -1,13 +1,13 @@
-use fork::{fork, Fork};
+use libc::close;
 use std::io::{self, stdout};
+use std::os::fd::AsRawFd;
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::process::{self, exit};
+use std::process::{self};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use test::test::{parse_opts, TestExecTime, TestTimeOptions};
 use test::{OutputFormat, ShouldPanic, TestDesc, TestDescAndFn, TestOpts};
-use threadpool::ThreadPool;
 
 use crate::constants::DESC_FLAG;
 use crate::libtest::{
@@ -16,16 +16,20 @@ use crate::libtest::{
     TestSuiteExecTime, ERROR_EXIT_CODE,
 };
 
-#[cfg(target_family = "unix")]
-use libc::c_int;
-
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 use crate::pipe::create_pipes;
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 use crate::util::waitpid_wrapper;
 
-const UNUSUAL_EXIT_CODE: c_int = 15;
+#[cfg(unix)]
+use once_cell::sync::OnceCell;
+
+#[cfg(unix)]
+static PATH_CHILD_TRACES: OnceCell<std::path::PathBuf> = OnceCell::new();
+
+#[cfg(unix)]
+const UNUSUAL_EXIT_CODE: libc::c_int = 15;
 
 #[no_mangle]
 pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
@@ -114,7 +118,7 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         .map(|t| t.desc.name.as_slice().len())
         .unwrap_or(0);
 
-    let formatter: Box<dyn OutputFormatter + Send> = match opts.format {
+    let mut formatter: Box<dyn OutputFormatter + Send> = match opts.format {
         OutputFormat::Pretty => Box::new(PrettyFormatter::new(
             OutputLocation::Raw(stdout()),
             max_name_len,
@@ -131,10 +135,18 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         OutputFormat::Json => Box::new(JsonFormatter::new(OutputLocation::Raw(stdout()))),
     };
 
-    let (mut formatter, mut state) = if cfg!(unix) {
-        execute_tests_unix(opts, n_workers, tests, formatter, state)
-    } else {
-        execute_tests_single_threaded(opts, tests, formatter, state)
+    formatter.write_run_start(tests.len(), None).unwrap();
+
+    let (mut formatter, mut state) = {
+        #[cfg(unix)]
+        {
+            execute_tests_unix(opts, n_workers, tests, formatter, state)
+        }
+
+        #[cfg(not(unix))]
+        {
+            execute_tests_single_threaded(opts, tests, formatter, state)
+        }
     };
 
     state.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
@@ -145,17 +157,21 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
     }
 }
 
-#[cfg(target_family = "unix")]
+#[cfg(unix)]
 fn execute_tests_unix(
     opts: TestOpts,
     n_workers: usize,
     tests: Vec<TestDescAndFn>,
-    mut formatter: Box<dyn OutputFormatter + Send>,
+    formatter: Box<dyn OutputFormatter + Send>,
     state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
-    if n_workers > 1 {
-        formatter.write_run_start(tests.len(), None).unwrap();
+    use std::process::exit;
 
+    use crate::util::install_kill_hook;
+    use fork::{fork, Fork};
+    use threadpool::ThreadPool;
+
+    if n_workers > 1 {
         let formatter = Arc::new(Mutex::new(formatter));
         let state = Arc::new(Mutex::new(state));
 
@@ -178,6 +194,7 @@ fn execute_tests_unix(
                     match fork().expect("Fork failed") {
                         Fork::Parent(child) => {
                             drop(tx);
+
                             let maybe_result = rx.recv();
 
                             match waitpid_wrapper(child) {
@@ -196,6 +213,13 @@ fn execute_tests_unix(
                         }
                         Fork::Child => {
                             drop(rx);
+                            install_kill_hook();
+
+                            unsafe {
+                                close(std::io::stdout().as_raw_fd());
+                                close(std::io::stderr().as_raw_fd());
+                            }
+
                             let completed_test = run_test(
                                 &test,
                                 opts.nocapture,
@@ -255,10 +279,28 @@ fn execute_tests_single_threaded(
     mut formatter: Box<dyn OutputFormatter + Send>,
     mut state: ConsoleTestState,
 ) -> (Box<dyn OutputFormatter + Send>, ConsoleTestState) {
-    formatter.write_run_start(tests.len(), None).unwrap();
-
     for test in tests {
         formatter.write_test_start(&test.desc).unwrap();
+
+        // When running on unix-like systems, we need to clear the traces from child processes
+        //
+        // Since we only have one parent process that runs all test,
+        // these traces would accumulate and falsify the traces otherwise
+        #[cfg(unix)]
+        {
+            use crate::fs_utils::{get_dynamic_path, get_process_traces_path};
+            use std::fs::remove_file;
+
+            use std::process::id;
+
+            let path_child_traces = PATH_CHILD_TRACES.get_or_init(|| {
+                let pid = id();
+                let path_buf = get_dynamic_path(true);
+                get_process_traces_path(path_buf.clone(), &pid)
+            });
+
+            remove_file(path_child_traces);
+        }
 
         let completed_test = run_test(
             &test,
@@ -329,6 +371,7 @@ pub(crate) struct CompletedTest {
 }
 
 impl CompletedTest {
+    #[cfg(unix)]
     fn failed(cause: String) -> Self {
         CompletedTest {
             result: TestResult::TrFailedMsg(cause),
