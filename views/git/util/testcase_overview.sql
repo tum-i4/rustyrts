@@ -39,7 +39,8 @@ FROM ((testreport_extended report
 WHERE retest_all_test_cases.crashed = false -- filter suites that are not comparable
   and (dynamic_test_cases.crashed is null or dynamic_test_cases.crashed = false)
   and (static_test_cases.crashed is null or static_test_cases.crashed = false)
-;
+  and retest_all_test_cases.status != 'IGNORED';
+
 
 -- this view just joins TestReport, TestSuite (retest-all, dynamic, static on the parent commit) and TestCase
 -- only if these are comparable
@@ -82,4 +83,4 @@ FROM ((testreport_parent_extended report
 WHERE retest_all_test_cases.crashed = false -- filter suites that are not comparable
   and (dynamic_test_cases.crashed is null or dynamic_test_cases.crashed = false)
   and (static_test_cases.crashed is null or static_test_cases.crashed = false)
-;
+  and retest_all_test_cases.status != 'IGNORED';

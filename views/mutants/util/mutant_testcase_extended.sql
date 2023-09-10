@@ -7,4 +7,5 @@ SELECT testcase.*,
        testsuite.mutant_id
 FROM "MutantsTestCase" testcase,
      "MutantsTestSuite" testsuite
-WHERE testcase.suite_id = testsuite.id;
+WHERE testcase.suite_id = testsuite.id
+  AND testcase.status != 'IGNORED' -- filter ignored tests

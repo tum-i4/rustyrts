@@ -40,3 +40,4 @@ FROM ((mutant_extended mutant
 WHERE retest_all_test_cases.crashed = false -- filter suites that are not comparable)
   and (dynamic_test_cases.crashed is null or dynamic_test_cases.crashed = false)
   and (static_test_cases.crashed is null or static_test_cases.crashed = false)
+  and retest_all_test_cases.status != 'IGNORED';
