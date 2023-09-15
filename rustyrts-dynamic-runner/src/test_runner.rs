@@ -299,7 +299,7 @@ fn execute_tests_single_threaded(
                 get_process_traces_path(path_buf.clone(), &pid)
             });
 
-            remove_file(path_child_traces);
+            let _ = remove_file(path_child_traces);
         }
 
         let completed_test = run_test(

@@ -13,6 +13,10 @@ fn echoed() -> u32 {
 #[derive(Echo)]
 pub struct Foo;
 
+pub fn main() {
+    println!("{}", Foo::echo());
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

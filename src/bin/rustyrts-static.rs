@@ -7,7 +7,7 @@ extern crate rustc_session;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
 use rustyrts::callbacks_shared::export_checksums_and_changes;
-use rustyrts::constants::ENV_SKIP_ANALYSIS;
+use rustyrts::constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::format::create_logger;
 use rustyrts::static_rts::callback::StaticRTSCallbacks;
 use rustyrts::utils;
@@ -29,7 +29,8 @@ fn main() {
     rustc_log::init_rustc_env_logger().unwrap();
     create_logger().init();
 
-    let skip = env::var(ENV_SKIP_ANALYSIS).is_ok();
+    let skip = env::var(ENV_SKIP_ANALYSIS).is_ok()
+        && !(env::var(ENV_TARGET_DIR).map(|var| var.ends_with("trybuild")) == Ok(true));
 
     if !skip {
         let result = rustc_driver::catch_fatal_errors(move || {
