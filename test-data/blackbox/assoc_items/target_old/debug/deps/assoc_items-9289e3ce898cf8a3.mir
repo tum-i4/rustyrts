@@ -1,0 +1,129 @@
+// WARNING: This output format is intended for human consumers only
+// and is subject to change without notice. Knock yourself out.
+const CustomTrait::FOO: i32 = {
+    let mut _0: i32;                     // return place in scope 0 at src/main.rs:3:16: 3:19
+
+    bb0: {
+        _0 = const 42_i32;               // scope 0 at src/main.rs:3:22: 3:24
+        return;                          // scope 0 at src/main.rs:3:5: 3:25
+    }
+}
+
+fn CustomTrait::value() -> i32 {
+    let mut _0: i32;                     // return place in scope 0 at src/main.rs:12:19: 12:22
+
+    bb0: {
+        _0 = const _;                    // scope 0 at src/main.rs:13:9: 13:18
+        return;                          // scope 0 at src/main.rs:14:6: 14:6
+    }
+}
+
+fn CustomTrait::ty() -> &str {
+    let mut _0: &str;                    // return place in scope 0 at src/main.rs:16:16: 16:28
+
+    bb0: {
+        _0 = std::any::type_name::<<Self as CustomTrait<T>>::TYPE>() -> bb1; // scope 0 at src/main.rs:17:9: 17:44
+                                         // mir::Constant
+                                         // + span: src/main.rs:17:9: 17:42
+                                         // + user_ty: UserType(0)
+                                         // + literal: Const { ty: fn() -> &'static str {std::any::type_name::<<Self as CustomTrait<T>>::TYPE>}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        return;                          // scope 0 at src/main.rs:18:6: 18:6
+    }
+}
+
+fn <impl at src/main.rs:21:1: 21:40>::get(_1: String) -> String {
+    debug self => _1;                    // in scope 0 at src/main.rs:29:12: 29:16
+    let mut _0: std::string::String;     // return place in scope 0 at src/main.rs:29:21: 29:27
+
+    bb0: {
+        _0 = move _1;                    // scope 0 at src/main.rs:30:9: 30:13
+        return;                          // scope 0 at src/main.rs:31:6: 31:6
+    }
+}
+
+fn <impl at src/main.rs:39:1: 39:30>::get(_1: i32) -> u32 {
+    debug self => _1;                    // in scope 0 at src/main.rs:42:12: 42:16
+    let mut _0: u32;                     // return place in scope 0 at src/main.rs:42:21: 42:24
+    let mut _2: i32;                     // in scope 0 at src/main.rs:43:9: 43:13
+
+    bb0: {
+        _2 = _1;                         // scope 0 at src/main.rs:43:9: 43:13
+        _0 = move _2 as u32 (IntToInt);  // scope 0 at src/main.rs:43:9: 43:20
+        return;                          // scope 0 at src/main.rs:44:6: 44:6
+    }
+}
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at src/main.rs:47:11: 47:11
+    let _1: ();                          // in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:9: 137:62
+    let mut _2: std::fmt::Arguments<'_>; // in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+    let mut _3: &[&str];                 // in scope 0 at src/main.rs:48:14: 48:29
+    let mut _4: &[&str; 1];              // in scope 0 at src/main.rs:48:14: 48:29
+    let _5: &[&str; 1];                  // in scope 0 at src/main.rs:48:14: 48:29
+    let mut _6: &[std::fmt::ArgumentV1<'_>]; // in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+    let mut _7: &[std::fmt::ArgumentV1<'_>; 0]; // in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+    let _8: &[std::fmt::ArgumentV1<'_>; 0]; // in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+    let mut _9: &[std::fmt::ArgumentV1<'_>; 0]; // in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+    let mut _10: &[&str; 1];             // in scope 0 at src/main.rs:48:14: 48:29
+
+    bb0: {
+        _10 = const _;                   // scope 0 at src/main.rs:48:14: 48:29
+                                         // mir::Constant
+                                         // + span: src/main.rs:48:14: 48:29
+                                         // + literal: Const { ty: &[&str; 1], val: Unevaluated(main, [], Some(promoted[1])) }
+        _5 = _10;                        // scope 0 at src/main.rs:48:14: 48:29
+        _4 = _5;                         // scope 0 at src/main.rs:48:14: 48:29
+        _3 = move _4 as &[&str] (Pointer(Unsize)); // scope 0 at src/main.rs:48:14: 48:29
+        _9 = const _;                    // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+                                         // mir::Constant
+                                         // + span: /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+                                         // + literal: Const { ty: &[ArgumentV1<'_>; 0], val: Unevaluated(main, [], Some(promoted[0])) }
+        _8 = _9;                         // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+        _7 = _8;                         // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+        _6 = move _7 as &[std::fmt::ArgumentV1<'_>] (Pointer(Unsize)); // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+        _2 = Arguments::<'_>::new_v1(move _3, move _6) -> bb1; // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+                                         // mir::Constant
+                                         // + span: /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+                                         // + user_ty: UserType(0)
+                                         // + literal: Const { ty: fn(&[&'static str], &[ArgumentV1<'_>]) -> Arguments<'_> {Arguments::<'_>::new_v1}, val: Value(<ZST>) }
+    }
+
+    bb1: {
+        _1 = _print(move _2) -> bb2;     // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:9: 137:62
+                                         // mir::Constant
+                                         // + span: /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:9: 137:27
+                                         // + literal: Const { ty: for<'a> fn(Arguments<'a>) {_print}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        return;                          // scope 0 at src/main.rs:49:2: 49:2
+    }
+}
+
+promoted[0] in main: &[ArgumentV1<'_>; 0] = {
+    let mut _0: &[std::fmt::ArgumentV1<'_>; 0]; // return place in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+    let mut _1: [std::fmt::ArgumentV1<'_>; 0]; // in scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+
+    bb0: {
+        _1 = [];                         // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+        _0 = &_1;                        // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+        return;                          // scope 0 at /rustc/4c83bd03a9d94af35c97a6b8b595d40e291af84a/library/std/src/macros.rs:137:28: 137:61
+    }
+}
+
+promoted[1] in main: &[&str; 1] = {
+    let mut _0: &[&str; 1];              // return place in scope 0 at src/main.rs:48:14: 48:29
+    let mut _1: [&str; 1];               // in scope 0 at src/main.rs:48:14: 48:29
+
+    bb0: {
+        _1 = [const "Hello, world!\n"];  // scope 0 at src/main.rs:48:14: 48:29
+                                         // mir::Constant
+                                         // + span: src/main.rs:48:14: 48:29
+                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
+        _0 = &_1;                        // scope 0 at src/main.rs:48:14: 48:29
+        return;                          // scope 0 at src/main.rs:48:14: 48:29
+    }
+}

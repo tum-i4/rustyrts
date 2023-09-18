@@ -215,9 +215,11 @@ fn execute_tests_unix(
                             drop(rx);
                             install_kill_hook();
 
-                            unsafe {
-                                close(std::io::stdout().as_raw_fd());
-                                close(std::io::stderr().as_raw_fd());
+                            if !opts.nocapture {
+                                unsafe {
+                                    close(std::io::stdout().as_raw_fd());
+                                    close(std::io::stderr().as_raw_fd());
+                                }
                             }
 
                             let completed_test = run_test(

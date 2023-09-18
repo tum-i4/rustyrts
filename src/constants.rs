@@ -17,7 +17,7 @@ pub const ENV_RUSTC_WRAPPER: &str = "RUSTC_WRAPPER";
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
 /// Used to buffer arguments to rustc
-pub const ENV_RUSTYRTS_ARGS: &str = "rustyrts_args";
+pub const ENV_RUSTYRTS_ARGS: &str = "RUSTYRTS_ARGS";
 
 /// Used to specify whether rustyrts should provide verbose output
 pub const ENV_RUSTYRTS_VERBOSE: &str = "RUSTYRTS_VERBOSE";
@@ -27,6 +27,8 @@ pub const ENV_RUSTYRTS_LOG: &str = "RUSTYRTS_LOG";
 
 /// Used to skip the analysis in the second invocation of the compiler wrapper
 pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP";
+
+pub const ENV_BLACKBOX_TEST: &str = "RUSTYRTS_BLACKBOX_TEST";
 
 //######################################################################################################################
 // File endings or names

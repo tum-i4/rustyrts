@@ -1,0 +1,1 @@
+/home/simon/Dokumente/Semester10/GuidedResearch/rustyrts/test-data/blackbox/assoc_items/target/debug/assoc_items: /home/simon/Dokumente/Semester10/GuidedResearch/rustyrts/test-data/blackbox/assoc_items/src/main.rs

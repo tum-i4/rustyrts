@@ -8,11 +8,13 @@ fn cargo() -> Command {
 }
 
 fn main() {
-    build_library("rustyrts-dynamic-rlib");
-    build_library("rustyrts-dynamic-runner");
+    if std::env::var("RUSTYRTS_SKIP_BUILD").is_err() {
+        build_library("rustyrts-dynamic-rlib");
+        build_library("rustyrts-dynamic-runner");
 
-    install_rlib("rustyrts_dynamic_rlib", "rustyrts-dynamic-rlib");
-    install_staticlib("rustyrts_dynamic_runner", "rustyrts-dynamic-runner");
+        install_rlib("rustyrts_dynamic_rlib", "rustyrts-dynamic-rlib");
+        install_staticlib("rustyrts_dynamic_runner", "rustyrts-dynamic-runner");
+    }
 }
 
 fn build_library(dir_name: &str) {

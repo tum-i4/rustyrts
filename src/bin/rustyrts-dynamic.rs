@@ -14,11 +14,11 @@ extern crate rustc_span;
 
 use rustc_session::config::ErrorOutputType;
 use rustc_session::early_error;
-use rustyrts::callbacks_shared::export_checksums_and_changes;
 use rustyrts::constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::dynamic_rts::callback::DynamicRTSCallbacks;
 use rustyrts::format::create_logger;
 use rustyrts::utils;
+use rustyrts::{callbacks_shared::export_checksums_and_changes, constants::ENV_BLACKBOX_TEST};
 use std::env;
 use std::process;
 
@@ -51,6 +51,15 @@ fn main() {
                             &format!("Argument {} is not valid Unicode: {:?}", i, arg),
                         )
                     })
+                })
+                .map(|arg| {
+                    // when running blackbox tests, this ensures that stable crate ids do not change if features are enabled
+                    if std::env::var(ENV_BLACKBOX_TEST).is_ok() {
+                        if arg.starts_with("metadata=") {
+                            return "metadata=".to_string();
+                        }
+                    }
+                    arg
                 })
                 .collect::<Vec<_>>();
 
