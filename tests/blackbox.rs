@@ -41,7 +41,7 @@ fn command(mode: &Mode, dir: &PathBuf, target_dir: &Path, feature: Option<&str>)
         .env(ENV_BLACKBOX_TEST, "true")
         .env(
             ENV_TARGET_DIR_OVERRIDE,
-            std::env::var(ENV_TARGET_DIR).unwrap(),
+            std::env::var(ENV_TARGET_DIR).unwrap_or_else(|_| "target".to_string()),
         );
 
     ret.env_remove(ENV_SKIP_ANALYSIS);

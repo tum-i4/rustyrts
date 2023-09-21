@@ -30,6 +30,7 @@ pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP";
 
 pub const ENV_BLACKBOX_TEST: &str = "RUSTYRTS_BLACKBOX_TEST";
 
+pub const ENV_TARGET_DIR_OVERRIDE: &str = "RUSTYRTS_TARGET_DIR";
 //######################################################################################################################
 // File endings or names
 

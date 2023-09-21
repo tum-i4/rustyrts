@@ -70,6 +70,7 @@ pub fn pre_test() {
 #[no_mangle]
 #[cfg(unix)]
 pub fn pre_main() {
+    std::env::remove_var(ENV_TARGET_DIR_OVERRIDE);
     // Do not overwrite the HashSet in case it is present
     // This may be the case if main() is called directly by a test fn
     let mut handle = NODES.lock().unwrap();

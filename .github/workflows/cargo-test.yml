@@ -31,7 +31,10 @@ jobs:
       run: rustup component add rustc-dev llvm-tools-preview
     - name: Check Rust version
       run: cargo --version && rustc --version
-    - uses: Swatinem/rust-chachev2      
+
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2.7.0
+           
     - name: Build
       run: cargo build --verbose
     - name: Run tests
