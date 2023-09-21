@@ -1,0 +1,1 @@
+editor.workspace-lsp-roots = ["rustyrts-dynamic-rlib", "rustyrts-dynamic-runner"]

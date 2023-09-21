@@ -1,3 +1,4 @@
+use constants::ENV_TARGET_DIR_OVERRIDE;
 use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
 use std::hash::Hash;
 use std::path::PathBuf;
@@ -52,6 +53,7 @@ pub fn trace(input: &'static str, bit: &'static u8) {
 
 #[no_mangle]
 pub fn pre_test() {
+    std::env::remove_var(ENV_TARGET_DIR_OVERRIDE);
     let mut handle = NODES.lock().unwrap();
     if let Some(set) = handle.replace(HashSet::new()) {
         set.into_iter().for_each(|Traced(_, bit)| {
@@ -96,7 +98,7 @@ where
 {
     let handle = NODES.lock().unwrap();
     if let Some(ref set) = *handle {
-        let path_buf = get_dynamic_path(true);
+        let path_buf = get_dynamic_path(true, Some(ENV_TARGET_DIR_OVERRIDE));
 
         let mut all = HashSet::new();
 

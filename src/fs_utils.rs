@@ -14,31 +14,37 @@ use crate::constants::{
 #[cfg(unix)]
 use crate::constants::ENDING_PROCESS_TRACE;
 
-pub fn get_target_dir(mode: &str) -> PathBuf {
-    get_target_dir_relative(mode)
+pub fn get_target_dir(mode: &str, env: Option<&str>) -> PathBuf {
+    get_target_dir_relative(mode, env)
         .canonicalize()
         .expect("Failed to canonicalize ENV_TARGET_DIR")
 }
 
-pub fn get_target_dir_relative(mode: &str) -> PathBuf {
-    PathBuf::from(std::env::var(ENV_TARGET_DIR).unwrap_or(format!("target_{}", mode).to_string()))
+pub fn get_target_dir_relative(mode: &str, env: Option<&str>) -> PathBuf {
+    let path = env
+        .and_then(|name| std::env::var(name).ok())
+        .unwrap_or_else(|| {
+            std::env::var(ENV_TARGET_DIR).unwrap_or(format!("target_{}", mode).to_string())
+        });
+
+    PathBuf::from(path)
 }
 
 pub fn get_static_path(absolute: bool) -> PathBuf {
     let mut path_buf = if !absolute {
-        get_target_dir_relative("static")
+        get_target_dir_relative("static", None)
     } else {
-        get_target_dir("static")
+        get_target_dir("static", None)
     };
     path_buf.push(".rts_static");
     path_buf
 }
 
-pub fn get_dynamic_path(absolute: bool) -> PathBuf {
+pub fn get_dynamic_path(absolute: bool, env: Option<&str>) -> PathBuf {
     let mut path_buf = if !absolute {
-        get_target_dir_relative("dynamic")
+        get_target_dir_relative("dynamic", env)
     } else {
-        get_target_dir("dynamic")
+        get_target_dir("dynamic", env)
     };
     path_buf.push(".rts_dynamic");
     path_buf

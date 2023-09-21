@@ -185,7 +185,7 @@ fn cargo_build(mode: Mode) -> Command {
     );
 
     // If not set manually, set cargo target dir to something other than the default
-    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string()));
+    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string(), None));
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
@@ -221,7 +221,7 @@ where
     );
 
     // If not set manually, set cargo target dir to something other than the default
-    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string()));
+    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string(), None));
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
@@ -612,7 +612,7 @@ fn select_and_execute_tests_static() {
 /// `cargo build --bin some_crate_name -v -- cargo-rustyrts-marker-begin --top_crate_name some_top_crate_name --domain interval -v cargo-rustyrts-marker-end`
 /// using the rustc wrapper for dynamic rustyrts
 fn run_cargo_rustc_dynamic() {
-    let path_buf: PathBuf = get_dynamic_path(false);
+    let path_buf: PathBuf = get_dynamic_path(false, None);
 
     create_dir_all(path_buf.as_path()).expect(&format!(
         "Failed to create directory {}",
@@ -648,7 +648,7 @@ fn run_cargo_rustc_dynamic() {
 fn select_and_execute_tests_dynamic() {
     let verbose = has_arg_flag("-v");
 
-    let path_buf = get_dynamic_path(true);
+    let path_buf = get_dynamic_path(true, None);
 
     let files: Vec<DirEntry> = read_dir(path_buf.as_path())
         .unwrap()

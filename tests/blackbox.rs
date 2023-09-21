@@ -1,9 +1,11 @@
 use lazy_static::lazy_static;
-use std::path::PathBuf;
+use std::{fs::create_dir_all, path::PathBuf};
 use std::{path::Path, process::Command};
 use test_case::test_case;
 
-use rustyrts::constants::{ENV_BLACKBOX_TEST, ENV_TARGET_DIR};
+use rustyrts::constants::{
+    ENV_BLACKBOX_TEST, ENV_SKIP_ANALYSIS, ENV_TARGET_DIR, ENV_TARGET_DIR_OVERRIDE,
+};
 use tempdir::TempDir;
 
 enum Mode {
@@ -36,7 +38,13 @@ fn command(mode: &Mode, dir: &PathBuf, target_dir: &Path, feature: Option<&str>)
     }
 
     ret.env(ENV_TARGET_DIR, target_dir)
-        .env(ENV_BLACKBOX_TEST, "true");
+        .env(ENV_BLACKBOX_TEST, "true")
+        .env(
+            ENV_TARGET_DIR_OVERRIDE,
+            std::env::var(ENV_TARGET_DIR).unwrap(),
+        );
+
+    ret.env_remove(ENV_SKIP_ANALYSIS);
 
     ret
 }
@@ -160,6 +168,7 @@ fn blackbox_test_not_affected(
         dir.file_name().unwrap().to_str().unwrap(),
     )
     .unwrap();
+    create_dir_all(target_dir.path()).unwrap();
 
     {
         println!("-------- baseline --------");

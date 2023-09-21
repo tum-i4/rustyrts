@@ -32,7 +32,7 @@ pub struct DynamicRTSCallbacks {}
 
 impl DynamicRTSCallbacks {
     pub fn new() -> Self {
-        PATH_BUF.get_or_init(|| get_dynamic_path(true));
+        PATH_BUF.get_or_init(|| get_dynamic_path(true, None));
         Self {}
     }
 }
