@@ -6,6 +6,9 @@ edition = "2021"
 [package.metadata.rust-analyzer]
 rustc_private=true
 
+[profile.release]
+debug = true
+
 [[bin]]
 name = "cargo-rustyrts"
 
@@ -14,12 +17,6 @@ name = "rustyrts-static"
 
 [[bin]]
 name = "rustyrts-dynamic"
-
-[features]
-default = ["print_paths"]
-
-print_paths = []
-monomorphize = []
 
 [dependencies]
 log = "0.4"

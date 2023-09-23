@@ -27,7 +27,6 @@ extern crate rustc_errors;
 
 pub mod static_rts {
     pub mod callback;
-    pub mod graph;
     pub mod visitor;
 }
 

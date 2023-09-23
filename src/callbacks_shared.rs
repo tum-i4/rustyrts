@@ -2,10 +2,8 @@ use itertools::Itertools;
 use log::{debug, trace};
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::mir::Body;
-use rustc_middle::ty::{GenericArg, List, TyCtxt};
-use rustc_span::def_id::DefId;
-use std::collections::HashMap;
+use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::ty::TyCtxt;
 use std::env;
 use std::{
     collections::HashSet,
@@ -13,8 +11,6 @@ use std::{
     sync::{atomic::AtomicUsize, Mutex},
 };
 
-use crate::checksums::{get_checksum_body, insert_hashmap};
-use crate::const_visitor::ConstVisitor;
 use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::{
     checksums::Checksums,
@@ -25,6 +21,10 @@ use crate::{
     },
     names::def_id_name,
     static_rts::callback::PATH_BUF,
+};
+use crate::{
+    checksums::{get_checksum_body, insert_hashmap},
+    const_visitor::process_consts,
 };
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
@@ -71,35 +71,47 @@ pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F)
     })
 }
 
-pub(crate) fn run_analysis_shared<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    bodies: Vec<(&'tcx Body<'tcx>, &'tcx List<GenericArg<'tcx>>)>,
-) {
+pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
     let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+
+    //##############################################################################################################
+    // Collect all MIR bodies that are relevant for code generation
+
+    let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+
+    let bodies = code_gen_units
+        .iter()
+        .flat_map(|c| c.items().keys())
+        .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+        .map(|m| {
+            let MonoItem::Fn(instance) = m else {unreachable!()};
+            instance
+        })
+        .map(|i| i.def_id())
+        //.filter(|d| d.is_local()) // It is not feasible to only analyze local MIR
+        .filter(|d| tcx.is_mir_available(d))
+        .unique()
+        .map(|d| tcx.optimized_mir(d))
+        .collect_vec();
+
+    //##############################################################################################################
+    // Continue at shared analysis
 
     CRATE_NAME.get_or_init(|| crate_name.clone());
     CRATE_ID.get_or_init(|| crate_id);
 
-    let mut bodies_map: HashMap<DefId, &'tcx Body> = HashMap::new();
-
-    for (body, _substs) in &bodies {
-        bodies_map.insert(body.source.def_id(), body);
-    }
-    let dedup_bodies: Vec<&'tcx Body> = bodies_map.values().map(|b| *b).collect();
-
     //##########################################################################################################
     // 2. Calculate checksum of every MIR body and the consts that it uses
 
-    let mut const_visitor = ConstVisitor::new(tcx);
-    for (body, substs) in &bodies {
-        const_visitor.visit(&body, substs);
+    for body in &bodies {
+        process_consts(tcx, body);
     }
 
     let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
 
-    for body in dedup_bodies {
-        let name = def_id_name(tcx, body.source.def_id(), List::empty(), false, true); // IMPORTANT: no substs here
+    for body in bodies {
+        let name = def_id_name(tcx, body.source.def_id(), false, true); // IMPORTANT: no substs here
         let checksum = get_checksum_body(tcx, body);
         insert_hashmap(&mut *new_checksums, &name, checksum);
     }
@@ -111,7 +123,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
     for def_id in tcx.mir_keys(()) {
         for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                tests.push(def_id_name(tcx, def_id.to_def_id(), &[], false, false));
+                tests.push(def_id_name(tcx, def_id.to_def_id(), false, false));
             }
         }
     }
@@ -184,8 +196,6 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
         // 4. Calculate names of changed nodes and write this information to filesystem
 
         let mut changed_nodes = HashSet::new();
-
-        trace!("Checksums: {:?}", new_checksums);
 
         // We only consider nodes from the new revision
         // (Dynamic: if something in the old revision has been removed, there must be a change to some other function)

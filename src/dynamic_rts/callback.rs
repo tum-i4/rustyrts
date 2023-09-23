@@ -1,9 +1,7 @@
-use itertools::Itertools;
 use log::trace;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
-use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::query::{query_keys, query_stored};
 use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_session::config::CrateType;
@@ -132,27 +130,7 @@ fn custom_optimized_mir<'tcx>(
 
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        //##############################################################################################################
-        // Collect all MIR bodies that are relevant for code generation
-
-        let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
-        let bodies = code_gen_units
-            .iter()
-            .flat_map(|c| c.items().keys())
-            .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
-            .map(|m| {
-                let MonoItem::Fn(instance) = m else {unreachable!()};
-                instance
-            })
-            .filter(|i| tcx.is_mir_available(i.def_id()))
-            //.filter(|i| i.def_id().is_local()) // It is not feasible to only analyze local MIR
-            .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
-            .collect_vec();
-
-        //##############################################################################################################
-        // Continue at shared analysis
-
-        run_analysis_shared(tcx, bodies);
+        run_analysis_shared(tcx);
     }
 }
 
@@ -179,7 +157,7 @@ fn custom_vtable_entries<'tcx>(
 
                 // TODO: it should be feasible to exclude closures here
 
-                let name = def_id_name(tcx, def_id, &[], false, true); // IMPORTANT: no substs here
+                let name = def_id_name(tcx, def_id, false, true);
                 let checksum = get_checksum_vtbl_entry(tcx, &entry);
                 trace!("Considering {:?} in checksums of {}", instance, name);
 
