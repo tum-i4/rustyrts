@@ -17,81 +17,55 @@ use rustc_middle::{
 use rustc_span::def_id::DefId;
 
 use crate::checksums::{get_checksum_const_allocation, get_checksum_scalar_int};
-use crate::{callbacks_shared::NEW_CHECKSUMS_CONST, checksums::insert_hashmap, names::def_id_name};
 
-pub fn process_consts<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
-    let def_id = body.source.def_id();
-    let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
-    let mut resolver =
-        ResolvingConstVisitor::new(tcx, List::identity_for_item(tcx, def_id), param_env);
-
-    //##############################################################################################################
-    // Visit body and contained promoted mir
-
-    resolver.visit_body(body);
-    for body in tcx.promoted_mir(def_id) {
-        resolver.visit_body(body);
-    }
-
-    let result = resolver.finalize();
-
-    let name = def_id_name(tcx, def_id, false, true);
-    for allocation_or_int in result {
-        let checksum = match allocation_or_int {
-            Ok(allocation) => get_checksum_const_allocation(tcx, &allocation),
-            Err(scalar_int) => {
-                let checksum = get_checksum_scalar_int(tcx, &scalar_int);
-                checksum
-            }
-        };
-
-        insert_hashmap(
-            &mut *NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap(),
-            &name,
-            checksum,
-        );
-    }
-}
-
-struct ResolvingConstVisitor<'tcx> {
+pub struct ResolvingConstVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    substs: &'tcx List<GenericArg<'tcx>>,
     param_env: ParamEnv<'tcx>,
-    acc: HashSet<Result<ConstAllocation<'tcx>, ScalarInt>>,
-    visited: HashSet<DefId>,
+    acc: HashSet<(u64, u64)>,
+    visited: HashSet<(DefId, &'tcx List<GenericArg<'tcx>>)>,
+    substs: &'tcx List<GenericArg<'tcx>>,
     processed: Option<DefId>,
 }
 
 impl<'tcx, 'g> ResolvingConstVisitor<'tcx> {
-    pub(crate) fn new(
-        tcx: TyCtxt<'tcx>,
-        substs: &'tcx List<GenericArg<'tcx>>,
-        param_env: ParamEnv<'tcx>,
-    ) -> ResolvingConstVisitor<'tcx> {
-        ResolvingConstVisitor {
+    pub(crate) fn find_consts(tcx: TyCtxt<'tcx>, body: &'tcx Body<'tcx>) -> HashSet<(u64, u64)> {
+        let def_id = body.source.def_id();
+        let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
+        let mut resolver = ResolvingConstVisitor {
             tcx,
-            substs,
             param_env,
             acc: HashSet::new(),
             visited: HashSet::new(),
+            substs: List::identity_for_item(tcx, def_id),
             processed: None,
+        };
+
+        resolver.visit_body(body);
+        for body in tcx.promoted_mir(def_id) {
+            resolver.visit_body(body)
         }
+        resolver.acc
     }
 
-    pub(crate) fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>) {
-        if self.tcx.is_mir_available(def_id) {
-            let body = self.tcx.optimized_mir(def_id);
-            let old_processed = self.processed.replace(def_id);
-            let old_substs = self.substs;
-            self.substs = substs;
-            self.visit_body(body);
-            self.processed = old_processed;
-            self.substs = old_substs;
-        }
-    }
+    fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>) {
+        if self.visited.insert((def_id, substs)) {
+            if self.tcx.is_mir_available(def_id) {
+                let old_processed = self.processed;
+                self.processed = Some(def_id);
 
-    pub(crate) fn finalize(self) -> HashSet<Result<ConstAllocation<'tcx>, ScalarInt>> {
-        self.acc
+                let old_substs = self.substs;
+                self.substs = substs;
+
+                let body = self.tcx.optimized_mir(def_id);
+                self.visit_body(body);
+                for body in self.tcx.promoted_mir(def_id) {
+                    self.visit_body(body)
+                }
+
+                self.substs = old_substs;
+                self.processed = old_processed;
+            }
+        }
     }
 
     fn maybe_const_alloc_from_const_value(
@@ -143,78 +117,131 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
 
         let literal = constant.literal;
 
-        if let Some(allocation_or_int) = match literal {
+        let maybe_allocation_or_int = match literal {
             ConstantKind::Val(cons, _ty) => self.maybe_const_alloc_from_const_value(cons),
-            ConstantKind::Unevaluated(mut unevaluated_cons, _) => {
-                unevaluated_cons = self.tcx.subst_and_normalize_erasing_regions(
+            ConstantKind::Unevaluated(unevaluated_cons, _) => {
+                let maybe_normalized_cons = self.tcx.try_subst_and_normalize_erasing_regions(
                     self.substs,
                     self.param_env,
                     unevaluated_cons,
                 );
 
-                self.tcx
-                    .const_eval_resolve(self.param_env, unevaluated_cons, None)
-                    .map(|c| self.maybe_const_alloc_from_const_value(c))
-                    .unwrap_or(None)
+                maybe_normalized_cons.ok().and_then(|unevaluated_cons| {
+                    self.tcx
+                        .const_eval_resolve(self.param_env, unevaluated_cons, None)
+                        .ok()
+                        .and_then(|c| self.maybe_const_alloc_from_const_value(c))
+                })
             }
             _ => None,
-        } {
-            self.acc.insert(allocation_or_int);
+        };
+
+        if let Some(allocation_or_int) = maybe_allocation_or_int {
+            let checksum = match allocation_or_int {
+                Ok(allocation) => get_checksum_const_allocation(self.tcx, &allocation),
+                Err(scalar_int) => {
+                    let checksum = get_checksum_scalar_int(self.tcx, &scalar_int);
+                    checksum
+                }
+            };
+            self.acc.insert(checksum);
         }
     }
 
-    fn visit_ty(&mut self, mut ty: Ty<'tcx>, _ty_context: TyContext) {
+    fn visit_ty(&mut self, ty: Ty<'tcx>, _ty_context: TyContext) {
         self.super_ty(ty);
 
-        match *ty.kind() {
-            TyKind::FnDef(_def_id, _substs) => {
-                // We stop recursing when the function can also be resolved
-                // using the environment of the currently vistied function
-                if let Some(outer_def) = self.processed {
+        if let Some(outer_def_id) = self.processed {
+            match *ty.kind() {
+                TyKind::FnDef(_def_id, _substs) => {
+                    // We stop recursing when the function can also be resolved
+                    // using the environment of the currently vistied function
                     let param_env_outer = self
                         .tcx
-                        .param_env(outer_def)
+                        .param_env(outer_def_id)
                         .with_reveal_all_normalized(self.tcx);
 
-                    let ty_outer = self.tcx.subst_and_normalize_erasing_regions(
-                        List::identity_for_item(self.tcx, outer_def),
-                        param_env_outer,
-                        ty,
-                    );
+                    let maybe_normalized_ty = match *ty.kind() {
+                        TyKind::FnDef(..) => self
+                            .tcx
+                            .try_subst_and_normalize_erasing_regions(
+                                List::identity_for_item(self.tcx, outer_def_id),
+                                param_env_outer,
+                                ty,
+                            )
+                            .ok(),
+                        _ => None,
+                    };
 
-                    let TyKind::FnDef(def_id, substs) = *ty_outer.kind() else {unreachable!()};
-
-                    if let Ok(Some(_)) | Err(_) =
-                        Instance::resolve(self.tcx, param_env_outer, def_id, substs)
-                    {
-                        return;
+                    if let Some(ty_outer) = maybe_normalized_ty {
+                        let TyKind::FnDef(def_id_normalized_outer, substs_normalized_outer) = *ty_outer.kind() else {unreachable!()};
+                        if let Ok(Some(_)) | Err(_) = Instance::resolve(
+                            self.tcx,
+                            param_env_outer,
+                            def_id_normalized_outer,
+                            substs_normalized_outer,
+                        ) {
+                            return;
+                        }
                     }
                 }
+                _ => {}
+            }
+        }
 
-                let ref mut visited = self.visited;
-                let param_env = self.param_env;
-
-                ty = self
+        let maybe_next = {
+            let maybe_normalized_ty = match *ty.kind() {
+                TyKind::Closure(..) | TyKind::Generator(..) | TyKind::FnDef(..) => self
                     .tcx
-                    .subst_and_normalize_erasing_regions(self.substs, self.param_env, ty);
+                    .try_subst_and_normalize_erasing_regions(self.substs, self.param_env, ty)
+                    .ok(),
+                _ => None,
+            };
 
-                let TyKind::FnDef(def_id, substs) = *ty.kind() else {unreachable!()};
+            maybe_normalized_ty.and_then(|ty| match *ty.kind() {
+                // TyKind::Closure(def_id, substs) => Some((def_id, substs)),
+                // TyKind::Generator(def_id, substs, _) => Some((def_id, substs)),
+                TyKind::FnDef(def_id, substs) => {
+                    match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
+                        Ok(Some(instance)) /*if !self.tcx.is_closure(instance.def_id())*/ => {
+                            match instance.def {
+                                InstanceDef::Item(item) => {
+                                    Some((item.def_id_for_type_of(), instance.substs))
+                                }
+                                InstanceDef::Virtual(def_id, _)
+                                | InstanceDef::ReifyShim(def_id) => Some((def_id, substs)),
+                                InstanceDef::FnPtrShim(def_id, ty) => {
+                                    self.visit_ty(ty, _ty_context);
+                                    Some((def_id, substs))
+                                }
+                                InstanceDef::DropGlue(def_id, maybe_ty) => {
+                                    if let Some(ty) = maybe_ty {
+                                        self.visit_ty(ty, _ty_context);
+                                    }
+                                    Some((def_id, substs))
+                                }
+                                InstanceDef::CloneShim(def_id, ty) => {
+                                    self.visit_ty(ty, _ty_context);
+                                    Some((def_id, substs))
+                                }
 
-                if let Ok(Some(instance)) = Instance::resolve(self.tcx, param_env, def_id, substs) {
-                    match instance.def {
-                        InstanceDef::Item(_item) if !self.tcx.is_closure(instance.def_id()) => {
-                            let def_id = instance.def_id();
-                            let substs = instance.substs;
-
-                            if visited.insert(def_id) {
-                                self.visit(def_id, substs);
+                                InstanceDef::Intrinsic(def_id)
+                                | InstanceDef::VTableShim(def_id)
+                                | InstanceDef::ClosureOnceShim {
+                                    call_once: def_id,
+                                    track_caller: _,
+                                } => Some((def_id, substs)),
                             }
                         }
-                        _ => {}
+                        _ => None,
                     }
-                };
-            }
-            _ => {}
+                }
+                _ => None,
+            })
         };
+
+        if let Some((def_id, substs)) = maybe_next {
+            self.visit(def_id, substs);
+        }
     }
 }

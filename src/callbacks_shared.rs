@@ -11,6 +11,7 @@ use std::{
     sync::{atomic::AtomicUsize, Mutex},
 };
 
+use crate::{checksums::{get_checksum_body, insert_hashmap}, const_visitor::ResolvingConstVisitor};
 use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::{
     checksums::Checksums,
@@ -21,10 +22,6 @@ use crate::{
     },
     names::def_id_name,
     static_rts::callback::PATH_BUF,
-};
-use crate::{
-    checksums::{get_checksum_body, insert_hashmap},
-    const_visitor::process_consts,
 };
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
@@ -104,14 +101,17 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     //##########################################################################################################
     // 2. Calculate checksum of every MIR body and the consts that it uses
 
-    for body in &bodies {
-        process_consts(tcx, body);
-    }
-
     let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+    let mut new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
 
-    for body in bodies {
-        let name = def_id_name(tcx, body.source.def_id(), false, true); // IMPORTANT: no substs here
+    for body in &bodies {
+        let name = def_id_name(tcx, body.source.def_id(), false, true);
+
+        let checksums_const = ResolvingConstVisitor::find_consts(tcx, body);
+        for checksum in checksums_const {
+            insert_hashmap(&mut *new_checksums_const, &name, checksum);
+        }
+
         let checksum = get_checksum_body(tcx, body);
         insert_hashmap(&mut *new_checksums, &name, checksum);
     }
