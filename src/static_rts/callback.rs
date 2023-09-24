@@ -115,27 +115,27 @@ fn custom_optimized_mir<'tcx>(
         .map_or(AttributeMap::EMPTY, |o| &o.attrs)
         .map;
 
-    for attr in attrs
+    let is_test = attrs
         .iter()
         .flat_map(|(_, list)| list.iter())
         .unique_by(|i| i.id)
-    {
-        if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-            let dependencies = ResolvingVisitor::find_dependencies(tcx, body)
-                .into_iter()
-                .fold(String::new(), |mut acc, node| {
-                    acc.push_str(&node);
-                    acc.push_str("\n");
-                    acc
-                });
-            write_to_file(
-                dependencies,
-                PATH_BUF.get().unwrap().clone(),
-                |p| get_dependencies_path(p, &name[0..name.len() - 13]),
-                false,
-            );
-            trace!("Collected dependencies for {}", name);
-        }
+        .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
+
+    if is_test {
+        let dependencies = ResolvingVisitor::find_dependencies(tcx, body)
+            .into_iter()
+            .fold(String::new(), |mut acc, node| {
+                acc.push_str(&node);
+                acc.push_str("\n");
+                acc
+            });
+        write_to_file(
+            dependencies,
+            PATH_BUF.get().unwrap().clone(),
+            |p| get_dependencies_path(p, &name[0..name.len() - 13]),
+            false,
+        );
+        trace!("Collected dependencies for {}", name);
     }
     body
 }
