@@ -8,7 +8,7 @@ edition = "2021"
 [features]
 changes_direct = []
 changes_indirect = []
-changes_generic = []
-changes_static = []
+changes_removed= []
+changes_static= []
 
 [dependencies]

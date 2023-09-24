@@ -14,7 +14,7 @@ pub(crate) struct ResolvingVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     acc: HashSet<String>,
-    visited: HashSet<DefId>,
+    visited: HashSet<(DefId, &'tcx List<GenericArg<'tcx>>)>,
     processed: (DefId, &'tcx List<GenericArg<'tcx>>),
 }
 
@@ -34,18 +34,21 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
         for body in tcx.promoted_mir(def_id) {
             resolver.visit_body(body)
         }
-
         resolver.acc
     }
 
     fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>) {
-        if self.visited.insert(def_id) {
+        if self.visited.insert((def_id, substs)) {
             self.acc.insert(def_id_name(self.tcx, def_id, false, true));
             if self.tcx.is_mir_available(def_id) {
-                let body = self.tcx.optimized_mir(def_id);
                 let old_processed = self.processed;
                 self.processed = (def_id, substs);
+
+                let body = self.tcx.optimized_mir(def_id);
                 self.visit_body(body);
+                for body in self.tcx.promoted_mir(def_id) {
+                    self.visit_body(body)
+                }
                 self.processed = old_processed;
             }
         }
@@ -53,22 +56,20 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
 }
 
 enum Dependency {
-    Contained,
     Static,
     Dynamic,
     Drop,
+    Contained,
 }
 
 impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>, _ty_context: TyContext) {
         self.super_ty(ty);
 
-        let (_def_id, substs) = self.processed;
+        let (_def_id, outer_substs) = self.processed;
 
-        // 6. function -> destructor (`drop()` function) of referenced abstract datatype
-        let cloned_ty = ty.clone();
-        let maybe_dependency_drop = || {
-            cloned_ty.ty_adt_def().and_then(|adt_def| {
+        let maybe_dependency_drop = {
+            ty.ty_adt_def().and_then(|adt_def| {
                 self.tcx.adt_destructor(adt_def.did()).map(|destructor| {
                     (
                         destructor.did,
@@ -79,64 +80,82 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
             })
         };
 
-        let maybe_dependency_fn = || {
-            match *ty.kind() {
-                // 1. function  -> contained Closure
+        let maybe_dependency_other = {
+            let maybe_normalized_ty = match *ty.kind() {
+                TyKind::Closure(..) | TyKind::Generator(..) | TyKind::FnDef(..) => self
+                    .tcx
+                    .try_subst_and_normalize_erasing_regions(outer_substs, self.param_env, ty)
+                    .ok(),
+                _ => None,
+            };
+
+            maybe_normalized_ty.and_then(|ty| match *ty.kind() {
                 TyKind::Closure(def_id, substs) => Some((def_id, substs, Dependency::Contained)),
-                // 2. function  -> contained Generator
                 TyKind::Generator(def_id, substs, _) => {
                     Some((def_id, substs, Dependency::Contained))
                 }
-
-                TyKind::FnDef(_def_id, _substs) => self
-                    .tcx
-                    .try_subst_and_normalize_erasing_regions(substs, self.param_env, ty)
-                    .ok()
-                    .and_then(|ty| {
-                        let TyKind::FnDef(def_id, substs) = *ty.kind() else {unreachable!()};
-
-                        match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
-                            Ok(Some(instance)) => match instance.def {
-                                InstanceDef::Item(_item)
-                                    if !self.tcx.is_closure(instance.def_id()) =>
-                                {
-                                    Some((instance.def_id(), instance.substs, Dependency::Static))
-                                }
-                                InstanceDef::Virtual(def_id, _) => {
+                TyKind::FnDef(def_id, substs) => {
+                    match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
+                        Ok(Some(instance)) if !self.tcx.is_closure(instance.def_id()) => {
+                            match instance.def {
+                                InstanceDef::Item(item) => Some((
+                                    item.def_id_for_type_of(),
+                                    instance.substs,
+                                    Dependency::Static,
+                                )),
+                                InstanceDef::Virtual(def_id, _)
+                                | InstanceDef::ReifyShim(def_id) => {
                                     Some((def_id, substs, Dependency::Dynamic))
                                 }
-                                _ => None,
-                            },
-                            _ => None,
+                                InstanceDef::FnPtrShim(def_id, ty) => {
+                                    self.visit_ty(ty, _ty_context);
+                                    Some((def_id, substs, Dependency::Static))
+                                }
+                                InstanceDef::DropGlue(def_id, maybe_ty) => {
+                                    if let Some(ty) = maybe_ty {
+                                        self.visit_ty(ty, _ty_context);
+                                    }
+                                    Some((def_id, substs, Dependency::Static))
+                                }
+                                InstanceDef::CloneShim(def_id, ty) => {
+                                    self.visit_ty(ty, _ty_context);
+                                    Some((def_id, substs, Dependency::Static))
+                                }
+
+                                InstanceDef::Intrinsic(def_id)
+                                | InstanceDef::VTableShim(def_id)
+                                | InstanceDef::ClosureOnceShim {
+                                    call_once: def_id,
+                                    track_caller: _,
+                                } => Some((def_id, substs, Dependency::Static)),
+                            }
                         }
-                    }),
+                        _ => None,
+                    }
+                }
                 _ => None,
-            }
+            })
         };
 
-        let maybe_dependency: Option<(DefId, &List<GenericArg>, Dependency)> = None
-            .or_else(maybe_dependency_drop)
-            .or_else(maybe_dependency_fn);
+        let maybe_dependency = maybe_dependency_other.or(maybe_dependency_drop);
 
-        match maybe_dependency {
-            Some((def_id, substs, Dependency::Dynamic)) => {
-                self.acc
-                    .insert(def_id_name(self.tcx, def_id, false, true) + SUFFIX_DYN);
-                if let Some(impl_def) = self.tcx.impl_of_method(def_id) {
-                    if let Some(_) = self.tcx.impl_trait_ref(impl_def) {
-                        let implementors = self.tcx.impl_item_implementor_ids(impl_def);
-                        for (_trait_fn, impl_fn) in implementors {
-                            if *impl_fn == def_id {
-                                self.visit(*impl_fn, substs);
-                            }
+        if let Some((def_id, substs, Dependency::Dynamic)) = maybe_dependency {
+            self.acc
+                .insert(def_id_name(self.tcx, def_id, false, true) + SUFFIX_DYN);
+            if let Some(impl_def) = self.tcx.impl_of_method(def_id) {
+                if let Some(_) = self.tcx.impl_trait_ref(impl_def) {
+                    let implementors = self.tcx.impl_item_implementor_ids(impl_def);
+                    for (_trait_fn, impl_fn) in implementors {
+                        if *impl_fn == def_id {
+                            self.visit(*impl_fn, substs);
                         }
                     }
                 }
             }
-            Some((def_id, substs, _dependency)) => {
-                self.visit(def_id, substs);
-            }
-            None => {}
+        }
+
+        if let Some((def_id, substs, _dependency)) = maybe_dependency {
+            self.visit(def_id, substs);
         }
     }
 }

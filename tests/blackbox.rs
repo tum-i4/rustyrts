@@ -106,6 +106,8 @@ fn check_same_crate_id(mode: Mode) {
 #[test_case(Mode::Static, "dynamic", "changes_generic")]
 #[test_case(Mode::Dynamic, "dynamic", "changes_static")]
 #[test_case(Mode::Static, "dynamic", "changes_static")]
+#[test_case(Mode::Dynamic, "dynamic", "changes_removed")]
+#[test_case(Mode::Static, "dynamic", "changes_removed")]
 #[test_case(Mode::Dynamic, "assoc_items", "changes_string")]
 #[test_case(Mode::Static, "assoc_items", "changes_string")]
 #[test_case(Mode::Dynamic, "assoc_items", "changes_assoc_const")]

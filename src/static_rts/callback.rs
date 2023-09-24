@@ -54,6 +54,8 @@ impl Callbacks for StaticRTSCallbacks {
             EXCLUDED.get_or_init(|| true);
         }
 
+        config.opts.unstable_opts.always_encode_mir = true;
+
         // The only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers, _extern_providers| {
             // SAFETY: We store the address of the original vtable_entries function as a usize.
