@@ -2,12 +2,21 @@ use std::collections::HashSet;
 
 use crate::constants::SUFFIX_DYN;
 use crate::names::def_id_name;
-use rustc_middle::ty::{GenericArg, InstanceDef, List, Ty, TyCtxt, TyKind};
+use log::warn;
+use rustc_hir::ConstContext;
+use rustc_middle::mir::interpret::{AllocId, ConstValue, GlobalAlloc, Scalar};
+use rustc_middle::{mir::Body, ty::Instance};
 use rustc_middle::{
-    mir::visit::{TyContext, Visitor},
+    mir::{
+        visit::{TyContext, Visitor},
+        ConstantKind,
+    },
     ty::ParamEnv,
 };
-use rustc_middle::{mir::Body, ty::Instance};
+use rustc_middle::{
+    mir::{Constant, Location},
+    ty::{GenericArg, InstanceDef, List, Ty, TyCtxt, TyKind},
+};
 use rustc_span::def_id::DefId;
 
 pub(crate) struct ResolvingVisitor<'tcx> {
@@ -66,7 +75,7 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>, _ty_context: TyContext) {
         self.super_ty(ty);
 
-        let (_def_id, outer_substs) = self.processed;
+        let (outer_def_id, outer_substs) = self.processed;
 
         let maybe_dependency_drop = {
             ty.ty_adt_def().and_then(|adt_def| {
@@ -103,14 +112,38 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                                     instance.substs,
                                     Dependency::Static,
                                 )),
-                                InstanceDef::Virtual(def_id, _)
-                                | InstanceDef::ReifyShim(def_id) => {
+                                InstanceDef::Virtual(def_id, _) => {
                                     Some((def_id, substs, Dependency::Dynamic))
                                 }
-                                InstanceDef::FnPtrShim(def_id, ty) => {
-                                    self.visit_ty(ty, _ty_context);
-                                    Some((def_id, substs, Dependency::Static))
-                                }
+                                InstanceDef::ReifyShim(def_id) => Some((
+                                    def_id,
+                                    List::identity_for_item(self.tcx, def_id),
+                                    Dependency::Static,
+                                )),
+                                InstanceDef::FnPtrShim(_def_id, ty) => match *ty.kind() {
+                                    TyKind::FnDef(def_id, substs) => {
+                                        let resolved = Instance::resolve(
+                                            self.tcx,
+                                            self.param_env,
+                                            def_id,
+                                            substs,
+                                        );
+
+                                        if let Ok(Some(instance)) = resolved {
+                                            if let InstanceDef::Item(item) = instance.def {
+                                                return Some((
+                                                    item.def_id_for_type_of(),
+                                                    instance.substs,
+                                                    Dependency::Static,
+                                                ));
+                                            } else {
+                                                warn!("Found something else {:?}", instance.def);
+                                            }
+                                        }
+                                        None
+                                    }
+                                    _ => None,
+                                },
                                 InstanceDef::DropGlue(def_id, maybe_ty) => {
                                     if let Some(ty) = maybe_ty {
                                         self.visit_ty(ty, _ty_context);
@@ -142,13 +175,19 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
         if let Some((def_id, substs, Dependency::Dynamic)) = maybe_dependency {
             self.acc
                 .insert(def_id_name(self.tcx, def_id, false, true) + SUFFIX_DYN);
-            if let Some(impl_def) = self.tcx.impl_of_method(def_id) {
-                if let Some(_) = self.tcx.impl_trait_ref(impl_def) {
+            if let Some(trait_def) = self.tcx.trait_of_item(def_id) {
+                let trait_impls = self.tcx.trait_impls_of(trait_def);
+
+                let non_blanket_impls = trait_impls
+                    .non_blanket_impls()
+                    .values()
+                    .flat_map(|impls| impls.iter());
+                let blanket_impls = trait_impls.blanket_impls().iter();
+
+                for impl_def in blanket_impls.chain(non_blanket_impls) {
                     let implementors = self.tcx.impl_item_implementor_ids(impl_def);
                     for (_trait_fn, impl_fn) in implementors {
-                        if *impl_fn == def_id {
-                            self.visit(*impl_fn, substs);
-                        }
+                        self.visit(*impl_fn, List::identity_for_item(self.tcx, *impl_fn));
                     }
                 }
             }
