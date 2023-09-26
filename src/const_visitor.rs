@@ -191,7 +191,8 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
 
         let maybe_next = {
             let maybe_normalized_ty = match *ty.kind() {
-                TyKind::Closure(..) | TyKind::Generator(..) | TyKind::FnDef(..) => self
+                /* TyKind::Closure(..) | TyKind::Generator(..) |*/
+                TyKind::FnDef(..) => self
                     .tcx
                     .try_subst_and_normalize_erasing_regions(self.substs, self.param_env, ty)
                     .ok(),
@@ -203,28 +204,16 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
                 // TyKind::Generator(def_id, substs, _) => Some((def_id, substs)),
                 TyKind::FnDef(def_id, substs) => {
                     match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
-                        Ok(Some(instance)) /*if !self.tcx.is_closure(instance.def_id())*/ => {
+                        Ok(Some(instance)) if !self.tcx.is_closure(instance.def_id()) => {
                             match instance.def {
                                 InstanceDef::Item(item) => {
                                     Some((item.def_id_for_type_of(), instance.substs))
                                 }
                                 InstanceDef::Virtual(def_id, _)
                                 | InstanceDef::ReifyShim(def_id) => Some((def_id, substs)),
-                                InstanceDef::FnPtrShim(def_id, ty) => {
-                                    self.visit_ty(ty, _ty_context);
-                                    Some((def_id, substs))
-                                }
-                                InstanceDef::DropGlue(def_id, maybe_ty) => {
-                                    if let Some(ty) = maybe_ty {
-                                        self.visit_ty(ty, _ty_context);
-                                    }
-                                    Some((def_id, substs))
-                                }
-                                InstanceDef::CloneShim(def_id, ty) => {
-                                    self.visit_ty(ty, _ty_context);
-                                    Some((def_id, substs))
-                                }
-
+                                InstanceDef::FnPtrShim(def_id, _ty) => Some((def_id, substs)),
+                                InstanceDef::DropGlue(def_id, _maybe_ty) => Some((def_id, substs)),
+                                InstanceDef::CloneShim(def_id, _ty) => Some((def_id, substs)),
                                 InstanceDef::Intrinsic(def_id)
                                 | InstanceDef::VTableShim(def_id)
                                 | InstanceDef::ClosureOnceShim {
