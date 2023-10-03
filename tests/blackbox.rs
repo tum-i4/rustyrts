@@ -91,34 +91,52 @@ fn check_same_crate_id(mode: Mode) {
     }
 }
 
-#[test_case(Mode::Dynamic, "adt", "changes_display")]
-#[test_case(Mode::Static, "adt", "changes_display")]
-#[test_case(Mode::Dynamic, "adt", "changes_debug")]
-#[test_case(Mode::Static, "adt", "changes_debug")]
-#[test_case(Mode::Dynamic, "adt", "changes_drop")]
-#[test_case(Mode::Static, "adt", "changes_drop")]
-#[test_case(Mode::Dynamic, "command", "changes_return")]
-#[test_case(Mode::Dynamic, "dynamic", "changes_direct")]
-#[test_case(Mode::Static, "dynamic", "changes_direct")]
-#[test_case(Mode::Dynamic, "dynamic", "changes_indirect")]
-#[test_case(Mode::Static, "dynamic", "changes_indirect")]
-#[test_case(Mode::Dynamic, "dynamic", "changes_generic")]
-#[test_case(Mode::Static, "dynamic", "changes_generic")]
-#[test_case(Mode::Dynamic, "dynamic", "changes_static")]
-#[test_case(Mode::Static, "dynamic", "changes_static")]
-#[test_case(Mode::Dynamic, "dynamic", "changes_removed")]
-#[test_case(Mode::Static, "dynamic", "changes_removed")]
-#[test_case(Mode::Dynamic, "assoc_items", "changes_string")]
-#[test_case(Mode::Static, "assoc_items", "changes_string")]
-#[test_case(Mode::Dynamic, "assoc_items", "changes_assoc_const")]
-#[test_case(Mode::Static, "assoc_items", "changes_assoc_const")]
-// #[test_case(Mode::Dynamic, "assoc_items", "changes_assoc_type")] // Does not work yet
-// #[test_case(Mode::Static, "assoc_items", "changes_assoc_type")]
-#[test_case(Mode::Dynamic, "lazy", "changes_lazy")]
-#[test_case(Mode::Static, "lazy", "changes_lazy")]
-#[test_case(Mode::Dynamic, "static_var", "changes_immutable")]
-#[test_case(Mode::Static, "static_var", "changes_mutable")]
-fn blackbox_test_affected(mode: Mode, name: &str, feature: &str) {
+#[test_case(Mode::Dynamic, "adt", "", "changes_display")]
+#[test_case(Mode::Static, "adt", "", "changes_display")]
+#[test_case(Mode::Dynamic, "adt", "", "changes_debug")]
+#[test_case(Mode::Static, "adt", "", "changes_debug")]
+#[test_case(Mode::Dynamic, "adt", "", "changes_drop")]
+#[test_case(Mode::Static, "adt", "", "changes_drop")]
+#[test_case(Mode::Dynamic, "command", "", "changes_return")]
+#[test_case(Mode::Dynamic, "dynamic", "", "changes_direct")]
+#[test_case(Mode::Static, "dynamic", "", "changes_direct")]
+#[test_case(Mode::Dynamic, "dynamic", "", "changes_indirect")]
+#[test_case(Mode::Static, "dynamic", "", "changes_indirect")]
+#[test_case(Mode::Dynamic, "dynamic", "", "changes_generic")]
+#[test_case(Mode::Static, "dynamic", "", "changes_generic")]
+#[test_case(Mode::Dynamic, "dynamic", "", "changes_static")]
+#[test_case(Mode::Static, "dynamic", "", "changes_static")]
+#[test_case(Mode::Dynamic, "dynamic", "", "changes_removed")]
+#[test_case(Mode::Static, "dynamic", "", "changes_removed")]
+#[test_case(Mode::Dynamic, "assoc_items", "", "changes_string")]
+#[test_case(Mode::Static, "assoc_items", "", "changes_string")]
+#[test_case(Mode::Dynamic, "assoc_items", "", "changes_assoc_const")]
+#[test_case(Mode::Static, "assoc_items", "", "changes_assoc_const")]
+// #[test_case(Mode::Dynamic, "assoc_items", "", "changes_assoc_type")] // Does not work yet
+// #[test_case(Mode::Static, "assoc_items", "", "changes_assoc_type")]
+#[test_case(Mode::Dynamic, "lazy", "", "changes_lazy")]
+#[test_case(Mode::Static, "lazy", "", "changes_lazy")]
+#[test_case(Mode::Dynamic, "static_var", "", "changes_immutable")]
+#[test_case(Mode::Static, "static_var", "", "changes_mutable")]
+#[test_case(Mode::Dynamic, "fn_ptr", "test_direct", "test_direct,changes_fn")]
+#[test_case(Mode::Static, "fn_ptr", "test_direct", "test_direct,changes_fn")]
+#[test_case(Mode::Dynamic, "fn_ptr", "test_direct", "test_direct,changes_static")]
+#[test_case(Mode::Static, "fn_ptr", "test_direct", "test_direct,changes_static")]
+#[test_case(Mode::Dynamic, "fn_ptr", "test_indirect", "test_indirect,changes_fn")]
+#[test_case(Mode::Static, "fn_ptr", "test_indirect", "test_indirect,changes_fn")]
+#[test_case(
+    Mode::Dynamic,
+    "fn_ptr",
+    "test_indirect",
+    "test_indirect,changes_static"
+)]
+#[test_case(
+    Mode::Static,
+    "fn_ptr",
+    "test_indirect",
+    "test_indirect,changes_static"
+)]
+fn blackbox_test_affected(mode: Mode, name: &str, features_baseline: &str, features_changes: &str) {
     let mut dir = PATH.clone();
     dir.push(name);
 
@@ -130,7 +148,7 @@ fn blackbox_test_affected(mode: Mode, name: &str, feature: &str) {
 
     {
         println!("-------- baseline --------");
-        let result = command(&mode, &dir, target_dir.path(), None)
+        let result = command(&mode, &dir, target_dir.path(), Some(features_baseline))
             .output()
             .unwrap();
         println!("Stdout: {}", String::from_utf8(result.stdout).unwrap());
@@ -140,7 +158,7 @@ fn blackbox_test_affected(mode: Mode, name: &str, feature: &str) {
 
     {
         println!("-------- with changes --------");
-        let result = command(&mode, &dir, target_dir.path(), Some(feature))
+        let result = command(&mode, &dir, target_dir.path(), Some(features_changes))
             .output()
             .unwrap();
         println!("Stdout: {}", String::from_utf8(result.stdout).unwrap());

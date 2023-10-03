@@ -2,8 +2,7 @@ use std::collections::HashSet;
 
 use crate::constants::SUFFIX_DYN;
 use crate::names::def_id_name;
-use log::warn;
-use rustc_hir::ConstContext;
+use log::{info, warn};
 use rustc_middle::mir::interpret::{AllocId, ConstValue, GlobalAlloc, Scalar};
 use rustc_middle::{mir::Body, ty::Instance};
 use rustc_middle::{
@@ -46,14 +45,20 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
         resolver.acc
     }
 
-    fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>) {
+    fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>, context: Context) {
         if self.visited.insert((def_id, substs)) {
-            self.acc.insert(def_id_name(self.tcx, def_id, false, true));
+            if let Context::CodeGen = context {
+                self.acc.insert(def_id_name(self.tcx, def_id, false, true));
+            }
             if self.tcx.is_mir_available(def_id) {
                 let old_processed = self.processed;
                 self.processed = (def_id, substs);
 
-                let body = self.tcx.optimized_mir(def_id);
+                let body = match context {
+                    Context::CodeGen => self.tcx.optimized_mir(def_id),
+                    Context::Static => self.tcx.mir_for_ctfe(def_id),
+                };
+
                 self.visit_body(body);
                 for body in self.tcx.promoted_mir(def_id) {
                     self.visit_body(body)
@@ -64,6 +69,11 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
     }
 }
 
+enum Context {
+    CodeGen,
+    Static,
+}
+
 enum Dependency {
     Static,
     Dynamic,
@@ -72,10 +82,54 @@ enum Dependency {
 }
 
 impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
+    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+        self.super_constant(constant, location);
+
+        match constant.literal {
+            ConstantKind::Ty(_) => {}
+            ConstantKind::Unevaluated(..) => {}
+            ConstantKind::Val(cons, _) => {
+                let alloc_ids = match cons {
+                    ConstValue::Scalar(Scalar::Ptr(ptr, ..)) => {
+                        vec![ptr.provenance]
+                    }
+                    ConstValue::ByRef { alloc, offset: _ }
+                    | ConstValue::Slice {
+                        data: alloc,
+                        start: _,
+                        end: _,
+                    } => alloc
+                        .inner()
+                        .provenance()
+                        .provenances()
+                        .collect::<Vec<AllocId>>(),
+                    _ => vec![],
+                };
+
+                for alloc_id in alloc_ids {
+                    match self.tcx.global_alloc(alloc_id) {
+                        GlobalAlloc::Function(instance) => {
+                            info!("Found fn ptr {:?}", instance);
+                            self.visit(instance.def_id(), instance.substs, Context::CodeGen);
+                        }
+                        GlobalAlloc::Static(def_id) => {
+                            self.visit(
+                                def_id,
+                                List::identity_for_item(self.tcx, def_id),
+                                Context::Static,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        };
+    }
+
     fn visit_ty(&mut self, ty: Ty<'tcx>, _ty_context: TyContext) {
         self.super_ty(ty);
 
-        let (outer_def_id, outer_substs) = self.processed;
+        let (_outer_def_id, outer_substs) = self.processed;
 
         let maybe_dependency_drop = {
             ty.ty_adt_def().and_then(|adt_def| {
@@ -172,7 +226,7 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
 
         let maybe_dependency = maybe_dependency_other.or(maybe_dependency_drop);
 
-        if let Some((def_id, substs, Dependency::Dynamic)) = maybe_dependency {
+        if let Some((def_id, _substs, Dependency::Dynamic)) = maybe_dependency {
             self.acc
                 .insert(def_id_name(self.tcx, def_id, false, true) + SUFFIX_DYN);
             if let Some(trait_def) = self.tcx.trait_of_item(def_id) {
@@ -187,14 +241,18 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                 for impl_def in blanket_impls.chain(non_blanket_impls) {
                     let implementors = self.tcx.impl_item_implementor_ids(impl_def);
                     for (_trait_fn, impl_fn) in implementors {
-                        self.visit(*impl_fn, List::identity_for_item(self.tcx, *impl_fn));
+                        self.visit(
+                            *impl_fn,
+                            List::identity_for_item(self.tcx, *impl_fn),
+                            Context::CodeGen,
+                        );
                     }
                 }
             }
         }
 
         if let Some((def_id, substs, _dependency)) = maybe_dependency {
-            self.visit(def_id, substs);
+            self.visit(def_id, substs, Context::CodeGen);
         }
     }
 }

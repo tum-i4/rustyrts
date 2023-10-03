@@ -35,7 +35,6 @@ impl Eq for Traced {}
 //######################################################################################################################
 // Functions for tracing
 
-#[no_mangle]
 pub fn trace(input: &'static str, bit: &'static u8) {
     // SAFETY: We are given a reference to a u8 which has the same memory representation as bool,
     // and therefore also AtomicBool.
@@ -51,7 +50,10 @@ pub fn trace(input: &'static str, bit: &'static u8) {
     }
 }
 
-#[no_mangle]
+// pub fn trace_dyn<const N: usize>() {
+//     println!("Intercepted virtual call at {:?}", N);
+// }
+
 pub fn pre_test() {
     std::env::remove_var(ENV_TARGET_DIR_OVERRIDE);
     let mut handle = NODES.lock().unwrap();

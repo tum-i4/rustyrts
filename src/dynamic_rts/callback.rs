@@ -154,18 +154,25 @@ fn custom_vtable_entries<'tcx>(
         for entry in result {
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();
+                if !tcx.is_closure(def_id) {
+                    let name = def_id_name(tcx, def_id, false, true);
+                    let checksum = get_checksum_vtbl_entry(tcx, &entry);
+                    trace!("Considering {:?} in checksums of {}", instance, name);
 
-                // TODO: it should be feasible to exclude closures here
+                    insert_hashmap(
+                        &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
+                        &name,
+                        checksum,
+                    )
+                }
 
-                let name = def_id_name(tcx, def_id, false, true);
-                let checksum = get_checksum_vtbl_entry(tcx, &entry);
-                trace!("Considering {:?} in checksums of {}", instance, name);
+                // let mut instance: &mut Instance = unsafe { std::mem::transmute::<_, _>(instance) };
+                // let trace_dyn_fn_def_id = get_def_id_trace_dyn_fn(tcx).unwrap();
 
-                insert_hashmap(
-                    &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
-                    &name,
-                    checksum,
-                )
+                // instance.def = InstanceDef::Item(WithOptConstParam {
+                //     did: trace_dyn_fn_def_id,
+                //     const_param_did: Some(def_id),
+                // });
             }
         }
     }
