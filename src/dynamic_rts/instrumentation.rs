@@ -1,11 +1,11 @@
 use super::mir_util::Traceable;
-use crate::callbacks_shared::TEST_MARKER;
 use crate::names::def_id_name;
+use crate::{callbacks_shared::TEST_MARKER, constants::SUFFIX_DYN};
 use log::trace;
 use rustc_hir::AttributeMap;
 use rustc_middle::{mir::Body, ty::TyCtxt};
 
-pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub(crate) fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.instance.def_id();
     let outer = def_id_name(tcx, def_id, &[], false, true);
 
@@ -67,4 +67,16 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     if outer.ends_with("::main") && body.arg_count == 0 {
         body.insert_pre_main(tcx, &mut cache_ret);
     }
+}
+
+pub(crate) fn modify_body_dyn<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+    let def_id = body.source.instance.def_id();
+    let outer = def_id_name(tcx, def_id, &[], false, true) + SUFFIX_DYN;
+
+    trace!("Visiting {}", outer);
+
+    let mut cache_tuple_of_str_and_ptr = None;
+    let mut cache_ret = None;
+
+    body.insert_trace(tcx, &outer, &mut cache_tuple_of_str_and_ptr, &mut cache_ret);
 }

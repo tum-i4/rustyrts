@@ -5,8 +5,8 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{GenericArg, List, TyCtxt};
 use rustc_span::def_id::DefId;
-use std::collections::HashMap;
 use std::env;
+use std::{collections::HashMap, path::PathBuf};
 use std::{
     collections::HashSet,
     fs::read,
@@ -24,10 +24,11 @@ use crate::{
         get_test_path, write_to_file,
     },
     names::def_id_name,
-    static_rts::callback::PATH_BUF,
 };
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
+
+pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
 pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
 pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();

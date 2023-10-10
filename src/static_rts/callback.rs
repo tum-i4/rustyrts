@@ -1,15 +1,13 @@
 use std::mem::transmute;
-use std::path::PathBuf;
 use std::sync::Mutex;
 
 use crate::callbacks_shared::{
     excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
-    NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
+    NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
 };
 use crate::constants::SUFFIX_DYN;
 use itertools::Itertools;
 use log::trace;
-use once_cell::sync::OnceCell;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::{interface, Queries};
@@ -24,8 +22,6 @@ use crate::names::def_id_name;
 
 use super::graph::DependencyGraph;
 use super::visitor::GraphVisitor;
-
-pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
 pub struct StaticRTSCallbacks {
     graph: DependencyGraph<String>,
