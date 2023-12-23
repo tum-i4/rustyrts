@@ -34,7 +34,7 @@ pub const EXIT_SUCCESS: i32 = 0;
 pub const EXIT_FAILURE: i32 = 1;
 
 fn main() {
-    rustc_log::init_rustc_env_logger().unwrap();
+    rustc_log::init_env_logger("RUSTC").unwrap();
     create_logger().init();
 
     let skip = env::var(ENV_SKIP_ANALYSIS).is_ok()
@@ -48,7 +48,7 @@ fn main() {
                     arg.into_string().unwrap_or_else(|arg| {
                         early_error(
                             ErrorOutputType::default(),
-                            &format!("Argument {} is not valid Unicode: {:?}", i, arg),
+                            format!("Argument {} is not valid Unicode: {:?}", i, arg),
                         )
                     })
                 })

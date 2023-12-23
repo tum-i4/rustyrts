@@ -75,7 +75,7 @@ pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F)
 
 pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-    let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+    let crate_id = tcx.sess.local_stable_crate_id().as_u64();
 
     //##############################################################################################################
     // Collect all MIR bodies that are relevant for code generation

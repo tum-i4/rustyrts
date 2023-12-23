@@ -1,9 +1,8 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use rustc_hir::{def_id::DefId, definitions::DefPathData};
+use rustc_hir::{def_id::DefId, definitions::DefPathData, def::Namespace};
 use rustc_middle::ty::{print::FmtPrinter, TyCtxt};
 use rustc_middle::ty::{print::Printer, List};
-use rustc_resolve::Namespace;
 
 lazy_static! {
     static ref RE_LIFETIME: [Regex; 2] = [
@@ -25,14 +24,14 @@ pub(crate) fn def_id_name<'tcx>(
         if def_id.is_local() {
             format!(
                 "[{:04x}]::",
-                tcx.sess.local_stable_crate_id().to_u64() >> (8 * 6)
+                tcx.sess.local_stable_crate_id().as_u64() >> (8 * 6)
             )
         } else {
             let cstore = tcx.cstore_untracked();
 
             format!(
                 "[{:04x}]::",
-                cstore.stable_crate_id(def_id.krate).to_u64() >> (8 * 6)
+                cstore.stable_crate_id(def_id.krate).as_u64() >> (8 * 6)
             )
         }
     } else {

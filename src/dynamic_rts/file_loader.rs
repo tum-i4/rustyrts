@@ -56,6 +56,10 @@ impl FileLoader for TestRunnerFileLoaderProxy {
             Ok(content)
         }
     }
+
+    fn read_binary_file(&self, path: &std::path::Path) -> std::io::Result<Vec<u8>> {
+        self.delegate.read_binary_file(path)
+    }
 }
 
 pub struct InstrumentationFileLoaderProxy {
@@ -90,5 +94,9 @@ impl FileLoader for InstrumentationFileLoaderProxy {
         } else {
             Ok(content)
         }
+    }
+
+    fn read_binary_file(&self, path: &std::path::Path) -> std::io::Result<Vec<u8>> {
+        self.delegate.read_binary_file(path)
     }
 }

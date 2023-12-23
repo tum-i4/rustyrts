@@ -310,7 +310,9 @@ fn main() {
         return;
     }
 
-    if let Some("rustyrts") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
+    if let Some(arg1) = std::env::args().nth(1) {
+        
+    if  arg1 == "rustyrts" {
         let mode_string = std::env::args().nth(2).unwrap_or("".to_string());
         let mode = FromStr::from_str(&mode_string).ok();
 
@@ -333,7 +335,7 @@ fn main() {
                 )
             }
         }
-    } else if let Some("rustc") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
+    } else if &arg1[arg1.len()-5..] == "rustc" {
         // This arm is executed when `cargo-rustyrts` runs `cargo build` or `cargo test` with the `RUSTC_WRAPPER` env var set to itself.
         run_rustyrts();
     } else {
@@ -342,6 +344,8 @@ fn main() {
                 .to_string(),
         )
     }
+    }
+
 }
 
 //######################################################################################################################

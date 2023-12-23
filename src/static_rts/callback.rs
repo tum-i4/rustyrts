@@ -13,10 +13,9 @@ use crate::{constants::SUFFIX_DYN, fs_utils::get_dependencies_path};
 use itertools::Itertools;
 use log::trace;
 use rustc_driver::{Callbacks, Compilation};
-use rustc_hir::{def_id::LOCAL_CRATE, AttributeMap};
+use rustc_hir::{def_id::{LOCAL_CRATE, LocalDefId}, AttributeMap};
 use rustc_interface::{interface, Queries};
-use rustc_middle::ty::query::{query_keys, query_stored};
-use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_middle::{ty::{PolyTraitRef, TyCtxt, VtblEntry}, mir::Body};
 use rustc_session::config::CrateType;
 use std::sync::atomic::Ordering::SeqCst;
 
@@ -87,8 +86,8 @@ impl Callbacks for StaticRTSCallbacks {
 /// This function is executed instead of optimized_mir() in the compiler
 fn custom_optimized_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: query_keys::optimized_mir<'tcx>,
-) -> query_stored::optimized_mir<'tcx> {
+    def: LocalDefId,
+) -> &'tcx Body<'tcx> {
     let content = OLD_OPTIMIZED_MIR_PTR.load(SeqCst);
 
     // SAFETY: At this address, the original optimized_mir() function has been stored before.
@@ -98,16 +97,16 @@ fn custom_optimized_mir<'tcx>(
             usize,
             fn(
                 _: TyCtxt<'tcx>,
-                _: query_keys::optimized_mir<'tcx>,
+                _: LocalDefId,
             ) -> &'tcx mut rustc_middle::mir::Body<'tcx>, // notice the mutable reference here
         >(content)
     };
 
     let body = orig_function(tcx, def);
 
-    let name = def_id_name(tcx, def, true, false);
+    let name = def_id_name(tcx, def.to_def_id(), true, false);
     let attrs = &tcx.hir_crate(()).owners
-        [tcx.local_def_id_to_hir_id(def.expect_local()).owner.def_id]
+        [tcx.local_def_id_to_hir_id(def).owner.def_id]
         .as_owner()
         .map_or(AttributeMap::EMPTY, |o| &o.attrs)
         .map;
@@ -165,13 +164,15 @@ fn custom_vtable_entries_monomorphized<'tcx>(
                 let def_id = instance.def_id();
                 if !tcx.is_closure(def_id) {
                     if let Some(trait_fn) = tcx.impl_of_method(def_id).and_then(|impl_def| {
-                        tcx.impl_trait_ref(impl_def).and_then(|_| {
+                        tcx.impl_trait_ref(impl_def).and_then(|trait_def| {
                             let implementors = tcx.impl_item_implementor_ids(impl_def);
-                            for (trait_fn, impl_fn) in implementors {
-                                if *impl_fn == def_id {
-                                    return Some(trait_fn);
+
+                            let associated_items = tcx.associated_item_def_ids(trait_def.skip_binder().def_id);
+                            for item in associated_items {
+                                if implementors.get(item).is_some_and(|impl_fn|*impl_fn == def_id) {
+                                    return Some(item);
                                 }
-                            }
+                            }                           
                             return None;
                         })
                     }) {

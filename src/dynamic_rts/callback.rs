@@ -3,9 +3,8 @@ use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
-use rustc_middle::ty::query::{query_keys, query_stored};
-use rustc_middle::ty::Instance;
-use rustc_middle::ty::{DefIdTree, PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_middle::ty::{Instance, PolyFnSig, EarlyBinder, ParamEnv, Visibility};
+use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_middle::{mir::Body, ty::AssocItem};
 use rustc_session::config::CrateType;
 use rustc_span::source_map::{FileLoader, RealFileLoader};
@@ -29,7 +28,7 @@ use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
 use bimap::hash::BiHashMap;
 use rustc_hir::{
-    def_id::{LocalDefId, LOCAL_CRATE},
+    def_id::{LocalDefId, LOCAL_CRATE, DefId},
     Crate,
 };
 
@@ -120,11 +119,10 @@ impl Callbacks for DynamicRTSCallbacks {
 /// This function is executed instead of optimized_mir() in the compiler
 fn custom_optimized_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
-    key: query_keys::optimized_mir<'tcx>,
-) -> query_stored::optimized_mir<'tcx> {
+    key: LocalDefId,
+) -> &'tcx Body<'tcx>{
     if let Some(vtable_substitutes) = VTABLE_ENTRY_SUBSTITUTES.get() {
-        if let Some(local_def) = key.as_local() {
-            if let Some(def_id) = vtable_substitutes.read().unwrap().get_by_left(&local_def) {
+            if let Some(def_id) = vtable_substitutes.read().unwrap().get_by_left(&key) {
                 let result: &Body = tcx.optimized_mir(def_id.to_def_id());
 
                 let ret = if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
@@ -141,7 +139,6 @@ fn custom_optimized_mir<'tcx>(
 
                 return ret;
             }
-        }
     }
 
     let content = OLD_OPTIMIZED_MIR.load(SeqCst);
@@ -153,8 +150,8 @@ fn custom_optimized_mir<'tcx>(
             usize,
             fn(
                 _: TyCtxt<'tcx>,
-                _: query_keys::optimized_mir<'tcx>,
-            ) -> &'tcx mut rustc_middle::mir::Body<'tcx>, // notice the mutable reference here
+                _: LocalDefId,
+            ) -> &'tcx mut Body<'tcx>, // notice the mutable reference here
         >(content)
     };
 
@@ -196,19 +193,43 @@ macro_rules! substitute_old_result {
     };
 }
 
-substitute_old_result!(
+macro_rules! substitute_old_result_local {
+    ($name:ident, $static_name:ident, $custom_name:ident, $in:ty, $out:ty) => {
+        static $static_name: AtomicUsize = AtomicUsize::new(0);
+
+        fn $custom_name<'tcx>(tcx: TyCtxt<'tcx>, mut key: $in) -> $out {
+                if let Some(vtable_substitutes) = VTABLE_ENTRY_SUBSTITUTES.get() {
+                    if let Some(def_id) = vtable_substitutes.read().unwrap().get_by_left(&key)
+                    {
+                        key = *def_id;
+                    }
+                }
+
+            let content = $static_name.load(SeqCst);
+
+            // SAFETY: At this address, the original $name() function has been stored before.
+            // We reinterpret it as a function.
+            let orig_function =
+                unsafe { transmute::<usize, fn(_: TyCtxt<'tcx>, _: $in) -> $out>(content) };
+
+            orig_function(tcx, key)
+        }
+    };
+}
+
+substitute_old_result_local!(
     fn_sig,
     OLD_FN_SIG,
     custom_fn_sig,
-    query_keys::fn_sig<'tcx>,
-    query_stored::fn_sig<'tcx>
+    LocalDefId,
+    EarlyBinder<PolyFnSig<'tcx>>
 );
 
-substitute_old_result!(
+substitute_old_result_local!(
     associated_item,
     OLD_ASSOCIATED_ITEM,
     custom_associated_item,
-    query_keys::associated_item<'tcx>,
+    LocalDefId,
     AssocItem // Weirdly, we cannot use query_stored::associated_item<'tcx> here
 );
 
@@ -216,16 +237,16 @@ substitute_old_result!(
     param_env,
     OLD_PARAM_ENV,
     custom_param_env,
-    query_keys::param_env<'tcx>,
-    query_stored::param_env<'tcx>
+    DefId,
+    ParamEnv<'tcx>
 );
 
-substitute_old_result!(
+substitute_old_result_local!(
     visibility,
     OLD_VISIBILITY,
     custom_visibility,
-    query_keys::visibility<'tcx>,
-    query_stored::visibility<'tcx>
+    LocalDefId,
+    Visibility<DefId>
 );
 
 impl DynamicRTSCallbacks {

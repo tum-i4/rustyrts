@@ -1,10 +1,11 @@
 use std::collections::HashSet;
 
+
 use rustc_hir::definitions::DefPathData;
-use rustc_middle::{mir::interpret::ConstAllocation, ty::ParamEnv};
+use rustc_middle::{mir::interpret::ConstAllocation, ty::{ParamEnv, EarlyBinder}};
 use rustc_middle::{
     mir::interpret::{ConstValue, GlobalAlloc, Scalar},
-    ty::{Instance, InstanceDef, TyKind},
+    ty::{Instance, TyKind},
 };
 use rustc_middle::{
     mir::visit::TyContext,
@@ -123,7 +124,7 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
                 let maybe_normalized_cons = self.tcx.try_subst_and_normalize_erasing_regions(
                     self.substs,
                     self.param_env,
-                    unevaluated_cons,
+                    EarlyBinder::bind(unevaluated_cons),
                 );
 
                 maybe_normalized_cons.ok().and_then(|unevaluated_cons| {
@@ -153,33 +154,37 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
 
         if let Some(outer_def_id) = self.processed {
             match *ty.kind() {
-                TyKind::FnDef(_def_id, _substs) => {
+                TyKind::Closure(..) | TyKind::Generator(..) |
+                TyKind::FnDef(..) => {
                     // We stop recursing when the function can also be resolved
-                    // using the environment of the currently vistied function
+                    // using the environment of the currently visited function
                     let param_env_outer = self
                         .tcx
                         .param_env(outer_def_id)
                         .with_reveal_all_normalized(self.tcx);
 
                     let maybe_normalized_ty = match *ty.kind() {
+                        TyKind::Closure(..) | TyKind::Generator(..) |
                         TyKind::FnDef(..) => self
                             .tcx
                             .try_subst_and_normalize_erasing_regions(
                                 List::identity_for_item(self.tcx, outer_def_id),
                                 param_env_outer,
-                                ty,
+                                EarlyBinder::bind(ty),
                             )
                             .ok(),
                         _ => None,
                     };
 
                     if let Some(ty_outer) = maybe_normalized_ty {
-                        let TyKind::FnDef(def_id_normalized_outer, substs_normalized_outer) = *ty_outer.kind() else {unreachable!()};
+                        let (TyKind::Closure(def_id, substs) 
+                            | TyKind::Generator(def_id, substs, _)
+                            | TyKind::FnDef(def_id, substs)) = *ty_outer.kind() else {unreachable!()};
                         if let Ok(Some(_)) | Err(_) = Instance::resolve(
                             self.tcx,
                             param_env_outer,
-                            def_id_normalized_outer,
-                            substs_normalized_outer,
+                            def_id,
+                            substs,
                         ) {
                             return;
                         }
@@ -190,37 +195,23 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
         }
 
         let maybe_next = {
-            let maybe_normalized_ty = match *ty.kind() {
-                /* TyKind::Closure(..) | TyKind::Generator(..) |*/
-                TyKind::FnDef(..) => self
+            let maybe_normalized_ty = 
+                match *ty.kind() {
+                TyKind::Closure(..) | TyKind::Generator(..) |
+                TyKind::FnDef(..)=> self
                     .tcx
-                    .try_subst_and_normalize_erasing_regions(self.substs, self.param_env, ty)
+                    .try_subst_and_normalize_erasing_regions(self.substs, self.param_env, EarlyBinder::bind(ty))
                     .ok(),
                 _ => None,
             };
 
             maybe_normalized_ty.and_then(|ty| match *ty.kind() {
-                // TyKind::Closure(def_id, substs) => Some((def_id, substs)),
-                // TyKind::Generator(def_id, substs, _) => Some((def_id, substs)),
+                TyKind::Closure(def_id, substs) | 
+                TyKind::Generator(def_id, substs, _) |
                 TyKind::FnDef(def_id, substs) => {
                     match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
                         Ok(Some(instance)) if !self.tcx.is_closure(instance.def_id()) => {
-                            match instance.def {
-                                InstanceDef::Item(item) => {
-                                    Some((item.def_id_for_type_of(), instance.substs))
-                                }
-                                InstanceDef::Virtual(def_id, _)
-                                | InstanceDef::ReifyShim(def_id) => Some((def_id, substs)),
-                                InstanceDef::FnPtrShim(def_id, _ty) => Some((def_id, substs)),
-                                InstanceDef::DropGlue(def_id, _maybe_ty) => Some((def_id, substs)),
-                                InstanceDef::CloneShim(def_id, _ty) => Some((def_id, substs)),
-                                InstanceDef::Intrinsic(def_id)
-                                | InstanceDef::VTableShim(def_id)
-                                | InstanceDef::ClosureOnceShim {
-                                    call_once: def_id,
-                                    track_caller: _,
-                                } => Some((def_id, substs)),
-                            }
+                            Some((instance.def.def_id(), instance.substs))
                         }
                         _ => None,
                     }

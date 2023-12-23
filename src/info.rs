@@ -181,14 +181,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         config.opts.unstable_opts.cf_protection
     );
     info!(
-        "    cgu_partitioning_strategy: {:?}",
-        config.opts.unstable_opts.cgu_partitioning_strategy
-    );
-    info!(
-        "    codegen_backend: {:?}",
-        config.opts.unstable_opts.codegen_backend
-    );
-    info!(
         "    combine_cgu: {:?}",
         config.opts.unstable_opts.combine_cgu
     );
@@ -214,7 +206,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         "    diagnostic_width: {:?}",
         config.opts.unstable_opts.diagnostic_width
     );
-    info!("    dlltool: {:?}", config.opts.unstable_opts.dlltool);
     info!(
         "    dont_buffer_diagnostics: {:?}",
         config.opts.unstable_opts.dont_buffer_diagnostics
