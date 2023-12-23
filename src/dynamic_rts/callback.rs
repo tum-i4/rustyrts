@@ -1,30 +1,42 @@
 use log::trace;
+use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::{interface, Queries};
 use rustc_middle::ty::query::{query_keys, query_stored};
-use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::{DefIdTree, PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_middle::{mir::Body, ty::AssocItem};
 use rustc_session::config::CrateType;
 use rustc_span::source_map::{FileLoader, RealFileLoader};
 use std::mem::transmute;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;
+use std::sync::{atomic::AtomicUsize, RwLock};
 
-use crate::callbacks_shared::{
-    excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
-    NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
+use crate::{
+    callbacks_shared::{
+        excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
+        NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
+    },
+    constants::SUFFIX_DYN,
+    dynamic_rts::instrumentation::modify_body_dyn,
 };
 
+use super::file_loader::{InstrumentationFileLoaderProxy, TestRunnerFileLoaderProxy};
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
 use crate::dynamic_rts::instrumentation::modify_body;
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
-use crate::static_rts::callback::PATH_BUF;
-use rustc_hir::def_id::LOCAL_CRATE;
+use bimap::hash::BiHashMap;
+use rustc_hir::{
+    def_id::{LocalDefId, LOCAL_CRATE},
+    Crate,
+};
 
-use super::file_loader::{InstrumentationFileLoaderProxy, TestRunnerFileLoaderProxy};
+static OLD_OPTIMIZED_MIR: AtomicUsize = AtomicUsize::new(0);
 
-static OLD_OPTIMIZED_MIR_PTR: AtomicUsize = AtomicUsize::new(0);
+static VTABLE_ENTRY_SUBSTITUTES: OnceCell<RwLock<BiHashMap<LocalDefId, LocalDefId>>> =
+    OnceCell::new();
 
 pub struct DynamicRTSCallbacks {}
 
@@ -74,10 +86,18 @@ impl Callbacks for DynamicRTSCallbacks {
         // Further, the only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers, _extern_providers| {
             // SAFETY: We store the address of the original optimized_mir function as a usize.
-            OLD_OPTIMIZED_MIR_PTR.store(unsafe { transmute(providers.optimized_mir) }, SeqCst);
+            OLD_OPTIMIZED_MIR.store(unsafe { transmute(providers.optimized_mir) }, SeqCst);
+            OLD_ASSOCIATED_ITEM.store(unsafe { transmute(providers.associated_item) }, SeqCst);
+            OLD_FN_SIG.store(unsafe { transmute(providers.fn_sig) }, SeqCst);
+            OLD_PARAM_ENV.store(unsafe { transmute(providers.param_env) }, SeqCst);
+            OLD_VISIBILITY.store(unsafe { transmute(providers.visibility) }, SeqCst);
             OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
 
             providers.optimized_mir = custom_optimized_mir;
+            providers.associated_item = custom_associated_item;
+            providers.fn_sig = custom_fn_sig;
+            providers.param_env = custom_param_env;
+            providers.visibility = custom_visibility;
             providers.vtable_entries = custom_vtable_entries;
         });
     }
@@ -100,9 +120,31 @@ impl Callbacks for DynamicRTSCallbacks {
 /// This function is executed instead of optimized_mir() in the compiler
 fn custom_optimized_mir<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def: query_keys::optimized_mir<'tcx>,
+    key: query_keys::optimized_mir<'tcx>,
 ) -> query_stored::optimized_mir<'tcx> {
-    let content = OLD_OPTIMIZED_MIR_PTR.load(SeqCst);
+    if let Some(vtable_substitutes) = VTABLE_ENTRY_SUBSTITUTES.get() {
+        if let Some(local_def) = key.as_local() {
+            if let Some(def_id) = vtable_substitutes.read().unwrap().get_by_left(&local_def) {
+                let result: &Body = tcx.optimized_mir(def_id.to_def_id());
+
+                let ret = if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
+                    //##############################################################
+                    // 1. Here the MIR is modified to trace this function at runtime
+                    let cloned = result.clone();
+                    let leaked = Box::leak(Box::new(cloned));
+
+                    modify_body_dyn(tcx, leaked);
+                    leaked
+                } else {
+                    result
+                };
+
+                return ret;
+            }
+        }
+    }
+
+    let content = OLD_OPTIMIZED_MIR.load(SeqCst);
 
     // SAFETY: At this address, the original optimized_mir() function has been stored before.
     // We reinterpret it as a function, while changing the return type to mutable.
@@ -116,7 +158,7 @@ fn custom_optimized_mir<'tcx>(
         >(content)
     };
 
-    let result = orig_function(tcx, def);
+    let result = orig_function(tcx, key);
 
     if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
         //##############################################################
@@ -127,6 +169,64 @@ fn custom_optimized_mir<'tcx>(
 
     result
 }
+
+macro_rules! substitute_old_result {
+    ($name:ident, $static_name:ident, $custom_name:ident, $in:ty, $out:ty) => {
+        static $static_name: AtomicUsize = AtomicUsize::new(0);
+
+        fn $custom_name<'tcx>(tcx: TyCtxt<'tcx>, mut key: $in) -> $out {
+            if let Some(local_def) = key.as_local() {
+                if let Some(vtable_substitutes) = VTABLE_ENTRY_SUBSTITUTES.get() {
+                    if let Some(def_id) = vtable_substitutes.read().unwrap().get_by_left(&local_def)
+                    {
+                        key = def_id.to_def_id();
+                    }
+                }
+            }
+
+            let content = $static_name.load(SeqCst);
+
+            // SAFETY: At this address, the original $name() function has been stored before.
+            // We reinterpret it as a function.
+            let orig_function =
+                unsafe { transmute::<usize, fn(_: TyCtxt<'tcx>, _: $in) -> $out>(content) };
+
+            orig_function(tcx, key)
+        }
+    };
+}
+
+substitute_old_result!(
+    fn_sig,
+    OLD_FN_SIG,
+    custom_fn_sig,
+    query_keys::fn_sig<'tcx>,
+    query_stored::fn_sig<'tcx>
+);
+
+substitute_old_result!(
+    associated_item,
+    OLD_ASSOCIATED_ITEM,
+    custom_associated_item,
+    query_keys::associated_item<'tcx>,
+    AssocItem // Weirdly, we cannot use query_stored::associated_item<'tcx> here
+);
+
+substitute_old_result!(
+    param_env,
+    OLD_PARAM_ENV,
+    custom_param_env,
+    query_keys::param_env<'tcx>,
+    query_stored::param_env<'tcx>
+);
+
+substitute_old_result!(
+    visibility,
+    OLD_VISIBILITY,
+    custom_visibility,
+    query_keys::visibility<'tcx>,
+    query_stored::visibility<'tcx>
+);
 
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
@@ -154,25 +254,64 @@ fn custom_vtable_entries<'tcx>(
         for entry in result {
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();
-                if !tcx.is_closure(def_id) {
-                    let name = def_id_name(tcx, def_id, false, true);
+                if !tcx.is_closure(def_id) && !tcx.is_fn_trait(key.def_id()) {
+                    // TODO: apply this to static as well
+
                     let checksum = get_checksum_vtbl_entry(tcx, &entry);
+                    let mut name = def_id_name(tcx, def_id, false, true);
+
+                    // 1. Only working for local functions... We prepare duplicating the function
+                    // such that we can modify the one that is inserted in to vtable independently.
+
+                    if let Some(local_def) = def_id.as_local() {
+                        name += SUFFIX_DYN;
+
+                        let vtable_entry_substitutes =
+                            VTABLE_ENTRY_SUBSTITUTES.get_or_init(|| RwLock::new(BiHashMap::new()));
+
+                        let new_def_id = if let Some(new_def_id) = vtable_entry_substitutes
+                            .read()
+                            .unwrap()
+                            .get_by_right(&local_def)
+                        {
+                            new_def_id.clone()
+                        } else {
+                            let parent_def = tcx.local_parent(local_def);
+                            let span = tcx.def_span(parent_def);
+
+                            // We create a new DefId to duplicate the MIR
+                            let def_path = tcx.def_path(def_id).data.pop().unwrap().data;
+                            let new_def_id = tcx.at(span).create_def(parent_def, def_path).def_id();
+
+                            // Apparently, we need to duplicate the OwnerInfo as well
+                            let krate: &mut Crate =
+                                unsafe { std::mem::transmute(tcx.hir_crate(())) };
+                            let owner = krate.owners.get(local_def).unwrap();
+                            krate.owners.push(*owner);
+
+                            new_def_id
+                        };
+
+                        // We can now swap out the function that is put into the vtable
+                        let substs = instance.substs;
+                        let instance: &mut Instance = unsafe { std::mem::transmute(instance) };
+                        *instance = Instance::new(new_def_id.to_def_id(), substs);
+
+                        vtable_entry_substitutes
+                            .write()
+                            .unwrap()
+                            .insert(new_def_id, local_def);
+                    }
+
+                    // 2. We add this function to the vtable checksums
                     trace!("Considering {:?} in checksums of {}", instance, name);
 
                     insert_hashmap(
                         &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
                         &name,
                         checksum,
-                    )
+                    );
                 }
-
-                // let mut instance: &mut Instance = unsafe { std::mem::transmute::<_, _>(instance) };
-                // let trace_dyn_fn_def_id = get_def_id_trace_dyn_fn(tcx).unwrap();
-
-                // instance.def = InstanceDef::Item(WithOptConstParam {
-                //     did: trace_dyn_fn_def_id,
-                //     const_param_did: Some(def_id),
-                // });
             }
         }
     }

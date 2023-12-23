@@ -1,18 +1,17 @@
-use std::path::PathBuf;
+use std::mem::transmute;
+use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;
-use std::{mem::transmute, sync::atomic::AtomicUsize};
 
 use crate::{
     callbacks_shared::{
         excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
-        NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, TEST_MARKER,
+        NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF, TEST_MARKER,
     },
     static_rts::visitor::ResolvingVisitor,
 };
 use crate::{constants::SUFFIX_DYN, fs_utils::get_dependencies_path};
 use itertools::Itertools;
 use log::trace;
-use once_cell::sync::OnceCell;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_hir::{def_id::LOCAL_CRATE, AttributeMap};
 use rustc_interface::{interface, Queries};
@@ -24,8 +23,6 @@ use std::sync::atomic::Ordering::SeqCst;
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
 use crate::fs_utils::{get_static_path, write_to_file};
 use crate::names::def_id_name;
-
-pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
 static OLD_OPTIMIZED_MIR_PTR: AtomicUsize = AtomicUsize::new(0);
 

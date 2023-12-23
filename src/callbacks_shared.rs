@@ -5,13 +5,13 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::TyCtxt;
 use std::env;
+use std::path::PathBuf;
 use std::{
     collections::HashSet,
     fs::read,
     sync::{atomic::AtomicUsize, Mutex},
 };
 
-use crate::{checksums::{get_checksum_body, insert_hashmap}, const_visitor::ResolvingConstVisitor};
 use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::{
     checksums::Checksums,
@@ -21,10 +21,15 @@ use crate::{
         get_test_path, write_to_file,
     },
     names::def_id_name,
-    static_rts::callback::PATH_BUF,
+};
+use crate::{
+    checksums::{get_checksum_body, insert_hashmap},
+    const_visitor::ResolvingConstVisitor,
 };
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
+
+pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
 pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
 pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
