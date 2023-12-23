@@ -1,14 +1,15 @@
 [package]
-name = "dynamic"
+name = "fn_ptr"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-changes_direct = []
-changes_indirect = []
-changes_removed= []
-changes_static= []
+changes_fn = []
+changes_static = []
+
+test_direct = []
+test_indirect = []
 
 [dependencies]

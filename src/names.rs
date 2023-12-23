@@ -1,8 +1,8 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use rustc_hir::{def_id::DefId, definitions::DefPathData};
-use rustc_middle::ty::print::Printer;
-use rustc_middle::ty::{print::FmtPrinter, GenericArg, TyCtxt};
+use rustc_middle::ty::{print::FmtPrinter, TyCtxt};
+use rustc_middle::ty::{print::Printer, List};
 use rustc_resolve::Namespace;
 
 lazy_static! {
@@ -12,16 +12,10 @@ lazy_static! {
     ];
 }
 
-#[cfg(feature = "monomorphize")]
-lazy_static! {
-    static ref RE_CLOSURE: Regex = Regex::new(r"\[closure@.*?\/.*?\]").unwrap();
-}
-
 /// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
 pub(crate) fn def_id_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    substs: &'tcx [GenericArg<'tcx>],
     add_crate_id: bool,
     trimmed: bool,
 ) -> String {
@@ -45,7 +39,7 @@ pub(crate) fn def_id_name<'tcx>(
         "".to_string()
     };
 
-    let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs, trimmed);
+    let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, trimmed);
 
     let crate_name = {
         let name = format!("{}::", tcx.crate_name(def_id.krate));
@@ -63,13 +57,6 @@ pub(crate) fn def_id_name<'tcx>(
         def_path_str = re.replace_all(&def_path_str, "${3}").to_string();
     }
 
-    #[cfg(feature = "monomorphize")]
-    {
-        def_path_str = RE_CLOSURE
-            .replace_all(&def_path_str, "[closure]")
-            .to_string();
-    }
-
     // Occasionally, there is a newline which we do not want to keep
     def_path_str = def_path_str.replace("\n", "");
 
@@ -79,7 +66,6 @@ pub(crate) fn def_id_name<'tcx>(
 pub fn def_path_str_with_substs_with_no_visible_path<'t>(
     tcx: TyCtxt<'t>,
     def_id: DefId,
-    substs: &'t [GenericArg<'t>],
     trimmed: bool,
 ) -> String {
     let ns = guess_def_namespace(tcx, def_id);
@@ -87,12 +73,12 @@ pub fn def_path_str_with_substs_with_no_visible_path<'t>(
     if trimmed {
         rustc_middle::ty::print::with_forced_trimmed_paths!(
             rustc_middle::ty::print::with_no_visible_paths!(
-                FmtPrinter::new(tcx, ns).print_def_path(def_id, substs)
+                FmtPrinter::new(tcx, ns).print_def_path(def_id, List::empty())
             )
         )
     } else {
         rustc_middle::ty::print::with_no_visible_paths!(
-            FmtPrinter::new(tcx, ns).print_def_path(def_id, substs)
+            FmtPrinter::new(tcx, ns).print_def_path(def_id, List::empty())
         )
     }
     .unwrap()

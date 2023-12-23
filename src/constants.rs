@@ -39,6 +39,7 @@ pub const DIR_DYNAMIC: &str = ".rts_dynamic";
 
 pub const FILE_COMPLETE_GRAPH: &str = "!complete_graph.dot";
 
+pub const ENDING_DEPENDENCIES: &str = ".dependencies";
 pub const ENDING_TRACE: &str = ".trace";
 pub const ENDING_CHANGES: &str = ".changes";
 pub const ENDING_CHECKSUM: &str = ".checksum";

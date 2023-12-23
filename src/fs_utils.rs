@@ -7,8 +7,8 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use crate::constants::{
-    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_CONST, ENDING_CHECKSUM_VTBL, ENDING_GRAPH,
-    ENDING_TEST, ENDING_TRACE, ENV_TARGET_DIR,
+    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_CONST, ENDING_CHECKSUM_VTBL,
+    ENDING_DEPENDENCIES, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, ENV_TARGET_DIR,
 };
 
 #[cfg(unix)]
@@ -83,6 +83,11 @@ pub fn get_checksums_const_path(mut path_buf: PathBuf, crate_name: &str, id: u64
         "{}[{:016x}]{}",
         crate_name, id, ENDING_CHECKSUM_CONST
     ));
+    path_buf
+}
+
+pub fn get_dependencies_path(mut path_buf: PathBuf, test_name: &str) -> PathBuf {
+    path_buf.push(format!("{}{}", test_name, ENDING_DEPENDENCIES));
     path_buf
 }
 

@@ -1,34 +1,41 @@
-use std::mem::transmute;
 use std::path::PathBuf;
 use std::sync::Mutex;
+use std::{mem::transmute, sync::atomic::AtomicUsize};
 
-use crate::callbacks_shared::{
-    excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
-    NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
+use crate::{
+    callbacks_shared::{
+        excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
+        NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, TEST_MARKER,
+    },
+    static_rts::visitor::ResolvingVisitor,
 };
-use crate::constants::SUFFIX_DYN;
+use crate::{constants::SUFFIX_DYN, fs_utils::get_dependencies_path};
 use itertools::Itertools;
 use log::trace;
 use once_cell::sync::OnceCell;
 use rustc_driver::{Callbacks, Compilation};
-use rustc_hir::def_id::LOCAL_CRATE;
+use rustc_hir::{def_id::LOCAL_CRATE, AttributeMap};
 use rustc_interface::{interface, Queries};
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::{List, PolyTraitRef, TyCtxt, VtblEntry};
+use rustc_middle::ty::query::{query_keys, query_stored};
+use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_session::config::CrateType;
 use std::sync::atomic::Ordering::SeqCst;
 
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
-use crate::fs_utils::{get_graph_path, get_static_path, write_to_file};
+use crate::fs_utils::{get_static_path, write_to_file};
 use crate::names::def_id_name;
-
-use super::graph::DependencyGraph;
-use super::visitor::GraphVisitor;
 
 pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
-pub struct StaticRTSCallbacks {
-    graph: DependencyGraph<String>,
+static OLD_OPTIMIZED_MIR_PTR: AtomicUsize = AtomicUsize::new(0);
+
+pub struct StaticRTSCallbacks {}
+
+impl StaticRTSCallbacks {
+    pub fn new() -> Self {
+        PATH_BUF.get_or_init(|| get_static_path(true));
+        Self {}
+    }
 }
 
 impl Callbacks for StaticRTSCallbacks {
@@ -47,12 +54,16 @@ impl Callbacks for StaticRTSCallbacks {
             EXCLUDED.get_or_init(|| true);
         }
 
+        config.opts.unstable_opts.always_encode_mir = true;
+
         // The only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers, _extern_providers| {
             // SAFETY: We store the address of the original vtable_entries function as a usize.
             OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
+            OLD_OPTIMIZED_MIR_PTR.store(unsafe { transmute(providers.optimized_mir) }, SeqCst);
 
             providers.vtable_entries = custom_vtable_entries_monomorphized;
+            providers.optimized_mir = custom_optimized_mir;
         });
 
         if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
@@ -76,61 +87,62 @@ impl Callbacks for StaticRTSCallbacks {
     }
 }
 
-impl StaticRTSCallbacks {
-    pub fn new() -> Self {
-        PATH_BUF.get_or_init(|| get_static_path(true));
-        Self {
-            graph: DependencyGraph::new(),
-        }
-    }
+/// This function is executed instead of optimized_mir() in the compiler
+fn custom_optimized_mir<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def: query_keys::optimized_mir<'tcx>,
+) -> query_stored::optimized_mir<'tcx> {
+    let content = OLD_OPTIMIZED_MIR_PTR.load(SeqCst);
 
-    fn run_analysis(&mut self, tcx: TyCtxt) {
-        let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-        let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+    // SAFETY: At this address, the original optimized_mir() function has been stored before.
+    // We reinterpret it as a function, while changing the return type to mutable.
+    let orig_function = unsafe {
+        transmute::<
+            usize,
+            fn(
+                _: TyCtxt<'tcx>,
+                _: query_keys::optimized_mir<'tcx>,
+            ) -> &'tcx mut rustc_middle::mir::Body<'tcx>, // notice the mutable reference here
+        >(content)
+    };
 
-        //##############################################################################################################
-        // Collect all MIR bodies that are relevant for code generation
+    let body = orig_function(tcx, def);
 
-        let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+    let name = def_id_name(tcx, def, true, false);
+    let attrs = &tcx.hir_crate(()).owners
+        [tcx.local_def_id_to_hir_id(def.expect_local()).owner.def_id]
+        .as_owner()
+        .map_or(AttributeMap::EMPTY, |o| &o.attrs)
+        .map;
 
-        let bodies = code_gen_units
-            .iter()
-            .flat_map(|c| c.items().keys())
-            .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
-            .map(|m| {
-                let MonoItem::Fn(instance) = m else {unreachable!()};
-                instance
-            })
-            .filter(|i| tcx.is_mir_available(i.def_id()))
-            .filter(|i| tcx.is_codegened_item(i.def_id()))
-            //.filter(|i| i.def_id().is_local()) // It is not feasible to only analyze local MIR
-            .map(|i| (tcx.optimized_mir(i.def_id()), i.substs))
-            .collect_vec();
+    let is_test = attrs
+        .iter()
+        .flat_map(|(_, list)| list.iter())
+        .unique_by(|i| i.id)
+        .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
 
-        //##############################################################################################################
-        // 1. Visit every instance (pair of MIR body and corresponding generic args)
-        //    and every body from const
-        //      1) Creates the graph
-        //      2) Write graph to file
-
-        let mut graph_visitor = GraphVisitor::new(tcx, &mut self.graph);
-        for (body, substs) in &bodies {
-            graph_visitor.visit(&body, substs);
-        }
-
+    if is_test {
+        let dependencies = ResolvingVisitor::find_dependencies(tcx, body)
+            .into_iter()
+            .fold(String::new(), |mut acc, node| {
+                acc.push_str(&node);
+                acc.push_str("\n");
+                acc
+            });
         write_to_file(
-            self.graph.to_string(),
+            dependencies,
             PATH_BUF.get().unwrap().clone(),
-            |buf| get_graph_path(buf, &crate_name, crate_id),
+            |p| get_dependencies_path(p, &name[0..name.len() - 13]),
             false,
         );
+        trace!("Collected dependencies for {}", name);
+    }
+    body
+}
 
-        trace!("Generated dependency graph for {}", crate_name);
-
-        //##############################################################################################################
-        // Continue at shared analysis
-
-        run_analysis_shared(tcx, bodies);
+impl StaticRTSCallbacks {
+    fn run_analysis(&mut self, tcx: TyCtxt) {
+        run_analysis_shared(tcx);
     }
 }
 
@@ -153,26 +165,32 @@ fn custom_vtable_entries_monomorphized<'tcx>(
     if !excluded(|| tcx.crate_name(LOCAL_CRATE).as_str().to_string()) {
         for entry in result {
             if let VtblEntry::Method(instance) = entry {
-                let substs = if cfg!(not(feature = "monomorphize")) {
-                    List::empty()
-                } else {
-                    instance.substs
-                };
+                let def_id = instance.def_id();
+                if !tcx.is_closure(def_id) {
+                    if let Some(trait_fn) = tcx.impl_of_method(def_id).and_then(|impl_def| {
+                        tcx.impl_trait_ref(impl_def).and_then(|_| {
+                            let implementors = tcx.impl_item_implementor_ids(impl_def);
+                            for (trait_fn, impl_fn) in implementors {
+                                if *impl_fn == def_id {
+                                    return Some(trait_fn);
+                                }
+                            }
+                            return None;
+                        })
+                    }) {
+                        let name = def_id_name(tcx, *trait_fn, false, true).to_owned() + SUFFIX_DYN;
 
-                // TODO: it should be feasible to exclude closures here
+                        let checksum = get_checksum_vtbl_entry(tcx, &entry);
 
-                let name = def_id_name(tcx, instance.def_id(), substs, false, true).to_owned()
-                    + SUFFIX_DYN;
+                        trace!("Considering {:?} in checksums of {}", instance, name);
 
-                let checksum = get_checksum_vtbl_entry(tcx, &entry);
-
-                trace!("Considering {:?} in checksums of {}", instance, name);
-
-                insert_hashmap(
-                    &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
-                    &name,
-                    checksum,
-                )
+                        insert_hashmap(
+                            &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
+                            &name,
+                            checksum,
+                        )
+                    }
+                }
             }
         }
     }

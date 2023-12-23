@@ -10,7 +10,7 @@ pub trait Foo {
 
 pub trait Bar: Foo {
     fn bar(&self) -> i32 {
-        return 42;
+        return 41;
     }
 }
 
@@ -22,11 +22,13 @@ pub trait Baz: Bar {
 
 pub struct ImplFoo {}
 
+pub struct ImplBar {}
+
 pub struct ImplBaz {}
 
 //#############
 // When any of these four functions, that are called via dynamic dispatch, are included,
-// test_dyn will fail and has to be recognized as affected
+// test_dyn_added will fail and has to be recognized as affected
 
 impl Foo for ImplFoo {
     #[cfg(feature = "changes_direct")]
@@ -42,13 +44,6 @@ impl Foo for ImplBaz {
     }
 }
 
-impl<T: Foo + ?Sized> Bar for T {
-    #[cfg(feature = "changes_generic")]
-    fn bar(&self) -> i32 {
-        return 41;
-    }
-}
-
 // If this is included, also test_static will fail and should be affected
 impl Baz for ImplBaz {
     #[cfg(feature = "changes_static")]
@@ -57,24 +52,39 @@ impl Baz for ImplBaz {
     }
 }
 
+//#############
+// When this function, that is called via dynamic dispatch, is excluded,
+// test_dyn_removed will fail and has to be recognized as affected
+
+impl<T: Foo + ?Sized> Bar for T {
+    #[cfg(not(feature = "changes_removed"))]
+    fn bar(&self) -> i32 {
+        return 42;
+    }
+}
+
 fn main() {
     println!("Hello, world!");
 }
 
 #[test]
-pub fn test_dyn() {
+pub fn test_dyn_added() {
     let bar: &dyn Bar = &ImplFoo {};
     let foo: &dyn Foo = bar; // Up-casting from Bar to Foo (only possible with special compiler feature)
 
-    assert_eq!(bar.foo(), 42);
-
     assert_eq!(foo.foo(), 42);
-    assert_eq!(bar.bar(), 42);
 
     let baz: &dyn Baz = &ImplBaz {};
     assert_eq!(baz.foo(), 42);
-    assert_eq!(baz.bar(), 42);
     assert_eq!(baz.baz(), 42);
+}
+
+#[test]
+pub fn test_dyn_removed() {
+    let bar: &dyn Bar = &ImplFoo {};
+
+    assert_eq!(bar.foo(), 42);
+    assert_eq!(bar.bar(), 42);
 }
 
 #[test]
