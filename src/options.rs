@@ -179,7 +179,7 @@ impl Options {
             output_in_dir: args.output.clone(),
             print_caught: args.caught,
             print_unviable: args.unviable,
-            shuffle: !args.no_shuffle,
+            shuffle: args.shuffle,
             show_line_col: args.line_col,
             show_times: !args.no_times,
             show_all_logs: args.all_logs,
