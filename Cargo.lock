@@ -157,7 +157,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-mutants"
+name = "cargo-mutants-rts"
 version = "23.12.2"
 dependencies = [
  "anyhow",

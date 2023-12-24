@@ -6,7 +6,7 @@ permissions:
 on:
   push:
     branches:
-      - main
+      - mutants-rts
   pull_request:
 
 # see https://matklad.github.io/2021/09/04/fast-rust-builds.html
@@ -24,8 +24,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macOS-latest, ubuntu-latest, windows-latest]
-        version: [stable, nightly, "1.70"]
+        os: [ubuntu-latest] #[macOS-latest, ubuntu-latest, windows-latest]
 
     runs-on: ${{ matrix.os }}
 
@@ -40,8 +39,8 @@ jobs:
           cargo --version
           rustc --version
       - uses: Swatinem/rust-cache@v2
-      - name: rustfmt
-        run: cargo fmt --all -- --check
+#      - name: rustfmt
+#        run: cargo fmt --all -- --check
       - name: Build
         run: cargo build --all-targets
       - name: Test

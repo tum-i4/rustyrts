@@ -2,7 +2,7 @@
 
 //! Successively apply mutations to the source code and run cargo to check, build, and test them.
 
-use std::cmp::{max, min};
+use std::{cmp::{max, min}, fs::create_dir_all, path::Path};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -13,7 +13,7 @@ use tracing::warn;
 #[allow(unused)]
 use tracing::{debug, debug_span, error, info, trace};
 
-use crate::cargo::run_cargo;
+use crate::{cargo::run_cargo, options::Mode};
 use crate::console::Console;
 use crate::outcome::{LabOutcome, Phase, ScenarioOutcome};
 use crate::output::OutputDir;
@@ -40,7 +40,7 @@ pub fn test_mutants(
         .map_or(workspace_dir, |p| p.as_path());
     let output_dir = OutputDir::new(output_in_dir)?;
     console.set_debug_log(output_dir.open_debug_log()?);
-
+    
     if options.shuffle {
         fastrand::shuffle(&mut mutants);
     }
@@ -53,11 +53,13 @@ pub fn test_mutants(
     let all_packages = mutants.iter().map(|m| m.package()).unique().collect_vec();
     debug!(?all_packages);
 
+    let mode = options.mode.clone().unwrap_or_default();
     let output_mutex = Mutex::new(output_dir);
     let mut build_dirs = vec![BuildDir::new(workspace_dir, &options, console)?];
     let baseline_outcome = {
         let _span = debug_span!("baseline").entered();
         test_scenario(
+            &mode,
             &mut build_dirs[0],
             &output_mutex,
             &Scenario::Baseline,
@@ -65,6 +67,7 @@ pub fn test_mutants(
             options.test_timeout.unwrap_or(Duration::MAX),
             &options,
             console,
+            true
         )?
     };
     if !baseline_outcome.success() {
@@ -120,6 +123,7 @@ pub fn test_mutants(
                     debug_span!("test thread", thread = ?thread::current().id()).entered();
                 trace!("start thread in {build_dir:?}");
                 loop {
+
                     // Not a while loop so that it only holds the lock briefly.
                     let next = numbered_mutants.lock().expect("lock mutants queue").next();
                     if let Some((mutant_id, mutant)) = next {
@@ -127,6 +131,7 @@ pub fn test_mutants(
                         let package = mutant.package().clone();
                         // We don't care about the outcome; it's been collected into the output_dir.
                         let _outcome = test_scenario(
+                            &mode,
                             &mut build_dir,
                             &output_mutex,
                             &Scenario::Mutant(mutant),
@@ -134,6 +139,7 @@ pub fn test_mutants(
                             mutated_test_timeout,
                             &options,
                             console,
+                            false
                         )
                         .expect("scenario test");
                     } else {
@@ -168,6 +174,7 @@ pub fn test_mutants(
 /// The [BuildDir] is passed as mutable because it's for the exclusive use of this function for the
 /// duration of the test.
 fn test_scenario(
+    mode: &Mode,
     build_dir: &mut BuildDir,
     output_mutex: &Mutex<OutputDir>,
     scenario: &Scenario,
@@ -175,6 +182,7 @@ fn test_scenario(
     test_timeout: Duration,
     options: &Options,
     console: &Console,
+    trybuild_overwrite: bool,
 ) -> Result<ScenarioOutcome> {
     let mut log_file = output_mutex
         .lock()
@@ -188,17 +196,32 @@ fn test_scenario(
     console.scenario_started(scenario, log_file.path())?;
 
     let mut outcome = ScenarioOutcome::new(&log_file, scenario.clone());
-    let phases: &[Phase] = if options.check_only {
-        &[Phase::Check]
+    let phases: Vec<Phase> = if options.check_only {
+        vec![Phase::Check]
     } else {
-        &[Phase::Build, Phase::Test]
+        let test_phase = mode.phase();
+        vec![Phase::Build, test_phase]
     };
-    for &phase in phases {
+    for phase in phases {
         console.scenario_phase_started(scenario, phase);
         let timeout = match phase {
             Phase::Test => test_timeout,
             _ => Duration::MAX,
         };
+        let mut rustc_wrapper = vec![];
+        let target_dir = build_dir.path().to_string() + "/target";
+        let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/cargo-rustyrts";
+        if mode.phase() == Phase::Dynamic {
+            if let Phase::Build = phase {
+                create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
+
+                rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
+                rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
+
+                rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
+                rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
+            }
+        }
         let phase_result = run_cargo(
             build_dir,
             Some(test_packages),
@@ -207,6 +230,9 @@ fn test_scenario(
             &mut log_file,
             options,
             console,
+            "debug",
+            trybuild_overwrite,
+            rustc_wrapper
         )?;
         let success = phase_result.is_success();
         outcome.add_phase_result(phase_result);

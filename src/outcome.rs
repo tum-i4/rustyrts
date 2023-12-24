@@ -35,21 +35,30 @@ pub enum Phase {
     Check,
     Build,
     Test,
+    Dynamic,
+    Static,
 }
 
 impl Phase {
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> Vec<&'static str> {
         match self {
-            Phase::Check => "check",
-            Phase::Build => "build",
-            Phase::Test => "test",
+            Phase::Check => vec!["check"],
+            Phase::Build => vec!["build"],
+
+            Phase::Test => vec!["test"],
+            Phase::Dynamic => vec!["rustyrts", "dynamic"],
+            Phase::Static => vec!["rustyrts", "static"],
         }
+    }
+
+    pub fn is_test_phase(&self) -> bool {
+        return self == &Phase::Test || self == &Phase::Dynamic || self == &Phase::Static;
     }
 }
 
 impl fmt::Display for Phase {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.pad(self.name())
+        f.pad(&self.name().join(" "))
     }
 }
 
@@ -217,20 +226,20 @@ impl ScenarioOutcome {
     pub fn check_or_build_failed(&self) -> bool {
         self.phase_results
             .iter()
-            .any(|pr| pr.phase != Phase::Test && pr.process_status == ProcessStatus::Failure)
+            .any(|pr| !pr.phase.is_test_phase() && pr.process_status == ProcessStatus::Failure)
     }
 
     /// True if this outcome is a caught mutant: it's a mutant and the tests failed.
     pub fn mutant_caught(&self) -> bool {
         self.scenario.is_mutant()
-            && self.last_phase() == Phase::Test
+            && self.last_phase().is_test_phase()
             && self.last_phase_result() == ProcessStatus::Failure
     }
 
     /// True if this outcome is a missed mutant: it's a mutant and the tests succeeded.
     pub fn mutant_missed(&self) -> bool {
         self.scenario.is_mutant()
-            && self.last_phase() == Phase::Test
+            && self.last_phase().is_test_phase()
             && self.last_phase_result().success()
     }
 

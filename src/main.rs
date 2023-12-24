@@ -40,6 +40,7 @@ use anyhow::{anyhow, ensure, Context, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{ArgAction, CommandFactory, Parser};
 use clap_complete::{generate, Shell};
+use options::Mode;
 use tracing::debug;
 
 use crate::build_dir::BuildDir;
@@ -66,7 +67,7 @@ static MUTATION_MARKER_COMMENT: &str = "/* ~ changed by cargo-mutants ~ */";
 #[derive(Parser)]
 #[command(name = "cargo", bin_name = "cargo")]
 enum Cargo {
-    #[command(name = "mutants")]
+    #[command(name = "mutants-rts")]
     Mutants(Args),
 }
 
@@ -76,12 +77,16 @@ enum Cargo {
 #[derive(Parser, PartialEq, Debug)]
 #[command(author, about)]
 struct Args {
+    /// rustyRTS mode
+    #[arg(value_enum)]
+    mode: Option<Mode>,
+
     /// show cargo output for all invocations (very verbose).
     #[arg(long)]
     all_logs: bool,
 
     /// print mutants that were caught by tests.
-    #[arg(long, short = 'v')]
+    #[arg(long, short = 'v', default_value = "true")]
     caught: bool,
 
     /// cargo check generated mutants, but don't run tests.
@@ -235,6 +240,9 @@ struct Args {
     /// pass remaining arguments to cargo test after all options and after `--`.
     #[arg(last = true)]
     cargo_test_args: Vec<String>,
+
+    #[arg(long)]
+    emit_mir: bool
 }
 
 fn main() -> Result<()> {

@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, Context};
 use camino::Utf8Path;
 use serde::Serialize;
-use subprocess::{Popen, PopenConfig, Redirection};
+use subprocess::{ExitStatus, Popen, PopenConfig, Redirection};
 #[allow(unused_imports)]
 use tracing::{debug, debug_span, error, info, span, trace, warn, Level};
 
@@ -111,10 +111,10 @@ impl Process {
             self.terminate()?;
             Err(e)
         } else if let Some(status) = self.child.poll() {
-            if status.success() {
-                Ok(Some(ProcessStatus::Success))
-            } else {
-                Ok(Some(ProcessStatus::Failure))
+            match status {
+                ExitStatus::Exited(0) => Ok(Some(ProcessStatus::Success)),
+                ExitStatus::Exited(101) => Ok(Some(ProcessStatus::Failure)),
+                _ => Ok(Some(ProcessStatus::Error)),
             }
         } else {
             Ok(None)
@@ -193,6 +193,7 @@ fn terminate_child_impl(child: &mut Popen) -> Result<()> {
 pub enum ProcessStatus {
     Success,
     Failure,
+    Error,
     Timeout,
 }
 

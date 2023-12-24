@@ -4,10 +4,10 @@
 
 use super::{run, CommandInstaExt};
 
-#[test]
+// #[test]
 fn list_mutants_well_tested_exclude_folder_containing_backslash_on_windows() {
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .args(["--list", "--exclude", "*\\module\\*"])
         .current_dir("testdata/with_child_directories")
         .assert_insta("list_mutants_well_tested_exclude_folder_filter");

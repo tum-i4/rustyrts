@@ -11,7 +11,7 @@ fn gitignore_respected_in_copy_by_default() {
     let tmp = copy_of_testdata("factorial");
     write(tmp.path().join(".gitignore"), b"src\n").unwrap();
     run()
-        .args(["mutants", "--check", "-d"])
+        .args(["mutants-rts", "--check", "-d"])
         .arg(tmp.path())
         .assert()
         .stdout(predicates::str::contains("can't find `factorial` bin"))
@@ -25,7 +25,7 @@ fn gitignore_can_be_turned_off() {
     let tmp = copy_of_testdata("factorial");
     write(tmp.path().join(".gitignore"), b"src\n").unwrap();
     run()
-        .args(["mutants", "--check", "--gitignore=false", "-d"])
+        .args(["mutants-rts", "--check", "--gitignore=false", "-d"])
         .arg(tmp.path())
         .assert()
         .success();
@@ -37,7 +37,7 @@ fn gitignore_can_be_turned_off() {
 #[test]
 fn tree_with_symlink() {
     run()
-        .args(["mutants", "-d"])
+        .args(["mutants-rts", "-d"])
         .arg("testdata/symlink")
         .assert()
         .success();

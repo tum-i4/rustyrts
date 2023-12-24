@@ -10,7 +10,7 @@ use super::run;
 fn env_var_controls_trace() {
     run()
         .env("CARGO_MUTANTS_TRACE_LEVEL", "trace")
-        .args(["mutants", "--list"])
+        .args(["mutants-rts", "--list"])
         .arg("-d")
         .arg("testdata/never_type")
         .assert()

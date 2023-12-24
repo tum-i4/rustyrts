@@ -6,7 +6,6 @@ use std::env;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use camino::Utf8Path;
 use itertools::Itertools;
 use tracing::{debug, debug_span};
 
@@ -24,17 +23,31 @@ pub fn run_cargo(
     log_file: &mut LogFile,
     options: &Options,
     console: &Console,
+    rustyrts_log: &str,
+    trybuild_overwrite: bool,
+    rustc_wrapper: Vec<(&str, &str)>,
 ) -> Result<PhaseResult> {
     let _span = debug_span!("run", ?phase).entered();
     let start = Instant::now();
     let argv = cargo_argv(build_dir.path(), packages, phase, options);
-    let env = vec![
+
+    let mut env = vec![
+        ("RUSTYRTS_LOG".to_owned(), rustyrts_log.to_owned()),
         ("CARGO_ENCODED_RUSTFLAGS".to_owned(), rustflags()),
         // The tests might use Insta <https://insta.rs>, and we don't want it to write
         // updates to the source tree, and we *certainly* don't want it to write
         // updates and then let the test pass.
         ("INSTA_UPDATE".to_owned(), "no".to_owned()),
     ];
+
+    if trybuild_overwrite {
+        env.push(("TRYBUILD".to_owned(), "overwrite".to_owned()));
+    }
+
+    for (k,v) in rustc_wrapper {
+        env.push((k.to_owned(), v.to_owned()));
+    }
+  
     let process_status = Process::run(&argv, &env, build_dir.path(), timeout, log_file, console)?;
     check_interrupted()?;
     debug!(?process_status, elapsed = ?start.elapsed());
@@ -56,17 +69,71 @@ pub fn cargo_bin() -> String {
 
 /// Make up the argv for a cargo check/build/test invocation, including argv[0] as the
 /// cargo binary itself.
-// (This is split out so it's easier to test.)
-fn cargo_argv(
+pub fn cargo_argv(
     build_dir: &Utf8Path,
     packages: Option<&[&Package]>,
     phase: Phase,
     options: &Options,
 ) -> Vec<String> {
-    let mut cargo_args = vec![cargo_bin(), phase.name().to_string()];
+   
+    let mut cargo_args = vec![cargo_bin()];
+    cargo_args.extend(phase.name().iter().map(|s| s.to_string()));
+    
     if phase == Phase::Check || phase == Phase::Build {
+        //cargo_args.push("--lib".to_string());
+        //cargo_args.push("--bins".to_string());
         cargo_args.push("--tests".to_string());
+        cargo_args.push("--examples".to_string());
+
+        cargo_args.push("--profile".to_string());
+        cargo_args.push("test".to_string());
     }
+
+    match phase {
+        Phase::Check => {
+            cargo_args.push("--target-dir".to_string());
+            cargo_args.push("target_check".to_string());
+        }
+        Phase::Test => {
+            cargo_args.push("--target-dir".to_string());
+            cargo_args.push("target_test".to_string());
+        }
+        _ => {
+            // RustyRTS configures target-dir on its own
+            // No target-dir in Build
+        }
+    }
+
+    if phase.is_test_phase() {
+        if phase == Phase::Test {
+            cargo_args.push("--no-fail-fast".to_string());
+
+            //cargo_args.push("--lib".to_string());
+            //cargo_args.push("--bins".to_string());
+            cargo_args.push("--tests".to_string());
+            cargo_args.push("--examples".to_string());
+        }
+
+        if phase == Phase::Dynamic || phase == Phase::Static {
+            //cargo_args.push("-v".to_string());
+            cargo_args.push("--".to_string());
+
+            // Add args to `cargo build` here
+            cargo_args.extend(options.additional_cargo_args.iter().cloned());
+        }
+
+        if phase == Phase::Dynamic || phase == Phase::Static {
+            cargo_args.push("--".to_string());
+            // Add args to `rustc` here
+
+            if options.emit_mir {
+                cargo_args.push("--emit=mir".to_string());
+            }
+
+            cargo_args.push("--".to_string());
+        }
+    }
+
     if let Some([package]) = packages {
         // Use the unambiguous form for this case; it works better when the same
         // package occurs multiple times in the tree with different versions?
@@ -80,8 +147,9 @@ fn cargo_argv(
     } else {
         cargo_args.push("--workspace".to_string());
     }
+    
     cargo_args.extend(options.additional_cargo_args.iter().cloned());
-    if phase == Phase::Test {
+    if phase.is_test_phase() {
         cargo_args.extend(options.additional_cargo_test_args.iter().cloned());
     }
     cargo_args
@@ -137,15 +205,53 @@ mod test {
         let build_dir = Utf8Path::new("/tmp/buildXYZ");
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Check, &options)[1..],
-            ["check", "--tests", "--workspace"]
+            [
+                "check",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--target-dir",
+                "target_check",
+                "--workspace"
+            ]
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Build, &options)[1..],
-            ["build", "--tests", "--workspace"]
+            [
+                "build",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--workspace"
+            ]
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Test, &options)[1..],
-            ["test", "--workspace"]
+            [
+                "test",
+                "--target-dir",
+                "target_test",
+                "--no-fail-fast",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--workspace"
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, None, Phase::Dynamic, &options)[1..],
+            ["rustyrts", "dynamic", "--", "--", "--", "--workspace"]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, None, Phase::Static, &options)[1..],
+            ["rustyrts", "static", "--", "--", "--", "--workspace"]
         );
     }
 
@@ -157,7 +263,7 @@ mod test {
         let relative_manifest_path = Utf8PathBuf::from("testdata/something/Cargo.toml");
         options
             .additional_cargo_test_args
-            .extend(["--lib", "--no-fail-fast"].iter().map(|s| s.to_string()));
+            .extend(["--json"].iter().map(|s| s.to_string()));
         let package = Arc::new(Package {
             name: package_name.to_owned(),
             relative_manifest_path: relative_manifest_path.clone(),
@@ -167,7 +273,14 @@ mod test {
             cargo_argv(build_dir, Some(&[&package]), Phase::Check, &options)[1..],
             [
                 "check",
+                //"--lib",
+                //"--bins",
                 "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--target-dir",
+                "target_check",
                 "--manifest-path",
                 build_manifest_path.as_str(),
             ]
@@ -176,7 +289,12 @@ mod test {
             cargo_argv(build_dir, Some(&[&package]), Phase::Build, &options)[1..],
             [
                 "build",
+                //"--lib",
+                //"--bins",
                 "--tests",
+                "--examples",
+                "--profile",
+                "test",
                 "--manifest-path",
                 build_manifest_path.as_str(),
             ]
@@ -185,10 +303,38 @@ mod test {
             cargo_argv(build_dir, Some(&[&package]), Phase::Test, &options)[1..],
             [
                 "test",
+                "--target-dir",
+                "target_test",
+                "--no-fail-fast",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
                 "--manifest-path",
                 build_manifest_path.as_str(),
-                "--lib",
-                "--no-fail-fast"
+                "--json"
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, Some(&[&package]), Phase::Dynamic, &options)[1..],
+            [
+                "rustyrts",
+                "dynamic",
+                "--", "--", "--",
+                "--manifest-path",
+                build_manifest_path.as_str(),
+                "--json"
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, Some(&[&package]), Phase::Static, &options)[1..],
+            [
+                "rustyrts",
+                "static",
+                "--", "--", "--",
+                "--manifest-path",
+                build_manifest_path.as_str(),
+                "--json"
             ]
         );
     }
@@ -199,26 +345,85 @@ mod test {
         let build_dir = Utf8Path::new("/tmp/buildXYZ");
         options
             .additional_cargo_test_args
-            .extend(["--lib", "--no-fail-fast"].iter().map(|s| s.to_string()));
+            .extend(["--", "--test-threads=1"].iter().map(|s| s.to_string()));
         options
             .additional_cargo_args
-            .extend(["--release".to_owned()]);
+            .extend(["--verbose".to_owned()]);
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Check, &options)[1..],
-            ["check", "--tests", "--workspace", "--release"]
+            [
+                "check",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--target-dir",
+                "target_check",
+                "--workspace",
+                "--verbose"
+            ]
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Build, &options)[1..],
-            ["build", "--tests", "--workspace", "--release"]
+            [
+                "build",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--workspace",
+                "--verbose"
+            ]
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Test, &options)[1..],
             [
                 "test",
+                "--target-dir",
+                "target_test",
+                "--no-fail-fast",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
                 "--workspace",
-                "--release",
-                "--lib",
-                "--no-fail-fast"
+                "--verbose",
+                "--",
+                "--test-threads=1"
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, None, Phase::Dynamic, &options)[1..],
+            [
+                "rustyrts",
+                "dynamic",
+                "--",
+                "--verbose",
+                "--",
+                "--",
+                "--workspace",
+                "--verbose",
+                "--",
+                "--test-threads=1"
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, None, Phase::Static, &options)[1..],
+            [
+                "rustyrts",
+                "static",
+                "--",
+                "--verbose",
+                "--",
+                "--",
+                "--workspace",
+                "--verbose",
+                "--",
+                "--test-threads=1"
             ]
         );
     }

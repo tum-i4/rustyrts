@@ -1,0 +1,20 @@
+#permissions:
+#  contents: read
+#
+#on:
+#  push:
+#    branches:
+#      - main
+#    paths:
+#      - ".github/workflows/install.yml"
+#  schedule:
+#    - cron: "17 0 * * 1"
+#
+#jobs:
+#  cargo-install:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: Swatinem/rust-cache@v2
+#      - name: cargo-install
+#        run: |
+#          cargo install cargo-mutants

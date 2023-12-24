@@ -9,16 +9,43 @@ use std::time::Duration;
 
 use anyhow::Context;
 use camino::Utf8PathBuf;
+use clap::ValueEnum;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use regex::RegexSet;
 use tracing::warn;
 
 use crate::{config::Config, *};
 
+#[derive(ValueEnum, PartialEq, Clone, Debug)]
+pub enum Mode {
+    Test,
+    Dynamic,
+    Static,
+}
+
+impl Mode {
+    pub fn phase(&self) -> Phase {
+        match self {
+            Mode::Test => Phase::Test,
+            Mode::Dynamic => Phase::Dynamic,
+            Mode::Static => Phase::Static,
+        }
+    }
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Self::Test
+    }
+}
+
 /// Options for mutation testing, based on both command-line arguments and the
 /// config file.
 #[derive(Default, Debug, Clone)]
 pub struct Options {
+    /// rustyRTS mode
+    pub mode: Option<Mode>,
+
     /// Don't run the tests, just see if each mutant builds.
     pub check_only: bool,
 
@@ -79,6 +106,8 @@ pub struct Options {
     /// Run this many `cargo build` or `cargo test` tasks in parallel.
     pub jobs: Option<usize>,
 
+    pub emit_mir: bool,
+
     /// Insert these values as errors from functions returning `Result`.
     pub error_values: Vec<String>,
 
@@ -112,12 +141,30 @@ impl Options {
                 .unwrap_or(20f64),
         );
 
+        let skip_args = vec!["-Zno-index-update"];
+
+        let json_args = if args.json {
+            vec!["--", "-Zunstable-options", "--format=json", "--report-time"]
+        } else {
+            Vec::new()
+        };
+
         let options = Options {
-            additional_cargo_args: join_slices(&args.cargo_arg, &config.additional_cargo_args),
-            additional_cargo_test_args: join_slices(
-                &args.cargo_test_args,
-                &config.additional_cargo_test_args,
-            ),
+            mode: args.mode.clone(),
+            additional_cargo_args: args
+                .cargo_arg
+                .iter()
+                .cloned()
+                .chain(config.additional_cargo_args.iter().cloned())
+                .chain(skip_args.into_iter().map(|s| s.to_string()))
+                .collect(),
+            additional_cargo_test_args: args
+                .cargo_test_args
+                .iter()
+                .cloned()
+                .chain(config.additional_cargo_test_args.iter().cloned())
+                .chain(json_args.into_iter().map(|s| s.to_string()))
+                .collect(),
             check_only: args.check,
             error_values: join_slices(&args.error, &config.error_values),
             examine_names: RegexSet::new(or_slices(&args.examine_re, &config.examine_re))
@@ -141,6 +188,7 @@ impl Options {
             colors: true, // TODO: An option for this and use CLICOLORS.
             emit_diffs: args.diff,
             minimum_test_timeout,
+            emit_mir: args.emit_mir,
         };
         options.error_values.iter().for_each(|e| {
             if e.starts_with("Err(") {

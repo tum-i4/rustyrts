@@ -27,7 +27,7 @@ fn invalid_toml_rejected() {
         "#,
     );
     run()
-        .args(["mutants", "--list-files", "-d"])
+        .args(["mutants-rts", "--list-files", "-d"])
         .arg(testdata.path())
         .assert()
         .failure()
@@ -43,7 +43,7 @@ fn invalid_field_rejected() {
         "#,
     );
     run()
-        .args(["mutants", "--list-files", "-d"])
+        .args(["mutants-rts", "--list-files", "-d"])
         .arg(testdata.path())
         .assert()
         .failure()
@@ -62,13 +62,13 @@ fn list_with_config_file_exclusion() {
         "#,
     );
     run()
-        .args(["mutants", "--list-files", "-d"])
+        .args(["mutants-rts", "--list-files", "-d"])
         .arg(testdata.path())
         .assert()
         .success()
         .stdout(predicates::str::contains("_mod.rs").not());
     run()
-        .args(["mutants", "--list", "-d"])
+        .args(["mutants-rts", "--list", "-d"])
         .arg(testdata.path())
         .assert()
         .success()
@@ -84,7 +84,7 @@ fn list_with_config_file_inclusion() {
         "#,
     );
     run()
-        .args(["mutants", "--list-files", "-d"])
+        .args(["mutants-rts", "--list-files", "-d"])
         .arg(testdata.path())
         .assert()
         .success()
@@ -93,7 +93,7 @@ fn list_with_config_file_inclusion() {
             src/item_mod.rs
         " }));
     run()
-        .args(["mutants", "--list", "-d"])
+        .args(["mutants-rts", "--list", "-d"])
         .arg(testdata.path())
         .assert()
         .success()
@@ -111,7 +111,7 @@ fn file_argument_overrides_config_examine_globs_key() {
         "#,
     );
     run()
-        .args(["mutants", "--list-files", "-d"])
+        .args(["mutants-rts", "--list-files", "-d"])
         .arg(testdata.path())
         .args(["--file", "src/simple_fns.rs"])
         .assert()
@@ -134,7 +134,7 @@ fn exclude_file_argument_overrides_config() {
         "#},
     );
     run()
-        .args(["mutants", "--list-files", "-d"])
+        .args(["mutants-rts", "--list-files", "-d"])
         .arg(testdata.path())
         .args(["--file", "src/*.rs"])
         .args(["--exclude", "src/*_mod.rs"])
@@ -164,7 +164,7 @@ fn list_with_config_file_regexps() {
         "#,
     );
     run()
-        .args(["mutants", "--list", "--line-col=false", "-d"])
+        .args(["mutants-rts", "--list", "--line-col=false", "-d"])
         .arg(testdata.path())
         .assert()
         .success()
@@ -184,14 +184,14 @@ exclude_re = [".*"]     # would exclude everything
 "#,
     );
     run()
-        .args(["mutants", "--list", "-d"])
+        .args(["mutants-rts", "--list", "-d"])
         .arg(testdata.path())
         .assert()
         .success()
         .stdout(predicates::str::is_empty());
     // Also tests that the alias --exclude-regex is accepted
     run()
-        .args(["mutants", "--list", "--line-col=false", "-d"])
+        .args(["mutants-rts", "--list", "--line-col=false", "-d"])
         .arg(testdata.path())
         .args(["--exclude-regex", " -> "])
         .args(["-f", "src/simple_fns.rs"])
@@ -209,7 +209,7 @@ fn tree_fails_without_needed_feature() {
     // but let's make sure it does fail as intended if they're not.
     let testdata = copy_of_testdata("fails_without_feature");
     run()
-        .args(["mutants", "-d"])
+        .args(["mutants-rts", "-d"])
         .arg(testdata.path())
         .assert()
         .failure()
@@ -230,7 +230,7 @@ fn additional_cargo_args() {
         "#,
     );
     run()
-        .args(["mutants", "-d"])
+        .args(["mutants-rts", "-d"])
         .arg(testdata.path())
         .assert()
         .success()
@@ -249,7 +249,7 @@ fn additional_cargo_test_args() {
         "#,
     );
     run()
-        .args(["mutants", "-d"])
+        .args(["mutants-rts", "-d"])
         .arg(testdata.path())
         .assert()
         .success()

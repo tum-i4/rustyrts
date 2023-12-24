@@ -1,3 +1,14 @@
+This is a private fork of cargo-mutants.
+
+## Useful commands
+```
+cargo mutants-rts
+cargo mutants-rts static
+cargo-mutants-rts dynamic
+```
+
+
+
 # cargo-mutants
 
 <https://github.com/sourcefrog/cargo-mutants>

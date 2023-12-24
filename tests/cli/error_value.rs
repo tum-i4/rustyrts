@@ -16,7 +16,7 @@ fn error_value_catches_untested_ok_case() {
     // the code under test does return Ok.
     let tmp_src_dir = copy_of_testdata("error_value");
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .args(["-v", "-V", "--no-times", "--no-shuffle"])
         .arg("-d")
         .arg(tmp_src_dir.path())
@@ -36,7 +36,7 @@ fn no_config_option_disables_config_file_so_error_value_is_not_generated() {
     // this tree would be), so no mutants are caught.
     let tmp_src_dir = copy_of_testdata("error_value");
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .args(["-v", "-V", "--no-times", "--no-shuffle", "--no-config"])
         .arg("-d")
         .arg(tmp_src_dir.path())
@@ -55,7 +55,7 @@ fn list_mutants_with_error_value_from_command_line_list() {
     // anyhow, but it's a good test of the command line option.
     let tmp_src_dir = copy_of_testdata("error_value");
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .args([
             "--no-times",
             "--no-shuffle",
@@ -80,7 +80,7 @@ fn warn_if_error_value_starts_with_err() {
     // so give a warning.
     let tmp_src_dir = copy_of_testdata("error_value");
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .args([
             "--no-times",
             "--no-shuffle",
@@ -107,7 +107,7 @@ fn warn_if_error_value_starts_with_err() {
 fn fail_when_error_value_does_not_parse() {
     let tmp_src_dir = copy_of_testdata("error_value");
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .args([
             "--no-times",
             "--no-shuffle",

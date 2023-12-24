@@ -16,7 +16,7 @@ use super::{copy_of_testdata, run};
 fn jobs_option_accepted_and_causes_multiple_threads() {
     let testdata = copy_of_testdata("small_well_tested");
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .arg("-d")
         .arg(testdata.path())
         .arg("-j2")

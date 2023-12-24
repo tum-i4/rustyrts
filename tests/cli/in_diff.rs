@@ -14,7 +14,7 @@ fn diff_trees_well_tested() {
     for name in &["diff0", "diff1"] {
         let tmp = copy_of_testdata(name);
         run()
-            .args(["mutants", "-d"])
+            .args(["mutants-rts", "-d"])
             .arg(tmp.path())
             .assert()
             .success();
@@ -38,7 +38,7 @@ fn list_mutants_changed_in_diff1() {
     let tmp = copy_of_testdata("diff1");
 
     run()
-        .args(["mutants", "--no-shuffle", "-d"])
+        .args(["mutants-rts", "--no-shuffle", "-d"])
         .arg(tmp.path())
         .arg("--in-diff")
         .arg(diff_file.path())
@@ -86,7 +86,7 @@ fn mismatched_diff_causes_error() {
     let tmp = copy_of_testdata("diff1");
 
     run()
-        .args(["mutants", "--no-shuffle", "-d"])
+        .args(["mutants-rts", "--no-shuffle", "-d"])
         .arg(tmp.path())
         .arg("--in-diff")
         .arg(diff_file.path())
