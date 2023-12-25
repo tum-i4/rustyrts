@@ -163,30 +163,17 @@ fn custom_vtable_entries_monomorphized<'tcx>(
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();
                 if !tcx.is_closure(def_id) && !tcx.is_fn_trait(key.def_id()) {
-                    if let Some(trait_fn) = tcx.impl_of_method(def_id).and_then(|impl_def| {
-                        tcx.impl_trait_ref(impl_def).and_then(|trait_def| {
-                            let implementors = tcx.impl_item_implementor_ids(impl_def);
-
-                            let associated_items = tcx.associated_item_def_ids(trait_def.skip_binder().def_id);
-                            for item in associated_items {
-                                if implementors.get(item).is_some_and(|impl_fn|*impl_fn == def_id) {
-                                    return Some(item);
-                                }
-                            }                           
-                            return None;
-                        })
-                    }) {
-                        let name = def_id_name(tcx, *trait_fn, false, true).to_owned() + SUFFIX_DYN;
-                        let checksum = get_checksum_vtbl_entry(tcx, &entry);
-
-                        trace!("Considering {:?} in checksums of {}", instance, name);
-
-                        insert_hashmap(
-                            &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
-                            &name,
-                            checksum,
-                        )
-                    }
+                    
+                    let checksum = get_checksum_vtbl_entry(tcx, &entry);
+                    let name = def_id_name(tcx, def_id, false, true).to_owned() + SUFFIX_DYN;
+                    
+                    trace!("Considering {:?} in checksums of {}", instance, name);
+                    
+                    insert_hashmap(
+                        &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
+                        &name,
+                        checksum,
+                    )
                 }
             }
         }
