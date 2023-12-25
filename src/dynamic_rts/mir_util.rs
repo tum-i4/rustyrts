@@ -401,7 +401,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                     tcx,
                     local_tuple_of_str_and_ptr,
                     name,
-                    0x0,
+                    u64::MAX,
                     ty_tuple_of_str_and_ptr,
                     span,
                 );

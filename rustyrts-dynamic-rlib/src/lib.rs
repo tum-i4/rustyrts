@@ -1,17 +1,14 @@
-use constants::ENV_TARGET_DIR_OVERRIDE;
 use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicPtr;
 use std::sync::atomic::Ordering;
-use std::sync::RwLock;
 use std::{collections::HashSet, fs::read_to_string};
 
 mod constants;
 mod fs_utils;
 
-static LIST: RwLock<AtomicPtr<Traced>> =
-    RwLock::new(AtomicPtr::new(std::ptr::null::<Traced>() as *mut Traced));
+static LIST: AtomicPtr<Traced> = AtomicPtr::new(std::ptr::null::<Traced>() as *mut Traced);
 
 //######################################################################################################################
 // Tuple type for tracing
@@ -25,16 +22,14 @@ struct Traced(&'static str, AtomicPtr<Traced>);
 pub fn trace(input: &'static mut (&str, usize)) {
     let traced: &mut Traced = unsafe { std::mem::transmute(input) };
 
-    if traced.1.load(Ordering::Acquire).is_null() {
+    if traced.1.load(Ordering::Acquire) as u64 == u64::MAX {
         // Append to list
-        let handle = LIST.read().unwrap(); // Only read access here, thus multiple threads can insert in parallel
-        handle
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
+        LIST.fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
                 if let Ok(_) = traced.1.fetch_update(
                     Ordering::AcqRel,
                     Ordering::Acquire,
-                    |supposed_to_be_null| {
-                        if supposed_to_be_null.is_null() {
+                    |supposed_to_be_max| {
+                        if supposed_to_be_max as u64 == u64::MAX {
                             Some(prev)
                         } else {
                             None
@@ -50,10 +45,6 @@ pub fn trace(input: &'static mut (&str, usize)) {
             .unwrap_or_default();
     }
 }
-
-// pub fn trace_dyn<const N: usize>() {
-//     println!("Intercepted virtual call at {:?}", N);
-// }
 
 pub fn pre_test() {
     reset_list();
@@ -91,8 +82,7 @@ pub fn post_main() {
 fn read_list<'a>() -> HashSet<Cow<'a, str>> {
     let mut traces = HashSet::new();
 
-    let handle = LIST.read().unwrap();
-    let mut ptr = handle.load(Ordering::Acquire);
+    let mut ptr = LIST.load(Ordering::Acquire);
     while let Some(traced) = unsafe { ptr.as_ref() } {
         traces.insert(Cow::Borrowed(traced.0.clone()));
         ptr = traced.1.load(Ordering::Acquire);
@@ -104,14 +94,13 @@ fn read_list<'a>() -> HashSet<Cow<'a, str>> {
 fn reset_list<'a>() -> HashSet<Cow<'a, str>> {
     let mut traces = HashSet::new();
 
-    let handle = LIST.write().unwrap();
-    while let Ok(prev) = handle.fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
+    while let Ok(prev) = LIST.fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
         let Traced(_str, next_ptr) = unsafe { prev.as_ref() }?;
         Some(next_ptr.load(Ordering::Acquire))
     }) {
         let Traced(name, ptr) = unsafe { prev.as_ref() }.unwrap();
-        traces.insert(Cow::Borrowed(name.clone()));
-        ptr.store(std::ptr::null::<Traced>() as *mut Traced, Ordering::Release);
+        traces.insert(Cow::Borrowed((*name).clone()));
+        ptr.store(u64::MAX as *mut Traced, Ordering::Release);
     }
 
     traces
