@@ -110,7 +110,7 @@ fn export_traces<'a, F>(traces: HashSet<Cow<'a, str>>, path_buf_init: F, append:
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
-    let path_buf = get_dynamic_path(true, None);
+    let path_buf = get_dynamic_path(true);
     let mut traces = traces;
 
     #[cfg(unix)]

@@ -7,7 +7,6 @@ use rustyrts::constants::{
 use rustyrts::fs_utils::{
     get_dynamic_path, get_static_path, get_target_dir, read_lines, 
 };
-use rustyrts::utils;
 use rustyrts::constants::ENDING_DEPENDENCIES;
 use serde_json;
 use std::collections::HashSet;
@@ -106,7 +105,9 @@ fn rustyrts_dynamic() -> Command {
 }
 
 fn cargo() -> Command {
-    Command::new(std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
+    let mut cmd = Command::new(std::env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")));
+    cmd.env("RUSTYRTS_SKIP_BUILD", "true");
+    cmd
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -183,7 +184,7 @@ fn cargo_build(mode: Mode) -> Command {
     );
 
     // If not set manually, set cargo target dir to something other than the default
-    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string(), None));
+    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string()));
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
@@ -219,7 +220,7 @@ where
     );
 
     // If not set manually, set cargo target dir to something other than the default
-    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string(), None));
+    cmd.env(ENV_TARGET_DIR, get_target_dir(&mode.to_string()));
 
     // Replace the rustc executable through RUSTC_WRAPPER environment variable
     let path = std::env::current_exe().expect("current executable path invalid");
@@ -386,11 +387,6 @@ fn run_rustyrts() {
 
     cmd.args(std::env::args().skip(2)); // skip `cargo rustc`
 
-    // Add sysroot
-    let sysroot = utils::compile_time_sysroot().expect("Cannot find sysroot");
-    cmd.arg("--sysroot");
-    cmd.arg(sysroot);
-
     // Add args for `rustyrts`
     let rustyrts_args_raw =
         std::env::var(ENV_RUSTYRTS_ARGS).expect(&format!("missing {}", ENV_RUSTYRTS_ARGS));
@@ -422,7 +418,7 @@ fn run_rustyrts() {
 fn run_cargo_build(mode: Mode){
     let path_buf = match mode {
         Mode::Clean => unreachable!(),
-        Mode::Dynamic => get_dynamic_path(false, None),
+            Mode::Dynamic => get_dynamic_path(false),
         Mode::Static => get_static_path(false),
     };
 
@@ -464,7 +460,7 @@ fn select_and_execute_tests(mode: Mode) {
 
     let path_buf = match mode {
         Mode::Clean => unreachable!(),
-        Mode::Dynamic => get_dynamic_path(true, None),
+        Mode::Dynamic => get_dynamic_path(true),
         Mode::Static => get_static_path(true),
     };
 

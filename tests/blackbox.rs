@@ -4,7 +4,7 @@ use std::{path::Path, process::Command};
 use test_case::test_case;
 
 use rustyrts::constants::{
-    ENV_BLACKBOX_TEST, ENV_SKIP_ANALYSIS, ENV_TARGET_DIR, ENV_TARGET_DIR_OVERRIDE,
+    ENV_TARGET_DIR, ENV_BLACKBOX_TEST
 };
 use tempdir::TempDir;
 
@@ -37,14 +37,8 @@ fn command(mode: &Mode, dir: &PathBuf, target_dir: &Path, feature: Option<&str>)
             .arg(name);
     }
 
-    ret.env(ENV_TARGET_DIR, target_dir)
-        .env(ENV_BLACKBOX_TEST, "true")
-        .env(
-            ENV_TARGET_DIR_OVERRIDE,
-            std::env::var(ENV_TARGET_DIR).unwrap_or_else(|_| "target".to_string()),
-        );
-
-    ret.env_remove(ENV_SKIP_ANALYSIS);
+    ret.env(ENV_TARGET_DIR, target_dir);
+    ret.env(ENV_BLACKBOX_TEST, "true");  
 
     ret
 }

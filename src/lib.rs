@@ -21,10 +21,6 @@ extern crate rustc_hir;
 extern crate rustc_middle;
 extern crate rustc_span;
 
-// required for running compiler on strings during testing
-extern crate rustc_error_codes;
-extern crate rustc_errors;
-
 pub mod static_rts {
     pub mod callback;
     pub mod visitor;
@@ -46,5 +42,3 @@ pub mod format;
 pub mod fs_utils;
 pub mod info;
 pub mod names;
-
-pub mod utils;
