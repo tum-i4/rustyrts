@@ -75,7 +75,7 @@ pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F)
 
 pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-    let crate_id = tcx.sess.local_stable_crate_id().as_u64();
+    let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
 
     //##############################################################################################################
     // Collect all MIR bodies that are relevant for code generation
@@ -87,7 +87,9 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
         .flat_map(|c| c.items().keys())
         .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
         .map(|m| {
-            let MonoItem::Fn(instance) = m else {unreachable!()};
+            let MonoItem::Fn(instance) = m else {
+                unreachable!()
+            };
             instance
         })
         .map(|i| i.def_id())

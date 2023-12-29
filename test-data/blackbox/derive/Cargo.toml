@@ -1,0 +1,10 @@
+[package]
+name = "derive"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+changes_debug = []
+changes_hash = []
+
+[dependencies]

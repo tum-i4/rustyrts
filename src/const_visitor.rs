@@ -1,18 +1,23 @@
 use std::collections::HashSet;
 
-
 use rustc_hir::definitions::DefPathData;
-use rustc_middle::{mir::interpret::ConstAllocation, ty::{ParamEnv, EarlyBinder}};
 use rustc_middle::{
-    mir::interpret::{ConstValue, GlobalAlloc, Scalar},
+    mir::{interpret::ConstAllocation, ConstValue},
+    ty::{EarlyBinder, ParamEnv},
+};
+use rustc_middle::{
+    mir::{
+        interpret::{GlobalAlloc, Scalar},
+        ConstOperand,
+    },
     ty::{Instance, TyKind},
 };
 use rustc_middle::{
-    mir::visit::TyContext,
+    mir::{visit::TyContext, Const},
     ty::{GenericArg, List, ScalarInt, Ty},
 };
 use rustc_middle::{
-    mir::{visit::Visitor, Body, Constant, ConstantKind, Location},
+    mir::{visit::Visitor, Body, Location},
     ty::TyCtxt,
 };
 use rustc_span::def_id::DefId;
@@ -77,7 +82,7 @@ impl<'tcx, 'g> ResolvingConstVisitor<'tcx> {
         match value {
             ConstValue::Scalar(scalar) => match scalar {
                 Scalar::Ptr(ptr, _) => {
-                    let global_alloc = self.tcx.global_alloc(ptr.provenance);
+                    let global_alloc = self.tcx.global_alloc(ptr.provenance.alloc_id());
                     match global_alloc {
                         GlobalAlloc::Static(def_id) => {
                             // If the def path contains a foreign mod, it cannot be computed at compile time
@@ -100,28 +105,47 @@ impl<'tcx, 'g> ResolvingConstVisitor<'tcx> {
             },
             ConstValue::Slice {
                 data: allocation,
-                start: _,
-                end: _,
+                meta: _,
             } => Some(Ok(allocation)),
-            ConstValue::ByRef {
-                alloc: allocation,
+            ConstValue::Indirect {
+                alloc_id: allocation,
                 offset: _,
-            } => Some(Ok(allocation)),
+            } => {
+                // TODO: check this
+                let global_alloc = self.tcx.global_alloc(allocation);
+                match global_alloc {
+                    GlobalAlloc::Static(def_id) => {
+                        // If the def path contains a foreign mod, it cannot be computed at compile time
+                        let def_path = self.tcx.def_path(def_id);
+                        if def_path
+                            .data
+                            .iter()
+                            .any(|d| d.data == DefPathData::ForeignMod)
+                        {
+                            return None;
+                        }
+
+                        self.tcx.eval_static_initializer(def_id).ok().map(|s| Ok(s))
+                    }
+                    GlobalAlloc::Memory(const_alloc) => Some(Ok(const_alloc)),
+                    _ => None,
+                }
+            }
             _ => None,
         }
     }
 }
 
 impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         self.super_constant(constant, location);
 
-        let literal = constant.literal;
+        let literal = constant.const_;
 
         let maybe_allocation_or_int = match literal {
-            ConstantKind::Val(cons, _ty) => self.maybe_const_alloc_from_const_value(cons),
-            ConstantKind::Unevaluated(unevaluated_cons, _) => {
-                let maybe_normalized_cons = self.tcx.try_subst_and_normalize_erasing_regions(
+            Const::Val(cons, _ty) => self.maybe_const_alloc_from_const_value(cons),
+            Const::Unevaluated(unevaluated_cons, _) => {
+                let maybe_normalized_cons = self.tcx.try_instantiate_and_normalize_erasing_regions(
                     self.substs,
                     self.param_env,
                     EarlyBinder::bind(unevaluated_cons),
@@ -154,8 +178,7 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
 
         if let Some(outer_def_id) = self.processed {
             match *ty.kind() {
-                TyKind::Closure(..) | TyKind::Generator(..) |
-                TyKind::FnDef(..) => {
+                TyKind::Closure(..) | TyKind::Coroutine(..) | TyKind::FnDef(..) => {
                     // We stop recursing when the function can also be resolved
                     // using the environment of the currently visited function
                     let param_env_outer = self
@@ -164,10 +187,9 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
                         .with_reveal_all_normalized(self.tcx);
 
                     let maybe_normalized_ty = match *ty.kind() {
-                        TyKind::Closure(..) | TyKind::Generator(..) |
-                        TyKind::FnDef(..) => self
+                        TyKind::Closure(..) | TyKind::Coroutine(..) | TyKind::FnDef(..) => self
                             .tcx
-                            .try_subst_and_normalize_erasing_regions(
+                            .try_instantiate_and_normalize_erasing_regions(
                                 List::identity_for_item(self.tcx, outer_def_id),
                                 param_env_outer,
                                 EarlyBinder::bind(ty),
@@ -177,15 +199,15 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
                     };
 
                     if let Some(ty_outer) = maybe_normalized_ty {
-                        let (TyKind::Closure(def_id, substs) 
-                            | TyKind::Generator(def_id, substs, _)
-                            | TyKind::FnDef(def_id, substs)) = *ty_outer.kind() else {unreachable!()};
-                        if let Ok(Some(_)) | Err(_) = Instance::resolve(
-                            self.tcx,
-                            param_env_outer,
-                            def_id,
-                            substs,
-                        ) {
+                        let (TyKind::Closure(def_id, substs)
+                        | TyKind::Coroutine(def_id, substs, _)
+                        | TyKind::FnDef(def_id, substs)) = *ty_outer.kind()
+                        else {
+                            unreachable!()
+                        };
+                        if let Ok(Some(_)) | Err(_) =
+                            Instance::resolve(self.tcx, param_env_outer, def_id, substs)
+                        {
                             return;
                         }
                     }
@@ -195,23 +217,25 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
         }
 
         let maybe_next = {
-            let maybe_normalized_ty = 
-                match *ty.kind() {
-                TyKind::Closure(..) | TyKind::Generator(..) |
-                TyKind::FnDef(..)=> self
+            let maybe_normalized_ty = match *ty.kind() {
+                TyKind::Closure(..) | TyKind::Coroutine(..) | TyKind::FnDef(..) => self
                     .tcx
-                    .try_subst_and_normalize_erasing_regions(self.substs, self.param_env, EarlyBinder::bind(ty))
+                    .try_instantiate_and_normalize_erasing_regions(
+                        self.substs,
+                        self.param_env,
+                        EarlyBinder::bind(ty),
+                    )
                     .ok(),
                 _ => None,
             };
 
             maybe_normalized_ty.and_then(|ty| match *ty.kind() {
-                TyKind::Closure(def_id, substs) | 
-                TyKind::Generator(def_id, substs, _) |
-                TyKind::FnDef(def_id, substs) => {
+                TyKind::Closure(def_id, substs)
+                | TyKind::Coroutine(def_id, substs, _)
+                | TyKind::FnDef(def_id, substs) => {
                     match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
                         Ok(Some(instance)) if !self.tcx.is_closure(instance.def_id()) => {
-                            Some((instance.def.def_id(), instance.substs))
+                            Some((instance.def.def_id(), instance.args))
                         }
                         _ => None,
                     }

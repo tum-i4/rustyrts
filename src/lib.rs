@@ -17,6 +17,9 @@ extern crate rustc_session;
 // required for analyzing and modifying the MIR
 extern crate rustc_abi;
 extern crate rustc_ast;
+extern crate rustc_attr;
+extern crate rustc_const_eval;
+extern crate rustc_feature;
 extern crate rustc_hir;
 extern crate rustc_middle;
 extern crate rustc_span;

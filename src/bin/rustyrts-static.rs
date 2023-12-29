@@ -2,16 +2,14 @@
 
 extern crate rustc_driver;
 extern crate rustc_log;
-extern crate rustc_session;
 
-use rustc_session::config::ErrorOutputType;
-use rustc_session::early_error;
+use rustc_log::LoggerConfig;
 use rustyrts::constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::format::create_logger;
 use rustyrts::static_rts::callback::StaticRTSCallbacks;
 use rustyrts::{callbacks_shared::export_checksums_and_changes, constants::ENV_BLACKBOX_TEST};
-use std::env;
 use std::process;
+use std::{env, path::PathBuf};
 
 //######################################################################################################################
 // This file is heavily inspired by rust-mir-checker
@@ -25,7 +23,7 @@ pub const EXIT_SUCCESS: i32 = 0;
 pub const EXIT_FAILURE: i32 = 1;
 
 fn main() {
-    rustc_log::init_env_logger("RUSTC").unwrap();
+    rustc_log::init_logger(LoggerConfig::from_env("RUSTC")).unwrap();
     create_logger().init();
 
     let skip = env::var(ENV_SKIP_ANALYSIS).is_ok()
@@ -37,10 +35,8 @@ fn main() {
                 .enumerate()
                 .map(|(i, arg)| {
                     arg.into_string().unwrap_or_else(|arg| {
-                        early_error(
-                            ErrorOutputType::default(),
-                            format!("Argument {} is not valid Unicode: {:?}", i, arg),
-                        )
+                        eprintln!("Argument {} is not valid Unicode: {:?}", i, arg);
+                        process::exit(EXIT_FAILURE);
                     })
                 })
                 .map(|arg| {
@@ -53,6 +49,15 @@ fn main() {
                     arg
                 })
                 .collect::<Vec<_>>();
+
+            // Provide information on where to find rustyrts-static-sysroot
+            let mut sysroot =
+                PathBuf::from(std::env::var("CARGO_HOME").expect("Did not find CARGO_HOME"));
+            sysroot.push("bin");
+            sysroot.push("rustyrts-static-sysroot");
+
+            rustc_args.push("--sysroot".to_string());
+            rustc_args.push(sysroot.display().to_string());
 
             rustc_args.push("--cap-lints".to_string());
             rustc_args.push("allow".to_string());

@@ -3,9 +3,7 @@ use std::{fs::create_dir_all, path::PathBuf};
 use std::{path::Path, process::Command};
 use test_case::test_case;
 
-use rustyrts::constants::{
-    ENV_TARGET_DIR, ENV_BLACKBOX_TEST
-};
+use rustyrts::constants::{ENV_BLACKBOX_TEST, ENV_TARGET_DIR};
 use tempdir::TempDir;
 
 enum Mode {
@@ -38,7 +36,7 @@ fn command(mode: &Mode, dir: &PathBuf, target_dir: &Path, feature: Option<&str>)
     }
 
     ret.env(ENV_TARGET_DIR, target_dir);
-    ret.env(ENV_BLACKBOX_TEST, "true");  
+    ret.env(ENV_BLACKBOX_TEST, "true");
 
     ret
 }
@@ -118,6 +116,10 @@ fn check_same_crate_id(mode: Mode) {
 #[test_case(Mode::Static, "fn_ptr", "test_direct", "test_direct,changes_static")]
 #[test_case(Mode::Dynamic, "fn_ptr", "test_indirect", "test_indirect,changes_fn")]
 #[test_case(Mode::Static, "fn_ptr", "test_indirect", "test_indirect,changes_fn")]
+#[test_case(Mode::Dynamic, "derive", "", "changes_debug")]
+#[test_case(Mode::Static, "derive", "", "changes_debug")]
+#[test_case(Mode::Dynamic, "derive", "", "changes_hash")]
+#[test_case(Mode::Static, "derive", "", "changes_hash")]
 #[test_case(
     Mode::Dynamic,
     "fn_ptr",

@@ -3,18 +3,27 @@ use std::collections::HashSet;
 use crate::constants::SUFFIX_DYN;
 use crate::names::def_id_name;
 use log::info;
-use rustc_middle::{mir::interpret::{AllocId, ConstValue, GlobalAlloc, Scalar}, ty::EarlyBinder};
-use rustc_middle::{mir::Body, ty::Instance};
+use rustc_middle::{
+    mir::Location,
+    ty::{GenericArg, InstanceDef, List, Ty, TyCtxt, TyKind},
+};
+use rustc_middle::{
+    mir::{
+        interpret::{AllocId, GlobalAlloc, Scalar},
+        ConstOperand,
+    },
+    ty::EarlyBinder,
+};
 use rustc_middle::{
     mir::{
         visit::{TyContext, Visitor},
-        ConstantKind,
+        ConstValue,
     },
     ty::ParamEnv,
 };
 use rustc_middle::{
-    mir::{Constant, Location},
-    ty::{GenericArg, InstanceDef, List, Ty, TyCtxt, TyKind},
+    mir::{Body, Const},
+    ty::Instance,
 };
 use rustc_span::def_id::DefId;
 
@@ -82,26 +91,31 @@ enum Dependency {
 }
 
 impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
-    fn visit_constant(&mut self, constant: &Constant<'tcx>, location: Location) {
+    fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         self.super_constant(constant, location);
 
-        match constant.literal {
-            ConstantKind::Ty(_) => {}
-            ConstantKind::Unevaluated(..) => {}
-            ConstantKind::Val(cons, _) => {
+        match constant.const_ {
+            Const::Ty(_) => {}
+            Const::Unevaluated(..) => {}
+            Const::Val(cons, _) => {
                 let alloc_ids = match cons {
                     ConstValue::Scalar(Scalar::Ptr(ptr, ..)) => {
-                        vec![ptr.provenance]
+                        vec![ptr.provenance.alloc_id()]
                     }
-                    ConstValue::ByRef { alloc, offset: _ }
-                    | ConstValue::Slice {
+                    ConstValue::Indirect {
+                        alloc_id,
+                        offset: _,
+                    } => {
+                        vec![alloc_id]
+                    }
+                    ConstValue::Slice {
                         data: alloc,
-                        start: _,
-                        end: _,
+                        meta: _,
                     } => alloc
                         .inner()
                         .provenance()
                         .provenances()
+                        .map(|p| p.alloc_id())
                         .collect::<Vec<AllocId>>(),
                     _ => vec![],
                 };
@@ -110,7 +124,7 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Function(instance) => {
                             info!("Found fn ptr {:?}", instance);
-                            self.visit(instance.def_id(), instance.substs, Context::CodeGen);
+                            self.visit(instance.def_id(), instance.args, Context::CodeGen);
                         }
                         GlobalAlloc::Static(def_id) => {
                             self.visit(
@@ -144,18 +158,21 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
         };
 
         let maybe_dependency_other = {
-            let maybe_normalized_ty = 
-                match *ty.kind() {
-                TyKind::Closure(..) | TyKind::Generator(..) | TyKind::FnDef(..) => self
+            let maybe_normalized_ty = match *ty.kind() {
+                TyKind::Closure(..) | TyKind::Coroutine(..) | TyKind::FnDef(..) => self
                     .tcx
-                    .try_subst_and_normalize_erasing_regions(outer_substs, self.param_env, EarlyBinder::bind(ty))
+                    .try_instantiate_and_normalize_erasing_regions(
+                        outer_substs,
+                        self.param_env,
+                        EarlyBinder::bind(ty),
+                    )
                     .ok(),
                 _ => None,
             };
 
             maybe_normalized_ty.and_then(|ty| match *ty.kind() {
                 TyKind::Closure(def_id, substs) => Some((def_id, substs, Dependency::Contained)),
-                TyKind::Generator(def_id, substs, _) => {
+                TyKind::Coroutine(def_id, substs, _) => {
                     Some((def_id, substs, Dependency::Contained))
                 }
                 TyKind::FnDef(def_id, substs) => {
@@ -165,7 +182,7 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                                 InstanceDef::Virtual(def_id, _) => {
                                     Some((def_id, substs, Dependency::Dynamic))
                                 }
-                                _ => Some((instance.def_id(), instance.substs, Dependency::Static))
+                                _ => Some((instance.def_id(), instance.args, Dependency::Static)),
                             }
                         }
                         _ => None,
@@ -190,8 +207,8 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                 let blanket_impls = trait_impls.blanket_impls().iter();
 
                 for impl_def in blanket_impls.chain(non_blanket_impls) {
-                    for impl_fn in self.tcx.associated_item_def_ids(impl_def) {   
-                     self.visit(
+                    for impl_fn in self.tcx.associated_item_def_ids(impl_def) {
+                        self.visit(
                             *impl_fn,
                             List::identity_for_item(self.tcx, *impl_fn),
                             Context::CodeGen,

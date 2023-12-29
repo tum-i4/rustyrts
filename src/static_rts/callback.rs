@@ -13,9 +13,15 @@ use crate::{constants::SUFFIX_DYN, fs_utils::get_dependencies_path};
 use itertools::Itertools;
 use log::trace;
 use rustc_driver::{Callbacks, Compilation};
-use rustc_hir::{def_id::{LOCAL_CRATE, LocalDefId}, AttributeMap};
+use rustc_hir::{
+    def_id::{LocalDefId, LOCAL_CRATE},
+    AttributeMap,
+};
 use rustc_interface::{interface, Queries};
-use rustc_middle::{ty::{PolyTraitRef, TyCtxt, VtblEntry}, mir::Body};
+use rustc_middle::{
+    mir::Body,
+    ty::{PolyTraitRef, TyCtxt, VtblEntry},
+};
 use rustc_session::config::CrateType;
 use std::sync::atomic::Ordering::SeqCst;
 
@@ -53,7 +59,7 @@ impl Callbacks for StaticRTSCallbacks {
         config.opts.unstable_opts.always_encode_mir = true;
 
         // The only possibility to intercept vtable entries, which I found, is in their local crate
-        config.override_queries = Some(|_session, providers, _extern_providers| {
+        config.override_queries = Some(|_session, providers| {
             // SAFETY: We store the address of the original vtable_entries function as a usize.
             OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
             OLD_OPTIMIZED_MIR_PTR.store(unsafe { transmute(providers.optimized_mir) }, SeqCst);
@@ -84,10 +90,7 @@ impl Callbacks for StaticRTSCallbacks {
 }
 
 /// This function is executed instead of optimized_mir() in the compiler
-fn custom_optimized_mir<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: LocalDefId,
-) -> &'tcx Body<'tcx> {
+fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> &'tcx Body<'tcx> {
     let content = OLD_OPTIMIZED_MIR_PTR.load(SeqCst);
 
     // SAFETY: At this address, the original optimized_mir() function has been stored before.
@@ -95,18 +98,14 @@ fn custom_optimized_mir<'tcx>(
     let orig_function = unsafe {
         transmute::<
             usize,
-            fn(
-                _: TyCtxt<'tcx>,
-                _: LocalDefId,
-            ) -> &'tcx mut rustc_middle::mir::Body<'tcx>, // notice the mutable reference here
+            fn(_: TyCtxt<'tcx>, _: LocalDefId) -> &'tcx mut rustc_middle::mir::Body<'tcx>, // notice the mutable reference here
         >(content)
     };
 
     let body = orig_function(tcx, def);
 
     let name = def_id_name(tcx, def.to_def_id(), true, false);
-    let attrs = &tcx.hir_crate(()).owners
-        [tcx.local_def_id_to_hir_id(def).owner.def_id]
+    let attrs = &tcx.hir_crate(()).owners[tcx.local_def_id_to_hir_id(def).owner.def_id]
         .as_owner()
         .map_or(AttributeMap::EMPTY, |o| &o.attrs)
         .map;
@@ -163,12 +162,11 @@ fn custom_vtable_entries_monomorphized<'tcx>(
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();
                 if !tcx.is_closure(def_id) && !tcx.is_fn_trait(key.def_id()) {
-                    
                     let checksum = get_checksum_vtbl_entry(tcx, &entry);
                     let name = def_id_name(tcx, def_id, false, true).to_owned() + SUFFIX_DYN;
-                    
+
                     trace!("Considering {:?} in checksums of {}", instance, name);
-                    
+
                     insert_hashmap(
                         &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
                         &name,
