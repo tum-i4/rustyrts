@@ -44,10 +44,10 @@ pub fn run_cargo(
         env.push(("TRYBUILD".to_owned(), "overwrite".to_owned()));
     }
 
-    for (k,v) in rustc_wrapper {
+    for (k, v) in rustc_wrapper {
         env.push((k.to_owned(), v.to_owned()));
     }
-  
+
     let process_status = Process::run(&argv, &env, build_dir.path(), timeout, log_file, console)?;
     check_interrupted()?;
     debug!(?process_status, elapsed = ?start.elapsed());
@@ -75,10 +75,9 @@ pub fn cargo_argv(
     phase: Phase,
     options: &Options,
 ) -> Vec<String> {
-   
     let mut cargo_args = vec![cargo_bin()];
     cargo_args.extend(phase.name().iter().map(|s| s.to_string()));
-    
+
     if phase == Phase::Check || phase == Phase::Build {
         //cargo_args.push("--lib".to_string());
         //cargo_args.push("--bins".to_string());
@@ -105,6 +104,8 @@ pub fn cargo_argv(
     }
 
     if phase.is_test_phase() {
+        cargo_args.push("-Z".to_string());
+        cargo_args.push("no-index-update".to_string());
         if phase == Phase::Test {
             cargo_args.push("--no-fail-fast".to_string());
 
@@ -147,7 +148,7 @@ pub fn cargo_argv(
     } else {
         cargo_args.push("--workspace".to_string());
     }
-    
+
     cargo_args.extend(options.additional_cargo_args.iter().cloned());
     if phase.is_test_phase() {
         cargo_args.extend(options.additional_cargo_test_args.iter().cloned());
@@ -320,7 +321,9 @@ mod test {
             [
                 "rustyrts",
                 "dynamic",
-                "--", "--", "--",
+                "--",
+                "--",
+                "--",
                 "--manifest-path",
                 build_manifest_path.as_str(),
                 "--json"
@@ -331,7 +334,9 @@ mod test {
             [
                 "rustyrts",
                 "static",
-                "--", "--", "--",
+                "--",
+                "--",
+                "--",
                 "--manifest-path",
                 build_manifest_path.as_str(),
                 "--json"

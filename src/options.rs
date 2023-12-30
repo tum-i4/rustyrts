@@ -141,8 +141,6 @@ impl Options {
                 .unwrap_or(20f64),
         );
 
-        let skip_args = vec!["-Zno-index-update"];
-
         let json_args = if args.json {
             vec!["--", "-Zunstable-options", "--format=json", "--report-time"]
         } else {
@@ -156,7 +154,6 @@ impl Options {
                 .iter()
                 .cloned()
                 .chain(config.additional_cargo_args.iter().cloned())
-                .chain(skip_args.into_iter().map(|s| s.to_string()))
                 .collect(),
             additional_cargo_test_args: args
                 .cargo_test_args

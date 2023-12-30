@@ -2,10 +2,9 @@
 
 //! Tests for cargo workspaces with multiple packages.
 
-use std::fs::{self, read_to_string};
+use std::fs::read_to_string;
 
 use indoc::indoc;
-use itertools::Itertools;
 use serde_json::json;
 
 use super::{assert_bytes_eq_json, copy_of_testdata, run};
@@ -196,7 +195,13 @@ fn list_files_as_json_in_workspace_subdir() {
 fn in_workspace_only_relevant_packages_included_in_baseline_tests_by_file_filter() {
     let tmp = copy_of_testdata("package_fails");
     run()
-        .args(["mutants-rts", "-f", "passing/src/lib.rs", "--no-shuffle", "-d"])
+        .args([
+            "mutants-rts",
+            "-f",
+            "passing/src/lib.rs",
+            "--no-shuffle",
+            "-d",
+        ])
         .arg(tmp.path())
         .assert()
         .success();

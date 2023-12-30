@@ -2,10 +2,14 @@
 
 //! Successively apply mutations to the source code and run cargo to check, build, and test them.
 
-use std::{cmp::{max, min}, fs::create_dir_all, path::Path};
 use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
+use std::{
+    cmp::{max, min},
+    fs::create_dir_all,
+    path::Path,
+};
 
 use anyhow::Result;
 use itertools::Itertools;
@@ -13,12 +17,12 @@ use tracing::warn;
 #[allow(unused)]
 use tracing::{debug, debug_span, error, info, trace};
 
-use crate::{cargo::run_cargo, options::Mode};
 use crate::console::Console;
 use crate::outcome::{LabOutcome, Phase, ScenarioOutcome};
 use crate::output::OutputDir;
 use crate::package::Package;
 use crate::*;
+use crate::{cargo::run_cargo, options::Mode};
 
 /// Run all possible mutation experiments.
 ///
@@ -40,7 +44,7 @@ pub fn test_mutants(
         .map_or(workspace_dir, |p| p.as_path());
     let output_dir = OutputDir::new(output_in_dir)?;
     console.set_debug_log(output_dir.open_debug_log()?);
-    
+
     if options.shuffle {
         fastrand::shuffle(&mut mutants);
     }
@@ -67,7 +71,8 @@ pub fn test_mutants(
             options.test_timeout.unwrap_or(Duration::MAX),
             &options,
             console,
-            true
+            true,
+            "",
         )?
     };
     if !baseline_outcome.success() {
@@ -123,7 +128,6 @@ pub fn test_mutants(
                     debug_span!("test thread", thread = ?thread::current().id()).entered();
                 trace!("start thread in {build_dir:?}");
                 loop {
-
                     // Not a while loop so that it only holds the lock briefly.
                     let next = numbered_mutants.lock().expect("lock mutants queue").next();
                     if let Some((mutant_id, mutant)) = next {
@@ -139,7 +143,8 @@ pub fn test_mutants(
                             mutated_test_timeout,
                             &options,
                             console,
-                            false
+                            false,
+                            "debug",
                         )
                         .expect("scenario test");
                     } else {
@@ -183,6 +188,7 @@ fn test_scenario(
     options: &Options,
     console: &Console,
     trybuild_overwrite: bool,
+    rustyrts_log: &str,
 ) -> Result<ScenarioOutcome> {
     let mut log_file = output_mutex
         .lock()
@@ -230,9 +236,9 @@ fn test_scenario(
             &mut log_file,
             options,
             console,
-            "debug",
+            rustyrts_log,
             trybuild_overwrite,
-            rustc_wrapper
+            rustc_wrapper,
         )?;
         let success = phase_result.is_success();
         outcome.add_phase_result(phase_result);
