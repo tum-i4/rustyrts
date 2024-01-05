@@ -1,4 +1,4 @@
-use log::trace;
+use log::debug;
 use once_cell::sync::OnceCell;
 use rustc_ast::{
     token::{Delimiter, Token, TokenKind},
@@ -62,7 +62,7 @@ impl Callbacks for DynamicRTSCallbacks {
             .iter()
             .any(|t| *t == CrateType::ProcMacro)
         {
-            trace!(
+            debug!(
                 "Excluding crate {}",
                 config.opts.crate_name.as_ref().unwrap()
             );
@@ -258,7 +258,7 @@ fn custom_vtable_entries<'tcx>(
                     let checksum = get_checksum_vtbl_entry(tcx, &entry);
                     let name = def_id_name(tcx, def_id, false, true);
 
-                    trace!("Considering {:?} in checksums of {}", instance, name);
+                    debug!("Considering {:?} in checksums of {}", instance, name);
 
                     insert_hashmap(
                         &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),

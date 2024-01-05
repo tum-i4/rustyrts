@@ -2,17 +2,14 @@ use std::collections::HashSet;
 
 use crate::constants::SUFFIX_DYN;
 use crate::names::def_id_name;
-use log::info;
-use rustc_middle::{
-    mir::Location,
-    ty::{GenericArg, InstanceDef, List, Ty, TyCtxt, TyKind},
+use log::trace;
+use rustc_middle::mir::{
+    interpret::{AllocId, GlobalAlloc, Scalar},
+    ConstOperand,
 };
 use rustc_middle::{
-    mir::{
-        interpret::{AllocId, GlobalAlloc, Scalar},
-        ConstOperand,
-    },
-    ty::EarlyBinder,
+    mir::Location,
+    ty::{EarlyBinder, GenericArg, InstanceDef, List, Ty, TyCtxt, TyKind},
 };
 use rustc_middle::{
     mir::{
@@ -56,7 +53,14 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
 
     fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>, context: Context) {
         if self.visited.insert((def_id, substs)) {
-            if let Context::CodeGen = context {
+            trace!(
+                "Visiting {} - {:?} - {:?} - {:?}",
+                def_id_name(self.tcx, def_id, false, true),
+                def_id,
+                substs,
+                context
+            );
+            if let Context::CodeGen(..) = context {
                 self.acc.insert(def_id_name(self.tcx, def_id, false, true));
             }
             if self.tcx.is_mir_available(def_id) {
@@ -64,7 +68,7 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
                 self.processed = (def_id, substs);
 
                 let body = match context {
-                    Context::CodeGen => self.tcx.optimized_mir(def_id),
+                    Context::CodeGen(..) => self.tcx.optimized_mir(def_id),
                     Context::Static => self.tcx.mir_for_ctfe(def_id),
                 };
 
@@ -78,11 +82,13 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
     }
 }
 
+#[derive(Debug)]
 enum Context {
-    CodeGen,
+    CodeGen(Dependency),
     Static,
 }
 
+#[derive(Debug)]
 enum Dependency {
     Static,
     Dynamic,
@@ -123,8 +129,11 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                 for alloc_id in alloc_ids {
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Function(instance) => {
-                            info!("Found fn ptr {:?}", instance);
-                            self.visit(instance.def_id(), instance.args, Context::CodeGen);
+                            self.visit(
+                                instance.def_id(),
+                                instance.args,
+                                Context::CodeGen(Dependency::Static),
+                            );
                         }
                         GlobalAlloc::Static(def_id) => {
                             self.visit(
@@ -145,36 +154,33 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
 
         let (_outer_def_id, outer_substs) = self.processed;
 
-        let maybe_dependency_drop = {
-            ty.ty_adt_def().and_then(|adt_def| {
-                self.tcx.adt_destructor(adt_def.did()).map(|destructor| {
-                    (
-                        destructor.did,
-                        List::identity_for_item(self.tcx, destructor.did),
-                        Dependency::Drop,
-                    )
-                })
-            })
-        };
+        if let TyKind::Closure(..) | TyKind::Coroutine(..) | TyKind::Adt(..) | TyKind::FnDef(..) =
+            *ty.kind()
+        {
+            if let TyKind::FnDef(def_id, substs) = ty.kind() {
+                let name = def_id_name(self.tcx, *def_id, false, true);
+                trace!("Substituting {} {:?} - {:?}", name, substs, outer_substs);
+            } else {
+                trace!("Substituting {:?} - {:?}", ty, outer_substs);
+            }
+            let maybe_normalized_ty = self
+                .tcx
+                .try_instantiate_and_normalize_erasing_regions(
+                    outer_substs,
+                    self.param_env,
+                    EarlyBinder::bind(ty),
+                )
+                .ok();
 
-        let maybe_dependency_other = {
-            let maybe_normalized_ty = match *ty.kind() {
-                TyKind::Closure(..) | TyKind::Coroutine(..) | TyKind::FnDef(..) => self
-                    .tcx
-                    .try_instantiate_and_normalize_erasing_regions(
-                        outer_substs,
-                        self.param_env,
-                        EarlyBinder::bind(ty),
-                    )
-                    .ok(),
-                _ => None,
-            };
-
-            maybe_normalized_ty.and_then(|ty| match *ty.kind() {
+            let maybe_dependency = maybe_normalized_ty.and_then(|ty| match *ty.kind() {
                 TyKind::Closure(def_id, substs) => Some((def_id, substs, Dependency::Contained)),
                 TyKind::Coroutine(def_id, substs, _) => {
                     Some((def_id, substs, Dependency::Contained))
                 }
+                TyKind::Adt(adt_def, substs) => self
+                    .tcx
+                    .adt_destructor(adt_def.did())
+                    .map(|destructor| (destructor.did, substs, Dependency::Drop)),
                 TyKind::FnDef(def_id, substs) => {
                     match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
                         Ok(Some(instance)) if !self.tcx.is_closure(instance.def_id()) => {
@@ -185,41 +191,40 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                                 _ => Some((instance.def_id(), instance.args, Dependency::Static)),
                             }
                         }
+                        Ok(None) => {
+                            trace!("Got Ok(None) for {:?} and {:?}", def_id, substs);
+                            None
+                        }
                         _ => None,
                     }
                 }
                 _ => None,
-            })
-        };
+            });
 
-        let maybe_dependency = maybe_dependency_other.or(maybe_dependency_drop);
+            if let Some((def_id, _substs, Dependency::Dynamic)) = maybe_dependency {
+                self.acc
+                    .insert(def_id_name(self.tcx, def_id, false, true) + SUFFIX_DYN);
+                if let Some(trait_def) = self.tcx.trait_of_item(def_id) {
+                    let trait_impls = self.tcx.trait_impls_of(trait_def);
 
-        if let Some((def_id, _substs, Dependency::Dynamic)) = maybe_dependency {
-            self.acc
-                .insert(def_id_name(self.tcx, def_id, false, true) + SUFFIX_DYN);
-            if let Some(trait_def) = self.tcx.trait_of_item(def_id) {
-                let trait_impls = self.tcx.trait_impls_of(trait_def);
+                    let non_blanket_impls = trait_impls
+                        .non_blanket_impls()
+                        .values()
+                        .flat_map(|impls| impls.iter());
+                    let blanket_impls = trait_impls.blanket_impls().iter();
 
-                let non_blanket_impls = trait_impls
-                    .non_blanket_impls()
-                    .values()
-                    .flat_map(|impls| impls.iter());
-                let blanket_impls = trait_impls.blanket_impls().iter();
-
-                for impl_def in blanket_impls.chain(non_blanket_impls) {
-                    for impl_fn in self.tcx.associated_item_def_ids(impl_def) {
-                        self.visit(
-                            *impl_fn,
-                            List::identity_for_item(self.tcx, *impl_fn),
-                            Context::CodeGen,
-                        );
+                    for impl_def in blanket_impls.chain(non_blanket_impls) {
+                        for impl_fn in self.tcx.associated_item_def_ids(impl_def) {
+                            let substs = List::identity_for_item(self.tcx, *impl_fn);
+                            self.visit(*impl_fn, substs, Context::CodeGen(Dependency::Dynamic));
+                        }
                     }
                 }
             }
-        }
 
-        if let Some((def_id, substs, _dependency)) = maybe_dependency {
-            self.visit(def_id, substs, Context::CodeGen);
+            if let Some((def_id, substs, dependency)) = maybe_dependency {
+                self.visit(def_id, substs, Context::CodeGen(dependency));
+            }
         }
     }
 }

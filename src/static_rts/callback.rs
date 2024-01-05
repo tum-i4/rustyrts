@@ -1,5 +1,4 @@
 use std::mem::transmute;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Mutex;
 
 use crate::{
@@ -13,23 +12,15 @@ use crate::{constants::SUFFIX_DYN, fs_utils::get_dependencies_path};
 use itertools::Itertools;
 use log::trace;
 use rustc_driver::{Callbacks, Compilation};
-use rustc_hir::{
-    def_id::{LocalDefId, LOCAL_CRATE},
-    AttributeMap,
-};
+use rustc_hir::{def_id::LOCAL_CRATE, AttributeMap, ConstContext};
 use rustc_interface::{interface, Queries};
-use rustc_middle::{
-    mir::Body,
-    ty::{PolyTraitRef, TyCtxt, VtblEntry},
-};
+use rustc_middle::ty::{PolyTraitRef, TyCtxt, VtblEntry};
 use rustc_session::config::CrateType;
 use std::sync::atomic::Ordering::SeqCst;
 
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
 use crate::fs_utils::{get_static_path, write_to_file};
 use crate::names::def_id_name;
-
-static OLD_OPTIMIZED_MIR_PTR: AtomicUsize = AtomicUsize::new(0);
 
 pub struct StaticRTSCallbacks {}
 
@@ -62,10 +53,8 @@ impl Callbacks for StaticRTSCallbacks {
         config.override_queries = Some(|_session, providers| {
             // SAFETY: We store the address of the original vtable_entries function as a usize.
             OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
-            OLD_OPTIMIZED_MIR_PTR.store(unsafe { transmute(providers.optimized_mir) }, SeqCst);
 
             providers.vtable_entries = custom_vtable_entries_monomorphized;
-            providers.optimized_mir = custom_optimized_mir;
         });
 
         if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
@@ -89,54 +78,45 @@ impl Callbacks for StaticRTSCallbacks {
     }
 }
 
-/// This function is executed instead of optimized_mir() in the compiler
-fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> &'tcx Body<'tcx> {
-    let content = OLD_OPTIMIZED_MIR_PTR.load(SeqCst);
-
-    // SAFETY: At this address, the original optimized_mir() function has been stored before.
-    // We reinterpret it as a function, while changing the return type to mutable.
-    let orig_function = unsafe {
-        transmute::<
-            usize,
-            fn(_: TyCtxt<'tcx>, _: LocalDefId) -> &'tcx mut rustc_middle::mir::Body<'tcx>, // notice the mutable reference here
-        >(content)
-    };
-
-    let body = orig_function(tcx, def);
-
-    let name = def_id_name(tcx, def.to_def_id(), true, false);
-    let attrs = &tcx.hir_crate(()).owners[tcx.local_def_id_to_hir_id(def).owner.def_id]
-        .as_owner()
-        .map_or(AttributeMap::EMPTY, |o| &o.attrs)
-        .map;
-
-    let is_test = attrs
-        .iter()
-        .flat_map(|(_, list)| list.iter())
-        .unique_by(|i| i.id)
-        .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
-
-    if is_test {
-        let dependencies = ResolvingVisitor::find_dependencies(tcx, body)
-            .into_iter()
-            .fold(String::new(), |mut acc, node| {
-                acc.push_str(&node);
-                acc.push_str("\n");
-                acc
-            });
-        write_to_file(
-            dependencies,
-            PATH_BUF.get().unwrap().clone(),
-            |p| get_dependencies_path(p, &name[0..name.len() - 13]),
-            false,
-        );
-        trace!("Collected dependencies for {}", name);
-    }
-    body
-}
-
 impl StaticRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
+        for def in tcx.mir_keys(()) {
+            let const_context = tcx.hir().body_const_context(*def);
+            if let Some(ConstContext::ConstFn) | None = const_context {
+                let name = def_id_name(tcx, def.to_def_id(), true, false);
+                let attrs = &tcx.hir_crate(()).owners
+                    [tcx.local_def_id_to_hir_id(*def).owner.def_id]
+                    .as_owner()
+                    .map_or(AttributeMap::EMPTY, |o| &o.attrs)
+                    .map;
+
+                let is_test = attrs
+                    .iter()
+                    .flat_map(|(_, list)| list.iter())
+                    .unique_by(|i| i.id)
+                    .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
+
+                if is_test {
+                    trace!("Collecting dependencies of {:?}", name);
+                    let body = tcx.optimized_mir(def.to_def_id());
+                    let dependencies = ResolvingVisitor::find_dependencies(tcx, body)
+                        .into_iter()
+                        .fold(String::new(), |mut acc, node| {
+                            acc.push_str(&node);
+                            acc.push_str("\n");
+                            acc
+                        });
+                    write_to_file(
+                        dependencies,
+                        PATH_BUF.get().unwrap().clone(),
+                        |p| get_dependencies_path(p, &name[0..name.len() - 13]),
+                        false,
+                    );
+                    trace!("Collected dependencies for {}", name);
+                }
+            }
+        }
+
         run_analysis_shared(tcx);
     }
 }

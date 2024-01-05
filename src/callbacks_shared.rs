@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use log::{debug, trace};
+use log::debug;
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::MonoItem;
@@ -49,7 +49,7 @@ pub(crate) fn excluded<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
     *EXCLUDED.get_or_init(|| {
         let exclude = env::var(ENV_SKIP_ANALYSIS).is_ok() || no_instrumentation(getter_crate_name);
         if exclude {
-            trace!("Excluding crate {}", getter_crate_name());
+            debug!("Excluding crate {}", getter_crate_name());
         }
         exclude
     })
@@ -67,7 +67,7 @@ pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F)
 
         let no_instrumentation = excluded_crate || trybuild;
         if no_instrumentation {
-            trace!("Not instrumenting crate {}", getter_crate_name());
+            debug!("Not instrumenting crate {}", getter_crate_name());
         }
         no_instrumentation
     })
@@ -144,7 +144,7 @@ pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
         );
     }
 
-    trace!("Exported tests for {}", crate_name);
+    debug!("Exported tests for {}", crate_name);
 }
 
 pub fn export_checksums_and_changes(from_new_revision: bool) {
@@ -197,7 +197,7 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             }
         };
 
-        trace!("Imported checksums for {}", crate_name);
+        debug!("Imported checksums for {}", crate_name);
 
         //##############################################################################################################
         // 4. Calculate names of changed nodes and write this information to filesystem
@@ -310,6 +310,6 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             false,
         );
 
-        trace!("Exported changes for {}", crate_name);
+        debug!("Exported changes for {}", crate_name);
     }
 }
