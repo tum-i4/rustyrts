@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Martin Pool
+// Copyright 2021-2024 Martin Pool
 
 //! Run Cargo as a subprocess, including timeouts and propagating signals.
 
@@ -9,6 +9,7 @@ use anyhow::Result;
 use itertools::Itertools;
 use tracing::{debug, debug_span};
 
+use crate::options::TestTool;
 use crate::outcome::PhaseResult;
 use crate::package::Package;
 use crate::process::Process;

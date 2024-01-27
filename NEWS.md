@@ -1,5 +1,29 @@
 # cargo-mutants changelog
 
+## Unreleased
+
+- New: Colored output can be enabled in CI or other noninteractive situations by passing `--colors=always`, or setting `CARGO_TERM_COLOR=always`, or `CLICOLOR_FORCE=1`. Colors can similarly be forced off with `--colors=never`, `CARGO_TERM_COLOR=never`, or `NO_COLOR=1`.
+
+## 24.1.2
+
+- New: `--in-place` option tests mutations in the original source tree, without copying the tree. This is faster and uses less disk space, but it's incompatible with `--jobs`, and you must be careful not to edit or commit the source tree while tests are running.
+
+## 24.1.1
+
+- New: Mutate `+, -, *, /, %, &, ^, |, <<, >>` binary ops, and their corresponding assignment ops like `+=`.
+
+- New: `--baseline=skip` option to skip running tests in an unmutated tree, when they're already been checked externally.
+
+- Changed: Stop generating mutations of `||` and `&&` to `!=` and `||`, because it seems to raise too many low-value false positives that may be hard to test.
+
+- Fixed: Colors in command-line help and error messages.
+
+## 24.1.0
+
+- New! `cargo mutants --test-tool nextest`, or `test_tool = "nextest"` in `.cargo/mutants.toml` runs tests under [Nextest](https://nexte.st/). Some trees have tests that only work under Nextest, and this allows them to be tested. In other cases Nextest may be significantly faster, because it will exit soon after the first test failure.
+
+- Fixed: Fixed spurious "Patch input contains repeated filenames" error when `--in-diff` is given a patch that deletes multiple files.
+
 ## 23.12.2
 
 - New: A `--shard k/n` allows you to split the work across n independent parallel `cargo mutants` invocations running on separate machines to get a faster overall solution on large suites. You, or your CI system, are responsible for launching all the shards and checking whether any of them failed.

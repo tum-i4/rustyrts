@@ -1,10 +1,10 @@
 [package]
-version = "23.12.2"
+version = "24.1.2"
 name = "cargo-mutants-rts"
 edition = "2021"
 authors = ["Martin Pool"]
 license = "MIT"
-description = "Find inadequately-tested code that can be removed without any tests failing."
+description = "Inject bugs and see if your tests catch them"
 repository = "https://github.com/sourcefrog/cargo-mutants"
 homepage = "https://mutants.rs/"
 categories = ["development-tools::testing"]
@@ -36,13 +36,14 @@ eula = false
 anyhow = "1.0"
 camino = "1.0"
 cargo_metadata = "0.18"
-clap = { version = "4", features = [
+clap = { version = "4.4", features = [
     "deprecated",
     "derive",
     "env",
     "wrap_help",
 ] }
 clap_complete = "4"
+color-print = "0.3"
 console = "0.15"
 ctrlc = { version = "3.2.1", features = ["termination"] }
 fastrand = "2"
@@ -60,6 +61,7 @@ quote = "1.0"
 regex = "1.10"
 serde_json = "1"
 similar = "2.0"
+strum = { version = "0.25", features = ["derive"] }
 subprocess = "0.2.8"
 tempfile = "3.2"
 time = "0.3"
@@ -72,7 +74,6 @@ whoami = "1.2"
 [dependencies.nutmeg]
 version = "0.1.4"
 # git = "https://github.com/sourcefrog/nutmeg.git"
-# branch = "const-new"
 
 [dependencies.proc-macro2]
 features = ["span-locations"]
@@ -121,6 +122,7 @@ exclude = [
     "testdata/hang_when_mutated",
     "testdata/insta",
     "testdata/integration_tests",
+    "testdata/many_patterns",
     "testdata/missing_test",
     "testdata/mut_ref",
     "testdata/never_type",
@@ -142,22 +144,26 @@ exclude = [
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.6.2"
+cargo-dist-version = "0.8.0"
 # CI backends to support
 ci = ["github"]
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = [
-    "x86_64-unknown-linux-gnu",
-    "aarch64-apple-darwin",
-    "x86_64-apple-darwin",
-    "x86_64-pc-windows-msvc",
-]
+targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # Publish jobs to run in CI
-pr-run-mode = "upload"
+pr-run-mode = "plan"
+# # Publish jobs to run in CI
+# pr-run-mode = "upload"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+# Config for <https://github.com/crate-ci/cargo-release/blob/master/docs/reference.md>
+[workspace.metadata.release]
+pre-release-replacements = [
+    { "file" = "NEWS.md", search = "## Unreleased", replace = "$0\n## {{version}}", exactly = 1 },
+    { "file" = "CITATION.cff", search = "^version: .*", replace = "version: {{version}}", exactly = 1 },
+]

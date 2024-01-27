@@ -29,7 +29,7 @@ For example, in GitHub Actions, you could use a matrix job to run multiple shard
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: beta
@@ -39,7 +39,7 @@ For example, in GitHub Actions, you could use a matrix job to run multiple shard
         run: |
           cargo mutants --no-shuffle -vV --shard ${{ matrix.shard }}/8
       - name: Archive mutants.out
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: mutants.out
@@ -60,7 +60,7 @@ Then, for each mutant in its shard, it does an incremental build and runs all th
 
 Each shard runs the same number of mutants, +/-1. Typically this will mean they each take roughly the same amount of time, although it's possible that some shards are unlucky in drawing mutants that happen to take longer to test.
 
-A rough model for the overall execution time for all of the shards, allowing for this work occuring in parallel, is
+A rough model for the overall execution time for all of the shards, allowing for this work occurring in parallel, is
 
 ```raw
 SHARD_STARTUP + (CLEAN_BUILD + TEST) + (N_MUTANTS/K) * (INCREMENTAL_BUILD + TEST)
@@ -87,3 +87,7 @@ If your CI system offers a choice of VM sizes you might experiment with using sm
 You should also think about cost and capacity constraints in your CI system, and the risk of starving out other users.
 
 cargo-mutants has no internal scaling constraints to prevent you from setting `k` very large, if cost, efficiency and CI capacity are not a concern.
+
+## Sampling mutants
+
+An option like `--shard 1/100` can be used to run 1% of all the generated mutants for testing cargo-mutants, to get a sense of whether it works or to see how it performs on some tree.

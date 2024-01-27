@@ -1,4 +1,4 @@
-// Copyright 2021-2023 Martin Pool
+// Copyright 2021-2024 Martin Pool
 
 //! Global in-process options for experimenting on mutants.
 //!
@@ -12,9 +12,12 @@ use camino::Utf8PathBuf;
 use clap::ValueEnum;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use regex::RegexSet;
+use serde::Deserialize;
+use strum::{Display, EnumString};
 use tracing::warn;
 
-use crate::{config::Config, *};
+use crate::config::Config;
+use crate::*;
 
 #[derive(ValueEnum, PartialEq, Clone, Debug)]
 pub enum Mode {
@@ -46,11 +49,17 @@ pub struct Options {
     /// rustyRTS mode
     pub mode: Option<Mode>,
 
+    /// Run tests in an unmutated tree?
+    pub baseline: BaselineStrategy,
+
     /// Don't run the tests, just see if each mutant builds.
     pub check_only: bool,
 
     /// Don't copy files matching gitignore patterns to build directories.
     pub gitignore: bool,
+
+    /// Don't copy at all; run tests in the source directory.
+    pub in_place: bool,
 
     /// Don't delete scratch directories.
     pub leak_dirs: bool,
@@ -112,20 +121,75 @@ pub struct Options {
     pub error_values: Vec<String>,
 
     /// Show ANSI colors.
-    pub colors: bool,
+    pub colors: Colors,
 
     /// List mutants in json, etc.
     pub emit_json: bool,
 
     /// Emit diffs showing just what changed.
     pub emit_diffs: bool,
+
+    /// The tool to use to run tests.
+    pub test_tool: TestTool,
 }
 
+/// Choice of tool to use to run tests.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Display, Deserialize)]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum TestTool {
+    /// Use `cargo test`, the default.
+    #[default]
+    Cargo,
+
+    /// Use `cargo nextest`.
+    Nextest,
+}
+
+/// Join two slices into a new vector.
 fn join_slices(a: &[String], b: &[String]) -> Vec<String> {
     let mut v = Vec::with_capacity(a.len() + b.len());
     v.extend_from_slice(a);
     v.extend_from_slice(b);
     v
+}
+
+/// Should ANSI colors be drawn?
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Display, Deserialize, ValueEnum)]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum Colors {
+    #[default]
+    Auto,
+    Always,
+    Never,
+}
+
+impl Colors {
+    /// If colors were forced on or off by the user through an option or
+    /// environment variable, return that value.
+    ///
+    /// Otherwise, return None, meaning we should decide based on the
+    /// detected terminal characteristics.
+    pub fn forced_value(&self) -> Option<bool> {
+        // From https://bixense.com/clicolors/
+        if env::var("NO_COLOR").map_or(false, |x| x != "0") {
+            Some(false)
+        } else if env::var("CLICOLOR_FORCE").map_or(false, |x| x != "0") {
+            Some(true)
+        } else {
+            match self {
+                Colors::Always => Some(true),
+                Colors::Never => Some(false),
+                Colors::Auto => None, // library should decide
+            }
+        }
+    }
+
+    pub fn active_stdout(&self) -> bool {
+        self.forced_value()
+            .unwrap_or_else(::console::colors_enabled)
+    }
 }
 
 impl Options {
@@ -163,6 +227,9 @@ impl Options {
                 .chain(json_args.into_iter().map(|s| s.to_string()))
                 .collect(),
             check_only: args.check,
+            colors: args.colors,
+            emit_json: args.json,
+            emit_diffs: args.diff,
             error_values: join_slices(&args.error, &config.error_values),
             examine_names: RegexSet::new(or_slices(&args.examine_re, &config.examine_re))
                 .context("Failed to compile examine_re regex")?,
@@ -171,8 +238,10 @@ impl Options {
             examine_globset: build_glob_set(or_slices(&args.file, &config.examine_globs))?,
             exclude_globset: build_glob_set(or_slices(&args.exclude, &config.exclude_globs))?,
             gitignore: args.gitignore,
+            in_place: args.in_place,
             jobs: args.jobs,
             leak_dirs: args.leak_dirs,
+            minimum_test_timeout,
             output_in_dir: args.output.clone(),
             print_caught: args.caught,
             print_unviable: args.unviable,
@@ -226,4 +295,57 @@ fn build_glob_set<S: AsRef<str>, I: IntoIterator<Item = S>>(
         }
     }
     Ok(Some(builder.build()?))
+}
+
+#[cfg(test)]
+mod test {
+    use std::io::Write;
+
+    use indoc::indoc;
+    use tempfile::NamedTempFile;
+
+    use super::*;
+
+    #[test]
+    fn default_options() {
+        let args = Args::parse_from(["mutants"]);
+        let options = Options::new(&args, &Config::default()).unwrap();
+        assert!(!options.check_only);
+        assert_eq!(options.test_tool, TestTool::Cargo);
+    }
+
+    #[test]
+    fn options_from_test_tool_arg() {
+        let args = Args::parse_from(["mutants", "--test-tool", "nextest"]);
+        let options = Options::new(&args, &Config::default()).unwrap();
+        assert_eq!(options.test_tool, TestTool::Nextest);
+    }
+
+    #[test]
+    fn options_from_baseline_arg() {
+        let args = Args::parse_from(["mutants", "--baseline", "skip"]);
+        let options = Options::new(&args, &Config::default()).unwrap();
+        assert_eq!(options.baseline, BaselineStrategy::Skip);
+
+        let args = Args::parse_from(["mutants", "--baseline", "run"]);
+        let options = Options::new(&args, &Config::default()).unwrap();
+        assert_eq!(options.baseline, BaselineStrategy::Run);
+
+        let args = Args::parse_from(["mutants"]);
+        let options = Options::new(&args, &Config::default()).unwrap();
+        assert_eq!(options.baseline, BaselineStrategy::Run);
+    }
+
+    #[test]
+    fn test_tool_from_config() {
+        let config = indoc! { r#"
+            test_tool = "nextest"
+        "#};
+        let mut config_file = NamedTempFile::new().unwrap();
+        config_file.write_all(config.as_bytes()).unwrap();
+        let args = Args::parse_from(["mutants"]);
+        let config = Config::read_file(config_file.path()).unwrap();
+        let options = Options::new(&args, &config).unwrap();
+        assert_eq!(options.test_tool, TestTool::Nextest);
+    }
 }

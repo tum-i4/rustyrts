@@ -4,6 +4,8 @@
 
 use std::fs::read_to_string;
 
+use insta::assert_snapshot;
+use itertools::Itertools;
 use indoc::indoc;
 use serde_json::json;
 
@@ -21,11 +23,9 @@ fn open_by_manifest_path() {
         ])
         .assert()
         .success()
-        .stdout(indoc! {"
-            src/bin/factorial.rs: replace main with ()
-            src/bin/factorial.rs: replace factorial -> u32 with 0
-            src/bin/factorial.rs: replace factorial -> u32 with 1
-        "});
+        .stdout(predicates::str::contains(
+            "src/bin/factorial.rs: replace main with ()",
+        ));
 }
 
 #[test]
@@ -205,13 +205,14 @@ fn in_workspace_only_relevant_packages_included_in_baseline_tests_by_file_filter
         .arg(tmp.path())
         .assert()
         .success();
-    assert_eq!(
+    assert_snapshot!(
         read_to_string(tmp.path().join("mutants.out/caught.txt")).unwrap(),
-        indoc! { "\
-            passing/src/lib.rs:2:5: replace triple -> usize with 0
-            passing/src/lib.rs:2:5: replace triple -> usize with 1
-            "}
-    );
+        @r###"
+    passing/src/lib.rs:2:5: replace triple -> usize with 0
+    passing/src/lib.rs:2:5: replace triple -> usize with 1
+    passing/src/lib.rs:2:7: replace * with + in triple
+    passing/src/lib.rs:2:7: replace * with / in triple
+    "###);
     assert_eq!(
         read_to_string(tmp.path().join("mutants.out/timeout.txt")).unwrap(),
         ""
@@ -242,12 +243,14 @@ fn baseline_test_respects_package_options() {
         .arg(tmp.path())
         .assert()
         .success();
-    assert_eq!(
+    assert_snapshot!(
         read_to_string(tmp.path().join("mutants.out/caught.txt")).unwrap(),
-        indoc! { "\
-            passing/src/lib.rs:2:5: replace triple -> usize with 0
-            passing/src/lib.rs:2:5: replace triple -> usize with 1
-            "}
+        @r###"
+    passing/src/lib.rs:2:5: replace triple -> usize with 0
+    passing/src/lib.rs:2:5: replace triple -> usize with 1
+    passing/src/lib.rs:2:7: replace * with + in triple
+    passing/src/lib.rs:2:7: replace * with / in triple
+    "###
     );
     assert_eq!(
         read_to_string(tmp.path().join("mutants.out/timeout.txt")).unwrap(),

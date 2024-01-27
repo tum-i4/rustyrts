@@ -75,42 +75,46 @@ pub fn test_mutants(
             "",
         )?
     };
-    if !baseline_outcome.success() {
-        error!(
-            "cargo {} failed in an unmutated tree, so no mutants were tested",
-            baseline_outcome.last_phase(),
-        );
-        return Ok(output_mutex
-            .into_inner()
-            .expect("lock output_dir")
-            .take_lab_outcome());
-    }
-
-    let mutated_test_timeout = if let Some(timeout) = options.test_timeout {
-        timeout
-    } else if let Some(baseline_test_duration) = baseline_outcome
-        .phase_results()
-        .iter()
-        .find(|r| r.phase == Phase::Test)
-        .map(|r| r.duration)
-    {
-        let auto_timeout = max(
-            options.minimum_test_timeout,
-            baseline_test_duration.mul_f32(5.0),
-        );
-        if options.show_times {
-            console.autoset_timeout(auto_timeout);
+    let baseline_outcome = match options.baseline {
+        BaselineStrategy::Run => {
+            let outcome = test_scenario(
+                &build_dir,
+                &output_mutex,
+                &Scenario::Baseline,
+                &all_packages,
+                options.test_timeout.unwrap_or(Duration::MAX),
+                &options,
+                console,
+            )?;
+            if !outcome.success() {
+                error!(
+                    "cargo {} failed in an unmutated tree, so no mutants were tested",
+                    outcome.last_phase(),
+                );
+                // We "successfully" established that the baseline tree doesn't work; arguably this should be represented as an error
+                // but we'd need a way for that error to convey an exit code...
+                return Ok(output_mutex
+                    .into_inner()
+                    .expect("lock output_dir")
+                    .take_lab_outcome());
+            }
+            Some(outcome)
         }
-        auto_timeout
-    } else {
-        Duration::MAX
+        BaselineStrategy::Skip => None,
     };
+    let mut build_dirs = vec![build_dir];
+    let test_timeout = test_timeout(&baseline_outcome, &options);
 
     let jobs = max(1, min(options.jobs.unwrap_or(1), mutants.len()));
     console.build_dirs_start(jobs - 1);
     for i in 1..jobs {
         debug!("copy build dir {i}");
-        build_dirs.push(BuildDir::new(workspace_dir, &options, console)?);
+        build_dirs.push(BuildDir::copy_from(
+            workspace_dir,
+            options.gitignore,
+            options.leak_dirs,
+            console,
+        )?);
     }
     console.build_dirs_finished();
     debug!(build_dirs = ?build_dirs);
@@ -121,9 +125,10 @@ pub fn test_mutants(
     let numbered_mutants = Mutex::new(mutants.into_iter().enumerate());
     thread::scope(|scope| {
         let mut threads = Vec::new();
+        // TODO: Maybe, make the copies in parallel on each thread, rather than up front?
         for build_dir in build_dirs {
             threads.push(scope.spawn(|| {
-                let mut build_dir = build_dir; // move it into this thread
+                let build_dir = build_dir; // move it into this thread
                 let _thread_span =
                     debug_span!("test thread", thread = ?thread::current().id()).entered();
                 trace!("start thread in {build_dir:?}");
@@ -140,7 +145,7 @@ pub fn test_mutants(
                             &output_mutex,
                             &Scenario::Mutant(mutant),
                             &[&package],
-                            mutated_test_timeout,
+                            test_timeout,
                             &options,
                             console,
                             false,
@@ -174,6 +179,36 @@ pub fn test_mutants(
     Ok(lab_outcome)
 }
 
+fn test_timeout(baseline_outcome: &Option<ScenarioOutcome>, options: &Options) -> Duration {
+    if let Some(timeout) = options.test_timeout {
+        timeout
+    } else if options.check_only {
+        Duration::ZERO
+    } else if options.baseline == BaselineStrategy::Skip {
+        warn!("An explicit timeout is recommended when using --baseline=skip; using 300 seconds by default");
+        Duration::from_secs(300)
+    } else {
+        let auto_timeout = max(
+            options.minimum_test_timeout,
+            Duration::from_secs(
+                baseline_outcome
+                .as_ref()
+                .expect("Baseline tests should have run")
+                .total_phase_duration(Phase::Test)
+                .as_secs() // round
+                *5,
+            ),
+        );
+        if options.show_times {
+            info!(
+                "Auto-set test timeout to {}",
+                humantime::format_duration(auto_timeout)
+            );
+        }
+        auto_timeout
+    }
+}
+
 /// Test various phases of one scenario in a build dir.
 ///
 /// The [BuildDir] is passed as mutable because it's for the exclusive use of this function for the
@@ -195,10 +230,15 @@ fn test_scenario(
         .expect("lock output_dir to create log")
         .create_log(scenario)?;
     log_file.message(&scenario.to_string());
-    if let Scenario::Mutant(mutant) = scenario {
-        log_file.message(&format!("mutation diff:\n{}", mutant.diff()));
-        mutant.apply(build_dir)?;
-    }
+    let applied = scenario
+        .mutant()
+        .map(|mutant| {
+            // TODO: This is slightly inefficient as it computes the mutated source twice,
+            // once for the diff and once to write it out.
+            log_file.message(&format!("mutation diff:\n{}", mutant.diff()));
+            mutant.apply(build_dir)
+        })
+        .transpose()?;
     console.scenario_started(scenario, log_file.path())?;
 
     let mut outcome = ScenarioOutcome::new(&log_file, scenario.clone());
@@ -247,9 +287,7 @@ fn test_scenario(
             break;
         }
     }
-    if let Scenario::Mutant(mutant) = scenario {
-        mutant.unapply(build_dir)?;
-    }
+    drop(applied);
     output_mutex
         .lock()
         .expect("lock output dir to add outcome")

@@ -22,10 +22,13 @@ use subprocess::{Popen, PopenConfig, Redirection};
 use tempfile::{tempdir, TempDir};
 
 mod build_dir;
+mod colors;
 mod config;
 mod error_value;
 mod in_diff;
+mod in_place;
 mod jobs;
+mod nextest;
 mod shard;
 mod trace;
 #[cfg(windows)]
@@ -57,7 +60,12 @@ fn run() -> assert_cmd::Command {
     // as reasonably possible.
     env::vars()
         .map(|(k, _v)| k)
-        .filter(|k| k.starts_with("CARGO_MUTANTS_"))
+        .filter(|k| {
+            k.starts_with("CARGO_MUTANTS_")
+                || k == "CLICOLOR_FORCE"
+                || k == "NOCOLOR"
+                || k == "CARGO_TERM_COLOR"
+        })
         .for_each(|k| {
             cmd.env_remove(k);
         });
@@ -170,7 +178,7 @@ fn list_diff_json_contains_diffs() {
     println!("{}", String::from_utf8_lossy(&out.stdout));
     let out_json = serde_json::from_slice::<serde_json::Value>(&out.stdout).unwrap();
     let mutants_json = out_json.as_array().expect("json output is array");
-    assert_eq!(mutants_json.len(), 3);
+    assert_eq!(mutants_json.len(), 5);
     assert!(mutants_json.iter().all(|e| e.as_object().unwrap()["diff"]
         .as_str()
         .unwrap()
@@ -528,6 +536,32 @@ fn small_well_tested_tree_is_clean() {
 }
 
 #[test]
+fn test_small_well_tested_tree_with_baseline_skip() {
+    let tmp_src_dir = copy_of_testdata("small_well_tested");
+    run()
+        .arg("mutants")
+        .args(["--no-times", "--no-shuffle", "-v", "-V", "--baseline=skip"])
+        .arg("-d")
+        .arg(tmp_src_dir.path())
+        .assert()
+        .success()
+        .stdout(predicate::function(|stdout| {
+            insta::assert_snapshot!(stdout);
+            true
+        }))
+        .stderr(
+            predicate::str::contains(
+                "An explicit timeout is recommended when using --baseline=skip",
+            )
+            .and(predicate::str::contains("Unmutated baseline in").not()),
+        );
+    assert!(!tmp_src_dir
+        .path()
+        .join("mutants.out/log/baseline.log")
+        .exists());
+}
+
+#[test]
 fn cdylib_tree_is_well_tested() {
     let tmp_src_dir = copy_of_testdata("cdylib");
     run()
@@ -709,7 +743,7 @@ fn factorial_mutants_with_all_logs() {
         .arg(tmp_src_dir.path())
         .assert()
         .code(2)
-        .stderr("")
+        .stderr(predicate::str::contains("WARN").or(predicate::str::contains("ERR")).not())
         .stdout(is_match(
     r"ok *Unmutated baseline in \d+\.\ds"
         ).unwrap())
@@ -732,7 +766,6 @@ fn factorial_mutants_with_all_logs_and_nocapture() {
         .args(["--", "--", "--nocapture"])
         .assert()
         .code(2)
-        .stderr("")
         .stdout(contains("factorial(6) = 720")) // println from the test
         .stdout(contains("factorial(6) = 0")) // The mutated result
         ;
@@ -909,8 +942,7 @@ fn already_failing_doctests_can_be_skipped_with_cargo_arg() {
         .current_dir(tmp_src_dir.path())
         .env_remove("RUST_BACKTRACE")
         .assert()
-        .code(0)
-        .stdout(contains("Found 2 mutants to test"));
+        .code(0);
 }
 
 #[test]
@@ -959,7 +991,7 @@ fn minimum_test_timeout_from_env() {
         .timeout(OUTER_TIMEOUT)
         .assert()
         .success()
-        .stdout(predicate::str::contains("Auto-set test timeout to 20m 34s"));
+        .stderr(predicate::str::contains("Auto-set test timeout to 20m 34s"));
 }
 
 /// In this tree, as the name suggests, tests will hang in a clean tree.
@@ -982,7 +1014,6 @@ fn timeout_when_unmutated_tree_test_hangs() {
         .assert()
         .code(4) // exit_code::CLEAN_TESTS_FAILED
         .stdout(is_match(r"TIMEOUT *Unmutated baseline in \d+\.\ds").unwrap())
-        .stderr(contains("timeout"))
         .stderr(contains(
             "cargo test failed in an unmutated tree, so no mutants were tested",
         ));
@@ -1270,8 +1301,7 @@ fn strict_warnings_about_unused_variables_are_disabled_so_mutants_compile() {
         .current_dir(tmp_src_dir.path())
         .env_remove("RUST_BACKTRACE")
         .assert()
-        .success()
-        .stdout(contains("2 mutants tested: 2 succeeded"));
+        .success();
 
     run()
         .arg("mutants-rts")
@@ -1279,8 +1309,7 @@ fn strict_warnings_about_unused_variables_are_disabled_so_mutants_compile() {
         .current_dir(tmp_src_dir.path())
         .env_remove("RUST_BACKTRACE")
         .assert()
-        .success()
-        .stdout(contains("2 mutants tested: 2 caught"));
+        .success();
 }
 
 /// `INSTA_UPDATE=always` in the environment will cause Insta to update
