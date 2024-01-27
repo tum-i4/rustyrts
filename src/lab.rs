@@ -17,12 +17,12 @@ use tracing::warn;
 #[allow(unused)]
 use tracing::{debug, debug_span, error, info, trace};
 
+use crate::cargo::run_cargo;
 use crate::console::Console;
 use crate::outcome::{LabOutcome, Phase, ScenarioOutcome};
 use crate::output::OutputDir;
 use crate::package::Package;
 use crate::*;
-use crate::{cargo::run_cargo, options::Mode};
 
 /// Run all possible mutation experiments.
 ///
@@ -57,23 +57,11 @@ pub fn test_mutants(
     let all_packages = mutants.iter().map(|m| m.package()).unique().collect_vec();
     debug!(?all_packages);
 
-    let mode = options.mode.clone().unwrap_or_default();
     let output_mutex = Mutex::new(output_dir);
-    let mut build_dirs = vec![BuildDir::new(workspace_dir, &options, console)?];
-    let baseline_outcome = {
-        let _span = debug_span!("baseline").entered();
-        test_scenario(
-            &mode,
-            &mut build_dirs[0],
-            &output_mutex,
-            &Scenario::Baseline,
-            &all_packages,
-            options.test_timeout.unwrap_or(Duration::MAX),
-            &options,
-            console,
-            true,
-            "",
-        )?
+    let build_dir = if options.in_place {
+        BuildDir::in_place(workspace_dir)?
+    } else {
+        BuildDir::copy_from(workspace_dir, options.gitignore, options.leak_dirs, console)?
     };
     let baseline_outcome = match options.baseline {
         BaselineStrategy::Run => {
@@ -85,6 +73,8 @@ pub fn test_mutants(
                 options.test_timeout.unwrap_or(Duration::MAX),
                 &options,
                 console,
+                true,
+                "",
             )?;
             if !outcome.success() {
                 error!(
@@ -140,8 +130,7 @@ pub fn test_mutants(
                         let package = mutant.package().clone();
                         // We don't care about the outcome; it's been collected into the output_dir.
                         let _outcome = test_scenario(
-                            &mode,
-                            &mut build_dir,
+                            &build_dir,
                             &output_mutex,
                             &Scenario::Mutant(mutant),
                             &[&package],
@@ -214,8 +203,7 @@ fn test_timeout(baseline_outcome: &Option<ScenarioOutcome>, options: &Options) -
 /// The [BuildDir] is passed as mutable because it's for the exclusive use of this function for the
 /// duration of the test.
 fn test_scenario(
-    mode: &Mode,
-    build_dir: &mut BuildDir,
+    build_dir: &BuildDir,
     output_mutex: &Mutex<OutputDir>,
     scenario: &Scenario,
     test_packages: &[&Package],
@@ -245,8 +233,17 @@ fn test_scenario(
     let phases: Vec<Phase> = if options.check_only {
         vec![Phase::Check]
     } else {
-        let test_phase = mode.phase();
-        vec![Phase::Build, test_phase]
+        let test_phase = match options.test_tool {
+            TestTool::Cargo => Phase::Test,
+            TestTool::Nextest => panic!("Nextest is not supported"),
+            TestTool::Dynamic => Phase::Dynamic,
+            TestTool::Static => Phase::Static,
+        };
+        let build_phase = match options.test_tool {
+            TestTool::Dynamic => Phase::BuildDynamic,
+            _ => Phase::Build,
+        };
+        vec![build_phase, test_phase]
     };
     for phase in phases {
         console.scenario_phase_started(scenario, phase);
@@ -257,16 +254,14 @@ fn test_scenario(
         let mut rustc_wrapper = vec![];
         let target_dir = build_dir.path().to_string() + "/target";
         let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/cargo-rustyrts";
-        if mode.phase() == Phase::Dynamic {
-            if let Phase::Build = phase {
-                create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
+        if let Phase::BuildDynamic = phase {
+            create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
 
-                rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
-                rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
+            rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
+            rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
 
-                rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
-                rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
-            }
+            rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
+            rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
         }
         let phase_result = run_cargo(
             build_dir,

@@ -125,7 +125,7 @@ fn diff_with_multiple_deletions_is_ok() {
     let tmp = copy_of_testdata("diff1");
 
     run()
-        .args(["mutants", "--no-shuffle", "-d"])
+        .args(["mutants-rts", "--no-shuffle", "-d"])
         .arg(tmp.path())
         .arg("--in-diff")
         .arg(diff_file.path())

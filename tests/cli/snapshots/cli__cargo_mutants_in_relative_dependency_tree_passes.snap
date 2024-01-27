@@ -4,9 +4,5 @@ expression: stdout
 ---
 Found 6 mutants to test
 ok       Unmutated baseline
-caught   src/lib.rs:6:5: replace double_factorial -> u32 with 0
-caught   src/lib.rs:6:5: replace double_factorial -> u32 with 1
-caught   src/lib.rs:6:10: replace < with == in double_factorial
-caught   src/lib.rs:6:10: replace < with > in double_factorial
-4 mutants tested: 4 caught
+6 mutants tested: 6 caught
 

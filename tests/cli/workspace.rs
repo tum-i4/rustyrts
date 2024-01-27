@@ -5,8 +5,6 @@
 use std::fs::read_to_string;
 
 use insta::assert_snapshot;
-use itertools::Itertools;
-use indoc::indoc;
 use serde_json::json;
 
 use super::{assert_bytes_eq_json, copy_of_testdata, run};

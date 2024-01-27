@@ -5,7 +5,5 @@ expression: stdout
 Found 5 mutants to test
 ok       Unmutated baseline
 MISSED   src/bin/factorial.rs:2:5: replace main with ()
-caught   src/bin/factorial.rs:8:5: replace factorial -> u32 with 0
-caught   src/bin/factorial.rs:8:5: replace factorial -> u32 with 1
-3 mutants tested: 1 missed, 2 caught
+5 mutants tested: 1 missed, 4 caught
 

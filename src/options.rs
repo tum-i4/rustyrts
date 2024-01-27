@@ -19,36 +19,10 @@ use tracing::warn;
 use crate::config::Config;
 use crate::*;
 
-#[derive(ValueEnum, PartialEq, Clone, Debug)]
-pub enum Mode {
-    Test,
-    Dynamic,
-    Static,
-}
-
-impl Mode {
-    pub fn phase(&self) -> Phase {
-        match self {
-            Mode::Test => Phase::Test,
-            Mode::Dynamic => Phase::Dynamic,
-            Mode::Static => Phase::Static,
-        }
-    }
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Self::Test
-    }
-}
-
 /// Options for mutation testing, based on both command-line arguments and the
 /// config file.
 #[derive(Default, Debug, Clone)]
 pub struct Options {
-    /// rustyRTS mode
-    pub mode: Option<Mode>,
-
     /// Run tests in an unmutated tree?
     pub baseline: BaselineStrategy,
 
@@ -133,6 +107,30 @@ pub struct Options {
     pub test_tool: TestTool,
 }
 
+// TODO: remove
+// #[derive(ValueEnum, PartialEq, Clone, Debug)]
+// pub enum Mode {
+//     Test,
+//     Dynamic,
+//     Static,
+// }
+
+// impl Mode {
+//     pub fn phase(&self) -> Phase {
+//         match self {
+//             Mode::Test => Phase::Test,
+//             Mode::Dynamic => Phase::Dynamic,
+//             Mode::Static => Phase::Static,
+//         }
+//     }
+// }
+
+// impl Default for Mode {
+//     fn default() -> Self {
+//         Self::Test
+//     }
+// }
+
 /// Choice of tool to use to run tests.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Display, Deserialize)]
 #[strum(serialize_all = "snake_case")]
@@ -144,6 +142,12 @@ pub enum TestTool {
 
     /// Use `cargo nextest`.
     Nextest,
+
+    // Use 'cargo rustyrts dynamic'
+    Dynamic,
+
+    // Use 'cargo rustyrts static'
+    Static,
 }
 
 /// Join two slices into a new vector.
@@ -212,13 +216,7 @@ impl Options {
         };
 
         let options = Options {
-            mode: args.mode.clone(),
-            additional_cargo_args: args
-                .cargo_arg
-                .iter()
-                .cloned()
-                .chain(config.additional_cargo_args.iter().cloned())
-                .collect(),
+            additional_cargo_args: join_slices(&args.cargo_arg, &config.additional_cargo_args),
             additional_cargo_test_args: args
                 .cargo_test_args
                 .iter()
@@ -226,6 +224,7 @@ impl Options {
                 .chain(config.additional_cargo_test_args.iter().cloned())
                 .chain(json_args.into_iter().map(|s| s.to_string()))
                 .collect(),
+            baseline: args.baseline,
             check_only: args.check,
             colors: args.colors,
             emit_json: args.json,
@@ -250,10 +249,7 @@ impl Options {
             show_times: !args.no_times,
             show_all_logs: args.all_logs,
             test_timeout: args.timeout.map(Duration::from_secs_f64),
-            emit_json: args.json,
-            colors: true, // TODO: An option for this and use CLICOLORS.
-            emit_diffs: args.diff,
-            minimum_test_timeout,
+            test_tool: args.test_tool.or(config.test_tool).unwrap_or_default(),
             emit_mir: args.emit_mir,
         };
         options.error_values.iter().for_each(|e| {
@@ -308,7 +304,7 @@ mod test {
 
     #[test]
     fn default_options() {
-        let args = Args::parse_from(["mutants"]);
+        let args = Args::parse_from(["mutants-rts"]);
         let options = Options::new(&args, &Config::default()).unwrap();
         assert!(!options.check_only);
         assert_eq!(options.test_tool, TestTool::Cargo);
@@ -316,22 +312,22 @@ mod test {
 
     #[test]
     fn options_from_test_tool_arg() {
-        let args = Args::parse_from(["mutants", "--test-tool", "nextest"]);
+        let args = Args::parse_from(["mutants-rts", "--test-tool", "nextest"]);
         let options = Options::new(&args, &Config::default()).unwrap();
         assert_eq!(options.test_tool, TestTool::Nextest);
     }
 
     #[test]
     fn options_from_baseline_arg() {
-        let args = Args::parse_from(["mutants", "--baseline", "skip"]);
+        let args = Args::parse_from(["mutants-rts", "--baseline", "skip"]);
         let options = Options::new(&args, &Config::default()).unwrap();
         assert_eq!(options.baseline, BaselineStrategy::Skip);
 
-        let args = Args::parse_from(["mutants", "--baseline", "run"]);
+        let args = Args::parse_from(["mutants-rts", "--baseline", "run"]);
         let options = Options::new(&args, &Config::default()).unwrap();
         assert_eq!(options.baseline, BaselineStrategy::Run);
 
-        let args = Args::parse_from(["mutants"]);
+        let args = Args::parse_from(["mutants-rts"]);
         let options = Options::new(&args, &Config::default()).unwrap();
         assert_eq!(options.baseline, BaselineStrategy::Run);
     }
@@ -343,7 +339,7 @@ mod test {
         "#};
         let mut config_file = NamedTempFile::new().unwrap();
         config_file.write_all(config.as_bytes()).unwrap();
-        let args = Args::parse_from(["mutants"]);
+        let args = Args::parse_from(["mutants-rts"]);
         let config = Config::read_file(config_file.path()).unwrap();
         let options = Options::new(&args, &config).unwrap();
         assert_eq!(options.test_tool, TestTool::Nextest);

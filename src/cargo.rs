@@ -9,7 +9,6 @@ use anyhow::Result;
 use itertools::Itertools;
 use tracing::{debug, debug_span};
 
-use crate::options::TestTool;
 use crate::outcome::PhaseResult;
 use crate::package::Package;
 use crate::process::Process;
@@ -239,6 +238,8 @@ mod test {
                 "test",
                 "--target-dir",
                 "target_test",
+                "-Z",
+                "no-index-update",
                 "--no-fail-fast",
                 //"--lib",
                 //"--bins",
@@ -249,11 +250,29 @@ mod test {
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Dynamic, &options)[1..],
-            ["rustyrts", "dynamic", "--", "--", "--", "--workspace"]
+            [
+                "rustyrts",
+                "dynamic",
+                "-Z",
+                "no-index-update",
+                "--",
+                "--",
+                "--",
+                "--workspace"
+            ]
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Static, &options)[1..],
-            ["rustyrts", "static", "--", "--", "--", "--workspace"]
+            [
+                "rustyrts",
+                "static",
+                "-Z",
+                "no-index-update",
+                "--",
+                "--",
+                "--",
+                "--workspace"
+            ]
         );
     }
 
@@ -307,6 +326,8 @@ mod test {
                 "test",
                 "--target-dir",
                 "target_test",
+                "-Z",
+                "no-index-update",
                 "--no-fail-fast",
                 //"--lib",
                 //"--bins",
@@ -322,6 +343,8 @@ mod test {
             [
                 "rustyrts",
                 "dynamic",
+                "-Z",
+                "no-index-update",
                 "--",
                 "--",
                 "--",
@@ -335,6 +358,8 @@ mod test {
             [
                 "rustyrts",
                 "static",
+                "-Z",
+                "no-index-update",
                 "--",
                 "--",
                 "--",
@@ -391,6 +416,8 @@ mod test {
                 "test",
                 "--target-dir",
                 "target_test",
+                "-Z",
+                "no-index-update",
                 "--no-fail-fast",
                 //"--lib",
                 //"--bins",
@@ -407,6 +434,8 @@ mod test {
             [
                 "rustyrts",
                 "dynamic",
+                "-Z",
+                "no-index-update",
                 "--",
                 "--verbose",
                 "--",
@@ -422,6 +451,8 @@ mod test {
             [
                 "rustyrts",
                 "static",
+                "-Z",
+                "no-index-update",
                 "--",
                 "--verbose",
                 "--",

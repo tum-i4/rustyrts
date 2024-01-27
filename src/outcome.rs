@@ -37,6 +37,7 @@ pub enum Phase {
     Test,
     Dynamic,
     Static,
+    BuildDynamic,
 }
 
 impl Phase {
@@ -44,6 +45,7 @@ impl Phase {
         match self {
             Phase::Check => vec!["check"],
             Phase::Build => vec!["build"],
+            Phase::BuildDynamic => vec!["build"],
 
             Phase::Test => vec!["test"],
             Phase::Dynamic => vec!["rustyrts", "dynamic"],

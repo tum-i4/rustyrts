@@ -539,7 +539,7 @@ fn small_well_tested_tree_is_clean() {
 fn test_small_well_tested_tree_with_baseline_skip() {
     let tmp_src_dir = copy_of_testdata("small_well_tested");
     run()
-        .arg("mutants")
+        .arg("mutants-rts")
         .args(["--no-times", "--no-shuffle", "-v", "-V", "--baseline=skip"])
         .arg("-d")
         .arg(tmp_src_dir.path())

@@ -16,7 +16,7 @@ fn in_place_check_leaves_no_changes() -> Result<()> {
     let tmp = copy_of_testdata("small_well_tested");
     let output_tmp = TempDir::new().unwrap();
     let cmd = run()
-        .args(["mutants", "--in-place", "--check", "-d"])
+        .args(["mutants-rts", "--in-place", "--check", "-d"])
         .arg(tmp.path())
         .arg("-o")
         .arg(output_tmp.path())

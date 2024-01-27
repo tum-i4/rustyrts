@@ -165,7 +165,7 @@ fn list_with_config_file_regexps() {
         "#,
     );
     let cmd = run()
-        .args(["mutants", "--list", "--line-col=false", "-d"])
+        .args(["mutants-rts", "--list", "--line-col=false", "-d"])
         .arg(testdata.path())
         .assert()
         .success();
@@ -197,7 +197,7 @@ fn exclude_re_overrides_config() {
         .stdout(predicates::str::is_empty());
     // Also tests that the alias --exclude-regex is accepted
     let cmd = run()
-        .args(["mutants", "--list", "--line-col=false", "-d"])
+        .args(["mutants-rts", "--list", "--line-col=false", "-d"])
         .arg(testdata.path())
         .args(["--exclude-regex", " -> "])
         .args(["-f", "src/simple_fns.rs"])

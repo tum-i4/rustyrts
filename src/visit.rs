@@ -543,13 +543,10 @@ fn attr_is_mutants_skip(attr: &Attribute) -> bool {
 
 #[cfg(test)]
 mod test {
-    use std::path::Path;
-
     use indoc::indoc;
     use itertools::Itertools;
 
     use super::*;
-    use crate::config::Config;
     use crate::package::Package;
     use crate::source::SourceFile;
 

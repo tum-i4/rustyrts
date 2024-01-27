@@ -42,7 +42,6 @@ use clap::builder::styling::{self};
 use clap::builder::Styles;
 use clap::{ArgAction, CommandFactory, Parser, ValueEnum};
 use clap_complete::{generate, Shell};
-use options::Mode;
 use color_print::cstr;
 use tracing::debug;
 
@@ -105,10 +104,6 @@ pub enum BaselineStrategy {
     after_help = SPONSOR_MESSAGE,
 )]
 struct Args {
-    /// rustyRTS mode
-    #[arg(value_enum)]
-    mode: Option<Mode>,
-
     /// show cargo output for all invocations (very verbose).
     #[arg(long, help_heading = "Output")]
     all_logs: bool,
@@ -118,7 +113,7 @@ struct Args {
     baseline: BaselineStrategy,
 
     /// print mutants that were caught by tests.
-    #[arg(long, short = 'v', help_heading = "Output")]
+    #[arg(long, short = 'v', help_heading = "Output", default_value_t = true)]
     caught: bool,
 
     /// cargo check generated mutants, but don't run tests.
@@ -283,7 +278,7 @@ struct Args {
     shard: Option<Shard>,
 
     /// tool used to run test suites: cargo or nextest.
-    #[arg(long, help_heading = "Execution")]
+    #[arg(help_heading = "Execution")]
     test_tool: Option<TestTool>,
 
     /// maximum run time for all cargo commands, in seconds.

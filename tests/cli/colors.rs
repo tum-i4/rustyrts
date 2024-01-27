@@ -25,7 +25,7 @@ fn has_color_debug() -> impl Predicate<str> {
 #[test]
 fn no_color_in_test_subprocesses_by_default() {
     run()
-        .args(["mutants", "-d", "testdata/small_well_tested", "--list"])
+        .args(["mutants-rts", "-d", "testdata/small_well_tested", "--list"])
         .assert()
         .success()
         .stdout(has_ansi_escape().not())
@@ -38,7 +38,7 @@ fn no_color_in_test_subprocesses_by_default() {
 fn colors_always_shows_in_stdout_and_trace() {
     run()
         .args([
-            "mutants",
+            "mutants-rts",
             "-d",
             "testdata/small_well_tested",
             "--list",
@@ -56,7 +56,7 @@ fn cargo_term_color_env_shows_colors() {
     run()
         .env("CARGO_TERM_COLOR", "always")
         .args([
-            "mutants",
+            "mutants-rts",
             "-d",
             "testdata/small_well_tested",
             "--list",
@@ -73,7 +73,7 @@ fn invalid_cargo_term_color_rejected_with_message() {
     run()
         .env("CARGO_TERM_COLOR", "invalid")
         .args([
-            "mutants",
+            "mutants-rts",
             "-d",
             "testdata/small_well_tested",
             "--list",
@@ -93,7 +93,7 @@ fn clicolor_force_shows_in_stdout_and_trace() {
     run()
         .env("CLICOLOR_FORCE", "1")
         .args([
-            "mutants",
+            "mutants-rts",
             "-d",
             "testdata/small_well_tested",
             "--list",

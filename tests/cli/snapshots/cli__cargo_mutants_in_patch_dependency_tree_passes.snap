@@ -4,8 +4,5 @@ expression: stdout
 ---
 Found 5 mutants to test
 ok       Unmutated baseline
-caught   src/lib.rs:7:5: replace is_even -> bool with true
-caught   src/lib.rs:7:5: replace is_even -> bool with false
-caught   src/lib.rs:7:11: replace == with != in is_even
-3 mutants tested: 3 caught
+5 mutants tested: 5 caught
 
