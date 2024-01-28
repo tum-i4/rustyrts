@@ -247,9 +247,10 @@ fn test_scenario(
     };
     for phase in phases {
         console.scenario_phase_started(scenario, phase);
-        let timeout = match phase {
-            Phase::Test => test_timeout,
-            _ => Duration::MAX,
+        let timeout = if phase.is_test_phase() {
+            test_timeout
+        } else {
+            Duration::MAX
         };
         let mut rustc_wrapper = vec![];
         let target_dir = build_dir.path().to_string() + "/target";
