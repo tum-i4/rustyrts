@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, trace};
 use once_cell::sync::OnceCell;
 use rustc_ast::{
     token::{Delimiter, Token, TokenKind},
@@ -191,7 +191,7 @@ fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> &'tcx Body<
 
             let ret = if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
                 //##############################################################
-                // 1. Here the MIR is modified to trace this function at runtime
+                // 1. Here the MIR is modified to debug this function at runtime
                 let cloned = result.clone();
                 let leaked = Box::leak(Box::new(cloned));
 
@@ -220,7 +220,7 @@ fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> &'tcx Body<
 
     if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
         //##############################################################
-        // 1. Here the MIR is modified to trace this function at runtime
+        // 1. Here the MIR is modified to debug this function at runtime
 
         modify_body(tcx, result);
     }
@@ -258,7 +258,7 @@ fn custom_vtable_entries<'tcx>(
                     let checksum = get_checksum_vtbl_entry(tcx, &entry);
                     let name = def_id_name(tcx, def_id, false, true);
 
-                    debug!("Considering {:?} in checksums of {}", instance, name);
+                    trace!("Considering {:?} in checksums of {}", instance, name);
 
                     insert_hashmap(
                         &mut *NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap(),
