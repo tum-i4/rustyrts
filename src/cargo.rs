@@ -78,7 +78,7 @@ pub fn cargo_argv(
     let mut cargo_args = vec![cargo_bin()];
     cargo_args.extend(phase.name().iter().map(|s| s.to_string()));
 
-    if phase == Phase::Check || phase == Phase::Build {
+    if phase == Phase::Check || phase == Phase::Build || phase == Phase::BuildDynamic {
         //cargo_args.push("--lib".to_string());
         //cargo_args.push("--bins".to_string());
         cargo_args.push("--tests".to_string());
@@ -233,6 +233,19 @@ mod test {
             ]
         );
         assert_eq!(
+            cargo_argv(build_dir, None, Phase::BuildDynamic, &options)[1..],
+            [
+                "build",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--workspace"
+            ]
+        );
+        assert_eq!(
             cargo_argv(build_dir, None, Phase::Test, &options)[1..],
             [
                 "test",
@@ -308,6 +321,20 @@ mod test {
         );
         assert_eq!(
             cargo_argv(build_dir, Some(&[&package]), Phase::Build, &options)[1..],
+            [
+                "build",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--manifest-path",
+                build_manifest_path.as_str(),
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, Some(&[&package]), Phase::BuildDynamic, &options)[1..],
             [
                 "build",
                 //"--lib",
@@ -398,6 +425,20 @@ mod test {
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Build, &options)[1..],
+            [
+                "build",
+                //"--lib",
+                //"--bins",
+                "--tests",
+                "--examples",
+                "--profile",
+                "test",
+                "--workspace",
+                "--verbose"
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, None, Phase::BuildDynamic, &options)[1..],
             [
                 "build",
                 //"--lib",

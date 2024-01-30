@@ -209,13 +209,13 @@ impl ScenarioOutcome {
         &self.phase_results
     }
 
-    /// Return the total time spent in commands for one phase.
+    /// Return the total time spent in commands for the test phase.
     ///
     /// If the phase was not run, returns zero.
-    pub fn total_phase_duration(&self, phase: Phase) -> Duration {
+    pub fn test_phase_duration(&self) -> Duration {
         self.phase_results
             .iter()
-            .filter(|pr| pr.phase == phase)
+            .filter(|pr| pr.phase.is_test_phase())
             .map(|pr| pr.duration)
             .sum()
     }

@@ -309,13 +309,14 @@ mod test {
         assert!(!options.check_only);
         assert_eq!(options.test_tool, TestTool::Cargo);
     }
-
-    #[test]
-    fn options_from_test_tool_arg() {
-        let args = Args::parse_from(["mutants-rts", "--test-tool", "nextest"]);
-        let options = Options::new(&args, &Config::default()).unwrap();
-        assert_eq!(options.test_tool, TestTool::Nextest);
-    }
+    
+    // Nexteest is not supported
+    // #[test]
+    // fn options_from_test_tool_arg() {
+        // let args = Args::parse_from(["mutants-rts", "--test-tool", "nextest"]);
+        // let options = Options::new(&args, &Config::default()).unwrap();
+        // assert_eq!(options.test_tool, TestTool::Nextest);
+    // }
 
     #[test]
     fn options_from_baseline_arg() {

@@ -183,7 +183,7 @@ fn test_timeout(baseline_outcome: &Option<ScenarioOutcome>, options: &Options) -
                 baseline_outcome
                 .as_ref()
                 .expect("Baseline tests should have run")
-                .total_phase_duration(Phase::Test)
+                .test_phase_duration()
                 .as_secs() // round
                 *5,
             ),
