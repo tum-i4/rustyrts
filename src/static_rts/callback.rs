@@ -1,6 +1,7 @@
 use std::mem::transmute;
 use std::sync::Mutex;
 
+use crate::constants::SUFFIX_DYN;
 use crate::{
     callbacks_shared::{
         excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
@@ -9,7 +10,6 @@ use crate::{
     fs_utils::get_graph_path,
     static_rts::visitor::ResolvingVisitor,
 };
-use crate::constants::SUFFIX_DYN;
 use itertools::Itertools;
 use log::{debug, trace};
 use rustc_driver::{Callbacks, Compilation};
@@ -81,43 +81,41 @@ impl Callbacks for StaticRTSCallbacks {
 
 impl StaticRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        if let Some((main, _)) = tcx.entry_fn(()) {
-            let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-            let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
+        let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+        let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
 
-            let mut visitor = ResolvingVisitor::new(tcx, main);
+        let mut visitor = ResolvingVisitor::new(tcx);
 
-            debug!("Created graph for {}", crate_name);
+        debug!("Created graph for {}", crate_name);
 
-            for def in tcx.mir_keys(()) {
-                let const_context = tcx.hir().body_const_context(*def);
-                if let Some(ConstContext::ConstFn) | None = const_context {
-                    let attrs = &tcx.hir_crate(()).owners
-                        [tcx.local_def_id_to_hir_id(*def).owner.def_id]
-                        .as_owner()
-                        .map_or(AttributeMap::EMPTY, |o| &o.attrs)
-                        .map;
+        for def in tcx.mir_keys(()) {
+            let const_context = tcx.hir().body_const_context(*def);
+            if let Some(ConstContext::ConstFn) | None = const_context {
+                let attrs = &tcx.hir_crate(()).owners
+                    [tcx.local_def_id_to_hir_id(*def).owner.def_id]
+                    .as_owner()
+                    .map_or(AttributeMap::EMPTY, |o| &o.attrs)
+                    .map;
 
-                    let is_test = attrs
-                        .iter()
-                        .flat_map(|(_, list)| list.iter())
-                        .unique_by(|i| i.id)
-                        .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
+                let is_test = attrs
+                    .iter()
+                    .flat_map(|(_, list)| list.iter())
+                    .unique_by(|i| i.id)
+                    .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
 
-                    if is_test {
-                        visitor.register_test(def.to_def_id());
-                    }
+                if is_test {
+                    visitor.register_test(def.to_def_id());
                 }
             }
-
-            let graph = visitor.finalize();
-            write_to_file(
-                graph.to_string(),
-                PATH_BUF.get().unwrap().clone(),
-                |buf| get_graph_path(buf, &crate_name, crate_id),
-                false,
-            );
         }
+
+        let graph = visitor.finalize();
+        write_to_file(
+            graph.to_string(),
+            PATH_BUF.get().unwrap().clone(),
+            |buf| get_graph_path(buf, &crate_name, crate_id),
+            false,
+        );
 
         run_analysis_shared(tcx);
     }
