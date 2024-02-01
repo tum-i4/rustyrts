@@ -1,15 +1,14 @@
 use itertools::Itertools;
-use rustyrts::constants::{
+use rustyrts::{constants::{
     DESC_FLAG, ENDING_CHANGES, ENDING_PROCESS_TRACE, ENDING_TEST,
     ENDING_TRACE, ENV_RUSTC_WRAPPER, ENV_RUSTYRTS_ARGS, ENV_RUSTYRTS_MODE, ENV_RUSTYRTS_VERBOSE,
-    ENV_SKIP_ANALYSIS, ENV_TARGET_DIR,VERBOSE_COUNT,
-};
+    ENV_SKIP_ANALYSIS, ENV_TARGET_DIR,VERBOSE_COUNT, ENDING_GRAPH, FILE_COMPLETE_GRAPH, ENDING_CHECKSUM,
+}, static_rts::graph::DependencyGraph, fs_utils::read_lines_filter_map, checksums::Checksums};
 use rustyrts::fs_utils::{
     get_dynamic_path, get_static_path, get_target_dir, read_lines, 
 };
-use rustyrts::constants::ENDING_DEPENDENCIES;
 use serde_json;
-use std::collections::HashSet;
+use std::{collections::HashSet, fs::{OpenOptions, read}, io::Write};
 use std::ffi::OsString;
 use std::fs::{
     create_dir_all,  read_dir, read_to_string, remove_dir_all, remove_file, DirEntry,
@@ -326,7 +325,11 @@ fn main() {
                 // but with the `RUSTC` env var set to the `cargo-rustyrts` binary so that we come back in the other branch,
                 // and dispatch the invocations to `rustyrts-(static|dnyamic)`, respectively.
                 run_cargo_build(mode);
-                select_and_execute_tests(mode);
+                    match mode {
+                        Mode::Static=> select_and_execute_tests_static(),
+                       Mode::Dynamic => select_and_execute_tests_dynamic(),
+                        Mode::Clean=> unreachable!(),
+                    }
                 
             }
             _ => {
@@ -409,9 +412,6 @@ fn run_rustyrts() {
     }
 }
 
-//######################################################################################################################
-// GENERIC RTS
-
 /// This will construct and execute a command like:
 /// `cargo build --bin some_crate_name -v -- cargo-rustyrts-marker-begin --top_crate_name some_top_crate_name --domain interval -v`
 /// using the rustc wrapper for dynamic rustyrts
@@ -451,19 +451,134 @@ fn run_cargo_build(mode: Mode){
     execute(cmd);
 }
 
+//######################################################################################################################
+// STATIC RTS
+
+/// This will construct and execute a command like:
+/// * `cargo test --no-fail-fast -- --exact test_1 test_2 ...` (If some tests are affected)
+/// * `cargo test --no-fail-fast --no-run` (If no tests are affected)
+/// using the rustc wrapper for static rustyrts
+fn select_and_execute_tests_static() {
+    let verbose = has_arg_flag("-v");
+
+    let path_buf = get_static_path(true);
+
+    let files: Vec<DirEntry> = read_dir(path_buf.as_path())
+        .unwrap()
+        .map(|maybe_path| maybe_path.unwrap())
+        .collect();
+
+    // Read graphs
+    let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
+    let edges = read_lines_filter_map(
+        &files,
+        ENDING_GRAPH,
+        |line| !line.trim_start().starts_with("\\") && line.contains("\" -> \""),
+        |line| line,
+    );
+    dependency_graph.import_edges(edges);
+
+    if has_arg_flag("-vv") {
+        let mut complete_graph_path = path_buf.clone();
+        complete_graph_path.push(FILE_COMPLETE_GRAPH);
+        let mut file = match OpenOptions::new()
+            .create(true)
+            .write(true)
+            .append(false)
+            .open(complete_graph_path.as_path())
+        {
+            Ok(file) => file,
+            Err(reason) => panic!("Failed to open file: {}", reason),
+        };
+
+        let checksum_files = files.iter().filter(|path| {
+            path.file_name()
+                .to_str()
+                .unwrap()
+                .ends_with(ENDING_CHECKSUM)
+        });
+        let mut checksums_nodes = HashSet::new();
+
+        for checkums_path in checksum_files {
+            let maybe_checksums = read(checkums_path.path());
+            if let Ok(checksums) = maybe_checksums {
+                let checksums = Checksums::from(checksums.as_slice());
+                for node in checksums.keys() {
+                    checksums_nodes.insert(node.clone());
+                }
+            }
+        }
+
+        match file.write_all(format!("{}\n", dependency_graph.pretty(checksums_nodes)).as_bytes()) {
+            Ok(_) => {}
+            Err(reason) => panic!("Failed to write to file: {}", reason),
+        };
+    }
+
+    // Read changed nodes
+    let changed_nodes = read_lines_filter_map(
+        &files,
+        ENDING_CHANGES,
+        |line| line != "" && dependency_graph.get_node(&line).is_some(),
+        |line| dependency_graph.get_node(&line).unwrap(),
+    );
+
+    if verbose {
+        println!(
+            "Nodes that have changed:\n{}\n",
+            changed_nodes.iter().sorted().join(", ")
+        );
+    } else {
+        println!(
+            "#Nodes that have changed: {}\n",
+            changed_nodes.iter().count()
+        );
+    }
+
+    // Read possibly affected tests
+    let tests = read_lines_filter_map(
+        &files,
+        "test",
+        |line| line != "" && dependency_graph.get_node(&line).is_some(),
+        |line| dependency_graph.get_node(&line).unwrap(),
+    );
+
+    println!("#Tests that have been found: {}\n", tests.iter().count());
+
+        let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
+        let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
+
+        println!(
+            "#Nodes that reach any changed node in the graph: {}\n",
+            reached_nodes.iter().count()
+        );
+
+        if verbose {
+            println!(
+                "Affected tests:\n{}\n",
+                affected_tests.iter().sorted().join(", ")
+            );
+        } else {
+            println!("#Affected tests: {}\n", affected_tests.iter().count());
+        }
+
+        let cmd = cargo_test(Mode::Static, affected_tests.into_iter().map(|test| *test));
+
+        execute(cmd);
+}
+
+//######################################################################################################################
+// DYNAMIC RTS
+
 // This will construct command line like:
 // either   `cargo test --no-fail-fast -- --exact test_1 test_2 ...` (If some tests are affected)
 // or       `cargo test --no-fail-fast --no-run` (If no tests are affected)
 /// using the respective rustc wrapper
-fn select_and_execute_tests(mode: Mode) {
+fn select_and_execute_tests_dynamic() {
     let verbose = has_arg_flag("-v");
 
-    let path_buf = match mode {
-        Mode::Clean => unreachable!(),
-        Mode::Dynamic => get_dynamic_path(true),
-        Mode::Static => get_static_path(true),
-    };
-
+    let path_buf = get_dynamic_path(true);
+    
     let files: Vec<DirEntry> = read_dir(path_buf.as_path())
         .unwrap()
         .map(|maybe_path| maybe_path.unwrap())
@@ -490,12 +605,8 @@ fn select_and_execute_tests(mode: Mode) {
     println!("#Tests that have been found: {}\n", tests.iter().count());
 
     // Read traces or dependencies
-    let ending = match mode {
-        Mode::Clean => unreachable!(),
-        Mode::Dynamic => ENDING_TRACE,
-        Mode::Static => ENDING_DEPENDENCIES,
-    };
-
+    let ending = ENDING_TRACE;
+    
     let mut affected_tests: Vec<(String, Option<HashSet<String>>)> = Vec::new();
 
     let analyzed_tests: Vec<&DirEntry> = files
@@ -596,6 +707,6 @@ fn select_and_execute_tests(mode: Mode) {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
-    let cmd = cargo_test(mode, affected_tests.iter().map(|(n, _)| n));
+    let cmd = cargo_test(Mode::Dynamic, affected_tests.iter().map(|(n, _)| n));
     execute(cmd);
 }

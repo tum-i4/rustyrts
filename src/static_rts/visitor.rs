@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::constants::SUFFIX_DYN;
 use crate::names::def_id_name;
-use log::trace;
+use log::{trace, debug};
 use rustc_middle::mir::{
     interpret::{AllocId, GlobalAlloc, Scalar},
     ConstOperand,
@@ -19,36 +19,59 @@ use rustc_middle::{
     ty::ParamEnv,
 };
 use rustc_middle::{
-    mir::{Body, Const},
+    mir::Const,
     ty::Instance,
 };
 use rustc_span::def_id::DefId;
 
+use super::graph::{DependencyGraph, EdgeType};
+
 pub(crate) struct ResolvingVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
-    acc: HashSet<String>,
     visited: HashSet<(DefId, &'tcx List<GenericArg<'tcx>>)>,
     processed: (DefId, &'tcx List<GenericArg<'tcx>>),
+
+    graph: DependencyGraph<String>,
 }
 
 impl<'tcx, 'g> ResolvingVisitor<'tcx> {
-    pub(crate) fn find_dependencies(tcx: TyCtxt<'tcx>, body: &'tcx Body<'tcx>) -> HashSet<String> {
-        let def_id = body.source.def_id();
-        let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
-        let mut resolver = ResolvingVisitor {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, main: DefId) -> ResolvingVisitor<'tcx> {
+        Self {
             tcx,
-            param_env,
-            acc: HashSet::new(),
+            param_env: tcx.param_env_reveal_all_normalized(main),
             visited: HashSet::new(),
-            processed: (def_id, List::identity_for_item(tcx, def_id)),
-        };
-
-        resolver.visit_body(body);
-        for body in tcx.promoted_mir(def_id) {
-            resolver.visit_body(body)
+            processed: (main, List::identity_for_item(tcx, main)),
+            graph: DependencyGraph::new(),
         }
-        resolver.acc
+    }
+
+    pub(crate) fn finalize(self) -> DependencyGraph<String> {
+        self.graph
+    }
+
+    pub(crate) fn register_test(&mut self, def_id: DefId) {
+        let trimmed_name = def_id_name(self.tcx, def_id, false, true)
+            .trim_end_matches("::{closure#0}")
+            .to_string();
+        let name = def_id_name(self.tcx, def_id, false, false)
+            .trim_end_matches("::{closure#0}")
+            .to_string();
+
+        self.graph.add_edge(name, trimmed_name, EdgeType::Trimmed);
+        debug!(
+            "Registered test {}",
+            def_id_name(self.tcx, def_id, false, false)
+        );
+
+        let body = self.tcx.optimized_mir(def_id);
+        self.processed = (def_id, List::identity_for_item(self.tcx, def_id));
+
+        self.visit_body(body);
+        for body in self.tcx.promoted_mir(def_id) {
+            self.visit_body(body)
+        }
+
     }
 
     fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>, context: Context) {
@@ -60,9 +83,12 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
                 substs,
                 context
             );
-            if let Context::CodeGen(..) = context {
-                self.acc.insert(def_id_name(self.tcx, def_id, false, true));
-            }
+
+            let (outer_def_id, _) = self.processed;
+            let from = def_id_name(self.tcx, outer_def_id, false, true);
+            let to = def_id_name(self.tcx, def_id, false, true);
+            self.graph.add_edge(from, to, EdgeType::from(&context));
+
             if self.tcx.is_mir_available(def_id) {
                 let old_processed = self.processed;
                 self.processed = (def_id, substs);
@@ -94,6 +120,18 @@ enum Dependency {
     Dynamic,
     Drop,
     Contained,
+}
+
+impl From<&Context> for EdgeType {
+    fn from(value: &Context) -> Self {
+        match value {
+            Context::CodeGen(Dependency::Static) => EdgeType::StaticCall,
+            Context::CodeGen(Dependency::Dynamic) => EdgeType::DynamicCall,
+            Context::CodeGen(Dependency::Drop) => EdgeType::Drop,
+            Context::CodeGen(Dependency::Contained) => EdgeType::Contained,
+            Context::Static => EdgeType::Static,
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
@@ -129,11 +167,13 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                 for alloc_id in alloc_ids {
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Function(instance) => {
-                            self.visit(
-                                instance.def_id(),
-                                instance.args,
-                                Context::CodeGen(Dependency::Static),
-                            );
+                            if check_substs(instance.args) {
+                                self.visit(
+                                    instance.def_id(),
+                                    instance.args,
+                                    Context::CodeGen(Dependency::Static),
+                                );
+                            }
                         }
                         GlobalAlloc::Static(def_id) => {
                             self.visit(
@@ -181,7 +221,11 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                     self.tcx.adt_destructor(adt_def.did()).map(|destructor| {
                         // The Drop impl may have additional type parameters, which we need to incorporate here
                         if let Some(impl_def) = self.tcx.impl_of_method(destructor.did) {
-                            substs = substs.rebase_onto(self.tcx, impl_def, List::identity_for_item(self.tcx, impl_def));
+                            substs = substs.rebase_onto(
+                                self.tcx,
+                                impl_def,
+                                List::identity_for_item(self.tcx, impl_def),
+                            );
                         }
                         (destructor.did, substs, Dependency::Drop)
                     })
@@ -207,8 +251,10 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
             });
 
             if let Some((def_id, _substs, Dependency::Dynamic)) = maybe_dependency {
-                self.acc
-                    .insert(def_id_name(self.tcx, def_id, false, true) + SUFFIX_DYN);
+                let name = def_id_name(self.tcx, def_id, false, true);
+                self.graph
+                    .add_edge(name.clone() + SUFFIX_DYN, name, EdgeType::DynamicCall);
+
                 if let Some(trait_def) = self.tcx.trait_of_item(def_id) {
                     let trait_impls = self.tcx.trait_impls_of(trait_def);
 
@@ -221,15 +267,35 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                     for impl_def in blanket_impls.chain(non_blanket_impls) {
                         for impl_fn in self.tcx.associated_item_def_ids(impl_def) {
                             let substs = List::identity_for_item(self.tcx, *impl_fn);
-                            self.visit(*impl_fn, substs, Context::CodeGen(Dependency::Dynamic));
+                            if check_substs(substs) {
+                                self.visit(*impl_fn, substs, Context::CodeGen(Dependency::Dynamic));
+                            }
                         }
                     }
                 }
             }
 
             if let Some((def_id, substs, dependency)) = maybe_dependency {
-                self.visit(def_id, substs, Context::CodeGen(dependency));
+                if let Dependency::Drop = dependency {
+                    self.visit(def_id, substs, Context::CodeGen(dependency));
+                } else {
+                    if check_substs(substs) {
+                        self.visit(def_id, substs, Context::CodeGen(dependency));
+                    }
+                }
             }
         }
     }
+}
+
+fn check_substs(substs: &List<GenericArg<'_>>) -> bool {
+    !substs.iter().any(|arg| {
+        arg.as_type().is_some_and(|ty| {
+            if let TyKind::Param(..) = ty.kind() {
+                true
+            } else {
+                false
+            }
+        })
+    })
 }
