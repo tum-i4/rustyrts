@@ -177,10 +177,15 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                 TyKind::Coroutine(def_id, substs, _) => {
                     Some((def_id, substs, Dependency::Contained))
                 }
-                TyKind::Adt(adt_def, substs) => self
-                    .tcx
-                    .adt_destructor(adt_def.did())
-                    .map(|destructor| (destructor.did, substs, Dependency::Drop)),
+                TyKind::Adt(adt_def, mut substs) => {
+                    self.tcx.adt_destructor(adt_def.did()).map(|destructor| {
+                        // The Drop impl may have additional type parameters, which we need to incorporate here
+                        if let Some(impl_def) = self.tcx.impl_of_method(destructor.did) {
+                            substs = substs.rebase_onto(self.tcx, impl_def, List::identity_for_item(self.tcx, impl_def));
+                        }
+                        (destructor.did, substs, Dependency::Drop)
+                    })
+                }
                 TyKind::FnDef(def_id, substs) => {
                     match Instance::resolve(self.tcx, self.param_env, def_id, substs) {
                         Ok(Some(instance)) if !self.tcx.is_closure(instance.def_id()) => {

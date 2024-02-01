@@ -23,19 +23,10 @@ extern crate rustc_feature;
 extern crate rustc_hir;
 extern crate rustc_middle;
 extern crate rustc_span;
+extern crate rustc_type_ir;
 
-pub mod static_rts {
-    pub mod callback;
-    pub mod visitor;
-}
-
-pub mod dynamic_rts {
-    pub mod callback;
-    pub mod defid_util;
-    pub mod file_loader;
-    pub mod instrumentation;
-    pub mod mir_util;
-}
+pub mod static_rts;
+pub mod dynamic_rts;
 
 pub mod callbacks_shared;
 pub mod checksums;

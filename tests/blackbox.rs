@@ -132,6 +132,8 @@ fn check_same_crate_id(mode: Mode) {
     "test_indirect",
     "test_indirect,changes_static"
 )]
+#[test_case(Mode::Dynamic, "unused_lifetime", "", "changes_unused")]
+#[test_case(Mode::Static, "unused_lifetime", "", "changes_unused")]
 fn blackbox_test_affected(mode: Mode, name: &str, features_baseline: &str, features_changes: &str) {
     let mut dir = PATH.clone();
     dir.push(name);
