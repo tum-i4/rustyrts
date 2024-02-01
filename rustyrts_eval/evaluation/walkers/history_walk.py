@@ -48,13 +48,13 @@ def walk(
     # does not work correctly anymore
     # that is why we fixed the commits that are analyzed
     (strategy, num_commits) = (
-        (GivenWalkerStrategy(commits), 1) #len(commits))
+        (GivenWalkerStrategy(commits), len(commits))
         if commits
         else (RandomWalkerStrategy(repository, branch=branch), 30)
     )
 
     build_options = build_options if build_options else []
-    build_options += ["-Z no-index-update"]
+#    build_options += ["-Z no-index-update"]
 
     test_options = test_options if test_options else []
     test_options += ["-Z unstable-options", "--report-time", "--format", "json"]
