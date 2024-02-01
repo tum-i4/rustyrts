@@ -1,8 +1,14 @@
 # Evaluation
 
+## Prerequisites
+```bash
+sudo apt-get install snapd python3-dev postgresql-client
+sudo snap install scc
+```
+
 ## Install evaluation library
 ```bash
-pip install .
+pip install -e .
 ```
 
 ## Start Postgres database in docker
@@ -15,20 +21,21 @@ docker run --shm-size=1g --name rustyrts-evaluation -e POSTGRES_PASSWORD=rustyrt
 Start a psql session: `psql --host=localhost --port=5432 --username=postgres`
 ```postgresql
 CREATE database mutants;
-CREATE database git;
+CREATE database history_sequential;
+CREATE database history_parallel;
 \q
 ```
 
 Migrate schema:
 ```bash
-rts_eval db postgresql://postgres:rustyrts@localhost:5432/rustyrts migrate  # adapt this to your db connection if necessary
-rts_eval db postgresql://postgres:rustyrts@localhost:5432/git migrate
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/mutants migrate mutants  # adapt this to your db connection if necessary
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_sequential migrate history sequential
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_parallel migrate history parallel
 ```
 
 ## Start recording mutants
 ```bash
-cd rustyrts
-pyhton3 mutants.py
+rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/mutants mutants
 ```
 
 
@@ -36,6 +43,5 @@ pyhton3 mutants.py
 
 ## Dump database
 ```bash
-rts_eval db postgresql://postgres:rustyrts@localhost:5432/mutants dump <name>
-rts_eval db postgresql://postgres:rustyrts@localhost:5432/git dump <name>
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/<db_name> dump <name>
 ```

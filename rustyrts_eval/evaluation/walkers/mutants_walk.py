@@ -45,8 +45,6 @@ def walk(connection, path, branch="main", logging_level="DEBUG", commits=None,
     options = options if options else []
     options.append("--json")
 
-    options.append("--shard 4/2000")
-
     env_vars = env_vars if env_vars else {}
     env_vars.update({"RUSTFLAGS": " ".join(
         ["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])})
