@@ -1,157 +1,39 @@
-name: Tests
-
-permissions:
-  contents: read
+name: mutants-rts - Test
 
 on:
   push:
-    branches:
-      - mutants-rts
+    branches: [ mutants-rts ]
+    tags:
+      - "v*.*.*"
+    paths-ignore:
+      - '**.md'
   pull_request:
-    paths:
-      - ".cargo/*.toml"
-      - ".github/workflows/tests.yml"
-      - "Cargo.*"
-      - "mutants_attrs/**"
-      - "src/**"
-      - "testdata/**"
-      - "tests/**"
+    branches: [ mutatns-rts ]
+    paths-ignore:
+      - '**.md'
 
-# see https://matklad.github.io/2021/09/04/fast-rust-builds.html
 env:
   CARGO_TERM_COLOR: always
-  CARGO_INCREMENTAL: 0
-  CARGO_NET_RETRY: 10
-  CI: 1
-  RUST_BACKTRACE: short
-  RUSTFLAGS: "-W rust-2021-compatibility"
-  RUSTUP_MAX_RETRIES: 10
-  CARGO_MUTANTS_MINIMUM_TEST_TIMEOUT: 60
 
 jobs:
-  test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest] #[macOS-latest, ubuntu-latest, windows-latest]
+  build:
 
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ matrix.version }}
-          components: rustfmt
-      - name: Show Cargo and rustc version
-        run: |
-          cargo --version
-          rustc --version
-      - uses: Swatinem/rust-cache@v2
-      - name: rustfmt
-        run: cargo fmt --all -- --check
-      - uses: taiki-e/install-action@v2
-        name: Install nextest using install-action
-        with:
-          tool: nextest
-      - name: Build
-        run: cargo build --all-targets
-      - name: Test
-        run: cargo test --workspace
-
-  release-binary:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: beta
-      - uses: Swatinem/rust-cache@v2
-      - name: Build
-        run: cargo build --release
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: cargo-mutants-linux
-          path: |
-            target/release/cargo-mutants
 
-  pr-mutants:
-    runs-on: ubuntu-latest
-    needs: [release-binary]
-    if: github.event_name == 'pull_request'
-    strategy:
-      matrix:
-        test_tool: [cargo, nextest]
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Relative diff
-        run: |
-          git branch -av
-          git diff origin/${{ github.base_ref }}.. | tee git.diff
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: beta
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
-        name: Install nextest using install-action
-        with:
-          tool: nextest
-      - name: Download cargo-mutants binary
-        uses: actions/download-artifact@v4
-        with:
-          name: cargo-mutants-linux
-      - name: Install cargo-mutants binary
-        run: |
-          install cargo-mutants $HOME/.cargo/bin/
-      - name: Mutants in-diff
-        # Normally this would have --in-place, but for the sake of exercising more cases, it does not.
-        run: >
-          cargo mutants --no-shuffle -vV --in-diff git.diff --test-tool
-          ${{matrix.test_tool}}
-      - name: Archive mutants.out
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: mutants-incremental-${{ matrix.test_tool}}.out
-          path: mutants.out
+    - uses: actions/checkout@v3
+    - uses: actions-rs/toolchain@v1
+      with:
+        profile: minimal
+        toolchain: nightly-2023-12-28
+        override: true
+    - name: Check Rust version
+      run: cargo --version && rustc --version
 
-  cargo-mutants:
-    runs-on: ubuntu-latest
-    needs: [test, release-binary]
-    strategy:
-      matrix:
-        shard: [0, 1, 2, 3, 4, 5, 6, 7]
-        test_tool: [cargo]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: beta
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@v2
-        name: Install nextest using install-action
-        with:
-          tool: nextest
-      - name: Download cargo-mutants binary
-        uses: actions/download-artifact@v4
-        with:
-          name: cargo-mutants-linux
-      - name: Install cargo-mutants binary
-        run: |
-          install cargo-mutants $HOME/.cargo/bin/
-      - name: Mutants
-        # Skip baselines because this action depends on the tests
-        run: >
-          cargo mutants --no-shuffle -vV --shard ${{ matrix.shard }}/8
-          --test-tool ${{ matrix.test_tool }} --baseline=skip --timeout=240
-          --in-place
-      - name: Archive mutants.out
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: mutants-${{matrix.test_tool}}-shard${{matrix.shard}}.out
-          path: mutants.out
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2.7.0
+           
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
