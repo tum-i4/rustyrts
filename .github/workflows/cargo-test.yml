@@ -1,4 +1,4 @@
-name: Build + Test
+name: rustyrts - Test
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
     - uses: actions-rs/toolchain@v1
       with:
         profile: minimal
-        toolchain: nightly-2023-01-20
+        toolchain: nightly-2023-12-28
         override: true
     - name: Install Rust components
       run: rustup component add rustc-dev llvm-tools-preview
