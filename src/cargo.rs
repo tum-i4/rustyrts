@@ -48,7 +48,7 @@ pub fn run_cargo(
         env.push((k.to_owned(), v.to_owned()));
     }
 
-    let process_status = Process::run(&argv, &env, build_dir.path(), timeout, log_file, console)?;
+    let process_status = Process::run(&argv, &env, build_dir.path(), timeout, log_file, console, &start)?;
     check_interrupted()?;
     debug!(?process_status, elapsed = ?start.elapsed());
     Ok(PhaseResult {
@@ -141,7 +141,7 @@ pub fn cargo_argv(
         cargo_args.push("--manifest-path".to_owned());
         cargo_args.push(build_dir.join(&package.relative_manifest_path).to_string());
     } else if let Some(packages) = packages {
-        for package in packages.iter().map(|p| p.name.to_owned()).sorted() {
+        for package in packages.iter().map(|p| p.name.to_owned() + "@" + &p.version).sorted() {
             cargo_args.push("--package".to_owned());
             cargo_args.push(package);
         }
@@ -293,6 +293,7 @@ mod test {
     fn generate_cargo_args_with_additional_cargo_test_args_and_package() {
         let mut options = Options::default();
         let package_name = "cargo-mutants-testdata-something";
+        let version= "0.0.1";
         let build_dir = Utf8Path::new("/tmp/buildXYZ");
         let relative_manifest_path = Utf8PathBuf::from("testdata/something/Cargo.toml");
         options
@@ -300,6 +301,7 @@ mod test {
             .extend(["--json"].iter().map(|s| s.to_string()));
         let package = Arc::new(Package {
             name: package_name.to_owned(),
+            version: version.to_owned(),
             relative_manifest_path: relative_manifest_path.clone(),
         });
         let build_manifest_path = build_dir.join(relative_manifest_path);

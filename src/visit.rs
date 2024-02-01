@@ -53,6 +53,7 @@ pub fn walk_tree(
         .collect::<Result<Vec<Expr>>>()?;
     console.walk_tree_start();
     let mut file_queue: VecDeque<SourceFile> = top_source_files.iter().cloned().collect();
+    let mut files_visited: Vec<Utf8PathBuf> = Vec::new();
     let mut mutants = Vec::new();
     let mut files: Vec<SourceFile> = Vec::new();
     while let Some(source_file) = file_queue.pop_front() {
@@ -65,12 +66,15 @@ pub fn walk_tree(
         // `--list-files`.
         for mod_name in &external_mods {
             if let Some(mod_path) = find_mod_source(workspace_dir, &source_file, mod_name)? {
-                file_queue.push_back(SourceFile::new(
-                    workspace_dir,
-                    mod_path,
-                    &source_file.package,
-                    false,
-                )?)
+                if !files_visited.contains(&mod_path) {
+                    files_visited.push(mod_path.clone());
+                    file_queue.push_back(SourceFile::new(
+                        workspace_dir,
+                        mod_path,
+                        &source_file.package,
+                        false,
+                    )?)
+                }
             }
         }
         let path = &source_file.tree_relative_path;
@@ -561,6 +565,7 @@ mod test {
             code: Arc::new(code.to_owned()),
             package: Arc::new(Package {
                 name: "unimportant".to_owned(),
+                version: "0.0.1".to_owned(),
                 relative_manifest_path: "Cargo.toml".into(),
             }),
             tree_relative_path: Utf8PathBuf::from("src/lib.rs"),
@@ -576,13 +581,13 @@ mod test {
         );
     }
 
-//    // / As a generic protection against regressions in discovery, the the mutants
-//    // / generated from `cargo-mutants` own tree against a checked-in list.
-//    // /
-//    // / The snapshot will need to be updated when functions are added or removed,
-//    // / as well as when new mutation patterns are added.
-//    // /
-//    // / To stop it being too noisy, we use a custom format with no line numbers.
+    //    // / As a generic protection against regressions in discovery, the the mutants
+    //    // / generated from `cargo-mutants` own tree against a checked-in list.
+    //    // /
+    //    // / The snapshot will need to be updated when functions are added or removed,
+    //    // / as well as when new mutation patterns are added.
+    //    // /
+    //    // / To stop it being too noisy, we use a custom format with no line numbers.
     // #[test]
     // fn expected_mutants_for_own_source_tree() {
     //     let options = Options {

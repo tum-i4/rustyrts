@@ -2,7 +2,7 @@
 
 //! Copy a source tree, with some exclusions, to a new temporary directory.
 
-use std::convert::TryInto;
+use std::{convert::TryInto, path::PathBuf, fs::create_dir_all};
 use std::fs::FileType;
 
 use anyhow::Context;
@@ -43,10 +43,13 @@ pub fn copy_tree(
     console.start_copy();
     let mut total_bytes = 0;
     let mut total_files = 0;
+    let mut path = PathBuf::from(std::env::var_os("HOME").context("create temp dir")?);
+    path.push(".mutants");
+    create_dir_all(path.as_path()).context("create temp dir")?;
     let temp_dir = tempfile::Builder::new()
         .prefix(name_base)
         .suffix(".tmp")
-        .tempdir()
+        .tempdir_in(path)
         .context("create temp dir")?;
     for entry in WalkBuilder::new(from_path)
         .standard_filters(gitignore)

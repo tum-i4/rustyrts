@@ -164,6 +164,7 @@ impl Workspace {
                 .to_owned();
             let package = Arc::new(Package {
                 name: package_metadata.name.clone(),
+                version: package_metadata.version.to_string(),
                 relative_manifest_path,
             });
             tops.push(PackageTop {

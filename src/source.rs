@@ -100,6 +100,7 @@ mod test {
             file_name.parse().unwrap(),
             &Arc::new(Package {
                 name: "imaginary-package".to_owned(),
+                version: "0.0.1".to_owned(),
                 relative_manifest_path: "whatever/Cargo.toml".into(),
             }),
             true,

@@ -47,6 +47,7 @@ impl Process {
         timeout: Duration,
         log_file: &mut LogFile,
         console: &Console,
+        start: &Instant 
     ) -> Result<ProcessStatus> {
         let mut child = Process::start(argv, env, cwd, timeout, log_file)?;
         let process_status = loop {
@@ -57,7 +58,12 @@ impl Process {
                 sleep(WAIT_POLL_INTERVAL);
             }
         };
-        log_file.message(&format!("result: {process_status:?}"));
+        let message = format!(
+        "result: {:?} in {:.3}s",
+        process_status,
+        start.elapsed().as_secs_f64()
+    );
+    log_file.message(&message);
         Ok(process_status)
     }
 
