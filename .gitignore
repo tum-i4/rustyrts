@@ -81,9 +81,11 @@ fabric.properties
 # Additionally...
 .idea/
 /build/
-/rts_eval.egg-info/
+/rustyrts_eval.egg-info/
 **/__pycache__/
 
 *.dump
 
 *_tex.pdf
+
+bugs/

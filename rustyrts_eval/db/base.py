@@ -1,0 +1,95 @@
+from contextlib import contextmanager
+from typing import List
+
+from sqlalchemy import create_engine, Integer, Column, DateTime, func, MetaData, text
+from sqlalchemy.engine import Engine
+from sqlalchemy.ext.declarative import declared_attr, as_declarative
+from sqlalchemy.orm import sessionmaker, Session
+
+from ..util.logging.logger import get_logger
+
+_LOGGER = get_logger(__name__)
+
+
+@as_declarative()
+class Base:
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime(timezone=False), server_default=func.now())
+    updated_at = Column(DateTime(timezone=False), onupdate=func.now())
+    __name__: str
+
+    @classmethod
+    @declared_attr
+    def __tablename__(cls) -> str:
+        return cls.__name__.removeprefix("DB")
+
+
+def merge_metadata(*original_metadata) -> MetaData:
+    merged = MetaData()
+
+    for original_metadatum in original_metadata:
+        for table in original_metadatum.tables.values():
+            table.to_metadata(merged)
+
+    return merged
+
+
+# noinspection PyUnresolvedReferences
+from . import git, history, mutants  # necessary to create schema
+
+
+class DBConnection:
+    def __init__(self, url: str, *args, **kwargs) -> None:
+        super().__init__()
+        self.url: str = url
+        self.engine: Engine = create_engine(url, *args, **kwargs)
+        self.Session: sessionmaker = sessionmaker(bind=self.engine, expire_on_commit=False)
+
+    def create_session(self) -> Session:
+        return self.Session()
+
+    @contextmanager
+    def create_session_ctx(self, expunge_all: bool = True) -> Session:
+        session = self.create_session()
+        try:
+            yield session
+        finally:
+            if expunge_all:
+                session.expunge_all()
+            session.close()
+
+    def terminate_all_sessions(self) -> None:
+        self.Session.close_all()
+
+    def create_schema(self, schema) -> None:
+        self.terminate_all_sessions()
+
+        tables = [Base.metadata.tables["Repository"],
+                  Base.metadata.tables["Commit"],
+                  Base.metadata.tables["ChangelistItem"]]
+
+        if schema == "mutants":
+            tables += [Base.metadata.tables["Mutant"],
+                       Base.metadata.tables["MutantsReport"],
+                       Base.metadata.tables["MutantsTestSuite"],
+                       Base.metadata.tables["MutantsTestCase"]]
+
+        if schema.startswith("history"):
+            tables += [Base.metadata.tables["TestReport"],
+                       Base.metadata.tables["TestSuite"],
+                       Base.metadata.tables["TestCase"]]
+
+        _LOGGER.debug(
+            "Creating schema with tables: {}".format(Base.metadata.tables.keys())
+        )
+        Base.metadata.create_all(self.engine, tables=tables)
+
+    def delete_schema(self) -> None:
+        self.terminate_all_sessions()
+        _LOGGER.debug(
+            "Dropping schema with tables: {}".format(Base.metadata.tables.keys())
+        )
+        Base.metadata.drop_all(self.engine)
+
+    def get_tables(self) -> List[str]:
+        return self.engine.table_names()
