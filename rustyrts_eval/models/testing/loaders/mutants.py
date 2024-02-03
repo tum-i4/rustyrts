@@ -10,6 +10,7 @@ from ..loader import TestReportLoader
 
 _LOGGER = get_logger(__name__)
 
+
 class CargoMutantsTestReportLoader():
 
     def __init__(
@@ -26,7 +27,7 @@ class CargoMutantsTestReportLoader():
         if not self.path.endswith("log"):
             self.path += os.path.sep + "log"
 
-    def load_mutants(self, test_report, session):
+    def load_mutants(self, test_report, connection):
         for file in os.listdir(self.path):
             _LOGGER.warn("Checking file " + file)
             f = open(self.path + os.path.sep + file, "r")
@@ -83,5 +84,6 @@ class CargoMutantsTestReportLoader():
             db_mutant = DBMutant.from_domain(mutant)
             db_mutant.report = test_report
 
-            session.add(db_mutant)
-            session.commit()
+            with connection.create_session_ctx() as session:
+                session.add(db_mutant)
+                session.commit()
