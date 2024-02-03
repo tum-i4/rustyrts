@@ -8,7 +8,8 @@ FROM "MutantsTestSuite" s,
 WHERE s.id = c.suite_id
   AND c.status != 'IGNORED'
 GROUP BY s.id, s.passed_count, s.failed_count, s.measured_count
-HAVING count(c.id) != s.passed_count + s.failed_count + s.measured_count;
+HAVING count(c.id) != s.passed_count + s.failed_count + s.measured_count
+--;
 
 CREATE VIEW check_comparable_mutants as
 

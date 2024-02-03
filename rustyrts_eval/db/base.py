@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from typing import List
 
-from sqlalchemy import create_engine, Integer, Column, DateTime, func, MetaData, text
+from sqlalchemy import create_engine, Integer, Column, DateTime, func
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declared_attr, as_declarative
 from sqlalchemy.orm import sessionmaker, Session
@@ -24,16 +24,6 @@ class Base:
         return cls.__name__.removeprefix("DB")
 
 
-def merge_metadata(*original_metadata) -> MetaData:
-    merged = MetaData()
-
-    for original_metadatum in original_metadata:
-        for table in original_metadatum.tables.values():
-            table.to_metadata(merged)
-
-    return merged
-
-
 # noinspection PyUnresolvedReferences
 from . import git, history, mutants  # necessary to create schema
 
@@ -43,7 +33,9 @@ class DBConnection:
         super().__init__()
         self.url: str = url
         self.engine: Engine = create_engine(url, *args, **kwargs)
-        self.Session: sessionmaker = sessionmaker(bind=self.engine, expire_on_commit=False)
+        self.Session: sessionmaker = sessionmaker(
+            bind=self.engine, expire_on_commit=False
+        )
 
     def create_session(self) -> Session:
         return self.Session()
@@ -64,20 +56,27 @@ class DBConnection:
     def create_schema(self, schema) -> None:
         self.terminate_all_sessions()
 
-        tables = [Base.metadata.tables["Repository"],
-                  Base.metadata.tables["Commit"],
-                  Base.metadata.tables["ChangelistItem"]]
+        tables = [
+            Base.metadata.tables["Repository"],
+            Base.metadata.tables["Commit"],
+            Base.metadata.tables["ChangelistItem"],
+        ]
 
         if schema == "mutants":
-            tables += [Base.metadata.tables["Mutant"],
-                       Base.metadata.tables["MutantsReport"],
-                       Base.metadata.tables["MutantsTestSuite"],
-                       Base.metadata.tables["MutantsTestCase"]]
+            mutants.register_views()
+            tables += [
+                Base.metadata.tables["Mutant"],
+                Base.metadata.tables["MutantsReport"],
+                Base.metadata.tables["MutantsTestSuite"],
+                Base.metadata.tables["MutantsTestCase"],
+            ]
 
         if schema.startswith("history"):
-            tables += [Base.metadata.tables["TestReport"],
-                       Base.metadata.tables["TestSuite"],
-                       Base.metadata.tables["TestCase"]]
+            tables += [
+                Base.metadata.tables["TestReport"],
+                Base.metadata.tables["TestSuite"],
+                Base.metadata.tables["TestCase"],
+            ]
 
         _LOGGER.debug(
             "Creating schema with tables: {}".format(Base.metadata.tables.keys())
@@ -89,6 +88,7 @@ class DBConnection:
         _LOGGER.debug(
             "Dropping schema with tables: {}".format(Base.metadata.tables.keys())
         )
+        mutants.register_views()
         Base.metadata.drop_all(self.engine)
 
     def get_tables(self) -> List[str]:

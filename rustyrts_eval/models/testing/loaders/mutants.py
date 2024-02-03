@@ -1,6 +1,7 @@
 import os
 import re
 
+from rustyrts_eval.db.mutants import DBMutant
 from rustyrts_eval.util.logging.logger import get_logger
 from .cargo_test import CargoTestTestReportLoader
 from ..mutants import Mutant, MutantsTestSuite
@@ -9,12 +10,11 @@ from ..loader import TestReportLoader
 
 _LOGGER = get_logger(__name__)
 
-class CargoMutantsTestReportLoader(TestReportLoader):
+class CargoMutantsTestReportLoader():
 
     def __init__(
             self,
             path: str,
-            load_ignored: bool = True
     ):
         """
         Constructor.
@@ -25,11 +25,8 @@ class CargoMutantsTestReportLoader(TestReportLoader):
         self.path = path
         if not self.path.endswith("log"):
             self.path += os.path.sep + "log"
-        self.load_ignored = load_ignored
 
-    def load(self) -> list[Mutant]:
-        mutants = []
-
+    def load_mutants(self, test_report, session):
         for file in os.listdir(self.path):
             _LOGGER.warn("Checking file " + file)
             f = open(self.path + os.path.sep + file, "r")
@@ -83,6 +80,8 @@ class CargoMutantsTestReportLoader(TestReportLoader):
                             test_log=test_log,
                             suites=suites)
 
-            mutants.append(mutant)
+            db_mutant = DBMutant.from_domain(mutant)
+            db_mutant.report = test_report
 
-        return mutants
+            session.add(db_mutant)
+            session.commit()

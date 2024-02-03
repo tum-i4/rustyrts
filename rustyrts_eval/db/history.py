@@ -9,7 +9,7 @@ from sqlalchemy import (
     Enum,
     Text,
     UniqueConstraint,
-    Boolean,
+    Boolean, Index,
 )
 from sqlalchemy.orm import relationship, Session
 
@@ -39,6 +39,8 @@ class DBTestCaseMeta(Base.__class__, TestCase.__class__):
 #
 
 class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
+    __table_args__ = (Index('ix_TestReport_name', "name"), Index('ix_TestsReport_commit', "commit_str"),)
+
     name = Column(String, nullable=False)
     duration = Column(Float)
     build_duration = Column(Float)
@@ -134,6 +136,10 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
 
 
 class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
+    __table_args__ = (Index('ix_TestSuite_id_report_id_name', "id", "report_id", "name"),
+                      Index('ix_TestSuite_name', "name"),
+                      Index('ix_TestSuite_crashed', "crashed"),)
+
     name = Column(String, nullable=False)
     duration = Column(Float)
     crashed = Column(Boolean)
@@ -180,6 +186,10 @@ class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
 
 
 class DBTestCase(Base, TestCase, metaclass=DBTestCaseMeta):
+    __table_args__ = (Index('ix_TestCase_id_suite_id_status', "id", "suite_id", "status"),
+                      Index('ix_TestCase_name', "name"),
+                      Index('ix_TestCase_status', "status"),)
+
     name = Column(String, nullable=True)
     target = Column(Enum(TestTarget))
     status = Column(Enum(TestStatus))

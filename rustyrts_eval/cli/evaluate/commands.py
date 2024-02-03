@@ -69,38 +69,38 @@ MUTANTS_PROJECTS = [
 
 
 TESTING_PROJECTS = [
-    ("projects/git_walk/actix-web", "master", [
-        ("f5fd6bc49fd0886cf4a1c76de44c259aff7426c9", None, None),
-        ("55a2a59906c05f834fe1278fafb8a8dd5c746510", None, None),
-        ("3fde3be3d863a42fab6799bdfd4552bcb43d7e8e", None, None),
-        ("987067698b11db82f113ae350356cb11d1d7d1f0", None, None),
-        ("c659c33919c4880dbe3d220773f20fc6c5b58070", None, None),
-        ("4431c8da654f141f564c9715e4d2962d48e0ed69", None, None),
-        ("1a0bf32ec76411e6ae017ea680b4dad7db3f0c69", None, None),
-        ("d0b5fb18d2f16f42743518363be8b9e0737cee56", None, None),
-        ("0b5b463cfa951d96ec6b0167964ef613b0d2b091", None, None),
-        ("679f61cf3751ce9ca53ab64b01baef33b83db937", None, None),
-        ("c313c003a4b8b3526b33f782996116263cba7140", None, None),
-        ("c9fdcc596db0618495ab8611e52b730e829e36e5", None, None),
-        ("e4503046de1263148e1b56394144b1828bbfdac0", None, None),
-        ("fa78da81569f23accfe7b293be0c022fd01bbdb3", None, None),
-        ("7030bf5fe82dc3c23e61a6f0e7a6b89b53a03e6d", None, None),
-        ("1716380f0890a1e936d84181effeb63906c1e609", None, None),
-        ("0f09415469843eea4000dc48085101dcf8d75e9b", None, None),
-        ("f45038bbfe338661f3b958b10c37dd64d3d70650", None, None),
-        ("9aab382ea89395fcc627c5375ddd8721cc47c514", None, None),
-        ("21a08ca7969e9a08035a4b9e78d8419f3cce3c64", None, None),
-        ("df6fde883c17c39ee30b71858a65c36eb0ed71c0", None, None),
-        ("162121bf8d51d497565961d73dde22ba1c36f3a4", None, None),
-        ("a35804b89f5b08b11304d4fa3e4ca37c9a4f6627", None, None),
-        ("a2d4ff157ea981a09d56e4284fd484e88a5c498d", None, None),
-        ("2a5215c1d6cce12ff3f4bdc4e7ac73190d4aa9e0", None, None),
-        ("679d1cd51360f62fe5f0084893591b6003671091", None, None),
-        ("c22a3a71f2b366bf7af6fd0e00e5f150835645c0", None, None),
-        ("0bc4ae9158d51e06e4845bc2e0ba987a5e3aae2e", None, None),
-        ("de815dd99cfd95e2759080a7d27535b70b6544b4", None, None),
-        ("35006e9cae904ac28ffe81e62ac2e0110346121d", None, None)
-    ]),
+    #("projects/git_walk/actix-web", "master", [
+    #    ("f5fd6bc49fd0886cf4a1c76de44c259aff7426c9", None, None),
+    #    ("55a2a59906c05f834fe1278fafb8a8dd5c746510", None, None),
+    #    ("3fde3be3d863a42fab6799bdfd4552bcb43d7e8e", None, None),
+    #    ("987067698b11db82f113ae350356cb11d1d7d1f0", None, None),
+    #    ("c659c33919c4880dbe3d220773f20fc6c5b58070", None, None),
+    #    ("4431c8da654f141f564c9715e4d2962d48e0ed69", None, None),
+    #    ("1a0bf32ec76411e6ae017ea680b4dad7db3f0c69", None, None),
+    #    ("d0b5fb18d2f16f42743518363be8b9e0737cee56", None, None),
+    #    ("0b5b463cfa951d96ec6b0167964ef613b0d2b091", None, None),
+    #    ("679f61cf3751ce9ca53ab64b01baef33b83db937", None, None),
+    #    ("c313c003a4b8b3526b33f782996116263cba7140", None, None),
+    #    ("c9fdcc596db0618495ab8611e52b730e829e36e5", None, None),
+    #    ("e4503046de1263148e1b56394144b1828bbfdac0", None, None),
+    #    ("fa78da81569f23accfe7b293be0c022fd01bbdb3", None, None),
+    #    ("7030bf5fe82dc3c23e61a6f0e7a6b89b53a03e6d", None, None),
+    #    ("1716380f0890a1e936d84181effeb63906c1e609", None, None),
+    #    ("0f09415469843eea4000dc48085101dcf8d75e9b", None, None),
+    #    ("f45038bbfe338661f3b958b10c37dd64d3d70650", None, None),
+    #    ("9aab382ea89395fcc627c5375ddd8721cc47c514", None, None),
+    #    ("21a08ca7969e9a08035a4b9e78d8419f3cce3c64", None, None),
+    #    ("df6fde883c17c39ee30b71858a65c36eb0ed71c0", None, None),
+    #    ("162121bf8d51d497565961d73dde22ba1c36f3a4", None, None),
+    #    ("a35804b89f5b08b11304d4fa3e4ca37c9a4f6627", None, None),
+    #    ("a2d4ff157ea981a09d56e4284fd484e88a5c498d", None, None),
+    #    ("2a5215c1d6cce12ff3f4bdc4e7ac73190d4aa9e0", None, None),
+    #    ("679d1cd51360f62fe5f0084893591b6003671091", None, None),
+    #    ("c22a3a71f2b366bf7af6fd0e00e5f150835645c0", None, None),
+    #    ("0bc4ae9158d51e06e4845bc2e0ba987a5e3aae2e", None, None),
+    #    ("de815dd99cfd95e2759080a7d27535b70b6544b4", None, None),
+    #    ("35006e9cae904ac28ffe81e62ac2e0110346121d", None, None)
+    #]),
     ("projects/git_walk/arrow-datafusion", "main", [
         ('844bcda2664a04685b865afe7ff159c0648d2860', None, None),
         ('0e416f0e39d8a76ea13aab9b8f306b64d1133857', None, None),
@@ -499,9 +499,13 @@ TESTING_PROJECTS = [
     ])
 ]
 
-SMALL_PROJECTS = [
+SMALL_HISTORY_PROJECTS = [
     ("projects/small/budget", "master", [("2db4b033e5fc9ba05010def0f6988ba9b822ae8e", None, None),
                                             ("701986ccc213eae976fa8f1bd4118132a5a3f005", None, None)])
+]
+
+SMALL_MUTANTS_PROJECTS = [
+    ("projects/small/budget", "master", [("2db4b033e5fc9ba05010def0f6988ba9b822ae8e", None, None)], None),
 ]
 
 
@@ -540,13 +544,19 @@ def evaluate(ctx, url: str):
 
 
 @evaluate.command(name="mutants")
+@click.argument("mode", type=click.Choice(['full', 'small']), required=True)
 @click.pass_obj
-def mutants(ctx):
+def mutants(ctx, mode):
     conn: DBConnection = ctx["connection"]
     try:
         spinner = start_spinner("Running mutants evaluation...")
 
-        for (path, branch, commits, pre_hook) in MUTANTS_PROJECTS:
+        if mode == "small":
+            projects = SMALL_MUTANTS_PROJECTS
+        else:
+            projects = MUTANTS_PROJECTS
+
+        for (path, branch, commits, pre_hook) in projects:
             spinner.info("Evaluating project in " + path)
 
             mutants_walk.walk(conn, os.path.abspath(path), branch=branch, commits=commits)
@@ -571,7 +581,7 @@ def history(ctx, mode, strategy):
         sequentially = (strategy == "sequential")
 
         if mode == "small":
-            projects = SMALL_PROJECTS
+            projects = SMALL_HISTORY_PROJECTS
         else:
             projects = TESTING_PROJECTS
 

@@ -10,18 +10,33 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Boolean,
+    Index,
+    distinct,
+    select,
+    Table,
+    text,
 )
 from sqlalchemy.orm import relationship, Session
+from sqlalchemy.sql.functions import count
+from sqlalchemy_utils import create_materialized_view, create_view, get_columns
+from sqlalchemy_utils.view import CreateView
 
 from .base import Base
 from .git import DBCommit
 from ..models.testing.base import TestTarget, TestStatus
-from ..models.testing.mutants import MutantsReport, MutantsTestSuite, MutantsTestCase, Mutant, MutantsResult
+from ..models.testing.mutants import (
+    MutantsReport,
+    MutantsTestSuite,
+    MutantsTestCase,
+    Mutant,
+    MutantsResult,
+)
 
 
 ########################################################################################################################
 # Meta classes
 #
+
 
 class DBMutantsReportMeta(Base.__class__, MutantsReport.__class__):
     ...
@@ -43,12 +58,21 @@ class DBMutantsTestCaseMeta(Base.__class__, MutantsTestCase.__class__):
 # Actual db classes
 #
 
+
 class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
+    __table_args__ = (
+        Index("ix_MutantsReport_name", "name"),
+        Index("ix_MutantsReport_commit", "commit_str"),
+        UniqueConstraint("name", "commit_str", name="_mutants_name_revision_uc")
+    )
+
     name = Column(String, nullable=False)
     duration = Column(Float)
     mutants: List["DBMutant"] = relationship("DBMutant", back_populates="report")
     commit_str = Column(String, nullable=False)
-    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
+    commit_id = Column(
+        Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE")
+    )
     commit: DBCommit = relationship("DBCommit", back_populates="mutants_reports")
     log = Column(Text)
     has_failed = Column(Boolean)
@@ -58,21 +82,21 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
     timeout = Column(Integer)
     failed = Column(Integer)
 
-    __table_args__ = tuple(
-        [UniqueConstraint("name", "commit_str", name="_mutants_name_revision_uc")]
-    )
-
     @classmethod
     def get_single(
             cls, name: str, commit_str: str, session: Session
     ) -> Optional["DBMutantsReport"]:
         db_report: Optional[DBMutantsReport] = (
-            session.query(DBMutantsReport).filter_by(name=name, commit_str=commit_str).first()
+            session.query(DBMutantsReport)
+            .filter_by(name=name, commit_str=commit_str)
+            .first()
         )
         return db_report
 
     @classmethod
-    def create_or_update(cls, report: MutantsReport, session: Session) -> "DBMutantsReport":
+    def create_or_update(
+            cls, report: MutantsReport, session: Session
+    ) -> "DBMutantsReport":
         # get report from DB
         db_report: Optional[DBMutantsReport] = cls.get_single(
             name=report.name, commit_str=report.commit_str, session=session
@@ -88,9 +112,13 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
             session.add(db_report)
         else:
             # if already existing, update all fields
-            db_report.duration = report.duration if report.duration else db_report.duration
+            db_report.duration = (
+                report.duration if report.duration else db_report.duration
+            )
 
-            db_report.commit_str = report.commit_str if report.commit_str else db_report.commit_str
+            db_report.commit_str = (
+                report.commit_str if report.commit_str else db_report.commit_str
+            )
             # get from db if it exists
             db_report.commit = DBCommit.create_or_get(report.commit, session)
             db_report.mutants = (
@@ -118,7 +146,9 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
         return cls(
             name=report.name,
             duration=report.duration,
-            mutants=[] if report.mutants is None else [DBMutant.from_domain(mutant) for mutant in report.mutants],
+            mutants=[]
+            if report.mutants is None
+            else [DBMutant.from_domain(mutant) for mutant in report.mutants],
             commit_str=report.commit_str,
             commit=DBCommit.from_domain(report.commit),
             log=report.log,
@@ -148,6 +178,11 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
 
 
 class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
+    __table_args__ = (
+        Index("ix_Mutant_descr", "descr"),
+        Index("ix_Mutant_report", "report_id"),
+    )
+
     descr = Column(String, nullable=False)
     diff = Column(String, nullable=True)
     check_result = Column(Enum(MutantsResult), nullable=True)
@@ -157,9 +192,14 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
     test_duration = Column(Float, nullable=True)
     build_duration = Column(Float)
     test_log = Column(String, nullable=True)
-    report_id = Column(Integer, ForeignKey("{}.id".format(DBMutantsReport.__tablename__), ondelete="CASCADE"))
+    report_id = Column(
+        Integer,
+        ForeignKey("{}.id".format(DBMutantsReport.__tablename__), ondelete="CASCADE"),
+    )
     report = relationship("DBMutantsReport", back_populates="mutants")
-    suites: List["DBMutantsTestSuite"] = relationship("DBMutantsTestSuite", back_populates="mutant")
+    suites: List["DBMutantsTestSuite"] = relationship(
+        "DBMutantsTestSuite", back_populates="mutant"
+    )
 
     @classmethod
     def from_domain(cls, mutant: Mutant):
@@ -175,7 +215,7 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
             test_duration=mutant.test_duration,
             build_duration=mutant.build_duration,
             test_log=mutant.test_log,
-            suites=[DBMutantsTestSuite.from_domain(suite) for suite in mutant.suites]
+            suites=[DBMutantsTestSuite.from_domain(suite) for suite in mutant.suites],
         )
 
     def to_domain(self):
@@ -189,11 +229,17 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
             test_duration=self.test_duration,
             build_duration=self.build_duration,
             test_log=self.test_log,
-            suites=[suite.to_domain() for suite in self.suites]
+            suites=[suite.to_domain() for suite in self.suites],
         )
 
 
 class DBMutantsTestSuite(Base, MutantsTestSuite, metaclass=DBMutantsTestSuiteMeta):
+    __table_args__ = (
+        Index("ix_MutantsTestSuite_id_mutant_id_name", "id", "mutant_id", "name"),
+        Index("ix_MutantsTestSuite_name", "name"),
+        Index("ix_MutantsTestSuite_crashed", "crashed"),
+    )
+
     name = Column(String, nullable=False)
     duration = Column(Float)
     crashed = Column(Boolean)
@@ -203,10 +249,13 @@ class DBMutantsTestSuite(Base, MutantsTestSuite, metaclass=DBMutantsTestSuiteMet
     ignored_count = Column(Integer)
     measured_count = Column(Integer)
     filtered_out_count = Column(Integer)
-    mutant_id = Column(Integer, ForeignKey("{}.id".format(DBMutant.__tablename__), ondelete="CASCADE"))
+    mutant_id = Column(
+        Integer, ForeignKey("{}.id".format(DBMutant.__tablename__), ondelete="CASCADE")
+    )
     mutant = relationship("DBMutant", back_populates="suites")
-    cases: List["DBMutantsTestCase"] = relationship("DBMutantsTestCase", back_populates="suite",
-                                                    cascade="all, delete-orphan")
+    cases: List["DBMutantsTestCase"] = relationship(
+        "DBMutantsTestCase", back_populates="suite", cascade="all, delete-orphan"
+    )
 
     @classmethod
     def from_domain(cls, suite: MutantsTestSuite) -> "DBMutantsTestSuite":
@@ -222,7 +271,7 @@ class DBMutantsTestSuite(Base, MutantsTestSuite, metaclass=DBMutantsTestSuiteMet
             failed_count=suite.failed_count,
             ignored_count=suite.ignored_count,
             measured_count=suite.measured_count,
-            filtered_out_count=suite.filtered_out_count
+            filtered_out_count=suite.filtered_out_count,
         )
 
     def to_domain(self) -> MutantsTestSuite:
@@ -236,16 +285,27 @@ class DBMutantsTestSuite(Base, MutantsTestSuite, metaclass=DBMutantsTestSuiteMet
             failed_count=self.failed_count,
             ignored_count=self.ignored_count,
             measured_count=self.measured_count,
-            filtered_out_count=self.filtered_out_count
+            filtered_out_count=self.filtered_out_count,
         )
 
 
 class DBMutantsTestCase(Base, MutantsTestCase, metaclass=DBMutantsTestCaseMeta):
+    __table_args__ = (
+        Index("ix_MutantsTestCase_id_suite_id_status", "id", "suite_id", "status"),
+        Index("ix_MutantsTestCase_name", "name"),
+        Index("ix_MutantsTestCase_status", "status"),
+    )
+
     name = Column(String, nullable=True)
     target = Column(Enum(TestTarget))
     status = Column(Enum(TestStatus))
     duration = Column(Float)
-    suite_id = Column(Integer, ForeignKey("{}.id".format(DBMutantsTestSuite.__tablename__), ondelete="CASCADE"))
+    suite_id = Column(
+        Integer,
+        ForeignKey(
+            "{}.id".format(DBMutantsTestSuite.__tablename__), ondelete="CASCADE"
+        ),
+    )
     suite = relationship("DBMutantsTestSuite", back_populates="cases")
     stdout = Column(String)
 
@@ -269,3 +329,299 @@ class DBMutantsTestCase(Base, MutantsTestCase, metaclass=DBMutantsTestCaseMeta):
             duration=self.duration,
             stdout=self.stdout,
         )
+
+
+########################################################################################################################
+# Views
+
+
+def register_views():
+    commit = DBCommit.__table__
+
+    report = DBMutantsReport.__table__
+    mutant = DBMutant.__table__
+    suite = DBMutantsTestSuite.__table__
+    case = DBMutantsTestCase.__table__
+
+    check_parsed_tests = (
+        select(
+            suite,
+            count(case.c.id).label("count_cases"),
+            (
+                    suite.c.passed_count
+                    + suite.c.failed_count
+                    + suite.c.measured_count
+                    - count(case.c.id)
+            ).label("discrepancy"),
+        )
+        .select_from(suite, case)
+        .where(suite.c.id == case.c.suite_id)
+        .where(case.c.status != "IGNORED")
+        .group_by(suite)
+        .having(
+            count(case.c.id)
+            != (suite.c.passed_count + suite.c.failed_count + suite.c.measured_count)
+        )
+    )
+
+    check_parsed_tests = create_view(
+        "CheckParsedTests", check_parsed_tests, replace=True, metadata=Base.metadata
+    )
+
+    retest_all = report.alias("retest_all")
+    dynamic = report.alias("dynamic")
+    static = report.alias("static")
+    retest_all_mutant = mutant.alias("retest_all_mutant")
+    dynamic_mutant = mutant.alias("dynamic_mutant")
+    static_mutant = mutant.alias("static_mutant")
+
+    mutant_extended = (
+        select(
+            commit.c.id.label("commit"),
+            commit.c.commit_str,
+            commit.c.repo_id,
+            retest_all_mutant.c.descr.label("descr"),
+            retest_all_mutant.c.diff.label("diff"),
+            retest_all_mutant.c.id.label("retest_all_id"),
+            retest_all_mutant.c.test_log.label("retest_all_test_log"),
+            retest_all_mutant.c.test_result.label("retest_all_test_result"),
+            retest_all_mutant.c.test_duration.label("retest_all_test_duration"),
+            retest_all_mutant.c.build_duration.label("retest_all_build_duration"),
+            dynamic_mutant.c.id.label("dynamic_id"),
+            dynamic_mutant.c.test_log.label("dynamic_test_log"),
+            dynamic_mutant.c.test_result.label("dynamic_test_result"),
+            dynamic_mutant.c.test_duration.label("dynamic_test_duration"),
+            dynamic_mutant.c.build_duration.label("dynamic_build_duration"),
+            static_mutant.c.id.label("static_id"),
+            static_mutant.c.test_log.label("static_test_log"),
+            static_mutant.c.test_result.label("static_test_result"),
+            static_mutant.c.test_duration.label("static_test_duration"),
+            static_mutant.c.build_duration.label("static_build_duration"),
+        )
+        .select_from(
+            commit,
+            retest_all,
+            dynamic,
+            static,
+            retest_all_mutant,
+            dynamic_mutant,
+            static_mutant,
+        )
+        .where(commit.c.id == retest_all.c.commit_id)
+        .where(commit.c.id == dynamic.c.commit_id)
+        .where(commit.c.id == static.c.commit_id)
+        .where(retest_all_mutant.c.report_id == retest_all.c.id)
+        .where(dynamic_mutant.c.report_id == dynamic.c.id)
+        .where(static_mutant.c.report_id == static.c.id)
+        .where(retest_all.c.name == "mutants")
+        .where(dynamic.c.name == "mutants dynamic")
+        .where(static.c.name == "mutants static")
+        .where(retest_all_mutant.c.descr == dynamic_mutant.c.descr)
+        .where(retest_all_mutant.c.descr == static_mutant.c.descr)
+        .where(retest_all_mutant.c.test_log == None)
+        .where(retest_all_mutant.c.test_result != "TIMEOUT")
+        .where(dynamic_mutant.c.test_result != "TIMEOUT")
+        .where(static_mutant.c.test_result != "TIMEOUT")
+        .where(retest_all_mutant.c.descr != "baseline")
+    )
+
+    mutants_testcase_extended = (
+        select(
+            case,
+            suite.c.crashed,
+            suite.c.name.label("testsuite_name"),
+            suite.c.mutant_id,
+        )
+        .select_from(suite, case)
+        .where(suite.c.id == case.c.id)
+        .where(case.c.status != "IGNORED")
+    )
+
+    mutant = mutant_extended.cte()
+    testcase = mutants_testcase_extended.cte()
+
+    retest_all_testcases = testcase.alias("retest_all_test_cases")
+    dynamic_testcases = testcase.alias("dynamic_test_cases")
+    static_testcases = testcase.alias("static_test_cases")
+
+    testcase_overview = (
+        select(
+            mutant.c.commit,
+            mutant.c.descr.label("descr"),
+            mutant.c.retest_all_id.label("retest_all_mutant_id"),
+            mutant.c.dynamic_id.label("dynamic_mutant_id"),
+            mutant.c.static_id.label("static_mutant_id"),
+            retest_all_testcases.c.target.label("target"),
+            retest_all_testcases.c.testsuite_name.label("retest_all_suite_name"),
+            retest_all_testcases.c.name.label("retest_all_name"),
+            retest_all_testcases.c.id.label("retest_all_testcase_id"),
+            retest_all_testcases.c.status.label("retest_all_status"),
+            dynamic_testcases.c.testsuite_name.label("dynamic_suite_name"),
+            dynamic_testcases.c.name.label("dynamic_name"),
+            dynamic_testcases.c.id.label("dynamic_testcase_id"),
+            dynamic_testcases.c.status.label("dynamic_status"),
+            static_testcases.c.testsuite_name.label("static_suite_name"),
+            static_testcases.c.name.label("static_name"),
+            static_testcases.c.id.label("static_testcase_id"),
+            static_testcases.c.status.label("static_status"),
+        )
+        .select_from(mutant)
+        .join(
+            retest_all_testcases,
+            mutant.c.retest_all_id == retest_all_testcases.c.mutant_id,
+        )
+        .outerjoin(
+            dynamic_testcases,
+            (mutant.c.dynamic_id == dynamic_testcases.c.mutant_id)
+            & (retest_all_testcases.c.name == dynamic_testcases.c.name)
+            & (
+                    retest_all_testcases.c.testsuite_name
+                    == dynamic_testcases.c.testsuite_name
+            ),
+        )
+        .outerjoin(
+            static_testcases,
+            (mutant.c.static_id == static_testcases.c.mutant_id)
+            & (retest_all_testcases.c.name == static_testcases.c.name)
+            & (
+                    retest_all_testcases.c.testsuite_name
+                    == static_testcases.c.testsuite_name
+            ),
+        )
+        .where(
+            retest_all_testcases.c.crashed == False
+        )  # filter suites that are not comparable
+        .where(
+            (dynamic_testcases.c.crashed == None)
+            | (dynamic_testcases.c.crashed == False)
+        )
+        .where(
+            (static_testcases.c.crashed == None) | (static_testcases.c.crashed == False)
+        )
+        .where(retest_all_testcases.c.status != "IGNORED")
+    )
+
+    testcase_overview = create_materialized_view(
+        "MutantTestcaseOverwview",
+        testcase_overview,
+        # replace=True,
+        metadata=Base.metadata,
+    )
+
+    testcases_count = (
+        select(
+            testcase_overview.c.commit,
+            testcase_overview.c.retest_all_mutant_id,
+            testcase_overview.c.descr,
+            count(distinct(testcase_overview.c.retest_all_testcase_id)).label(
+                "retest_all_count"
+            ),
+            count(
+                distinct(
+                    select(testcase.c.id)
+                    .select_from(testcase)
+                    .where(testcase.c.id == testcase_overview.c.retest_all_testcase_id)
+                    .where(testcase.c.status == "FAILED")
+                    .scalar_subquery()
+                )
+            ).label("retest_all_count_failed"),
+            count(distinct(testcase_overview.c.dynamic_testcase_id)).label(
+                "dynamic_count"
+            ),
+            count(
+                distinct(
+                    select(testcase.c.id)
+                    .select_from(testcase)
+                    .where(testcase.c.id == testcase_overview.c.dynamic_testcase_id)
+                    .where(testcase.c.status == "FAILED")
+                    .scalar_subquery()
+                )
+            ).label("dynamic_count_failed"),
+            count(distinct(testcase_overview.c.static_testcase_id)).label(
+                "static_count"
+            ),
+            count(
+                distinct(
+                    select(testcase.c.id)
+                    .select_from(testcase)
+                    .where(testcase.c.id == testcase_overview.c.static_testcase_id)
+                    .where(testcase.c.status == "FAILED")
+                    .scalar_subquery()
+                )
+            ).label("static_count_failed"),
+        )
+        .select_from(testcase_overview)
+        .group_by(
+            testcase_overview.c.commit,
+            testcase_overview.c.descr,
+            testcase_overview.c.retest_all_mutant_id,
+            testcase_overview.c.dynamic_mutant_id,
+        )
+    )
+
+    testcases_count = create_materialized_view(
+        "TestcaseCount",
+        testcases_count,
+        # replace=True,
+        metadata=Base.metadata,
+    )
+
+    target_count = (
+        select(
+            testcase_overview.c.commit,
+            testcase_overview.c.target,
+            testcase_overview.c.retest_all_mutant_id,
+            testcase_overview.c.descr,
+            count(distinct(testcase_overview.c.retest_all_testcase_id)).label(
+                "retest_all_count"
+            ),
+            count(
+                distinct(
+                    select(testcase.c.id)
+                    .select_from(testcase)
+                    .where(testcase.c.id == testcase_overview.c.retest_all_testcase_id)
+                    .where(testcase.c.status == "FAILED")
+                    .scalar_subquery()
+                )
+            ).label("retest_all_count_failed"),
+            count(distinct(testcase_overview.c.dynamic_testcase_id)).label(
+                "dynamic_count"
+            ),
+            count(
+                distinct(
+                    select(testcase.c.id)
+                    .select_from(testcase)
+                    .where(testcase.c.id == testcase_overview.c.dynamic_testcase_id)
+                    .where(testcase.c.status == "FAILED")
+                    .scalar_subquery()
+                )
+            ).label("dynamic_count_failed"),
+            count(distinct(testcase_overview.c.static_testcase_id)).label(
+                "static_count"
+            ),
+            count(
+                distinct(
+                    select(testcase.c.id)
+                    .select_from(testcase)
+                    .where(testcase.c.id == testcase_overview.c.static_testcase_id)
+                    .where(testcase.c.status == "FAILED")
+                    .scalar_subquery()
+                )
+            ).label("static_count_failed"),
+        )
+        .select_from(testcase_overview)
+        .group_by(
+            testcase_overview.c.commit,
+            testcase_overview.c.target,
+            testcase_overview.c.descr,
+            testcase_overview.c.retest_all_mutant_id,
+            testcase_overview.c.dynamic_mutant_id,
+        )
+    )
+
+    target_count = create_materialized_view(
+        "TargetCount",
+        target_count,
+        # replace=True,
+        metadata=Base.metadata,
+    )

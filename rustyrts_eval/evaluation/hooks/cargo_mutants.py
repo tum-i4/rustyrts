@@ -110,11 +110,6 @@ class CargoMutantsHook(Hook):
                 proc.output, re.M)
 
             mutants = []
-            if not has_failed:
-                # parse mutants
-                loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out",
-                                                      load_ignored=False)
-                mutants = loader.load()
 
             missed = None
             caught = None
@@ -145,10 +140,15 @@ class CargoMutantsHook(Hook):
             )
             # create test report object
 
-            DBMutantsReport.create_or_update(report=test_report, session=session)
+            test_report = DBMutantsReport.create_or_update(report=test_report, session=session)
+            session.commit()
+
+            if not has_failed:
+                # parse mutants
+                loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out")
+                loader.load_mutants(test_report, session)
 
             ############################################################################################################
-            session.commit()
 
             # return to previous directory
             os.chdir(tmp_path)
