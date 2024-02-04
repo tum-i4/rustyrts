@@ -26,5 +26,5 @@ FROM (((mutant_testcase_overview overview left outer join "MutantsTestCase" rete
     left outer join
     "MutantsTestCase" static_failed on overview.static_testcase_id = static_failed.id)
 GROUP BY overview.commit, overview.descr, overview.retest_all_mutant_id, overview.dynamic_mutant_id,
-         overview.static_mutant_i
+         overview.static_mutant_id
 --;

@@ -15,7 +15,7 @@ dependencies = [
     'click==7.*,>=7.1.2',
     'gitpython==3.*,>=3.1.3',
     'halo==0.*,>=0.0.29',
-    'sqlalchemy==1.*,>=1.3.17',
+    'sqlalchemy==2.*,>=2.0.25',
     'psycopg2-binary==2.*,>=2.8.6',
     'sqlalchemy-utils@git+https://github.com/kvesteri/sqlalchemy-utils.git@00d800063d2f8d2dcee714a3314311d79f8d4040',
     'sqlalchemy-views>=0.3.2'

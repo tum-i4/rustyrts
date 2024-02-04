@@ -1,15 +1,22 @@
 from typing import List, Optional
 
 from sqlalchemy import Column, String, Integer, ForeignKey, DateTime, Enum
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import Mapped, relationship, Session
 
 from .base import Base
-from ..models.scm.base import Commit, ChangelistItemKind, ChangelistItemAction, Repository, ChangelistItem
+from ..models.scm.base import (
+    Commit,
+    ChangelistItemKind,
+    ChangelistItemAction,
+    Repository,
+    ChangelistItem,
+)
 
 
 ########################################################################################################################
 # Meta classes
 #
+
 
 class DBRepositoryMeta(Base.__class__, Repository.__class__):
     ...
@@ -27,10 +34,11 @@ class DBChangelistItemMeta(Base.__class__, ChangelistItem.__class__):
 # Actual db classes
 #
 
+
 class DBRepository(Base, Repository, metaclass=DBRepositoryMeta):
     path = Column(String, unique=True, index=True, nullable=False)
     repository_type = Column(String)
-    commits: List[Commit] = relationship("DBCommit", back_populates="repo")
+    commits: Mapped[List[Commit]] = relationship("DBCommit", back_populates="repo")
 
     @classmethod
     def create(cls, repo: Repository, session: Session) -> "DBRepository":
@@ -45,7 +53,9 @@ class DBRepository(Base, Repository, metaclass=DBRepositoryMeta):
     @classmethod
     def create_or_get(cls, repo: Repository, session: Session) -> "DBRepository":
         # get repo from DB
-        db_repo: DBRepository | None = session.query(DBRepository).filter_by(path=repo.path).first()
+        db_repo: DBRepository | None = (
+            session.query(DBRepository).filter_by(path=repo.path).first()
+        )
         if not db_repo:
             db_repo = cls.create(repo=repo, session=session)
 
@@ -54,7 +64,9 @@ class DBRepository(Base, Repository, metaclass=DBRepositoryMeta):
     @classmethod
     def create_or_update(cls, repo: Repository, session: Session) -> "DBRepository":
         # get repo from DB
-        db_repo: DBRepository | None = session.query(DBRepository).filter_by(path=repo.path).first()
+        db_repo: DBRepository | None = (
+            session.query(DBRepository).filter_by(path=repo.path).first()
+        )
         if not db_repo:
             return cls.create(repo=repo, session=session)
 
@@ -78,11 +90,14 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
     author = Column(String)
     message = Column(String)
     timestamp = Column(DateTime)
-    changelist: List["DBChangelistItem"] = relationship(
+    changelist: Mapped[List["DBChangelistItem"]] = relationship(
         "DBChangelistItem", back_populates="commit"
     )
-    repo_id = Column(Integer, ForeignKey("{}.id".format(DBRepository.__tablename__), ondelete="CASCADE"))
-    repo: Optional[DBRepository] = relationship(
+    repo_id = Column(
+        Integer,
+        ForeignKey("{}.id".format(DBRepository.__tablename__), ondelete="CASCADE"),
+    )
+    repo: Mapped[Optional[DBRepository]] = relationship(
         "DBRepository", back_populates="commits"
     )
     reports = relationship("DBTestReport", back_populates="commit")
@@ -150,10 +165,12 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
             author=commit.author,
             message=commit.message,
             timestamp=commit.timestamp,
-            changelist=[DBChangelistItem.from_domain(item) for item in commit.changelist],
+            changelist=[
+                DBChangelistItem.from_domain(item) for item in commit.changelist
+            ],
             repo=DBRepository.from_domain(commit.repo),
             nr_lines=commit.nr_lines,
-            nr_files=commit.nr_files
+            nr_files=commit.nr_files,
         )
 
     def to_domain(self) -> Commit:
@@ -165,7 +182,7 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
             changelist=[item.to_domain() for item in self.changelist],
             repo=self.repo.to_domain() if self.repo else None,
             nr_lines=self.nr_lines,
-            nr_files=self.nr_files
+            nr_files=self.nr_files,
         )
 
 
@@ -187,7 +204,7 @@ class DBChangelistItem(Base, ChangelistItem, metaclass=DBChangelistItemMeta):
             filepath=changelist_item.filepath,
             action=changelist_item.action,
             kind=changelist_item.kind,
-            content=changelist_item.content
+            content=changelist_item.content,
         )
 
     def to_domain(self) -> ChangelistItem:
@@ -195,5 +212,5 @@ class DBChangelistItem(Base, ChangelistItem, metaclass=DBChangelistItemMeta):
             filepath=self.filepath,
             action=self.action,
             kind=self.kind,
-            content=self.content
+            content=self.content,
         )

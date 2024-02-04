@@ -9,18 +9,26 @@ from sqlalchemy import (
     Enum,
     Text,
     UniqueConstraint,
-    Boolean, Index,
+    Boolean,
+    Index,
 )
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import Mapped, relationship, Session
 
 from .base import Base
 from .git import DBCommit
-from ..models.testing.base import TestReport, TestSuite, TestCase, TestStatus, TestTarget
+from ..models.testing.base import (
+    TestReport,
+    TestSuite,
+    TestCase,
+    TestStatus,
+    TestTarget,
+)
 
 
 ########################################################################################################################
 # Meta classes
 #
+
 
 class DBTestReportMeta(Base.__class__, TestReport.__class__):
     ...
@@ -38,16 +46,24 @@ class DBTestCaseMeta(Base.__class__, TestCase.__class__):
 # Actual db classes
 #
 
+
 class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
-    __table_args__ = (Index('ix_TestReport_name', "name"), Index('ix_TestsReport_commit', "commit_str"),)
+    __table_args__ = (
+        Index("ix_TestReport_name", "name"),
+        Index("ix_TestsReport_commit", "commit_str"),
+    )
 
     name = Column(String, nullable=False)
     duration = Column(Float)
     build_duration = Column(Float)
-    suites: List["DBTestSuite"] = relationship("DBTestSuite", back_populates="report")
+    suites: Mapped[List["DBTestSuite"]] = relationship(
+        "DBTestSuite", back_populates="report"
+    )
     commit_str = Column(String, nullable=False)
-    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
-    commit: DBCommit = relationship("DBCommit", back_populates="reports")
+    commit_id = Column(
+        Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE")
+    )
+    commit: Mapped[DBCommit] = relationship("DBCommit", back_populates="reports")
     log = Column(Text)
     has_failed = Column(Boolean)
     has_errored = Column(Boolean)
@@ -58,10 +74,12 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
 
     @classmethod
     def get_single(
-            cls, name: str, commit_str: str, session: Session
+        cls, name: str, commit_str: str, session: Session
     ) -> Optional["DBTestReport"]:
         db_report: Optional[DBTestReport] = (
-            session.query(DBTestReport).filter_by(name=name, commit_str=commit_str).first()
+            session.query(DBTestReport)
+            .filter_by(name=name, commit_str=commit_str)
+            .first()
         )
         return db_report
 
@@ -82,14 +100,22 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
             session.add(db_report)
         else:
             # if already existing, update all fields
-            db_report.duration = report.duration if report.duration else db_report.duration
-            db_report.build_duration = report.build_duration if report.build_duration else db_report.build_duration
-            db_report.commit_str = report.commit_str if report.commit_str else db_report.commit_str
+            db_report.duration = (
+                report.duration if report.duration else db_report.duration
+            )
+            db_report.build_duration = (
+                report.build_duration
+                if report.build_duration
+                else db_report.build_duration
+            )
+            db_report.commit_str = (
+                report.commit_str if report.commit_str else db_report.commit_str
+            )
             # get from db if it exists
             db_report.commit = DBCommit.create_or_get(report.commit, session)
             db_report.suites = (
                 [DBTestSuite.from_domain(s) for s in report.suites]
-                if report.suites
+                if report.suites is not None
                 else db_report.suites
             )
             db_report.log = report.log if report.log else db_report.log
@@ -113,7 +139,9 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
             name=report.name,
             duration=report.duration,
             build_duration=report.build_duration,
-            suites=[] if report.suites is None else [DBTestSuite.from_domain(suite) for suite in report.suites],
+            suites=[]
+            if report.suites is None
+            else [DBTestSuite.from_domain(suite) for suite in report.suites],
             commit_str=report.commit_str,
             commit=DBCommit.from_domain(report.commit),
             log=report.log,
@@ -131,14 +159,16 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
             commit=self.commit.to_domain(),
             log=self.log,
             has_failed=self.has_failed,
-            has_errored=self.has_errored
+            has_errored=self.has_errored,
         )
 
 
 class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
-    __table_args__ = (Index('ix_TestSuite_id_report_id_name', "id", "report_id", "name"),
-                      Index('ix_TestSuite_name', "name"),
-                      Index('ix_TestSuite_crashed', "crashed"),)
+    __table_args__ = (
+        Index("ix_TestSuite_id_report_id_name", "id", "report_id", "name"),
+        Index("ix_TestSuite_name", "name"),
+        Index("ix_TestSuite_crashed", "crashed"),
+    )
 
     name = Column(String, nullable=False)
     duration = Column(Float)
@@ -149,9 +179,14 @@ class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
     ignored_count = Column(Integer)
     measured_count = Column(Integer)
     filtered_out_count = Column(Integer)
-    report_id = Column(Integer, ForeignKey("{}.id".format(DBTestReport.__tablename__), ondelete="CASCADE"))
+    report_id = Column(
+        Integer,
+        ForeignKey("{}.id".format(DBTestReport.__tablename__), ondelete="CASCADE"),
+    )
     report = relationship("DBTestReport", back_populates="suites")
-    cases: List["DBTestCase"] = relationship("DBTestCase", back_populates="suite", cascade="all, delete-orphan")
+    cases: Mapped[List["DBTestCase"]] = relationship(
+        "DBTestCase", back_populates="suite", cascade="all, delete-orphan"
+    )
 
     @classmethod
     def from_domain(cls, suite: TestSuite) -> "DBTestSuite":
@@ -167,7 +202,7 @@ class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
             failed_count=suite.failed_count,
             ignored_count=suite.ignored_count,
             measured_count=suite.measured_count,
-            filtered_out_count=suite.filtered_out_count
+            filtered_out_count=suite.filtered_out_count,
         )
 
     def to_domain(self) -> TestSuite:
@@ -181,20 +216,25 @@ class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
             failed_count=self.failed_count,
             ignored_count=self.ignored_count,
             measured_count=self.measured_count,
-            filtered_out_count=self.filtered_out_count
+            filtered_out_count=self.filtered_out_count,
         )
 
 
 class DBTestCase(Base, TestCase, metaclass=DBTestCaseMeta):
-    __table_args__ = (Index('ix_TestCase_id_suite_id_status', "id", "suite_id", "status"),
-                      Index('ix_TestCase_name', "name"),
-                      Index('ix_TestCase_status', "status"),)
+    __table_args__ = (
+        Index("ix_TestCase_id_suite_id_status", "id", "suite_id", "status"),
+        Index("ix_TestCase_name", "name"),
+        Index("ix_TestCase_status", "status"),
+    )
 
     name = Column(String, nullable=True)
     target = Column(Enum(TestTarget))
     status = Column(Enum(TestStatus))
     duration = Column(Float)
-    suite_id = Column(Integer, ForeignKey("{}.id".format(DBTestSuite.__tablename__), ondelete="CASCADE"))
+    suite_id = Column(
+        Integer,
+        ForeignKey("{}.id".format(DBTestSuite.__tablename__), ondelete="CASCADE"),
+    )
     suite = relationship("DBTestSuite", back_populates="cases")
     stdout = Column(String)
 

@@ -26,18 +26,17 @@ class RustyMutantsRTSMode(str, Enum):
 
 
 class CargoMutantsHook(Hook):
-
     def __init__(
-            self,
-            repository: Repository,
-            git_client: GitClient,
-            mode: RustyMutantsRTSMode,
-            connection: DBConnection,
-            env_vars: Optional[Dict] = None,
-            options=None,
-            test_options=None,
-            output_path: Optional[str] = None,
-            pre_hook: Optional[Callable] = None
+        self,
+        repository: Repository,
+        git_client: GitClient,
+        mode: RustyMutantsRTSMode,
+        connection: DBConnection,
+        env_vars: Optional[Dict] = None,
+        options=None,
+        test_options=None,
+        output_path: Optional[str] = None,
+        pre_hook: Optional[Callable] = None,
     ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
@@ -61,7 +60,9 @@ class CargoMutantsHook(Hook):
     def env(self):
         return os.environ | self.env_vars
 
-    def run(self, commit: Commit, features_parent: Optional[str], features: Optional[str]) -> bool:
+    def run(
+        self, commit: Commit, features_parent: Optional[str], features: Optional[str]
+    ) -> bool:
         """
         Run cargo mutants-rts.
 
@@ -96,19 +97,23 @@ class CargoMutantsHook(Hook):
 
         # Run test command on actual commit
         proc: SubprocessContainer = SubprocessContainer(
-            command=self.mutants_command(), output_filepath=cache_file_path, env=self.env()
+            command=self.mutants_command(),
+            output_filepath=cache_file_path,
+            env=self.env(),
         )
         proc.execute(capture_output=True, shell=True)
-        has_failed |= not (proc.exit_code == 0 or proc.exit_code == 2 or proc.exit_code == 3)
+        has_failed |= not (
+            proc.exit_code == 0 or proc.exit_code == 2 or proc.exit_code == 3
+        )
 
         # ******************************************************************************************************
         # Parse result
 
         result_matcher = re.search(
             r"^\d* mutants? tested in .*:(?: (\d*) missed,?)?(?: (\d*) caught,?)?(?: (\d*) unviable,?)?(?: (\d*) timeouts,?)?(?: (\d*) failed,?)?",
-            proc.output, re.M)
-
-        mutants = []
+            proc.output,
+            re.M,
+        )
 
         missed = None
         caught = None
@@ -126,7 +131,7 @@ class CargoMutantsHook(Hook):
         test_report: MutantsReport = MutantsReport(
             name="mutants" + self.mode,
             duration=proc.end_to_end_time,
-            mutants=mutants,
+            mutants=[],
             commit=commit,
             commit_str=commit.commit_str,
             log=proc.output,
@@ -135,18 +140,23 @@ class CargoMutantsHook(Hook):
             caught=caught,
             timeout=timeout,
             unviable=unviable,
-            failed=failed
+            failed=failed,
         )
         # create test report object
 
         with self.connection.create_session_ctx() as session:
-            test_report = DBMutantsReport.create_or_update(report=test_report, session=session)
+            test_report = DBMutantsReport.create_or_update(
+                report=test_report, session=session
+            )
+            _LOGGER.warning("Mutants " + str(test_report.mutants))
             session.commit()
 
         if not has_failed:
             # parse mutants
-            loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out")
-            loader.load_mutants(test_report, self.connection)
+            loader = CargoMutantsTestReportLoader(
+                self.repository.path + os.path.sep + "mutants.out"
+            )
+            loader.load_mutants(test_report.id, self.connection)
 
         ############################################################################################################
 
