@@ -2,7 +2,7 @@
 
 --CREATE VIEW check_parsed_tests as
 -- we check that the number of parsed test cases equals the number of actually executed tests
-SELECT s.*, count(c.id) as count_cases, s.passed_count + s.failed_count + s.measured_count - count(c.id) as deviation
+SELECT s.*, count(c.id) as count_cases, s.passed_count + s.failed_count + s.measured_count - count(c.id) as discrepancy
 FROM "TestSuite" s,
      "TestCase" c
 WHERE s.id = c.suite_id

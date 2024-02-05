@@ -72,6 +72,8 @@ class DBConnection:
             ]
 
         if schema.startswith("history"):
+            sequential = schema.endswith("sequential")
+            history.register_views(sequential=sequential)
             tables += [
                 Base.metadata.tables["TestReport"],
                 Base.metadata.tables["TestSuite"],
@@ -89,6 +91,7 @@ class DBConnection:
             "Dropping schema with tables: {}".format(Base.metadata.tables.keys())
         )
         mutants.register_views()
+        history.register_views(sequential=False)
         Base.metadata.drop_all(self.engine)
 
     def get_tables(self) -> List[str]:
