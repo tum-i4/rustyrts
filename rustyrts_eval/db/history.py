@@ -804,7 +804,15 @@ def register_views(sequential: bool = False):
             ).label("dynamic"),
         )
         .select_from(overview)
-        .join(overview_parent, overview.c.commit == overview_parent.c.commit)
+        .outerjoin(
+            overview_parent,
+            (overview.c.commit == overview_parent.c.commit)
+            & (
+                overview.c.retest_all_suite_name
+                == overview_parent.c.retest_all_suite_name
+            )
+            & (overview.c.retest_all_name == overview_parent.c.retest_all_name),
+        )
         .outerjoin(
             retest_all_selected,
             (overview.c.retest_all_testcase_id == retest_all_selected.c.id)
@@ -815,7 +823,7 @@ def register_views(sequential: bool = False):
                 .where(
                     overview_parent.c.retest_all_testcase_id == testcase_retest_all.c.id
                 )
-                .where(testcase_retest_all.c.status != retest_all_selected.c.status)
+                .where(testcase_retest_all.c.status == retest_all_selected.c.status)
                 .scalar_subquery()
             ),
         )
@@ -827,7 +835,7 @@ def register_views(sequential: bool = False):
                 select()
                 .select_from(testcase_dynamic)
                 .where(overview_parent.c.dynamic_testcase_id == testcase_dynamic.c.id)
-                .where(testcase_dynamic.c.status != dynamic_selected.c.status)
+                .where(testcase_dynamic.c.status == dynamic_selected.c.status)
                 .scalar_subquery()
             ),
         )
@@ -839,7 +847,7 @@ def register_views(sequential: bool = False):
                 select()
                 .select_from(testcase_static)
                 .where(overview_parent.c.static_testcase_id == testcase_static.c.id)
-                .where(testcase_static.c.status != static_selected.c.status)
+                .where(testcase_static.c.status == static_selected.c.status)
                 .scalar_subquery()
             ),
         )
@@ -852,7 +860,7 @@ def register_views(sequential: bool = False):
     )
 
     testcases_different = create_materialized_view(
-        "TestcasesFailed",
+        "TestcasesDifferent",
         testcases_different,
         # replace=True,
         metadata=Base.metadata,
