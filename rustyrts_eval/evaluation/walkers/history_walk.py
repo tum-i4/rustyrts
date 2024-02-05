@@ -16,15 +16,15 @@ from ...util.logging.logger import configure_logging_verbosity
 
 
 def walk(
-        connection,
-        path,
-        branch="main",
-        logging_level="DEBUG",
-        commits: Optional[list[(str, Optional[str], Optional[str])]] = None,
-        sequentially: bool = False,
-        env_vars: Optional[dict[str]] = None,
-        build_options: Optional[list[str]] = None,
-        test_options: Optional[list[str]] = None,
+    connection,
+    path,
+    branch="main",
+    logging_level="DEBUG",
+    commits: Optional[list[(str, Optional[str], Optional[str])]] = None,
+    sequentially: bool = False,
+    env_vars: Optional[dict[str]] = None,
+    build_options: Optional[list[str]] = None,
+    test_options: Optional[list[str]] = None,
 ):
     # set logging level
     numeric_level = getattr(logging, logging_level.upper(), None)
@@ -54,7 +54,7 @@ def walk(
     )
 
     build_options = build_options if build_options else []
-#    build_options += ["-Z no-index-update"]
+    #    build_options += ["-Z no-index-update"]
 
     test_options = test_options if test_options else []
     test_options += ["-Z unstable-options", "--report-time", "--format", "json"]
@@ -82,35 +82,35 @@ def walk(
                 connection=connection,
                 language="Rust",
             ),
-
-            CargoTestHook(repository=repository,
-                          connection=connection,
-                          git_client=git_client,
-                          report_name="cargo test" + name_postfix,
-                          env_vars=env_vars.copy(),
-                          build_options=build_options.copy(),
-                          test_options=test_options.copy()
-                          ),
-
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts dynamic" + name_postfix,
-                              mode=RustyRTSMode.DYNAMIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy(),
-                              test_options=test_options.copy()
-                              ),
-
-            CargoRustyRTSHook(repository=repository,
-                              connection=connection,
-                              git_client=git_client,
-                              report_name="cargo rustyrts static" + name_postfix,
-                              mode=RustyRTSMode.STATIC,
-                              env_vars=env_vars.copy(),
-                              build_options=build_options.copy(),
-                              test_options=test_options.copy()
-                              ),
+            CargoTestHook(
+                repository=repository,
+                connection=connection,
+                git_client=git_client,
+                report_name="cargo test" + name_postfix,
+                env_vars=env_vars.copy(),
+                build_options=build_options.copy(),
+                test_options=test_options.copy(),
+            ),
+            CargoRustyRTSHook(
+                repository=repository,
+                connection=connection,
+                git_client=git_client,
+                report_name="cargo rustyrts dynamic" + name_postfix,
+                mode=RustyRTSMode.DYNAMIC,
+                env_vars=env_vars.copy(),
+                build_options=build_options.copy(),
+                test_options=test_options.copy(),
+            ),
+            CargoRustyRTSHook(
+                repository=repository,
+                connection=connection,
+                git_client=git_client,
+                report_name="cargo rustyrts static" + name_postfix,
+                mode=RustyRTSMode.STATIC,
+                env_vars=env_vars.copy(),
+                build_options=build_options.copy(),
+                test_options=test_options.copy(),
+            ),
         ],
     )
     # create walker
@@ -124,5 +124,5 @@ def walk(
 
     # backup
     _dump(
-        connection, False, "post_" + repository.path[repository.path.rfind("/") + 1:]
+        connection, False, "post_" + repository.path[repository.path.rfind("/") + 1 :]
     )

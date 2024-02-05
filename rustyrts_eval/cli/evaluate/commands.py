@@ -57,7 +57,7 @@ MUTANTS_PROJECTS = [
     ("projects/mutants/ripgrep", "master", [("af6b6c543b224d348a8876f0c06245d9ea7929c5", None, None)], None),
     ("projects/mutants/Rocket", "master", [("c028d63e5ba275927424397fe9d67cfebdc138ec", None, None)], None),
     ("projects/mutants/rust-brotli", "master", [("b1f5aed58287cb01795a099230faa7d2ac734740", None, None)], None),
-    ("projects/mutants/rust-openssl", "master", [("e96addaa919e1f91c9dc143a9b13b218835f2356", None, None)],
+    ("projects/mutants/rust-openssl", "master", [("cc2850fff7c4b0d50a23e09059b0040044dd9616", None, None)],
      replace_problematic_tests_openssl),
     ("projects/mutants/rustls", "main", [("45197b807cf0699c842fcb85eb8eca555c74cc04", None, None)], None),
     ("projects/mutants/tabled", "master", [("cc4a110d5963b7eede0e634c83c44d9e8b8250e4", None, None)], None),
