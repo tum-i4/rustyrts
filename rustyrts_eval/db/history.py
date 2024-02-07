@@ -615,6 +615,8 @@ def register_views(sequential: bool = False):
         metadata=Base.metadata,
     )
 
+    testcase = DBTestCase.__table__
+
     testcases_count = (
         select(
             overview.c.commit,
@@ -736,18 +738,18 @@ def register_views(sequential: bool = False):
             ).label("retest_all"),
             coalesce(
                 aggregate_strings(
-                    static_selected.c.name,
-                    literal_column("'\n'"),
-                ),
-                "",
-            ).label("static"),
-            coalesce(
-                aggregate_strings(
                     dynamic_selected.c.name,
                     literal_column("'\n'"),
                 ),
                 "",
             ).label("dynamic"),
+            coalesce(
+                aggregate_strings(
+                    static_selected.c.name,
+                    literal_column("'\n'"),
+                ),
+                "",
+            ).label("static"),
         )
         .select_from(overview)
         .outerjoin(
@@ -792,16 +794,16 @@ def register_views(sequential: bool = False):
             ).label("retest_all"),
             coalesce(
                 aggregate_strings(
-                    static_selected.c.name,
-                    literal_column("'\n'"),
-                )
-            ).label("static"),
-            coalesce(
-                aggregate_strings(
                     dynamic_selected.c.name,
                     literal_column("'\n'"),
                 )
             ).label("dynamic"),
+            coalesce(
+                aggregate_strings(
+                    static_selected.c.name,
+                    literal_column("'\n'"),
+                )
+            ).label("static"),
         )
         .select_from(overview)
         .outerjoin(

@@ -1,9 +1,24 @@
 # Evaluation
 
 ## Prerequisites
+- Rustup
+- Python3.10
+- Docker
+
+- rustyrts (branch develop/main)
+- mutants-rts (branch mutants-rts)
+
+- Non-exhaustive list of other packages required to run the evaluation or compile the projects:
 ```bash
-sudo apt-get install snapd python3-dev postgresql-client
+sudo apt-get install snapd python3-dev postgresql-client python3-pip python3.10-venv
+sudo apt-get install gcc lld libssl-dev cmake protobuf-compiler clang
 sudo snap install scc
+```
+
+## Set default toolchain
+```bash
+rustup default nightly-2023-12-28-x86_64-unknown-linux-gnu
+rustup toolchain uninstall stable-x86_64-unknown-linux-gnu
 ```
 
 ## Install evaluation library
@@ -13,7 +28,7 @@ pip install -e .
 
 ## Start Postgres database in docker
 ```bash
-docker run --shm-size=1g --name rustyrts-evaluation -e POSTGRES_PASSWORD=rustyrts -p 5432:5432 -d postgres
+docker run --shm-size=1g --name rustyrts-evaluation -e POSTGRES_PASSWORD=rustyrts -p 5432:5432 -d postgres:12-bookworm
 ```
 
 
@@ -29,8 +44,8 @@ CREATE database history_parallel;
 Migrate schema:
 ```bash
 rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/mutants migrate mutants  # adapt this to your db connection if necessary
-rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_sequential migrate history sequential
-rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_parallel migrate history parallel
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_sequential migrate history_sequential
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_parallel migrate history_parallel
 ```
 
 ## Start recording mutants
