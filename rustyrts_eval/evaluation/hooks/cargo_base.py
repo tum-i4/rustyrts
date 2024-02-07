@@ -1,7 +1,9 @@
 import gc
 import glob
 import os
+import re
 from abc import ABC, abstractmethod
+from pathlib import Path
 from time import time
 from typing import Optional
 import tempfile
@@ -101,6 +103,16 @@ class CargoHook(Hook, ABC):
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
+
+            for filename in glob.glob("**/Cargo.toml", recursive=True):
+                # chrono apparently has introduced breaking changes in a minor revision (violating SemVer)
+                # we need to use the exact version here, instead of letting cargo use the latest one
+                file = Path(filename)
+                content = file.read_text()
+                content = re.sub(
+                    r'chrono = "(\d+(\.\d+)*)"', r'chrono = "=\1"', content
+                )
+                file.write_text(content)
 
             # prepare cache dir/file
             cache_file = "run_{}.log".format(
@@ -288,6 +300,15 @@ class CargoHook(Hook, ABC):
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
+
+            for filename in glob.glob("**/Cargo.toml", recursive=True):
+                file = Path(filename)
+                content = file.read_text()
+                content = re.sub(
+                    r'chrono = "(\d+(\.\d+)*)"', r'chrono = "=\1"', content
+                )
+                print("Replacing file " + str(file))
+                file.write_text(content)
 
             if self.build_debug:
                 ########################################################################################################
