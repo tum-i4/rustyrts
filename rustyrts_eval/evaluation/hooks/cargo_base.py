@@ -55,6 +55,10 @@ class CargoHook(Hook, ABC):
         pass
 
     @abstractmethod
+    def update_command(self):
+        pass
+
+    @abstractmethod
     def clean_command(self):
         pass
 
@@ -105,12 +109,14 @@ class CargoHook(Hook, ABC):
                 os.remove(filename)
 
             for filename in glob.glob("**/Cargo.toml", recursive=True):
-                # chrono apparently has introduced breaking changes in a minor revision (violating SemVer)
-                # we need to use the exact version here, instead of letting cargo use the latest one
+                # chrono apparently has introduced breaking changes in 0.4.30 (violating SemVer)
+                # we need to provide an upper bound on the version, instead of letting cargo use the latest one
                 file = Path(filename)
                 content = file.read_text()
                 content = re.sub(
-                    r'chrono = "(\d+(\.\d+)*)"', r'chrono = "=\1"', content
+                    r'chrono = "(0.4(.[12]?[123456789])?)"',
+                    r'chrono = "\1,<=0.4.29"',
+                    content,
                 )
                 file.write_text(content)
 
@@ -123,6 +129,18 @@ class CargoHook(Hook, ABC):
             # clean
             proc: SubprocessContainer = SubprocessContainer(
                 command=self.clean_command(), output_filepath=cache_file_path
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+            # prepare cache dir/file
+            cache_file = "run_{}.log".format(
+                int(time() * 1000)
+            )  # run identified by timestamp
+            cache_file_path = os.path.join(self.cache_dir, cache_file)
+
+            # update dependencies
+            proc: SubprocessContainer = SubprocessContainer(
+                command=self.update_command(), output_filepath=cache_file_path
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
@@ -305,10 +323,18 @@ class CargoHook(Hook, ABC):
                 file = Path(filename)
                 content = file.read_text()
                 content = re.sub(
-                    r'chrono = "(\d+(\.\d+)*)"', r'chrono = "=\1"', content
+                    r'chrono = "(0.4(.[12]?[123456789])?)"',
+                    r'chrono = "\1,<=0.4.29"',
+                    content,
                 )
                 print("Replacing file " + str(file))
                 file.write_text(content)
+
+            # update dependencies
+            proc: SubprocessContainer = SubprocessContainer(
+                command=self.update_command(), output_filepath=cache_file_path
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
 
             if self.build_debug:
                 ########################################################################################################

@@ -16,15 +16,19 @@ class RustyRTSMode(str, Enum):
 
 
 class CargoRustyRTSHook(CargoHook):
-
-    def __init__(self, repository: Repository,
-                 git_client: GitClient,
-                 mode: RustyRTSMode,
-                 connection: DBConnection,
-                 env_vars: Optional[Dict] = None,
-                 build_options=None, rustc_options=None, test_options=None,
-                 report_name: Optional[str] = None,
-                 output_path: Optional[str] = None):
+    def __init__(
+        self,
+        repository: Repository,
+        git_client: GitClient,
+        mode: RustyRTSMode,
+        connection: DBConnection,
+        env_vars: Optional[Dict] = None,
+        build_options=None,
+        rustc_options=None,
+        test_options=None,
+        report_name: Optional[str] = None,
+        output_path: Optional[str] = None,
+    ):
         super().__init__(repository, git_client, connection, report_name, output_path)
 
         self.target_dir = abspath(repository.path + "/target")
@@ -51,14 +55,19 @@ class CargoRustyRTSHook(CargoHook):
     def clean_command(self):
         return "cargo clean"
 
+    def update_command(self):
+        return "cargo update"
+
     def build_command(self, features):
-        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
-        return "cargo build --all-targets {0}".format(
-            build_options
+        build_options = " ".join(self.build_options) + (
+            " --features {0}".format(features) if features else ""
         )
+        return "cargo build --all-targets {0}".format(build_options)
 
     def test_command_parent(self, features):
-        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+        build_options = " ".join(self.build_options) + (
+            " --features {0}".format(features) if features else ""
+        )
         return "cargo rustyrts {0} -- {1} -- {2} -- {1} -- {3}".format(
             self.mode,
             build_options,
@@ -67,7 +76,9 @@ class CargoRustyRTSHook(CargoHook):
         )
 
     def test_command(self, features):
-        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+        build_options = " ".join(self.build_options) + (
+            " --features {0}".format(features) if features else ""
+        )
         return "cargo rustyrts {0} -v -- {1} -- {2} -- {1} -- {3}".format(
             self.mode,
             build_options,
