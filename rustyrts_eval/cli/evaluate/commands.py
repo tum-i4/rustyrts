@@ -27,88 +27,56 @@ FAILED_HISTORY_MSG = "Failed git walk"
 ########################################################################################################################
 # Projects configuration for mutants evaluation
 
-
-# Using dynamic rts, these tests just keeps failing on the remote machine, while succeeding locally
-# Apparently, the reason has something to do with the operating system and not RustyRTSS itself
-# This is why, we just ignore these tests
-# TODO: check this
-def replace_problematic_tests_openssl():
-    project_dir = Path("projects/mutants/rust-openssl")
-
-    problematic_tests_indented = ["from_nid"]
-    problematic_tests = ["basic", "dynamic_data", "static_data"]
-
-    for file in project_dir.rglob("*.rs"):
-        input = file.read_text()
-        for test in problematic_tests:
-            sig = "#[test]\nfn " + test + "() {"
-            input = input.replace(sig, "#[ignore]\n" + sig)
-        for test in problematic_tests_indented:
-            sig = "    #[test]\n    fn " + test + "() {"
-            input = input.replace(sig, "    #[ignore]\n" + sig)
-        file.write_text(input)
-
-
 MUTANTS_PROJECTS = [
     (
         "projects/mutants/orion",
         "master",
         [("cfa2c0c1e89f1ec3d2ab1ab1d57f88c1201e452c", None, None)],
-        None,
     ),
     (
         "projects/mutants/pulldown-cmark",
         "master",
         [("967dd38554399573279855a9e124dc598a0e3200", None, None)],
-        None,
     ),
     (
         "projects/mutants/regex",
         "master",
         [("b5ef0ec281220d9047fed199ed48c29af9749570", None, None)],
-        None,
     ),
     (
         "projects/mutants/ripgrep",
         "master",
         [("af6b6c543b224d348a8876f0c06245d9ea7929c5", None, None)],
-        None,
     ),
     (
         "projects/mutants/Rocket",
         "master",
         [("c028d63e5ba275927424397fe9d67cfebdc138ec", None, None)],
-        None,
     ),
     (
         "projects/mutants/rust-brotli",
         "master",
         [("b1f5aed58287cb01795a099230faa7d2ac734740", None, None)],
-        None,
     ),
     (
         "projects/mutants/rust-openssl",
         "master",
         [("cc2850fff7c4b0d50a23e09059b0040044dd9616", None, None)],
-        replace_problematic_tests_openssl,
     ),
     (
         "projects/mutants/rustls",
         "main",
         [("45197b807cf0699c842fcb85eb8eca555c74cc04", None, None)],
-        None,
     ),
     (
         "projects/mutants/tabled",
         "master",
         [("cc4a110d5963b7eede0e634c83c44d9e8b8250e4", None, None)],
-        None,
     ),
     (
         "projects/mutants/tracing",
         "master",
         [("4f1e46306d4d364fcc69691fdb29a676c7105f72", None, None)],
-        None,
     ),
 ]
 
@@ -670,11 +638,7 @@ TESTING_PROJECTS = [
             ("eab33b2a9f6a136f5a2b9823358d58690741b0be", None, None),
             ("26c77ce77dee5f850358df3a696c45690cdfe5e9", None, None),
             ("8b78e6a090cad12a8f0271667025085538cfb389", None, None),
-            (
-                "3d94ac1a22268fa06ee0c76cdd385ba1ce454a4a",
-                None,
-                None,
-            ),  # error due to patching rustyrts
+            ("3d94ac1a22268fa06ee0c76cdd385ba1ce454a4a", None, None),
             ("3302c23929e4e66f5aced4df5e03b4eafd8b2f3f", None, None),
             ("2a806883239b1a377e5012b610973562c1127f6e", None, None),
             ("65fed69e8500e066375568f69d1616779a83e509", None, None),
@@ -713,7 +677,6 @@ SMALL_MUTANTS_PROJECTS = [
         "projects/small/budget",
         "master",
         [("2db4b033e5fc9ba05010def0f6988ba9b822ae8e", None, None)],
-        None,
     ),
 ]
 
@@ -735,7 +698,7 @@ def evaluate(ctx, url: str):
 
     Examples:
 
-        $ rts_eval evaluate postgresql://user:pass@localhost:5432/db mutants
+        $ rts_eval evaluate postgresql://user:pass@localhost:5432/db mutants full
     """
     # set options
     echo = "debug" if ctx.obj["debug"] else False
@@ -766,7 +729,7 @@ def mutants(ctx, mode):
         else:
             projects = MUTANTS_PROJECTS
 
-        for path, branch, commits, pre_hook in projects:
+        for path, branch, commits in projects:
             spinner.info("Evaluating project in " + path)
 
             mutants_walk.walk(
@@ -816,6 +779,30 @@ def history(ctx, mode, strategy):
                     commits=commits,
                     sequentially=sequentially,
                 )
+
+        spinner.stop()
+        click_echo_success(SUCCESS_HISTORY_MSG)
+    except Exception as e:
+        _LOGGER.debug(e)
+        click_echo_failure(FAILED_HISTORY_MSG)
+        raise e
+
+
+@evaluate.command(name="sample")
+@click.argument("path", type=str, required=True)
+@click.argument("branch", type=str, default="main")
+@click.pass_obj
+def history(ctx, path, branch):
+    conn: DBConnection = ctx["connection"]
+    try:
+        spinner = start_spinner("Running git walk testing sampling...")
+
+        history_walk.walk(
+            conn,
+            path,
+            branch=branch,
+            commits=None,
+        )
 
         spinner.stop()
         click_echo_success(SUCCESS_HISTORY_MSG)

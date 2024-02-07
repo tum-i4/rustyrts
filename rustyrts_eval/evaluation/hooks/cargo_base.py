@@ -327,7 +327,6 @@ class CargoHook(Hook, ABC):
                     r'chrono = "\1,<=0.4.29"',
                     content,
                 )
-                print("Replacing file " + str(file))
                 file.write_text(content)
 
             # update dependencies
