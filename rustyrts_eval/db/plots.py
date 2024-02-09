@@ -1271,7 +1271,7 @@ class MutantsPlotter:
                 file_not_selected + self.output_format,
                 ["#E37222", "#A2AD00"],
                 hue="algorithm",
-                figsize=(3, 15),
+                figsize=(17, 15),
                 legend=False,
             )
 
@@ -1289,9 +1289,6 @@ class MutantsPlotter:
             hue="algorithm",
             figsize=(17, 15),
         )
-
-        # stripplot(df_not_selected, labels, y_label_not_selected, file_not_selected + self.output_format,
-        #          ["#E37222", "#A2AD00"], hue='algorithm', figsize=(17, 15))
 
     def plot_mutants_percentage_failed(self):
         y_label = "failed tests of selected tests [%]"
