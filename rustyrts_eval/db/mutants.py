@@ -479,6 +479,13 @@ def register_views():
         .where(retest_all_mutant.c.descr != "baseline")
     )
 
+    mutant_extended = create_view(
+        "MutantExtended",
+        mutant_extended,
+        # replace=True,
+        metadata=Base.metadata,
+    )
+
     mutants_testcase_extended = (
         select(
             case,
@@ -491,8 +498,15 @@ def register_views():
         .where(case.c.status != "IGNORED")
     )
 
-    mutant = mutant_extended.cte()
-    testcase = mutants_testcase_extended.cte()
+    mutants_testcase_extended = create_view(
+        "MutantsTestCaseExtended",
+        mutants_testcase_extended,
+        # replace=True,
+        metadata=Base.metadata,
+    )
+
+    mutant = mutant_extended
+    testcase = mutants_testcase_extended
 
     retest_all_testcases = testcase.alias("retest_all_test_cases")
     dynamic_testcases = testcase.alias("dynamic_test_cases")
@@ -556,7 +570,7 @@ def register_views():
     )
 
     overview = create_materialized_view(
-        "MutantTestcaseOverview",
+        "MutantTestCaseOverview",
         overview,
         # replace=True,
         metadata=Base.metadata,
@@ -612,7 +626,7 @@ def register_views():
     )
 
     testcases_count = create_materialized_view(
-        "TestcaseCount",
+        "TestCasesCount",
         testcases_count,
         # replace=True,
         metadata=Base.metadata,
@@ -728,7 +742,7 @@ def register_views():
     )
 
     testcases_selected = create_materialized_view(
-        "TestcasesSelected",
+        "TestCasesSelected",
         testcases_selected,
         # replace=True,
         metadata=Base.metadata,
@@ -784,7 +798,7 @@ def register_views():
     )
 
     testcases_failed = create_materialized_view(
-        "TestcasesFailed",
+        "TestCasesFailed",
         testcases_failed,
         # replace=True,
         metadata=Base.metadata,

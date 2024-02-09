@@ -1,7 +1,8 @@
 from contextlib import contextmanager
 from typing import List
+import pandas as pd
 
-from sqlalchemy import create_engine, Integer, Column, DateTime, func
+from sqlalchemy import create_engine, Integer, Column, DateTime, func, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declared_attr, as_declarative
 from sqlalchemy.orm import sessionmaker, Session
@@ -96,3 +97,7 @@ class DBConnection:
 
     def get_tables(self) -> List[str]:
         return self.engine.table_names()
+
+    def raw_query(self, query):
+        with self.create_session_ctx() as session:
+            return pd.DataFrame(session.execute(text(query)))

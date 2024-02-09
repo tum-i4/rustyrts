@@ -3,6 +3,7 @@ import logging
 import click
 
 from .analyze.commands import analyze
+from .analyze.plots import plot
 from .db.commands import db
 from .evaluate.commands import evaluate
 from .. import __version__
@@ -48,3 +49,4 @@ def version(ctx):
 entry_point.add_command(db)
 entry_point.add_command(evaluate)
 entry_point.add_command(analyze)
+entry_point.add_command(plot)

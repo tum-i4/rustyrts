@@ -467,6 +467,13 @@ def register_views(sequential: bool = False):
     special = " sequential" if sequential else ""
     report, report_parent = register_views_individual(special)
 
+    report = create_view(
+        "TestReportExtended",
+        report,
+        replace=True,
+        metadata=Base.metadata,
+    )
+
     retest_all = report.alias("retest_all")
     dynamic = report.alias("dynamic")
     static = report.alias("static")
@@ -546,7 +553,7 @@ def register_views(sequential: bool = False):
     )
 
     overview = create_materialized_view(
-        "TestcaseOverview",
+        "TestCaseOverview",
         overview,
         # replace=True,
         metadata=Base.metadata,
@@ -609,7 +616,7 @@ def register_views(sequential: bool = False):
     )
 
     overview_parent = create_materialized_view(
-        "TestcaseOverviewParent",
+        "TestCaseOverviewParent",
         overview_parent,
         # replace=True,
         metadata=Base.metadata,
@@ -663,7 +670,7 @@ def register_views(sequential: bool = False):
     )
 
     testcases_count = create_materialized_view(
-        "TestcaseCount",
+        "TestCasesCount",
         testcases_count,
         # replace=True,
         metadata=Base.metadata,
@@ -773,7 +780,7 @@ def register_views(sequential: bool = False):
     )
 
     testcases_selected = create_materialized_view(
-        "TestcasesSelected",
+        "TestCasesSelected",
         testcases_selected,
         # replace=True,
         metadata=Base.metadata,
@@ -790,19 +797,22 @@ def register_views(sequential: bool = False):
                 aggregate_strings(
                     retest_all_selected.c.name,
                     literal_column("'\n'"),
-                )
+                ),
+                "",
             ).label("retest_all"),
             coalesce(
                 aggregate_strings(
                     dynamic_selected.c.name,
                     literal_column("'\n'"),
-                )
+                ),
+                "",
             ).label("dynamic"),
             coalesce(
                 aggregate_strings(
                     static_selected.c.name,
                     literal_column("'\n'"),
-                )
+                ),
+                "",
             ).label("static"),
         )
         .select_from(overview)
@@ -862,7 +872,7 @@ def register_views(sequential: bool = False):
     )
 
     testcases_different = create_materialized_view(
-        "TestcasesDifferent",
+        "TestCasesDifferent",
         testcases_different,
         # replace=True,
         metadata=Base.metadata,

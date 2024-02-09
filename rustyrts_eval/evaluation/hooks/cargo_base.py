@@ -120,27 +120,19 @@ class CargoHook(Hook, ABC):
                 )
                 file.write_text(content)
 
-            # prepare cache dir/file
-            cache_file = "run_{}.log".format(
-                int(time() * 1000)
-            )  # run identified by timestamp
-            cache_file_path = os.path.join(self.cache_dir, cache_file)
-
             # clean
             proc: SubprocessContainer = SubprocessContainer(
-                command=self.clean_command(), output_filepath=cache_file_path
+                command=self.clean_command(), output_filepath=self.prepare_cache_file()
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
-            # prepare cache dir/file
-            cache_file = "run_{}.log".format(
-                int(time() * 1000)
-            )  # run identified by timestamp
-            cache_file_path = os.path.join(self.cache_dir, cache_file)
-
             # update dependencies
+            update_command = self.update_command()
+            # if a Cargo.lock is supplied via git, we only update proc-macro2 which has shown to be problematic
+            if glob.glob("Cargo.lock"):
+                update_command += " proc-macro2"
             proc: SubprocessContainer = SubprocessContainer(
-                command=self.update_command(), output_filepath=cache_file_path
+                command=update_command, output_filepath=self.prepare_cache_file()
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
@@ -159,16 +151,10 @@ class CargoHook(Hook, ABC):
                 # (Some tests in certain projects require artifacts that are build only by cargo build)
 
                 if not has_errored:
-                    # prepare cache dir/file
-                    cache_file = "run_{}.log".format(
-                        int(time() * 1000)
-                    )  # run identified by timestamp
-                    cache_file_path = os.path.join(self.cache_dir, cache_file)
-
                     # Run build command on parent commit
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features_parent),
-                        output_filepath=cache_file_path,
+                        output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
@@ -205,16 +191,10 @@ class CargoHook(Hook, ABC):
                 # (Some tests in certain projects require artifacts that are build only by cargo build)
 
                 if not has_errored:
-                    # prepare cache dir/file
-                    cache_file = "run_{}.log".format(
-                        int(time() * 1000)
-                    )  # run identified by timestamp
-                    cache_file_path = os.path.join(self.cache_dir, cache_file)
-
                     # Run build command on parent commit
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features_parent) + " --release",
-                        output_filepath=cache_file_path,
+                        output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
@@ -248,16 +228,10 @@ class CargoHook(Hook, ABC):
             ############################################################################################################
             # Run on parent commit
             if not has_errored:
-                # prepare cache dir/file
-                cache_file = "run_{}.log".format(
-                    int(time() * 1000)
-                )  # run identified by timestamp
-                cache_file_path = os.path.join(self.cache_dir, cache_file)
-
                 # Run test command to generate temporary files for incremental compilation or traces
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.test_command_parent(features_parent),
-                    output_filepath=cache_file_path,
+                    output_filepath=self.prepare_cache_file(),
                     env=self.env() | env_tmp_override(),
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
@@ -331,7 +305,7 @@ class CargoHook(Hook, ABC):
 
             # update dependencies
             proc: SubprocessContainer = SubprocessContainer(
-                command=self.update_command(), output_filepath=cache_file_path
+                command=update_command, output_filepath=self.prepare_cache_file()
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
@@ -341,16 +315,10 @@ class CargoHook(Hook, ABC):
                 # (Some tests in certain projects require artifacts that are build only by cargo build)
 
                 if not has_errored:
-                    # prepare cache dir/file
-                    cache_file = "run_{}.log".format(
-                        int(time() * 1000)
-                    )  # run identified by timestamp
-                    cache_file_path = os.path.join(self.cache_dir, cache_file)
-
                     # Run build command on actual commit
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features),
-                        output_filepath=cache_file_path,
+                        output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
@@ -387,16 +355,10 @@ class CargoHook(Hook, ABC):
                 # (Some tests in certain projects require artifacts that are build only by cargo build)
 
                 if not has_errored:
-                    # prepare cache dir/file
-                    cache_file = "run_{}.log".format(
-                        int(time() * 1000)
-                    )  # run identified by timestamp
-                    cache_file_path = os.path.join(self.cache_dir, cache_file)
-
                     # Run build command on actual commit
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features),
-                        output_filepath=cache_file_path,
+                        output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
@@ -431,16 +393,10 @@ class CargoHook(Hook, ABC):
             # Run on actual commit
 
             if not has_errored:
-                # prepare cache dir/file
-                cache_file = "run_{}.log".format(
-                    int(time() * 1000)
-                )  # run identified by timestamp
-                cache_file_path = os.path.join(self.cache_dir, cache_file)
-
                 # Run test command on actual commit
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.test_command(features),
-                    output_filepath=cache_file_path,
+                    output_filepath=self.prepare_cache_file(),
                     env=self.env() | env_tmp_override()  # | {"RUSTYRTS_LOG": "debug"}
                     # e.g. changes trybuild files will be overridden by git reset, so we just use it here as well
                     # this effectively prevents those tests from failing, but there is just no other way
@@ -504,3 +460,11 @@ class CargoHook(Hook, ABC):
         _LOGGER.info("gc has freed " + str(freed) + " objects")
 
         return not has_errored
+
+    def prepare_cache_file(self) -> str:
+        # prepare cache dir/file
+        cache_file = "run_{}.log".format(
+            int(time() * 1000)
+        )  # run identified by timestamp
+        cache_file_path = os.path.join(self.cache_dir, cache_file)
+        return cache_file_path
