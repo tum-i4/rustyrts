@@ -13,11 +13,16 @@ from ...models.scm.git import GitClient
 from ...util.logging.logger import configure_logging_verbosity
 
 
-def walk(connection, path, branch="main", logging_level="DEBUG", commits=None,
-         env_vars: Optional[dict[str]] = None,
-         options: Optional[list[str]] = None,
-         pre_hook: Optional[Callable] = None
-         ):
+def walk(
+    connection,
+    path,
+    branch="main",
+    logging_level="DEBUG",
+    commits=None,
+    env_vars: Optional[dict[str]] = None,
+    options: Optional[list[str]] = None,
+    pre_hook: Optional[Callable] = None,
+):
     # set logging level
     numeric_level = getattr(logging, logging_level.upper(), None)
     if not isinstance(numeric_level, int):
@@ -39,22 +44,26 @@ def walk(connection, path, branch="main", logging_level="DEBUG", commits=None,
     # If a commit is added to the repositories, the seed responsible for making the evaluation reproducible
     # does not work correctly anymore
     # that is why we fixed the commits that are analyzed
-    (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (
-        RandomWalkerStrategy(repository, branch=branch), 20)
+    (strategy, num_commits) = (
+        (GivenWalkerStrategy(commits), len(commits))
+        if commits
+        else (RandomWalkerStrategy(repository, branch=branch), 20)
+    )
 
     options = options if options else []
     options.append("--json")
+    options.append("--gitignore=false")
 
     env_vars = env_vars if env_vars else {}
-    env_vars.update({"RUSTFLAGS": " ".join(
-        ["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])})
+    env_vars.update(
+        {"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])}
+    )
 
     walker = GitWalker(
         repository=repository,
         connection=connection,
         strategy=strategy,
         num_commits=num_commits,
-
         hooks=[
             # scc
             SccHook(
@@ -62,33 +71,33 @@ def walk(connection, path, branch="main", logging_level="DEBUG", commits=None,
                 connection=connection,
                 language="Rust",
             ),
-
-            CargoMutantsHook(repository=repository,
-                             git_client=git_client,
-                             mode=RustyMutantsRTSMode.TEST,
-                             env_vars=env_vars,
-                             options=options,
-                             connection=connection,
-                             pre_hook=pre_hook
-                             ),
-
-            CargoMutantsHook(repository=repository,
-                             git_client=git_client,
-                             mode=RustyMutantsRTSMode.DYNAMIC,
-                             env_vars=env_vars,
-                             options=options,
-                             connection=connection,
-                             pre_hook=pre_hook
-                             ),
-
-            CargoMutantsHook(repository=repository,
-                             git_client=git_client,
-                             mode=RustyMutantsRTSMode.STATIC,
-                             env_vars=env_vars,
-                             options=options,
-                             connection=connection,
-                             pre_hook=pre_hook
-                             )
+            CargoMutantsHook(
+                repository=repository,
+                git_client=git_client,
+                mode=RustyMutantsRTSMode.TEST,
+                env_vars=env_vars,
+                options=options,
+                connection=connection,
+                pre_hook=pre_hook,
+            ),
+            CargoMutantsHook(
+                repository=repository,
+                git_client=git_client,
+                mode=RustyMutantsRTSMode.DYNAMIC,
+                env_vars=env_vars,
+                options=options,
+                connection=connection,
+                pre_hook=pre_hook,
+            ),
+            CargoMutantsHook(
+                repository=repository,
+                git_client=git_client,
+                mode=RustyMutantsRTSMode.STATIC,
+                env_vars=env_vars,
+                options=options,
+                connection=connection,
+                pre_hook=pre_hook,
+            ),
         ],
     )
     # create walker
