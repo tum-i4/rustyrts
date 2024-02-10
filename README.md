@@ -11,7 +11,7 @@
 - Non-exhaustive list of other packages required to run the evaluation or compile the projects:
 ```bash
 sudo apt-get install snapd python3-dev postgresql-client python3-pip python3.10-venv
-sudo apt-get install gcc lld libssl-dev cmake protobuf-compiler clang
+sudo apt-get install gcc lld libssl-dev cmake protobuf-compiler clang libsqlite3-dev
 sudo snap install scc
 ```
 
