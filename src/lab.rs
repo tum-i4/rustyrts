@@ -245,7 +245,7 @@ fn test_scenario(
         };
         vec![build_phase, test_phase]
     };
-    for phase in phases {
+    for phase in phases.clone() {
         console.scenario_phase_started(scenario, phase);
         let timeout = if phase.is_test_phase() {
             test_timeout
@@ -284,6 +284,45 @@ fn test_scenario(
         }
     }
     drop(applied);
+    // Apply again to restore incremental compilation arifacts
+    for phase in phases {
+        console.scenario_phase_started(scenario, phase);
+        let timeout = if phase.is_test_phase() {
+            test_timeout
+        } else {
+            Duration::MAX
+        };
+        let mut rustc_wrapper = vec![];
+        let target_dir = build_dir.path().to_string() + "/target";
+        let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/cargo-rustyrts";
+        if let Phase::BuildDynamic = phase {
+            create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
+
+            rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
+            rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
+
+            rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
+            rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
+        }
+        let phase_result = run_cargo(
+            build_dir,
+            Some(test_packages),
+            phase,
+            timeout,
+            &mut log_file,
+            options,
+            console,
+            rustyrts_log,
+            trybuild_overwrite,
+            rustc_wrapper,
+        )?;
+        let success = phase_result.is_success();
+        // outcome.add_phase_result(phase_result); // But do not count
+        console.scenario_phase_finished(scenario, phase);
+        if (phase == Phase::Check && options.check_only) || !success {
+            break;
+        }
+    }
     output_mutex
         .lock()
         .expect("lock output dir to add outcome")

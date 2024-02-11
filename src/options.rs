@@ -215,6 +215,13 @@ impl Options {
             Vec::new()
         };
 
+        let gitignore = {
+            match args.test_tool {
+                Some(TestTool::Dynamic) | Some(TestTool::Static) => false,
+                _ => args.gitignore,
+            }
+        };
+
         let options = Options {
             additional_cargo_args: join_slices(&args.cargo_arg, &config.additional_cargo_args),
             additional_cargo_test_args: args
@@ -236,7 +243,7 @@ impl Options {
                 .context("Failed to compile exclude_re regex")?,
             examine_globset: build_glob_set(or_slices(&args.file, &config.examine_globs))?,
             exclude_globset: build_glob_set(or_slices(&args.exclude, &config.exclude_globs))?,
-            gitignore: args.gitignore,
+            gitignore,
             in_place: args.in_place,
             jobs: args.jobs,
             leak_dirs: args.leak_dirs,
@@ -309,13 +316,13 @@ mod test {
         assert!(!options.check_only);
         assert_eq!(options.test_tool, TestTool::Cargo);
     }
-    
+
     // Nexteest is not supported
     // #[test]
     // fn options_from_test_tool_arg() {
-        // let args = Args::parse_from(["mutants-rts", "--test-tool", "nextest"]);
-        // let options = Options::new(&args, &Config::default()).unwrap();
-        // assert_eq!(options.test_tool, TestTool::Nextest);
+    // let args = Args::parse_from(["mutants-rts", "--test-tool", "nextest"]);
+    // let options = Options::new(&args, &Config::default()).unwrap();
+    // assert_eq!(options.test_tool, TestTool::Nextest);
     // }
 
     #[test]
