@@ -48,7 +48,15 @@ pub fn run_cargo(
         env.push((k.to_owned(), v.to_owned()));
     }
 
-    let process_status = Process::run(&argv, &env, build_dir.path(), timeout, log_file, console, &start)?;
+    let process_status = Process::run(
+        &argv,
+        &env,
+        build_dir.path(),
+        timeout,
+        log_file,
+        console,
+        &start,
+    )?;
     check_interrupted()?;
     debug!(?process_status, elapsed = ?start.elapsed());
     Ok(PhaseResult {
@@ -121,6 +129,7 @@ pub fn cargo_argv(
 
             // Add args to `cargo build` here
             cargo_args.extend(options.additional_cargo_args.iter().cloned());
+            append_packages(&mut cargo_args, packages, build_dir);
         }
 
         if phase == Phase::Dynamic || phase == Phase::Static {
@@ -133,27 +142,40 @@ pub fn cargo_argv(
 
             cargo_args.push("--".to_string());
         }
+        // Add args to cargo test here
+        //...
     }
 
+    cargo_args.extend(options.additional_cargo_args.iter().cloned());
+    append_packages(&mut cargo_args, packages, build_dir);
+    if phase.is_test_phase() {
+        cargo_args.extend(options.additional_cargo_test_args.iter().cloned());
+    }
+    cargo_args
+}
+
+fn append_packages(
+    cargo_args: &mut Vec<String>,
+    packages: Option<&[&Package]>,
+    build_dir: &Utf8Path,
+) {
     if let Some([package]) = packages {
         // Use the unambiguous form for this case; it works better when the same
         // package occurs multiple times in the tree with different versions?
         cargo_args.push("--manifest-path".to_owned());
         cargo_args.push(build_dir.join(&package.relative_manifest_path).to_string());
     } else if let Some(packages) = packages {
-        for package in packages.iter().map(|p| p.name.to_owned() + "@" + &p.version).sorted() {
+        for package in packages
+            .iter()
+            .map(|p| p.name.to_owned() + "@" + &p.version)
+            .sorted()
+        {
             cargo_args.push("--package".to_owned());
             cargo_args.push(package);
         }
     } else {
         cargo_args.push("--workspace".to_string());
     }
-
-    cargo_args.extend(options.additional_cargo_args.iter().cloned());
-    if phase.is_test_phase() {
-        cargo_args.extend(options.additional_cargo_test_args.iter().cloned());
-    }
-    cargo_args
 }
 
 /// Return adjusted CARGO_ENCODED_RUSTFLAGS, including any changes to cap-lints.
@@ -269,6 +291,7 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
+                "--workspace",
                 "--",
                 "--",
                 "--workspace"
@@ -282,6 +305,7 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
+                "--workspace",
                 "--",
                 "--",
                 "--workspace"
@@ -291,14 +315,11 @@ mod test {
 
     #[test]
     fn generate_cargo_args_with_additional_cargo_test_args_and_package() {
-        let mut options = Options::default();
+        let options = Options::default();
         let package_name = "cargo-mutants-testdata-something";
-        let version= "0.0.1";
+        let version = "0.0.1";
         let build_dir = Utf8Path::new("/tmp/buildXYZ");
         let relative_manifest_path = Utf8PathBuf::from("testdata/something/Cargo.toml");
-        options
-            .additional_cargo_test_args
-            .extend(["--json"].iter().map(|s| s.to_string()));
         let package = Arc::new(Package {
             name: package_name.to_owned(),
             version: version.to_owned(),
@@ -364,7 +385,6 @@ mod test {
                 "--examples",
                 "--manifest-path",
                 build_manifest_path.as_str(),
-                "--json"
             ]
         );
         assert_eq!(
@@ -375,11 +395,12 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
+                "--manifest-path",
+                build_manifest_path.as_str(),
                 "--",
                 "--",
                 "--manifest-path",
                 build_manifest_path.as_str(),
-                "--json"
             ]
         );
         assert_eq!(
@@ -390,11 +411,12 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
+                "--manifest-path",
+                build_manifest_path.as_str(),
                 "--",
                 "--",
                 "--manifest-path",
                 build_manifest_path.as_str(),
-                "--json"
             ]
         );
     }
@@ -421,8 +443,8 @@ mod test {
                 "test",
                 "--target-dir",
                 "target_check",
-                "--workspace",
-                "--verbose"
+                "--verbose",
+                "--workspace"
             ]
         );
         assert_eq!(
@@ -435,8 +457,8 @@ mod test {
                 "--examples",
                 "--profile",
                 "test",
-                "--workspace",
-                "--verbose"
+                "--verbose",
+                "--workspace"
             ]
         );
         assert_eq!(
@@ -449,8 +471,8 @@ mod test {
                 "--examples",
                 "--profile",
                 "test",
-                "--workspace",
-                "--verbose"
+                "--verbose",
+                "--workspace"
             ]
         );
         assert_eq!(
@@ -466,8 +488,8 @@ mod test {
                 //"--bins",
                 "--tests",
                 "--examples",
-                "--workspace",
                 "--verbose",
+                "--workspace",
                 "--",
                 "--test-threads=1"
             ]
@@ -481,10 +503,11 @@ mod test {
                 "no-index-update",
                 "--",
                 "--verbose",
-                "--",
-                "--",
                 "--workspace",
+                "--",
+                "--",
                 "--verbose",
+                "--workspace",
                 "--",
                 "--test-threads=1"
             ]
@@ -498,10 +521,11 @@ mod test {
                 "no-index-update",
                 "--",
                 "--verbose",
-                "--",
-                "--",
                 "--workspace",
+                "--",
+                "--",
                 "--verbose",
+                "--workspace",
                 "--",
                 "--test-threads=1"
             ]
