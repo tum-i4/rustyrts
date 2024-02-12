@@ -213,23 +213,6 @@ fn test_scenario(
     trybuild_overwrite: bool,
     rustyrts_log: &str,
 ) -> Result<ScenarioOutcome> {
-    let mut log_file = output_mutex
-        .lock()
-        .expect("lock output_dir to create log")
-        .create_log(scenario)?;
-    log_file.message(&scenario.to_string());
-    let applied = scenario
-        .mutant()
-        .map(|mutant| {
-            // TODO: This is slightly inefficient as it computes the mutated source twice,
-            // once for the diff and once to write it out.
-            log_file.message(&format!("mutation diff:\n{}", mutant.diff()));
-            mutant.apply(build_dir)
-        })
-        .transpose()?;
-    console.scenario_started(scenario, log_file.path())?;
-
-    let mut outcome = ScenarioOutcome::new(&log_file, scenario.clone());
     let phases: Vec<Phase> = if options.check_only {
         vec![Phase::Check]
     } else {
@@ -245,6 +228,71 @@ fn test_scenario(
         };
         vec![build_phase, test_phase]
     };
+
+    // Apply without counting it to setup incremental build files
+    let mut log_file = output_mutex
+        .lock()
+        .expect("lock output_dir to create log")
+        .create_log(scenario)?;
+    console.scenario_started(scenario, log_file.path())?;
+
+    if let Scenario::Mutant(..) = scenario {
+        for phase in phases.clone() {
+            console.scenario_phase_started(scenario, phase);
+            let timeout = if phase.is_test_phase() {
+                test_timeout
+            } else {
+                Duration::MAX
+            };
+            let mut rustc_wrapper = vec![];
+            let target_dir = build_dir.path().to_string() + "/target";
+            let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/cargo-rustyrts";
+            if let Phase::BuildDynamic = phase {
+                create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
+
+                rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
+                rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
+
+                rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
+                rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
+            }
+            let phase_result = run_cargo(
+                build_dir,
+                Some(test_packages),
+                phase,
+                timeout,
+                &mut log_file,
+                options,
+                console,
+                "",
+                trybuild_overwrite,
+                rustc_wrapper,
+            )?;
+            let success = phase_result.is_success();
+            // outcome.add_phase_result(phase_result); // But do not count
+            console.scenario_phase_finished(scenario, phase);
+            if (phase == Phase::Check && options.check_only) || !success {
+                break;
+            }
+        }
+
+        // Truncate logfile
+        log_file.truncate();
+    }
+    log_file.message(&scenario.to_string());
+
+    // Apply mutant
+    let applied = scenario
+        .mutant()
+        .map(|mutant| {
+            // TODO: This is slightly inefficient as it computes the mutated source twice,
+            // once for the diff and once to write it out.
+            log_file.message(&format!("mutation diff:\n{}", mutant.diff()));
+            mutant.apply(build_dir)
+        })
+        .transpose()?;
+
+    let mut outcome = ScenarioOutcome::new(&log_file, scenario.clone());
     for phase in phases.clone() {
         console.scenario_phase_started(scenario, phase);
         let timeout = if phase.is_test_phase() {
@@ -284,45 +332,6 @@ fn test_scenario(
         }
     }
     drop(applied);
-    // Apply again to restore incremental compilation arifacts
-    for phase in phases {
-        console.scenario_phase_started(scenario, phase);
-        let timeout = if phase.is_test_phase() {
-            test_timeout
-        } else {
-            Duration::MAX
-        };
-        let mut rustc_wrapper = vec![];
-        let target_dir = build_dir.path().to_string() + "/target";
-        let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/cargo-rustyrts";
-        if let Phase::BuildDynamic = phase {
-            create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
-
-            rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
-            rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
-
-            rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
-            rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
-        }
-        let phase_result = run_cargo(
-            build_dir,
-            Some(test_packages),
-            phase,
-            timeout,
-            &mut log_file,
-            options,
-            console,
-            rustyrts_log,
-            trybuild_overwrite,
-            rustc_wrapper,
-        )?;
-        let success = phase_result.is_success();
-        // outcome.add_phase_result(phase_result); // But do not count
-        console.scenario_phase_finished(scenario, phase);
-        if (phase == Phase::Check && options.check_only) || !success {
-            break;
-        }
-    }
     output_mutex
         .lock()
         .expect("lock output dir to add outcome")

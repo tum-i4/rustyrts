@@ -56,6 +56,11 @@ impl LogFile {
             .with_context(|| format!("open {} for append", self.path))
     }
 
+    /// Truncate log file
+    pub fn truncate(&self) {
+        self.write_to.set_len(0).expect("truncate log file");
+    }
+
     /// Write a message, with a marker. Ignore errors.
     pub fn message(&mut self, message: &str) {
         write!(self.write_to, "\n{LOG_MARKER} {message}\n").expect("write message to log");
