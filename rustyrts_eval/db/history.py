@@ -424,6 +424,7 @@ def register_views(sequential: bool = False):
         )
         .select_from(commit, report, suite)
         .where(commit.c.id == report.c.commit_id)
+        .where(report.c.id == suite.c.report_id)
         .where(report.c.has_errored == False)
         .where(report.c.name == "cargo test")
         .group_by(commit.c.id, commit.c.repo_id)
