@@ -341,7 +341,28 @@ class DBMutantsTestCase(Base, MutantsTestCase, metaclass=DBMutantsTestCaseMeta):
 # Views
 
 
-def register_views():
+class MutantsViewInformation:
+    def __init__(
+        self,
+        overview,
+        mutant_extended,
+        target_count,
+        testcases_count,
+        testcases_failed,
+        testcases_selected,
+        statistics,
+    ):
+        super().__init__()
+        self.overview = overview
+        self.mutant_extended = mutant_extended
+        self.target_count = target_count
+        self.testcases_count = testcases_count
+        self.testcases_failed = testcases_failed
+        self.testcases_selected = testcases_selected
+        self.statistics = statistics
+
+
+def register_views() -> MutantsViewInformation:
     commit = DBCommit.__table__
 
     report = DBMutantsReport.__table__
@@ -802,4 +823,14 @@ def register_views():
         testcases_failed,
         # replace=True,
         metadata=Base.metadata,
+    )
+
+    return MutantsViewInformation(
+        overview,
+        mutant_extended,
+        target_count,
+        testcases_count,
+        testcases_failed,
+        testcases_selected,
+        statistics,
     )

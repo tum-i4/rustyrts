@@ -4,7 +4,9 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from rustyrts_eval.cli.db.commands import FAILED_CONNECTED_MSG, SUCCESS_CONNECTED_MSG
+from rustyrts_eval.db import history, mutants
 from rustyrts_eval.db.base import DBConnection
+from rustyrts_eval.db.mutants import register_views
 from rustyrts_eval.db.plots import HistoryPlotter, MutantsPlotter
 
 from rustyrts_eval.util.logging.cli import (
@@ -64,12 +66,13 @@ def plot(ctx, url: str):
 
 @plot.command(name="mutants")
 @click.pass_obj
-def mutants(ctx):
+def mutants_cmd(ctx):
     conn: DBConnection = ctx["connection"]
     try:
         spinner = start_spinner("Plotting results of mutants evaluation...")
 
-        plotter = MutantsPlotter(conn, ".svg")
+        info = mutants.register_views()
+        plotter = MutantsPlotter(conn, info, ".svg")
 
         plotter.plot_mutants_duration_absolute()
         plotter.plot_mutants_duration_relative()
@@ -94,13 +97,15 @@ def mutants(ctx):
     "strategy", type=click.Choice(["sequential", "parallel"]), required=True
 )
 @click.pass_obj
-def history(ctx, strategy):
+def history_cmd(ctx, strategy):
     conn: DBConnection = ctx["connection"]
     try:
         spinner = start_spinner("Plotting git walk testing evaluation...")
 
+        info = history.register_views()
         plotter = HistoryPlotter(
             conn,
+            info,
             ".svg",
             True if strategy == "sequential" else False,
         )

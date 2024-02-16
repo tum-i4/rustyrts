@@ -98,6 +98,7 @@ class DBConnection:
     def get_tables(self) -> List[str]:
         return self.engine.table_names()
 
-    def raw_query(self, query):
+    def query(self, query):
         with self.create_session_ctx() as session:
-            return pd.DataFrame(session.execute(text(query)))
+            result = session.execute(query)
+            return pd.DataFrame(result, columns=result.keys())

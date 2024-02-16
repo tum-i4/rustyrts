@@ -275,6 +275,29 @@ class DBTestCase(Base, TestCase, metaclass=DBTestCaseMeta):
 # Views
 
 
+class HistoryViewInformation:
+    def __init__(
+        self,
+        overview,
+        duration,
+        testreport_extended,
+        target_count,
+        testcases_count,
+        testcases_different,
+        testcases_selected,
+        statistics_commit,
+    ):
+        super().__init__()
+        self.overview = overview
+        self.duration = duration
+        self.testreport_extended = testreport_extended
+        self.target_count = target_count
+        self.testcases_count = testcases_count
+        self.testcases_different = testcases_different
+        self.testcases_selected = testcases_selected
+        self.statistics_commit = statistics_commit
+
+
 def register_views_individual(special):
     commit = DBCommit.__table__
     report = DBTestReport.__table__
@@ -356,7 +379,7 @@ def register_views_individual(special):
     return testreport_extended.cte(), testreport_parent_extended.cte()
 
 
-def register_views(sequential: bool = False):
+def register_views(sequential: bool = False) -> HistoryViewInformation:
     commit = DBCommit.__table__
     repository = DBRepository.__table__
 
@@ -1024,4 +1047,15 @@ def register_views(sequential: bool = False):
         duration_1.union(duration_2),
         # replace=True,
         metadata=Base.metadata,
+    )
+
+    return HistoryViewInformation(
+        overview,
+        duration,
+        report,
+        target_count,
+        testcases_count,
+        testcases_different,
+        testcases_selected,
+        statistics_commit,
     )
