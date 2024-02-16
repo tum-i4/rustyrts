@@ -297,6 +297,33 @@ class HistoryViewInformation:
         self.testcases_selected = testcases_selected
         self.statistics_commit = statistics_commit
 
+    def get_labels(self, connection):
+        repository = DBRepository.__table__
+        commit = DBCommit.__table__
+        overview = self.overview
+
+        labels_history = (
+            select(
+                repository.c.id,
+                repository.c.path.concat(
+                    literal_column("'\n('").concat(
+                        count(distinct(overview.c.commit))
+                        .label("number_commits")
+                        .concat(literal_column("')'"))
+                    )
+                ).label("path"),
+            )
+            .select_from(repository, commit, overview)
+            .where(repository.c.id == commit.c.repo_id)
+            .where(commit.c.id == overview.c.commit)
+            .group_by(repository.c.id, repository.c.path)
+            .order_by(repository.c.id)
+        )
+
+        df_labels = connection.query(labels_history)
+        df_labels["path"] = df_labels["path"].apply(lambda x: x[x.rfind("/") + 1 :])
+        return df_labels
+
 
 def register_views_individual(special):
     commit = DBCommit.__table__

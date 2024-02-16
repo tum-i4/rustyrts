@@ -3,24 +3,10 @@ import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from sqlalchemy.sql import Select, distinct, literal_column, select
-
 from sqlalchemy.sql.functions import coalesce, count, sum, aggregate_strings
 
-from rustyrts_eval.db.git import DBCommit, DBRepository
-
-
-def get_test_diff_and_intersection(retest_all, other):
-    retest_all_tests = set(retest_all.splitlines()) if retest_all else set()
-    other_tests = set(other.splitlines()) if other else set()
-    return list(retest_all_tests.difference(other_tests)), list(
-        retest_all_tests.intersection(other_tests)
-    )
-
-
-def get_test_diff(retest_all, other):
-    retest_all_tests = retest_all.splitlines()
-    other_tests = other.splitlines()
-    return list(set(retest_all_tests) - set(other_tests))
+from .analysis import get_test_diff, get_test_diff_and_intersection
+from .git import DBCommit, DBRepository
 
 
 class HistoryPlotter:
@@ -32,34 +18,7 @@ class HistoryPlotter:
         self.output_format = output_format
         self.sequential_watermark = sequential_watermark
 
-        self.labels = self.get_labels_history(connection)
-
-    def get_labels_history(self, connection):
-        repository = DBRepository.__table__
-        commit = DBCommit.__table__
-        overview = self.view_info.overview
-
-        labels_history = (
-            Select(
-                repository.c.id,
-                repository.c.path.concat(
-                    literal_column("'\n('").concat(
-                        count(distinct(overview.c.commit))
-                        .label("number_commits")
-                        .concat(literal_column("')'"))
-                    )
-                ).label("path"),
-            )
-            .select_from(repository, commit, overview)
-            .where(repository.c.id == commit.c.repo_id)
-            .where(commit.c.id == overview.c.commit)
-            .group_by(repository.c.id, repository.c.path)
-            .order_by(repository.c.id)
-        )
-
-        df_labels = connection.query(labels_history)
-        df_labels["path"] = df_labels["path"].apply(lambda x: x[x.rfind("/") + 1 :])
-        return df_labels
+        self.labels = view_info.get_labels(connection)
 
     def plot_history_duration_absolute(self):
         y_label = "absolute e2e testing time [s]"
@@ -786,34 +745,7 @@ class MutantsPlotter:
         self.view_info = view_info
         self.output_format = output_format
 
-        self.labels = self.get_labels_mutants(connection)
-
-    def get_labels_mutants(self, connection, add_count=True):
-        repository = DBRepository.__table__
-        commit = DBCommit.__table__
-        overview = self.view_info.overview
-
-        labels_mutants = (
-            Select(
-                repository.c.id,
-                repository.c.path.concat(
-                    literal_column("'\n('").concat(
-                        count(distinct(overview.c.descr))
-                        .label("number_mutants")
-                        .concat(literal_column("')'"))
-                    )
-                ).label("path"),
-            )
-            .select_from(repository, commit, overview)
-            .where(repository.c.id == commit.c.repo_id)
-            .where(commit.c.id == overview.c.commit)
-            .group_by(commit.c.id, repository.c.id, repository.c.path)
-            .order_by(commit.c.id)
-        )
-
-        df_labels = connection.query(labels_mutants)
-        df_labels["path"] = df_labels["path"].apply(lambda x: x[x.rfind("/") + 1 :])
-        return df_labels
+        self.labels = view_info.get_labels(connection)
 
     def plot_mutants_duration_absolute(self):
         y_label = "absolute e2e testing time [s]"

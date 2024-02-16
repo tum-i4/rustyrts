@@ -23,7 +23,7 @@ from sqlalchemy_utils import create_materialized_view, create_view, get_columns
 from sqlalchemy_utils.view import CreateView
 
 from .base import Base
-from .git import DBCommit
+from .git import DBCommit, DBRepository
 from ..models.testing.base import TestTarget, TestStatus
 from ..models.testing.mutants import (
     MutantsReport,
@@ -360,6 +360,33 @@ class MutantsViewInformation:
         self.testcases_failed = testcases_failed
         self.testcases_selected = testcases_selected
         self.statistics = statistics
+
+    def get_labels(self, connection, add_count=True):
+        repository = DBRepository.__table__
+        commit = DBCommit.__table__
+        overview = self.overview
+
+        labels_mutants = (
+            select(
+                repository.c.id,
+                repository.c.path.concat(
+                    literal_column("'\n('").concat(
+                        count(distinct(overview.c.descr))
+                        .label("number_mutants")
+                        .concat(literal_column("')'"))
+                    )
+                ).label("path"),
+            )
+            .select_from(repository, commit, overview)
+            .where(repository.c.id == commit.c.repo_id)
+            .where(commit.c.id == overview.c.commit)
+            .group_by(commit.c.id, repository.c.id, repository.c.path)
+            .order_by(commit.c.id)
+        )
+
+        df_labels = connection.query(labels_mutants)
+        df_labels["path"] = df_labels["path"].apply(lambda x: x[x.rfind("/") + 1 :])
+        return df_labels
 
 
 def register_views() -> MutantsViewInformation:
