@@ -108,17 +108,17 @@ class CargoHook(Hook, ABC):
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
 
-            for filename in glob.glob("**/Cargo.toml", recursive=True):
-                # chrono apparently has introduced breaking changes in 0.4.30 (violating SemVer)
-                # we need to provide an upper bound on the version, instead of letting cargo use the latest one
-                file = Path(filename)
-                content = file.read_text()
-                content = re.sub(
-                    r'chrono = "(0.4(.[12]?[123456789])?)"',
-                    r'chrono = "\1,<=0.4.29"',
-                    content,
-                )
-                file.write_text(content)
+            # for filename in glob.glob("**/Cargo.toml", recursive=True):
+            #     # chrono apparently has introduced breaking changes in 0.4.30 (violating SemVer)
+            #     # we need to provide an upper bound on the version, instead of letting cargo use the latest one
+            #     file = Path(filename)
+            #     content = file.read_text()
+            #     content = re.sub(
+            #         r'chrono = "(0.4(.[12]?[123456789])?)"',
+            #         r'chrono = "\1,<=0.4.29"',
+            #         content,
+            #     )
+            #     file.write_text(content)
 
             # clean
             proc: SubprocessContainer = SubprocessContainer(
@@ -138,6 +138,13 @@ class CargoHook(Hook, ABC):
 
             # additionally update actix_derive which has shown to be problematic
             update_command = self.update_command() + " actix_derive --precise 0.6.0"
+            proc: SubprocessContainer = SubprocessContainer(
+                command=update_command, output_filepath=self.prepare_cache_file()
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+            # additionally update chrono which has shown to be problematic
+            update_command = self.update_command() + " chrono --precise 0.4.29"
             proc: SubprocessContainer = SubprocessContainer(
                 command=update_command, output_filepath=self.prepare_cache_file()
             )
