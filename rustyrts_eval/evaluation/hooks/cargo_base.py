@@ -129,8 +129,8 @@ class CargoHook(Hook, ABC):
             # update dependencies
             update_command = self.update_command()
             # if a Cargo.lock is supplied via git, we only update some packages which have shown to be problematic
-            if glob.glob("Cargo.lock"):
-                update_command += " proc-macro2 value-bag"
+            # if glob.glob("Cargo.lock"): # TODO: resolve this
+            # update_command += " proc-macro2 value-bag"
             proc: SubprocessContainer = SubprocessContainer(
                 command=update_command, output_filepath=self.prepare_cache_file()
             )
