@@ -128,9 +128,16 @@ class CargoHook(Hook, ABC):
 
             # update dependencies
             update_command = self.update_command()
-            # if a Cargo.lock is supplied via git, we only update proc-macro2 which has shown to be problematic
+            # if a Cargo.lock is supplied via git, we only update some packages which have shown to be problematic
             if glob.glob("Cargo.lock"):
                 update_command += " proc-macro2 value-bag"
+            proc: SubprocessContainer = SubprocessContainer(
+                command=update_command, output_filepath=self.prepare_cache_file()
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+            # additionally update actix_derive which has shown to be problematic
+            update_command = self.update_command() + " actix_derive --precise 0.6.0"
             proc: SubprocessContainer = SubprocessContainer(
                 command=update_command, output_filepath=self.prepare_cache_file()
             )
