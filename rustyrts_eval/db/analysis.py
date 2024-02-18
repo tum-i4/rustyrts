@@ -61,7 +61,7 @@ class DBMutantsTestsNotSelected(Base):
         super().__init__()
 
         self.commit_id = commit
-        self.algorith = algorithm
+        self.algorithm = algorithm
         self.test_name = test_name
         self.not_selected_count = not_selected_count
 
