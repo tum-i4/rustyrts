@@ -78,7 +78,13 @@ impl<'tcx, 'g> ResolvingVisitor<'tcx> {
     fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>, context: Context) {
         if let Some((outer_def_id, _)) = self.processed {
             let from = def_id_name(self.tcx, outer_def_id, false, true);
-            let to = def_id_name(self.tcx, def_id, false, true);
+            let mut to = def_id_name(self.tcx, def_id, false, true);
+            if let Context::CodeGen(Dependency::Dynamic) = context {
+                let orig_to = to.clone();
+                to += SUFFIX_DYN;
+                self.graph
+                    .add_edge(to.clone(), orig_to, EdgeType::DynamicCall);
+            }
             self.graph.add_edge(from, to, EdgeType::from(&context));
 
             if self.visited.insert((def_id, substs)) {
@@ -169,13 +175,11 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                 for alloc_id in alloc_ids {
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Function(instance) => {
-                            if check_substs(instance.args) {
-                                self.visit(
-                                    instance.def_id(),
-                                    instance.args,
-                                    Context::CodeGen(Dependency::Static),
-                                );
-                            }
+                            self.visit(
+                                instance.def_id(),
+                                instance.args,
+                                Context::CodeGen(Dependency::Static),
+                            );
                         }
                         GlobalAlloc::Static(def_id) => {
                             self.visit(
@@ -261,10 +265,6 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                     });
 
                     if let Some((def_id, _substs, Dependency::Dynamic)) = maybe_dependency {
-                        let name = def_id_name(self.tcx, def_id, false, true);
-                        self.graph
-                            .add_edge(name.clone() + SUFFIX_DYN, name, EdgeType::DynamicCall);
-
                         if let Some(trait_def) = self.tcx.trait_of_item(def_id) {
                             let trait_impls = self.tcx.trait_impls_of(trait_def);
 
@@ -273,9 +273,9 @@ impl<'tcx> Visitor<'tcx> for ResolvingVisitor<'tcx> {
                                 .values()
                                 .flat_map(|impls| impls.iter());
                             let blanket_impls = trait_impls.blanket_impls().iter();
-
-                            for impl_def in blanket_impls.chain(non_blanket_impls) {
-                                for impl_fn in self.tcx.associated_item_def_ids(impl_def) {
+                            for impl_def in non_blanket_impls.chain(blanket_impls) {
+                                let ids_mapping = self.tcx.impl_item_implementor_ids(impl_def);
+                                if let Some(impl_fn) = ids_mapping.get(&def_id) {
                                     let substs = List::identity_for_item(self.tcx, *impl_fn);
                                     if check_substs(substs) {
                                         self.visit(

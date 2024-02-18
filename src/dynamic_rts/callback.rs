@@ -1,5 +1,4 @@
 use log::{debug, trace};
-use once_cell::sync::OnceCell;
 use rustc_ast::{
     token::{Delimiter, Token, TokenKind},
     tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree},
@@ -21,28 +20,21 @@ use rustc_span::{
 };
 use std::mem::transmute;
 use std::sync::Mutex;
-use std::sync::{atomic::AtomicUsize, RwLock};
+use std::sync::atomic::AtomicUsize;
 
-use crate::{
-    callbacks_shared::{
+use crate::callbacks_shared::{
         excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
         NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
-    },
-    dynamic_rts::instrumentation::modify_body_dyn,
-};
+    };
 
 use super::file_loader::{InstrumentationFileLoaderProxy, TestRunnerFileLoaderProxy};
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
 use crate::dynamic_rts::instrumentation::modify_body;
 use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
-use bimap::hash::BiHashMap;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 
 static OLD_OPTIMIZED_MIR: AtomicUsize = AtomicUsize::new(0);
-
-static VTABLE_ENTRY_SUBSTITUTES: OnceCell<RwLock<BiHashMap<LocalDefId, LocalDefId>>> =
-    OnceCell::new();
 
 pub struct DynamicRTSCallbacks {}
 
@@ -185,26 +177,6 @@ impl Callbacks for DynamicRTSCallbacks {
 
 /// This function is executed instead of optimized_mir() in the compiler
 fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> &'tcx Body<'tcx> {
-    if let Some(vtable_substitutes) = VTABLE_ENTRY_SUBSTITUTES.get() {
-        if let Some(def_id) = vtable_substitutes.read().unwrap().get_by_left(&key) {
-            let result: &Body = tcx.optimized_mir(def_id.to_def_id());
-
-            let ret = if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
-                //##############################################################
-                // 1. Here the MIR is modified to debug this function at runtime
-                let cloned = result.clone();
-                let leaked = Box::leak(Box::new(cloned));
-
-                modify_body_dyn(tcx, leaked);
-                leaked
-            } else {
-                result
-            };
-
-            return ret;
-        }
-    }
-
     let content = OLD_OPTIMIZED_MIR.load(SeqCst);
 
     // SAFETY: At this address, the original optimized_mir() function has been stored before.
