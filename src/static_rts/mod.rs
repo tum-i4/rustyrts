@@ -1,3 +1,3 @@
 pub mod callback;
-pub mod visitor;
 pub mod graph;
+pub mod mir_visitor;

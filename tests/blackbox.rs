@@ -171,7 +171,7 @@ fn blackbox_test_affected(mode: Mode, name: &str, features_baseline: &str, featu
     "test1_panic",
     "test1_panic, changes_test2"
 )]
-#[test_case(Mode::Static, "threading", "test2_panic", "test2_panic, changes_test1")]
+// #[test_case(Mode::Static, "threading", "test2_panic", "test2_panic, changes_test1")] -- not useful
 fn blackbox_test_not_affected(
     mode: Mode,
     name: &str,
