@@ -68,6 +68,16 @@ class CargoMutantsHook(Hook):
 
         :return:
         """
+
+        _LOGGER.info(
+            "About to start mutation testing using '"
+            + self.mutants_command()
+            + "' on "
+            + self.repository.path
+        )
+        if input(" Skip? ") == "y":
+            return True
+
         # keep track of current working directory
         has_failed = False
 

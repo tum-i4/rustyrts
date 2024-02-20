@@ -221,7 +221,7 @@ def mutants_failed_not_selected(connection, view_info):
     with connection.create_session_ctx() as session:
         for commit in not_selected_dynamic:
             for test, count in not_selected_dynamic[commit].items():
-                entry = DBMutantsTestsNotSelected(commit, "dynammic", test, count)
+                entry = DBMutantsTestsNotSelected(commit, "dynamic", test, count)
                 session.add(entry)
         for commit in not_selected_static:
             for test, count in not_selected_static[commit].items():
