@@ -12,13 +12,14 @@ use crate::{constants::SUFFIX_DYN, names::def_id_name};
 pub enum EdgeType {
     Call,
     Unsize,
+    Contained,
     Drop,
     Static,
     ReifyPtr,
     FnPtr,
 
     Asm,
-    Closure,
+    ClosurePtr,
     Intrinsic,
     LangItem,
 
@@ -30,13 +31,14 @@ impl AsRef<str> for EdgeType {
         match self {
             EdgeType::Call => "[color = black]",
             EdgeType::Unsize => "[color = blue]",
+            EdgeType::Contained => "[color = orange]",
             EdgeType::Drop => "[color = orange]",
             EdgeType::Static => "[color = green]",
             EdgeType::ReifyPtr => "[color = magenta]",
             EdgeType::FnPtr => "[color = magenta]",
-            
+
             EdgeType::Asm => "[color = yellow]",
-            EdgeType::Closure => "[color = brown]",
+            EdgeType::ClosurePtr => "[color = brown]",
             EdgeType::Intrinsic => "[color = cyan]",
             EdgeType::LangItem => "[color = cyan]",
 
@@ -52,12 +54,13 @@ impl FromStr for EdgeType {
         match input {
             "Call" => Ok(Self::Call),
             "Unsize" => Ok(Self::Unsize),
+            "Contained" => Ok(Self::Contained),
             "Drop" => Ok(Self::Drop),
             "Static" => Ok(Self::Static),
             "ReifyPtr" => Ok(Self::Static),
             "FnPtr" => Ok(Self::Static),
 
-            "Closure" => Ok(Self::Closure),
+            "ClosurePtr" => Ok(Self::ClosurePtr),
             "Asm" => Ok(Self::Static),
             "Intrinsic" => Ok(Self::Static),
             "LangItem" => Ok(Self::Static),

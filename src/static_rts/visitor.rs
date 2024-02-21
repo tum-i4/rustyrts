@@ -6,8 +6,8 @@
 use hir::{AttributeMap, ConstContext};
 use itertools::Itertools;
 use log::trace;
-use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap};
@@ -28,19 +28,14 @@ use rustc_middle::ty::{
 use rustc_middle::ty::{GenericArgKind, GenericArgs};
 use rustc_middle::{bug, traits};
 use rustc_middle::{
-    middle::codegen_fn_attrs::CodegenFnAttrFlags,
-    mir::visit::TyContext,
-    ty::GenericParamDefKind,
+    middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext, ty::GenericParamDefKind,
 };
 use rustc_middle::{
     mir::{mono::MonoItem, Operand, TerminatorKind},
     ty::TyKind,
 };
 use rustc_session::{config::EntryFnType, Limit};
-use rustc_span::{
-    def_id::LocalDefId,
-    symbol::sym,
-};
+use rustc_span::{def_id::LocalDefId, symbol::sym};
 use rustc_span::{
     source_map::{dummy_spanned, respan, Spanned},
     ErrorGuaranteed,
@@ -64,12 +59,12 @@ pub enum MonoItemCollectionMode {
 pub enum MonomorphizationContext {
     Root,
     Local(EdgeType),
-    NonLocal(EdgeType)
+    NonLocal(EdgeType),
 }
 
 #[derive(Debug)]
 pub enum ContextError {
-    HasNoEdgeType
+    HasNoEdgeType,
 }
 
 impl<'a> TryInto<EdgeType> for &'a MonomorphizationContext {
@@ -107,8 +102,11 @@ impl<'tcx> CustomUsageMap<'tcx> {
         'tcx: 'a,
     {
         for (used_item, context) in used_items.into_iter() {
-            self.graph
-                .add_edge(user_item.def_id(), used_item.node.def_id(), context.try_into().unwrap());
+            self.graph.add_edge(
+                user_item.def_id(),
+                used_item.node.def_id(),
+                context.try_into().unwrap(),
+            );
         }
     }
 
@@ -212,14 +210,13 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
                     node: mono_item, ..
                 },
                 _context,
-            )| { 
-                mono_item.is_instantiable(tcx).then_some(mono_item) },
+            )| { mono_item.is_instantiable(tcx).then_some(mono_item) },
         )
         .collect()
 }
 
 // Find all test functions. These items serve as roots to start building the dependency graph from.
-fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
+pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
     trace!("collecting test functions");
     let mut roots = Vec::new();
     {
@@ -598,19 +595,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let source_ty = self.monomorphize(source_ty);
                 match *source_ty.kind() {
                     ty::Closure(def_id, args) => {
-                        let instance = Instance::resolve_closure(
-                            self.tcx,
-                            def_id,
-                            args,
-                            ty::ClosureKind::FnOnce,
-                        );
-                        if let Some(instance) = instance {
-                            if should_codegen_locally(self.tcx, &instance) {
-                                self.output.push((
-                                    create_fn_mono_item(self.tcx, instance, span),
-                                    MonomorphizationContext::Local(EdgeType::Closure),
-                                ));
-                            }
+                        let instance = Instance::new(def_id, args);
+                        if should_codegen_locally(self.tcx, &instance) {
+                            self.output.push((
+                                create_fn_mono_item(self.tcx, instance, span),
+                                MonomorphizationContext::Local(EdgeType::ClosurePtr),
+                            ));
                         }
                     }
                     _ => bug!(),
@@ -621,8 +611,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let instance = Instance::mono(self.tcx, def_id);
                 if should_codegen_locally(self.tcx, &instance) {
                     trace!("collecting thread-local static {:?}", def_id);
-                    self.output
-                        .push((respan(span, MonoItem::Static(def_id)), MonomorphizationContext::Local(EdgeType::Static)));
+                    self.output.push((
+                        respan(span, MonoItem::Static(def_id)),
+                        MonomorphizationContext::Local(EdgeType::Static),
+                    ));
                 }
             }
             _ => { /* not interesting */ }
@@ -744,6 +736,18 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         self.visiting_call_terminator = false;
     }
 
+    fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
+        let source = self.body.span;
+
+        let tcx = self.tcx;
+
+        if let ty::TyKind::Closure(..) | TyKind::Coroutine(..) = ty.kind() {
+            let ty = self.monomorphize(ty);
+            visit_fn_use(tcx, ty, false, source, self.output, EdgeType::Contained);
+        }
+        self.super_ty(ty)
+    }
+
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
         self.super_operand(operand, location);
     }
@@ -786,6 +790,10 @@ fn visit_fn_use<'tcx>(
         };
         visit_instance_use(tcx, instance, is_direct_call, source, output, edge_type);
     }
+    if let ty::Coroutine(def_id, args, _) | ty::Closure(def_id, args) = *ty.kind() {
+        let instance = Instance::new(def_id, args);
+        visit_instance_use(tcx, instance, false, source, output, edge_type);
+    }
 }
 
 fn visit_instance_use<'tcx>(
@@ -801,7 +809,7 @@ fn visit_instance_use<'tcx>(
         instance,
         is_direct_call
     );
-    
+
     // IMPORTANT: This connects the graphs of multiple crates
     if tcx.is_reachable_non_generic(instance.def_id())
         || instance
@@ -809,12 +817,18 @@ fn visit_instance_use<'tcx>(
             .upstream_monomorphization(tcx)
             .is_some()
     {
-        output.push((create_fn_mono_item(tcx, instance, source), MonomorphizationContext::NonLocal(edge_type)));
+        output.push((
+            create_fn_mono_item(tcx, instance, source),
+            MonomorphizationContext::NonLocal(edge_type),
+        ));
     }
     if let DefKind::Static(_) = tcx.def_kind(instance.def_id()) {
-        output.push((create_fn_mono_item(tcx, instance, source), MonomorphizationContext::NonLocal(edge_type)));
+        output.push((
+            create_fn_mono_item(tcx, instance, source),
+            MonomorphizationContext::NonLocal(edge_type),
+        ));
     }
-    
+
     if !should_codegen_locally(tcx, &instance) {
         return;
     }
@@ -854,21 +868,44 @@ fn visit_instance_use<'tcx>(
         ty::InstanceDef::ThreadLocalShim(..) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceDef::DropGlue(_, None) => {
-            // Don't need to emit noop drop glue if we are calling directly.
-            if !is_direct_call {
-                output.push((create_fn_mono_item(tcx, instance, source), MonomorphizationContext::Local(EdgeType::Drop)));
+        ty::InstanceDef::DropGlue(_, None) => {}
+        ty::InstanceDef::DropGlue(_, Some(_)) => {
+            // IMPORTANT: We do not want to have an indirection via drop_in_place
+            // and instead directly collect all drop functions that are invoked
+            let body = tcx.instance_mir(instance.def);
+            let terminators = body
+                .basic_blocks
+                .iter()
+                .filter_map(|bb| bb.terminator.as_ref());
+            for terminator in terminators {
+                match terminator.kind {
+                    mir::TerminatorKind::Call { ref func, .. } => {
+                        let callee_ty = func.ty(body, tcx);
+                        let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                            tcx,
+                            ty::ParamEnv::reveal_all(),
+                            ty::EarlyBinder::bind(callee_ty),
+                        );
+                        visit_fn_use(tcx, callee_ty, true, source, output, EdgeType::Drop)
+                    }
+                    _ => {}
+                }
             }
         }
-        ty::InstanceDef::DropGlue(_, Some(_))
-        | ty::InstanceDef::VTableShim(..)
+        ty::InstanceDef::Item(def_id)
+            if tcx.is_closure(def_id)
+                && (edge_type != EdgeType::FnPtr && edge_type != EdgeType::Contained) => {}
+        ty::InstanceDef::VTableShim(..)
         | ty::InstanceDef::ReifyShim(..)
         | ty::InstanceDef::ClosureOnceShim { .. }
         | ty::InstanceDef::Item(..)
         | ty::InstanceDef::FnPtrShim(..)
         | ty::InstanceDef::CloneShim(..)
         | ty::InstanceDef::FnPtrAddrShim(..) => {
-            output.push((create_fn_mono_item(tcx, instance, source), MonomorphizationContext::Local(edge_type)));
+            output.push((
+                create_fn_mono_item(tcx, instance, source),
+                MonomorphizationContext::Local(edge_type),
+            ));
         }
     }
 }
@@ -1068,7 +1105,12 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                         Some(*instance).filter(|instance| should_codegen_locally(tcx, instance))
                     }
                 })
-                .map(|item| (create_fn_mono_item(tcx, item, source), MonomorphizationContext::Local(EdgeType::Unsize)));
+                .map(|item| {
+                    (
+                        create_fn_mono_item(tcx, item, source),
+                        MonomorphizationContext::Local(EdgeType::Unsize),
+                    )
+                });
             output.extend(methods);
         }
 
@@ -1095,8 +1137,6 @@ fn collect_used_items<'tcx>(
         visiting_call_terminator: false,
     }
     .visit_body(body);
-
-    // debug.store(false, Ordering::SeqCst);
 }
 
 fn collect_const_value<'tcx>(
@@ -1117,6 +1157,7 @@ fn collect_const_value<'tcx>(
         _ => {}
     }
 }
+
 //=-----------------------------------------------------------------------------
 // Root Collection
 //=-----------------------------------------------------------------------------
@@ -1150,8 +1191,10 @@ impl<'v> RootCollector<'_, 'v> {
                     "RootCollector: ItemKind::GlobalAsm({})",
                     self.tcx.def_path_str(id.owner_id)
                 );
-                self.output
-                    .push((dummy_spanned(MonoItem::GlobalAsm(id)), MonomorphizationContext::Local(EdgeType::Asm)));
+                self.output.push((
+                    dummy_spanned(MonoItem::GlobalAsm(id)),
+                    MonomorphizationContext::Local(EdgeType::Asm),
+                ));
             }
             DefKind::Static(..) => {
                 let def_id = id.owner_id.to_def_id();
@@ -1159,8 +1202,10 @@ impl<'v> RootCollector<'_, 'v> {
                     "RootCollector: ItemKind::Static({})",
                     self.tcx.def_path_str(def_id)
                 );
-                self.output
-                    .push((dummy_spanned(MonoItem::Static(def_id)), MonomorphizationContext::Local(EdgeType::Static)));
+                self.output.push((
+                    dummy_spanned(MonoItem::Static(def_id)),
+                    MonomorphizationContext::Local(EdgeType::Static),
+                ));
             }
             DefKind::Const => {
                 // const items only generate mono items if they are
@@ -1277,7 +1322,10 @@ fn create_mono_items_for_default_impls<'tcx>(
         return;
     };
 
-    if matches!(tcx.impl_polarity(impl_.skip_binder().def_id), ty::ImplPolarity::Negative) {
+    if matches!(
+        tcx.impl_polarity(impl_.skip_binder().def_id),
+        ty::ImplPolarity::Negative
+    ) {
         return;
     }
 
@@ -1359,7 +1407,10 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             let instance = Instance::mono(tcx, def_id);
             if should_codegen_locally(tcx, &instance) {
                 trace!("collecting static {:?}", def_id);
-                output.push((dummy_spanned(MonoItem::Static(def_id)), MonomorphizationContext::Local(EdgeType::Static)));
+                output.push((
+                    dummy_spanned(MonoItem::Static(def_id)),
+                    MonomorphizationContext::Local(EdgeType::Static),
+                ));
             }
         }
         GlobalAlloc::Memory(alloc) => {
@@ -1377,6 +1428,17 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                     create_fn_mono_item(tcx, fn_instance, DUMMY_SP),
                     MonomorphizationContext::Local(EdgeType::FnPtr),
                 ));
+                // IMPORTANT: This ensures that functions referenced in closures contained in Consts are considered
+                // For instance this is the case for all test functions
+                if fn_instance.args.len() > 0 {
+                    let maybe_arg = fn_instance.args.get(0);
+                    let maybe_pointee = maybe_arg.and_then(|arg| arg.as_type());
+
+                    if let Some(pointee) = maybe_pointee {
+                        trace!("collecting function pointer to {:#?}", pointee);
+                        visit_fn_use(tcx, pointee, false, DUMMY_SP, output, EdgeType::FnPtr);
+                    }
+                }
             }
         }
         GlobalAlloc::VTable(ty, trait_ref) => {
