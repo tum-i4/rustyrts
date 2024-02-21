@@ -10,35 +10,37 @@ use crate::{constants::SUFFIX_DYN, names::def_id_name};
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
-    StaticCall,
-    DynamicCall,
+    Call,
+    Unsize,
     Drop,
     Static,
-
-    Trimmed,
+    ReifyPtr,
+    FnPtr,
 
     Asm,
-    ReifyPtr,
+    Closure,
     Intrinsic,
+    LangItem,
 
-    Contained,
+    Trimmed,
 }
 
 impl AsRef<str> for EdgeType {
     fn as_ref(&self) -> &str {
         match self {
-            EdgeType::StaticCall => "[color = black]",
-            EdgeType::DynamicCall => "[color = blue]",
+            EdgeType::Call => "[color = black]",
+            EdgeType::Unsize => "[color = blue]",
             EdgeType::Drop => "[color = orange]",
             EdgeType::Static => "[color = green]",
+            EdgeType::ReifyPtr => "[color = magenta]",
+            EdgeType::FnPtr => "[color = magenta]",
+            
+            EdgeType::Asm => "[color = yellow]",
+            EdgeType::Closure => "[color = brown]",
+            EdgeType::Intrinsic => "[color = cyan]",
+            EdgeType::LangItem => "[color = cyan]",
 
             EdgeType::Trimmed => "[color = red]",
-
-            EdgeType::Asm => "[color = yellow]",
-            EdgeType::ReifyPtr => "[color = brown]",
-            EdgeType::Intrinsic => "[color = cyan]",
-
-            EdgeType::Contained => "[color = magenta]",
         }
     }
 }
@@ -48,18 +50,19 @@ impl FromStr for EdgeType {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "StaticCall" => Ok(Self::StaticCall),
-            "DynamicCall" => Ok(Self::DynamicCall),
+            "Call" => Ok(Self::Call),
+            "Unsize" => Ok(Self::Unsize),
             "Drop" => Ok(Self::Drop),
             "Static" => Ok(Self::Static),
+            "ReifyPtr" => Ok(Self::Static),
+            "FnPtr" => Ok(Self::Static),
+
+            "Closure" => Ok(Self::Closure),
+            "Asm" => Ok(Self::Static),
+            "Intrinsic" => Ok(Self::Static),
+            "LangItem" => Ok(Self::Static),
 
             "Trimmed" => Ok(Self::Trimmed),
-
-            "Asm" => Ok(Self::Static),
-            "ReifyPtr" => Ok(Self::Static),
-            "Intrinsic" => Ok(Self::Static),
-
-            "Contained" => Ok(Self::Contained),
             _ => Err(()),
         }
     }
@@ -289,7 +292,7 @@ impl DependencyGraph<DefId> {
             to.into_iter().for_each(|(node, types)| {
                 for ty in types {
                     let new_from = def_id_name(tcx, node, false, true);
-                    if ty == EdgeType::DynamicCall {
+                    if ty == EdgeType::Unsize {
                         new_graph.add_edge(new_from, new_to.clone() + SUFFIX_DYN, ty);
                         new_graph.add_edge(new_to.clone() + SUFFIX_DYN, new_to.clone(), ty);
                     } else {
@@ -370,16 +373,8 @@ mod test {
         let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
         graph.add_node("lonely_node".to_string());
-        graph.add_edge(
-            "start1".to_string(),
-            "end1".to_string(),
-            EdgeType::StaticCall,
-        );
-        graph.add_edge(
-            "start1".to_string(),
-            "end2".to_string(),
-            EdgeType::DynamicCall,
-        );
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Call);
+        graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Unsize);
         graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Drop);
 
         let serialized = graph.to_string();

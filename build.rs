@@ -9,44 +9,12 @@ fn cargo() -> Command {
 
 fn main() {
     if std::env::var("RUSTYRTS_SKIP_BUILD").is_err() {
-        install_sysroot();
-
         build_library("rustyrts-dynamic-rlib");
         build_library("rustyrts-dynamic-runner");
 
         install_rlib("rustyrts_dynamic_rlib", "rustyrts-dynamic-rlib");
         install_staticlib("rustyrts_dynamic_runner", "rustyrts-dynamic-runner");
     }
-}
-
-fn install_sysroot() {
-    println!("cargo:warning=Building sysroot for static rustyrts");
-
-    let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-    let dir_name = "rustyrts-static-sysroot";
-
-    let mut cmd = cargo();
-    let mut path = PathBuf::new();
-    path.push(dir);
-    path.push(dir_name);
-    cmd.current_dir(path);
-    cmd.arg("run");
-
-    let mut output_dir = get_cargo_home();
-    output_dir.push("rustyrts-static-sysroot");
-
-    cmd.arg(output_dir.into_os_string());
-
-    match cmd.status() {
-        Ok(exit) => {
-            if !exit.success() {
-                std::process::exit(exit.code().unwrap_or(42));
-            }
-        }
-        Err(ref e) => panic!("error while building sysroot for static rustyrts: {:?}", e),
-    }
-
-    println!("cargo:rerun-if-changed={}", dir_name);
 }
 
 fn build_library(dir_name: &str) {

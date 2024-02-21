@@ -1,7 +1,7 @@
 use std::mem::transmute;
 use std::sync::Mutex;
 
-use crate::{constants::SUFFIX_DYN, static_rts::mir_visitor::create_dependency_graph};
+use crate::{constants::SUFFIX_DYN, static_rts::visitor::create_dependency_graph};
 use crate::{
     callbacks_shared::{
         excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,

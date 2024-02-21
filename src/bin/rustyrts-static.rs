@@ -8,8 +8,8 @@ use rustyrts::constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::format::create_logger;
 use rustyrts::static_rts::callback::StaticRTSCallbacks;
 use rustyrts::{callbacks_shared::export_checksums_and_changes, constants::ENV_BLACKBOX_TEST};
+use std::env;
 use std::process;
-use std::{env, path::PathBuf};
 
 //######################################################################################################################
 // This file is heavily inspired by rust-mir-checker
@@ -49,15 +49,6 @@ fn main() {
                     arg
                 })
                 .collect::<Vec<_>>();
-
-            // Provide information on where to find rustyrts-static-sysroot
-            let mut sysroot =
-                PathBuf::from(std::env::var("CARGO_HOME").expect("Did not find CARGO_HOME"));
-            sysroot.push("bin");
-            sysroot.push("rustyrts-static-sysroot");
-
-            rustc_args.push("--sysroot".to_string());
-            rustc_args.push(sysroot.display().to_string());
 
             rustc_args.push("--cap-lints".to_string());
             rustc_args.push("allow".to_string());

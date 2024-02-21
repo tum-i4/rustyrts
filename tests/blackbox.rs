@@ -120,6 +120,8 @@ fn check_same_crate_id(mode: Mode) {
 #[test_case(Mode::Static, "derive", "", "changes_debug")]
 #[test_case(Mode::Dynamic, "derive", "", "changes_hash")]
 #[test_case(Mode::Static, "derive", "", "changes_hash")]
+#[test_case(Mode::Dynamic, "blanket_impl", "", "changes_inner")]
+#[test_case(Mode::Static, "blanket_impl", "", "changes_inner")]
 #[test_case(
     Mode::Dynamic,
     "fn_ptr",
@@ -171,7 +173,7 @@ fn blackbox_test_affected(mode: Mode, name: &str, features_baseline: &str, featu
     "test1_panic",
     "test1_panic, changes_test2"
 )]
-// #[test_case(Mode::Static, "threading", "test2_panic", "test2_panic, changes_test1")] -- not useful
+#[test_case(Mode::Dynamic, "threading", "test2_panic", "test2_panic, changes_test1")]
 fn blackbox_test_not_affected(
     mode: Mode,
     name: &str,
