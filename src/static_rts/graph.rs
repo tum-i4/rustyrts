@@ -1,16 +1,26 @@
 use itertools::Itertools;
 use queues::{IsQueue, Queue};
+use rustc_middle::ty::TyCtxt;
+use rustc_span::def_id::DefId;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
 
+use crate::{constants::SUFFIX_DYN, names::def_id_name};
+
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
-    StaticCall,
-    DynamicCall,
+    Call,
+    Unsize,
     Drop,
-    Contained,
     Static,
+    ReifyPtr,
+    FnPtr,
+
+    Asm,
+    Closure,
+    Intrinsic,
+    LangItem,
 
     Trimmed,
 }
@@ -18,11 +28,17 @@ pub enum EdgeType {
 impl AsRef<str> for EdgeType {
     fn as_ref(&self) -> &str {
         match self {
-            EdgeType::StaticCall=> "[color = black]",
-            EdgeType::DynamicCall=> "[color = blue]",
+            EdgeType::Call => "[color = black]",
+            EdgeType::Unsize => "[color = blue]",
             EdgeType::Drop => "[color = orange]",
-            EdgeType::Contained=> "[color = magenta]",
-            EdgeType::Static=> "[color = green]",
+            EdgeType::Static => "[color = green]",
+            EdgeType::ReifyPtr => "[color = magenta]",
+            EdgeType::FnPtr => "[color = magenta]",
+            
+            EdgeType::Asm => "[color = yellow]",
+            EdgeType::Closure => "[color = brown]",
+            EdgeType::Intrinsic => "[color = cyan]",
+            EdgeType::LangItem => "[color = cyan]",
 
             EdgeType::Trimmed => "[color = red]",
         }
@@ -34,11 +50,17 @@ impl FromStr for EdgeType {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "StaticCall" => Ok(Self::StaticCall),
-            "DynamicCall" => Ok(Self::DynamicCall),
+            "Call" => Ok(Self::Call),
+            "Unsize" => Ok(Self::Unsize),
             "Drop" => Ok(Self::Drop),
-            "Contained" => Ok(Self::Contained),
             "Static" => Ok(Self::Static),
+            "ReifyPtr" => Ok(Self::Static),
+            "FnPtr" => Ok(Self::Static),
+
+            "Closure" => Ok(Self::Closure),
+            "Asm" => Ok(Self::Static),
+            "Intrinsic" => Ok(Self::Static),
+            "LangItem" => Ok(Self::Static),
 
             "Trimmed" => Ok(Self::Trimmed),
             _ => Err(()),
@@ -261,6 +283,28 @@ impl DependencyGraph<String> {
     }
 }
 
+impl DependencyGraph<DefId> {
+    pub fn convert_to_string<'tcx>(self, tcx: TyCtxt<'tcx>) -> DependencyGraph<String> {
+        let mut new_graph = DependencyGraph::new();
+
+        self.backwards_edges.into_iter().for_each(|(from, to)| {
+            let new_to = def_id_name(tcx, from, false, true);
+            to.into_iter().for_each(|(node, types)| {
+                for ty in types {
+                    let new_from = def_id_name(tcx, node, false, true);
+                    if ty == EdgeType::Unsize {
+                        new_graph.add_edge(new_from, new_to.clone() + SUFFIX_DYN, ty);
+                        new_graph.add_edge(new_to.clone() + SUFFIX_DYN, new_to.clone(), ty);
+                    } else {
+                        new_graph.add_edge(new_from, new_to.clone(), ty);
+                    }
+                }
+            });
+        });
+
+        new_graph
+    }
+}
 impl ToString for DependencyGraph<String> {
     fn to_string(&self) -> String {
         let mut result = String::new();
@@ -329,8 +373,8 @@ mod test {
         let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
         graph.add_node("lonely_node".to_string());
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::StaticCall);
-        graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::DynamicCall);
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Call);
+        graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Unsize);
         graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Drop);
 
         let serialized = graph.to_string();
@@ -338,5 +382,4 @@ mod test {
 
         assert_eq!(graph, deserialized);
     }
-
 }

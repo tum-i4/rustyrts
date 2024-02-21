@@ -78,21 +78,18 @@ Forking ensures that traces do not intermix, when executing tests in parallel. W
 During the subsequent run, the traces are compared to the set of changed `Body`s. If these two sets overlap, the corresponding test is considered affected.
 
 ## Static
-Static RustyRTS analyzes the MIR during compilation, without modifying it, to build a (directed) dependency graph. Edges are created according to the following criteria:
-1. `EdgeType::Closure`:         function -> contained Closure
-2. `EdgeType::Generator`:       function -> contained Generator
-3. 1. `EdgeType::FnDefTrait`:   caller function -> callee `fn` (for assoc `fn`s in `trait {..}`)
-3. 3. `EdgeType::FnDefImpl`:    caller function -> callee `fn` (for assoc `fn`s in `impl .. {..}`)
-3. 3. `EdgeType::FnDef`:        caller function -> callee `fn` (for non-assoc `fn`s, i.e. not inside `impl .. {..}`)
-3. 4. `EdgeType::FnDefDyn`:     caller function -> callee `fn` + !dyn (for functions in `trait {..} called by dynamic dispatch)
-4. `EdgeType::TraitImpl`:       function in `trait` definition + !dyn -> function in trait impl (`impl <trait> for ..`)  + !dyn 
-5. `EdgeType::DynFn`:           (only for associated functions) function + !dyn -> function
-6. `EdgeType::Drop`:            function -> destructor (`drop()` function) of referenced abstract datatype
+Static RustyRTS analyzes the MIR during compilation, without modifying it, to build a (directed) dependency graph.
+The way this is done is derived from the algorithm used for monomorphization in `rustc`.
+
+Edges are created according to the following criteria:
+1. `EdgeType::Call`             caller -> callee (static dispatch)
+2. 1. `EdgeType::Unsize`           function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
+2. 2. `EdgeType::Unsize`           function in vtable + !dyn -> function in vtable
+3. `EdgeType::Drop`             function -> drop glue
+4. `EdgeType::Static`           function -> accessed static variable (TODO: check if necessary)
+5. `EdgeType::ReifyPtr`         TODO
+6. `EdgeType::FnPtr`            TODO
 
 The suffix "!dyn" is used to distinguish static and dynamic dispatch. Checksums from vtable entries only contribute to the function they are pointing to with suffix !dyn.
-
-All these functions are not yet monomorphized. Using names of fully monomorphized functions may increase precision, but turns out to be impractical. On larger projects, it would bloat up the graph, such that reading the graph takes a long time. Moreover, RustyRTS compares checksums of non-monomorphized functions.
-It is nevertheless possible to use fully monomorphized function names using the `monomorphize` feature.
-
 
 When there is a path from a test to a changed `Body`, the test is considered affected.
