@@ -49,14 +49,13 @@ Because static RustyRTS can distinguish whether a function is called via dynamic
 
 ## Dynamic
 Dynamic RustyRTS collects traces containing the names of all functions that are called during the execution of a test. Some helper functions and global variables are used to obtain those traces:
-- a `static HashSet<(&'static str, ..)>` for collecting names of traced functions
+- a lock-free linked list (using nodes *compiled into the binary as static variables*) for collecting names of traced functions (technically a set, since every node can appear at most once)
 - `trace(input: &'static str, ..)` is used to append `input` to the hash set 
-- `pre_test()` which initializes the hash set
-- `post_test(test_name: &str)` which writes the content of the hash set, i.e. the traces to a file identified by the name of the test, where the traces can be inspected in the subsequent run
+- `pre_test()` which clears the list
+- `post_test(test_name: &str)` which writes the content of the list, i.e. the traces to a file identified by the name of the test, where the traces can be inspected in the subsequent run
 
 Further, on unix-like systems only:
-- `pre_main()` which initializes the hash set, in case this has not already been done
-- `post_main()` which appends the content of the hash set to a file identified by the `ppid` of the currently running process
+- `post_main()` which appends the content of the list to a file identified by the `ppid` of the currently running process
 - in both `post_test(test_name: &str)` and `post_main()` traces in files identified by the `pid` of the process (i.e. the `ppid` of any forked process), are appended to the hash set before exporting the traces
 
 During compilation, the MIR is modified, automatically generating MIR code that does not reflect in source code. Dynamic RustyRTS injects function calls into certain MIR `Body`s:
@@ -65,14 +64,11 @@ During compilation, the MIR is modified, automatically generating MIR code that 
 - a call to `post_test(<test_name>)` at the end of every test function
 
 On unix-like systems only:
-- a call to `pre_main()` at the beginning of every main function
 - a call to `post_main()` at the end of every main function
 
-Calls to `post_test(test_name: &str)` and `post_main()` are injected in such a way, that as long as the process terminates gracefully (i.e. either by exiting or by unwinding) the traces are written to the filesystem. A process crashing will result in the traces not being written!
+Calls to `post_test(test_name: &str)` and `post_main()` are injected in such a way, that as long as the process terminates gracefully (i.e. either by exiting or by unwinding) the traces are written to the filesystem. **A process crashing will result in the traces not being written!**
 
-Warning: `trace(<>)` internally uses allocations and locks, such that using custom allocators or signals may lead to a deadlock because of non-reentrant locks. (Using reentrant locks would lead to a stack overflow, which is equally bad.)
-
-On unix-like systems, a special test runner is used to fork for every test case, thus isolating the tests in their own process.
+On unix-like systems, a special test runner is used to fork for every test case, thus *isolating the tests in their own process*.
 Forking ensures that traces do not intermix, when executing tests in parallel. When executing tests sequentially, forking is not necessary and can be omitted.
 
 During the subsequent run, the traces are compared to the set of changed `Body`s. If these two sets overlap, the corresponding test is considered affected.
@@ -82,14 +78,22 @@ Static RustyRTS analyzes the MIR during compilation, without modifying it, to bu
 The way this is done is derived from the algorithm used for monomorphization in `rustc`.
 
 Edges are created according to the following criteria:
-1. `EdgeType::Call`             caller -> callee (static dispatch)
-2. 1. `EdgeType::Unsize`           function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
-2. 2. `EdgeType::Unsize`           function in vtable + !dyn -> function in vtable
-3. `EdgeType::Drop`             function -> drop glue
-4. `EdgeType::Static`           function -> accessed static variable (TODO: check if necessary)
-5. `EdgeType::ReifyPtr`         TODO
-6. `EdgeType::FnPtr`            TODO
+1. `EdgeType::Call`             function -> callee function (static dispatch)
 
-The suffix "!dyn" is used to distinguish static and dynamic dispatch. Checksums from vtable entries only contribute to the function they are pointing to with suffix !dyn.
+2. `EdgeType::Contained`        function -> contained closure
+
+3. 1. `EdgeType::Unsize`        function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
+3. 2. `EdgeType::Unsize`        function in vtable (see above) + !dyn -> same function (without suffix)
+
+4. `EdgeType::Drop`             function -> destructor (`drop()` function) of types that are dropped (manually or automatically)
+
+5. 1. `EdgeType::Static`        function -> accessed static variable
+5. 2. `EdgeType::Static`        static variable -> static variable that is pointed to
+5. 3. `EdgeType::FnPtr`         static variable (see above) -> function that is pointed to
+
+6. 1. `EdgeType::ReifyPtr`      function -> function that is coerced to a function pointer
+6. 1. `EdgeType::ClosurePtr`    function -> closure that is coerced to a function pointer
+
+The suffix !dyn is used to distinguish static and dynamic dispatch. Checksums from vtable entries only contribute to the function they are pointing to with suffix !dyn.
 
 When there is a path from a test to a changed `Body`, the test is considered affected.

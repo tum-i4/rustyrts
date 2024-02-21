@@ -32,15 +32,15 @@ impl AsRef<str> for EdgeType {
             EdgeType::Call => "[color = black]",
             EdgeType::Unsize => "[color = blue]",
             EdgeType::Contained => "[color = orange]",
-            EdgeType::Drop => "[color = orange]",
+            EdgeType::Drop => "[color = yellow]",
             EdgeType::Static => "[color = green]",
             EdgeType::ReifyPtr => "[color = magenta]",
-            EdgeType::FnPtr => "[color = magenta]",
+            EdgeType::FnPtr => "[color = cyan]",
 
-            EdgeType::Asm => "[color = yellow]",
-            EdgeType::ClosurePtr => "[color = brown]",
-            EdgeType::Intrinsic => "[color = cyan]",
-            EdgeType::LangItem => "[color = cyan]",
+            EdgeType::Asm => "[color = grey]",
+            EdgeType::ClosurePtr => "[color = grey]",
+            EdgeType::Intrinsic => "[color = grey]",
+            EdgeType::LangItem => "[color = grey]",
 
             EdgeType::Trimmed => "[color = red]",
         }

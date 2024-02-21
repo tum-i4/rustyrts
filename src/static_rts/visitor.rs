@@ -314,6 +314,7 @@ fn collect_items_rec<'tcx>(
                             args: GenericArgs::empty(),
                         }),
                     ),
+                    // 5.1. function -> accessed static variable
                     MonomorphizationContext::Local(EdgeType::Static),
                 ));
             }
@@ -583,6 +584,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     false,
                     span,
                     self.output,
+                    // 6.1. function -> function that is coerced to a function pointer
                     EdgeType::ReifyPtr,
                 );
             }
@@ -599,6 +601,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                         if should_codegen_locally(self.tcx, &instance) {
                             self.output.push((
                                 create_fn_mono_item(self.tcx, instance, span),
+                                // 6.2. function -> closure that is coerced to a function pointer
                                 MonomorphizationContext::Local(EdgeType::ClosurePtr),
                             ));
                         }
@@ -613,6 +616,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     trace!("collecting thread-local static {:?}", def_id);
                     self.output.push((
                         respan(span, MonoItem::Static(def_id)),
+                        // 5.1. function -> accessed static variable
                         MonomorphizationContext::Local(EdgeType::Static),
                     ));
                 }
@@ -667,6 +671,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     true,
                     source,
                     &mut self.output,
+                    // 1. function -> callee function (static dispatch)
                     EdgeType::Call,
                 )
             }
@@ -743,6 +748,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
 
         if let ty::TyKind::Closure(..) | TyKind::Coroutine(..) = ty.kind() {
             let ty = self.monomorphize(ty);
+            // 2. function -> contained closure
             visit_fn_use(tcx, ty, false, source, self.output, EdgeType::Contained);
         }
         self.super_ty(ty)
@@ -767,6 +773,7 @@ fn visit_drop_use<'tcx>(
         is_direct_call,
         source,
         output,
+        // 4. function -> destructor (`drop()` function) of types that are dropped (manually or automatically)
         EdgeType::Drop,
     );
 }
@@ -886,7 +893,7 @@ fn visit_instance_use<'tcx>(
                             ty::ParamEnv::reveal_all(),
                             ty::EarlyBinder::bind(callee_ty),
                         );
-                        visit_fn_use(tcx, callee_ty, true, source, output, EdgeType::Drop)
+                        visit_fn_use(tcx, callee_ty, true, source, output, edge_type)
                     }
                     _ => {}
                 }
@@ -1108,6 +1115,8 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                 .map(|item| {
                     (
                         create_fn_mono_item(tcx, item, source),
+                        // 2.1 function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
+                        // 2.2 function in vtable (see above) + !dyn -> same function (without suffix)
                         MonomorphizationContext::Local(EdgeType::Unsize),
                     )
                 });
@@ -1193,7 +1202,7 @@ impl<'v> RootCollector<'_, 'v> {
                 );
                 self.output.push((
                     dummy_spanned(MonoItem::GlobalAsm(id)),
-                    MonomorphizationContext::Local(EdgeType::Asm),
+                    MonomorphizationContext::Root,
                 ));
             }
             DefKind::Static(..) => {
@@ -1204,7 +1213,7 @@ impl<'v> RootCollector<'_, 'v> {
                 );
                 self.output.push((
                     dummy_spanned(MonoItem::Static(def_id)),
-                    MonomorphizationContext::Local(EdgeType::Static),
+                    MonomorphizationContext::Root,
                 ));
             }
             DefKind::Const => {
@@ -1409,6 +1418,8 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                 trace!("collecting static {:?}", def_id);
                 output.push((
                     dummy_spanned(MonoItem::Static(def_id)),
+                    // 5.1. function -> accessed static variable
+                    // 5.2. static variable -> static variable that is pointed to
                     MonomorphizationContext::Local(EdgeType::Static),
                 ));
             }
@@ -1426,6 +1437,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push((
                     create_fn_mono_item(tcx, fn_instance, DUMMY_SP),
+                    // 5.3. static variable -> function that is pointed to 
                     MonomorphizationContext::Local(EdgeType::FnPtr),
                 ));
                 // IMPORTANT: This ensures that functions referenced in closures contained in Consts are considered
