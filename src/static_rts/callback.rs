@@ -1,7 +1,7 @@
 use std::mem::transmute;
 use std::sync::Mutex;
 
-use crate::{constants::SUFFIX_DYN, static_rts::visitor::create_dependency_graph};
+use crate::{constants::SUFFIX_DYN, static_rts::visitor::{create_dependency_graph, MonoItemCollectionMode}};
 use crate::{
     callbacks_shared::{
         excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
@@ -82,7 +82,7 @@ impl StaticRTSCallbacks {
         let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
         let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
 
-        let graph = create_dependency_graph(tcx);
+        let graph = create_dependency_graph(tcx, MonoItemCollectionMode::Lazy);
 
         debug!("Created graph for {}", crate_name);
         
