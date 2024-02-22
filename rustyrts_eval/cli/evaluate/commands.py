@@ -29,11 +29,6 @@ FAILED_HISTORY_MSG = "Failed git walk"
 
 MUTANTS_PROJECTS = [
     (
-        "projects/mutants/Rocket",  # 5,8G
-        "master",
-        [("c028d63e5ba275927424397fe9d67cfebdc138ec", None, None)],
-    ),
-    (
         "projects/mutants/tracing",  # 4.5G
         "master",
         [("3de7f8c6016aebc22228375dc9100c02e955c6d4", None, None)],

@@ -49,6 +49,7 @@ class CargoMutantsHook(Hook):
         self.test_options = test_options if test_options else []
         self.connection = connection
         self.pre_hook = pre_hook
+        self.ask_for_skip = True
 
     def mutants_command(self):
         return "cargo mutants-rts{0} {1} -- {2}".format(
@@ -75,7 +76,7 @@ class CargoMutantsHook(Hook):
             + "' on "
             + self.repository.path
         )
-        if input(" Skip? ") == "y":
+        if self.ask_for_skip and input(" Skip? ") == "y":
             return True
 
         # keep track of current working directory

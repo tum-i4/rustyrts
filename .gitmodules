@@ -10,9 +10,6 @@
 [submodule "projects/mutants/ripgrep"]
 	path = projects/mutants/ripgrep
 	url = https://github.com/BurntSushi/ripgrep.git
-[submodule "projects/mutants/Rocket"]
-	path = projects/mutants/Rocket
-	url = https://github.com/SergioBenitez/Rocket.git
 [submodule "projects/mutants/rust-brotli"]
 	path = projects/mutants/rust-brotli
 	url = https://github.com/dropbox/rust-brotli.git
@@ -73,9 +70,6 @@
 [submodule "projects/git_walk/penumbra"]
 	path = projects/git_walk/penumbra
 	url = https://github.com/penumbra-zone/penumbra
-[submodule "projects/util/rust-rocksdb"]
-	path = projects/util/rust-rocksdb
-	url = https://github.com/rust-rocksdb/rust-rocksdb.git
 [submodule "projects/small/budget"]
 	path = projects/small/budget
 	url = git@github.com:shterrett/budget.git
