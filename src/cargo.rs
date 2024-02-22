@@ -78,8 +78,8 @@ pub fn cargo_bin() -> String {
 /// Make up the argv for a cargo check/build/test invocation, including argv[0] as the
 /// cargo binary itself.
 pub fn cargo_argv(
-    build_dir: &Utf8Path,
-    packages: Option<&[&Package]>,
+    _build_dir: &Utf8Path,
+    _packages: Option<&[&Package]>,
     phase: Phase,
     options: &Options,
 ) -> Vec<String> {
@@ -129,7 +129,7 @@ pub fn cargo_argv(
 
             // Add args to `cargo build` here
             cargo_args.extend(options.additional_cargo_args.iter().cloned());
-            append_packages(&mut cargo_args, packages, build_dir);
+            // append_packages(&mut cargo_args, packages, build_dir); // IMPORTANT: would lead to pre-selection
         }
 
         if phase == Phase::Dynamic || phase == Phase::Static {
@@ -147,13 +147,14 @@ pub fn cargo_argv(
     }
 
     cargo_args.extend(options.additional_cargo_args.iter().cloned());
-    append_packages(&mut cargo_args, packages, build_dir);
+    // append_packages(&mut cargo_args, packages, build_dir); // IMPORTANT: would lead to pre-selection
     if phase.is_test_phase() {
         cargo_args.extend(options.additional_cargo_test_args.iter().cloned());
     }
     cargo_args
 }
 
+#[allow(dead_code)]
 fn append_packages(
     cargo_args: &mut Vec<String>,
     packages: Option<&[&Package]>,
@@ -238,7 +239,7 @@ mod test {
                 "test",
                 "--target-dir",
                 "target_check",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -251,7 +252,7 @@ mod test {
                 "--examples",
                 "--profile",
                 "test",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -264,7 +265,7 @@ mod test {
                 "--examples",
                 "--profile",
                 "test",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -280,7 +281,7 @@ mod test {
                 //"--bins",
                 "--tests",
                 "--examples",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -291,10 +292,10 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
-                "--workspace",
+                // "--workspace",
                 "--",
                 "--",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -305,10 +306,10 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
-                "--workspace",
+                // "--workspace",
                 "--",
                 "--",
-                "--workspace"
+                // "--workspace"
             ]
         );
     }
@@ -325,7 +326,7 @@ mod test {
             version: version.to_owned(),
             relative_manifest_path: relative_manifest_path.clone(),
         });
-        let build_manifest_path = build_dir.join(relative_manifest_path);
+        let _build_manifest_path = build_dir.join(relative_manifest_path);
         assert_eq!(
             cargo_argv(build_dir, Some(&[&package]), Phase::Check, &options)[1..],
             [
@@ -338,8 +339,8 @@ mod test {
                 "test",
                 "--target-dir",
                 "target_check",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
             ]
         );
         assert_eq!(
@@ -352,8 +353,8 @@ mod test {
                 "--examples",
                 "--profile",
                 "test",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
             ]
         );
         assert_eq!(
@@ -366,8 +367,8 @@ mod test {
                 "--examples",
                 "--profile",
                 "test",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
             ]
         );
         assert_eq!(
@@ -383,8 +384,8 @@ mod test {
                 //"--bins",
                 "--tests",
                 "--examples",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
             ]
         );
         assert_eq!(
@@ -395,12 +396,12 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
                 "--",
                 "--",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
             ]
         );
         assert_eq!(
@@ -411,12 +412,12 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
                 "--",
                 "--",
-                "--manifest-path",
-                build_manifest_path.as_str(),
+                // "--manifest-path",
+                // build_manifest_path.as_str(),
             ]
         );
     }
@@ -444,7 +445,7 @@ mod test {
                 "--target-dir",
                 "target_check",
                 "--verbose",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -458,7 +459,7 @@ mod test {
                 "--profile",
                 "test",
                 "--verbose",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -472,7 +473,7 @@ mod test {
                 "--profile",
                 "test",
                 "--verbose",
-                "--workspace"
+                // "--workspace"
             ]
         );
         assert_eq!(
@@ -489,7 +490,7 @@ mod test {
                 "--tests",
                 "--examples",
                 "--verbose",
-                "--workspace",
+                // "--workspace",
                 "--",
                 "--test-threads=1"
             ]
@@ -503,11 +504,11 @@ mod test {
                 "no-index-update",
                 "--",
                 "--verbose",
-                "--workspace",
+                // "--workspace",
                 "--",
                 "--",
                 "--verbose",
-                "--workspace",
+                // "--workspace",
                 "--",
                 "--test-threads=1"
             ]
@@ -521,11 +522,11 @@ mod test {
                 "no-index-update",
                 "--",
                 "--verbose",
-                "--workspace",
+                // "--workspace",
                 "--",
                 "--",
                 "--verbose",
-                "--workspace",
+                // "--workspace",
                 "--",
                 "--test-threads=1"
             ]

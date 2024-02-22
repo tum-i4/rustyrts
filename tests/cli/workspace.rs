@@ -2,12 +2,12 @@
 
 //! Tests for cargo workspaces with multiple packages.
 
-use std::fs::read_to_string;
+// use std::fs::read_to_string;
 
-use insta::assert_snapshot;
+// use insta::assert_snapshot;
 use serde_json::json;
 
-use super::{assert_bytes_eq_json, copy_of_testdata, run};
+use super::{assert_bytes_eq_json, /*copy_of_testdata, */run};
 
 #[test]
 fn open_by_manifest_path() {
@@ -186,80 +186,80 @@ fn list_files_as_json_in_workspace_subdir() {
 //     }
 //  }
 
-#[test]
-/// Baseline tests in a workspace only test the packages that will later
-/// be mutated.
-/// See <https://github.com/sourcefrog/cargo-mutants/issues/151>
-fn in_workspace_only_relevant_packages_included_in_baseline_tests_by_file_filter() {
-    let tmp = copy_of_testdata("package_fails");
-    run()
-        .args([
-            "mutants-rts",
-            "-f",
-            "passing/src/lib.rs",
-            "--no-shuffle",
-            "-d",
-        ])
-        .arg(tmp.path())
-        .assert()
-        .success();
-    assert_snapshot!(
-        read_to_string(tmp.path().join("mutants.out/caught.txt")).unwrap(),
-        @r###"
-    passing/src/lib.rs:2:5: replace triple -> usize with 0
-    passing/src/lib.rs:2:5: replace triple -> usize with 1
-    passing/src/lib.rs:2:7: replace * with + in triple
-    passing/src/lib.rs:2:7: replace * with / in triple
-    "###);
-    assert_eq!(
-        read_to_string(tmp.path().join("mutants.out/timeout.txt")).unwrap(),
-        ""
-    );
-    assert_eq!(
-        read_to_string(tmp.path().join("mutants.out/missed.txt")).unwrap(),
-        ""
-    );
-    assert_eq!(
-        read_to_string(tmp.path().join("mutants.out/unviable.txt")).unwrap(),
-        ""
-    );
-}
+// #[test]
+// /// Baseline tests in a workspace only test the packages that will later
+// /// be mutated.
+// /// See <https://github.com/sourcefrog/cargo-mutants/issues/151>
+// fn in_workspace_only_relevant_packages_included_in_baseline_tests_by_file_filter() {
+//     let tmp = copy_of_testdata("package_fails");
+//     run()
+//         .args([
+//             "mutants-rts",
+//             "-f",
+//             "passing/src/lib.rs",
+//             "--no-shuffle",
+//             "-d",
+//         ])
+//         .arg(tmp.path())
+//         .assert()
+//         .success();
+//     assert_snapshot!(
+//         read_to_string(tmp.path().join("mutants.out/caught.txt")).unwrap(),
+//         @r###"
+//     passing/src/lib.rs:2:5: replace triple -> usize with 0
+//     passing/src/lib.rs:2:5: replace triple -> usize with 1
+//     passing/src/lib.rs:2:7: replace * with + in triple
+//     passing/src/lib.rs:2:7: replace * with / in triple
+//     "###);
+//     assert_eq!(
+//         read_to_string(tmp.path().join("mutants.out/timeout.txt")).unwrap(),
+//         ""
+//     );
+//     assert_eq!(
+//         read_to_string(tmp.path().join("mutants.out/missed.txt")).unwrap(),
+//         ""
+//     );
+//     assert_eq!(
+//         read_to_string(tmp.path().join("mutants.out/unviable.txt")).unwrap(),
+//         ""
+//     );
+// }
 
-/// Even the baseline test only tests the explicitly selected packages,
-/// so it doesn't fail if some packages don't build.
-#[test]
-fn baseline_test_respects_package_options() {
-    let tmp = copy_of_testdata("package_fails");
-    run()
-        .args([
-            "mutants-rts",
-            "--package",
-            "cargo-mutants-testdata-package-fails-passing",
-            "--no-shuffle",
-            "-d",
-        ])
-        .arg(tmp.path())
-        .assert()
-        .success();
-    assert_snapshot!(
-        read_to_string(tmp.path().join("mutants.out/caught.txt")).unwrap(),
-        @r###"
-    passing/src/lib.rs:2:5: replace triple -> usize with 0
-    passing/src/lib.rs:2:5: replace triple -> usize with 1
-    passing/src/lib.rs:2:7: replace * with + in triple
-    passing/src/lib.rs:2:7: replace * with / in triple
-    "###
-    );
-    assert_eq!(
-        read_to_string(tmp.path().join("mutants.out/timeout.txt")).unwrap(),
-        ""
-    );
-    assert_eq!(
-        read_to_string(tmp.path().join("mutants.out/missed.txt")).unwrap(),
-        ""
-    );
-    assert_eq!(
-        read_to_string(tmp.path().join("mutants.out/unviable.txt")).unwrap(),
-        ""
-    );
-}
+// /// Even the baseline test only tests the explicitly selected packages,
+// /// so it doesn't fail if some packages don't build.
+// #[test]
+// fn baseline_test_respects_package_options() {
+//     let tmp = copy_of_testdata("package_fails");
+//     run()
+//         .args([
+//             "mutants-rts",
+//             "--package",
+//             "cargo-mutants-testdata-package-fails-passing",
+//             "--no-shuffle",
+//             "-d",
+//         ])
+//         .arg(tmp.path())
+//         .assert()
+//         .success();
+//     assert_snapshot!(
+//         read_to_string(tmp.path().join("mutants.out/caught.txt")).unwrap(),
+//         @r###"
+//     passing/src/lib.rs:2:5: replace triple -> usize with 0
+//     passing/src/lib.rs:2:5: replace triple -> usize with 1
+//     passing/src/lib.rs:2:7: replace * with + in triple
+//     passing/src/lib.rs:2:7: replace * with / in triple
+//     "###
+//     );
+//     assert_eq!(
+//         read_to_string(tmp.path().join("mutants.out/timeout.txt")).unwrap(),
+//         ""
+//     );
+//     assert_eq!(
+//         read_to_string(tmp.path().join("mutants.out/missed.txt")).unwrap(),
+//         ""
+//     );
+//     assert_eq!(
+//         read_to_string(tmp.path().join("mutants.out/unviable.txt")).unwrap(),
+//         ""
+//     );
+// }
