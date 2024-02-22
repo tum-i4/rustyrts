@@ -12,7 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::visit::Visitor as MirVisitor;
+use rustc_middle::{mir::visit::Visitor as MirVisitor, ty::List};
 use rustc_middle::mir::{self, Location};
 use rustc_middle::mir::{
     interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar},
@@ -43,7 +43,7 @@ use rustc_span::{
 use rustc_span::{Span, DUMMY_SP};
 use std::path::PathBuf;
 
-use crate::{callbacks_shared::TEST_MARKER, names::def_id_name, static_rts::graph::EdgeType};
+use crate::{callbacks_shared::TEST_MARKER, names::{mono_def_id_name, def_id_name}, static_rts::graph::EdgeType};
 
 use super::graph::DependencyGraph;
 
@@ -80,7 +80,7 @@ impl<'a> TryInto<EdgeType> for &'a MonomorphizationContext {
 }
 
 pub struct CustomUsageMap<'tcx> {
-    graph: DependencyGraph<DefId>,
+    graph: DependencyGraph<MonoItem<'tcx>>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -103,8 +103,8 @@ impl<'tcx> CustomUsageMap<'tcx> {
     {
         for (used_item, context) in used_items.into_iter() {
             self.graph.add_edge(
-                user_item.def_id(),
-                used_item.node.def_id(),
+                user_item,
+                used_item.node,
                 context.try_into().unwrap(),
             );
         }
@@ -161,7 +161,7 @@ pub fn create_dependency_graph<'tcx>(
     for test in tests {
         let def_id = test.def_id();
         let name_trimmed = def_id_name(tcx, def_id, false, true);
-        let name = def_id_name(tcx, def_id, false, false);
+        let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
         graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
     }
 
@@ -1115,8 +1115,8 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                 .map(|item| {
                     (
                         create_fn_mono_item(tcx, item, source),
+                        // 2.1 function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion)
                         // 2.1 function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
-                        // 2.2 function in vtable (see above) + !dyn -> same function (without suffix)
                         MonomorphizationContext::Local(EdgeType::Unsize),
                     )
                 });

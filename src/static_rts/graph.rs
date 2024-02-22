@@ -1,12 +1,17 @@
 use itertools::Itertools;
 use queues::{IsQueue, Queue};
-use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::DefId;
+use rustc_middle::{
+    mir::mono::MonoItem,
+    ty::{List, TyCtxt},
+};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
 
-use crate::{constants::SUFFIX_DYN, names::def_id_name};
+use crate::{
+    constants::SUFFIX_DYN,
+    names::{def_id_name, mono_def_id_name},
+};
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
@@ -286,26 +291,52 @@ impl DependencyGraph<String> {
     }
 }
 
-impl DependencyGraph<DefId> {
-    pub fn convert_to_string<'tcx>(self, tcx: TyCtxt<'tcx>) -> DependencyGraph<String> {
+impl<'tcx> DependencyGraph<MonoItem<'tcx>> {
+    pub fn convert_to_string(self, tcx: TyCtxt<'tcx>) -> DependencyGraph<String> {
         let mut new_graph = DependencyGraph::new();
 
-        self.backwards_edges.into_iter().for_each(|(from, to)| {
-            let new_to = def_id_name(tcx, from, false, true);
-            to.into_iter().for_each(|(node, types)| {
-                for ty in types {
-                    let new_from = def_id_name(tcx, node, false, true);
-                    if ty == EdgeType::Unsize {
-                        new_graph.add_edge(new_from, new_to.clone() + SUFFIX_DYN, ty);
-                        new_graph.add_edge(new_to.clone() + SUFFIX_DYN, new_to.clone(), ty);
-                    } else {
-                        new_graph.add_edge(new_from, new_to.clone(), ty);
+        self.backwards_edges.into_iter().for_each(|(to, from)| {
+            if let Some((new_to, new_to_trimmed)) = Self::mono_item_name(tcx, to) {
+                new_graph.add_edge(new_to.clone(), new_to_trimmed.clone(), EdgeType::Trimmed);
+
+                from.into_iter().for_each(|(node, types)| {
+                    for ty in types {
+                        if let Some((new_from, new_from_trimmed)) = Self::mono_item_name(tcx, node)
+                        {
+                            new_graph.add_edge(
+                                new_from.clone(),
+                                new_from_trimmed,
+                                EdgeType::Trimmed,
+                            );
+                            if ty == EdgeType::Unsize {
+                                new_graph.add_edge(
+                                    new_from.clone(),
+                                    new_to_trimmed.clone() + SUFFIX_DYN,
+                                    ty,
+                                );
+                            }
+                            new_graph.add_edge(new_from, new_to.clone(), ty);
+                        }
                     }
-                }
-            });
+                });
+            }
         });
 
         new_graph
+    }
+
+    fn mono_item_name(tcx: TyCtxt<'tcx>, mono_item: MonoItem<'tcx>) -> Option<(String, String)> {
+        match mono_item {
+            MonoItem::Fn(instance) => Some((
+                mono_def_id_name(tcx, instance.def_id(), instance.args, false, true),
+                def_id_name(tcx, instance.def_id(), false, true),
+            )),
+            MonoItem::Static(def_id) => Some((
+                mono_def_id_name(tcx, def_id, List::empty(), false, true),
+                def_id_name(tcx, def_id, false, true),
+            )),
+            MonoItem::GlobalAsm(_item_id) => None,
+        }
     }
 }
 impl ToString for DependencyGraph<String> {

@@ -82,8 +82,8 @@ Edges are created according to the following criteria:
 
 2. `EdgeType::Contained`        function -> contained closure
 
-3. 1. `EdgeType::Unsize`        function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
-3. 2. `EdgeType::Unsize`        function in vtable (see above) + !dyn -> same function (without suffix)
+3. 1. `EdgeType::Unsize`        function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion)
+3. 2. `EdgeType::Unsize`        function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
 
 4. `EdgeType::Drop`             function -> destructor (`drop()` function) of types that are dropped (manually or automatically)
 

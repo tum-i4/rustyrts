@@ -1,8 +1,8 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use rustc_hir::{def::Namespace, def_id::DefId, definitions::DefPathData};
-use rustc_middle::ty::{print::FmtPrinter, TyCtxt};
 use rustc_middle::ty::{print::Printer, List};
+use rustc_middle::ty::{print::FmtPrinter, GenericArgs, TyCtxt};
 use rustc_span::def_id::LOCAL_CRATE;
 
 lazy_static! {
@@ -16,6 +16,17 @@ lazy_static! {
 pub(crate) fn def_id_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
+    add_crate_id: bool,
+    trimmed: bool,
+) -> String {
+    mono_def_id_name(tcx, def_id, List::empty(), add_crate_id, trimmed)
+}
+
+/// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
+pub(crate) fn mono_def_id_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: &'tcx GenericArgs<'tcx>,
     add_crate_id: bool,
     trimmed: bool,
 ) -> String {
@@ -39,7 +50,7 @@ pub(crate) fn def_id_name<'tcx>(
         "".to_string()
     };
 
-    let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, trimmed);
+    let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs, trimmed);
 
     let crate_name = {
         let name = format!("{}::", tcx.crate_name(def_id.krate));
@@ -66,6 +77,7 @@ pub(crate) fn def_id_name<'tcx>(
 pub fn def_path_str_with_substs_with_no_visible_path<'t>(
     tcx: TyCtxt<'t>,
     def_id: DefId,
+    substs: &'t GenericArgs<'t>,
     trimmed: bool,
 ) -> String {
     let ns = guess_def_namespace(tcx, def_id);
@@ -74,14 +86,10 @@ pub fn def_path_str_with_substs_with_no_visible_path<'t>(
 
     if trimmed {
         rustc_middle::ty::print::with_forced_trimmed_paths!(
-            rustc_middle::ty::print::with_no_visible_paths!(
-                printer.print_def_path(def_id, List::empty())
-            )
+            rustc_middle::ty::print::with_no_visible_paths!(printer.print_def_path(def_id, substs))
         )
     } else {
-        rustc_middle::ty::print::with_no_visible_paths!(
-            printer.print_def_path(def_id, List::empty())
-        )
+        rustc_middle::ty::print::with_no_visible_paths!(printer.print_def_path(def_id, substs))
     }
     .unwrap();
 
