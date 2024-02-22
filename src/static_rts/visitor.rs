@@ -12,7 +12,6 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::{mir::visit::Visitor as MirVisitor, ty::List};
 use rustc_middle::mir::{self, Location};
 use rustc_middle::mir::{
     interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar},
@@ -30,12 +29,16 @@ use rustc_middle::{bug, traits};
 use rustc_middle::{
     middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyContext, ty::GenericParamDefKind,
 };
+use rustc_middle::{mir::visit::Visitor as MirVisitor, ty::List};
 use rustc_middle::{
     mir::{mono::MonoItem, Operand, TerminatorKind},
     ty::TyKind,
 };
 use rustc_session::{config::EntryFnType, Limit};
-use rustc_span::{def_id::LocalDefId, symbol::sym};
+use rustc_span::{
+    def_id::LocalDefId,
+    symbol::sym,
+};
 use rustc_span::{
     source_map::{dummy_spanned, respan, Spanned},
     ErrorGuaranteed,
@@ -43,7 +46,11 @@ use rustc_span::{
 use rustc_span::{Span, DUMMY_SP};
 use std::path::PathBuf;
 
-use crate::{callbacks_shared::TEST_MARKER, names::{mono_def_id_name, def_id_name}, static_rts::graph::EdgeType};
+use crate::{
+    callbacks_shared::TEST_MARKER,
+    names::{def_id_name, mono_def_id_name},
+    static_rts::graph::EdgeType,
+};
 
 use super::graph::DependencyGraph;
 
@@ -102,11 +109,8 @@ impl<'tcx> CustomUsageMap<'tcx> {
         'tcx: 'a,
     {
         for (used_item, context) in used_items.into_iter() {
-            self.graph.add_edge(
-                user_item,
-                used_item.node,
-                context.try_into().unwrap(),
-            );
+            self.graph
+                .add_edge(user_item, used_item.node, context.try_into().unwrap());
         }
     }
 
@@ -817,6 +821,35 @@ fn visit_instance_use<'tcx>(
         is_direct_call
     );
 
+    if let ty::InstanceDef::DropGlue(_, maybe_ty) = instance.def {
+        if let Some(_) = maybe_ty {
+            // IMPORTANT: We do not want to have an indirection via drop_in_place
+            // and instead directly collect all drop functions that are invoked
+            let body = tcx.instance_mir(instance.def);
+            let terminators = body
+                .basic_blocks
+                .iter()
+                .filter_map(|bb| bb.terminator.as_ref());
+            for terminator in terminators {
+                match terminator.kind {
+                    mir::TerminatorKind::Call { ref func, .. } => {
+                        let callee_ty = func.ty(body, tcx);
+                        let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                            tcx,
+                            ty::ParamEnv::reveal_all(),
+                            ty::EarlyBinder::bind(callee_ty),
+                        );
+
+                        visit_fn_use(tcx, callee_ty, true, source, output, edge_type);
+                        visit_drop_use(tcx, callee_ty, true, source, output);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        return;
+    }
+
     // IMPORTANT: This connects the graphs of multiple crates
     if tcx.is_reachable_non_generic(instance.def_id())
         || instance
@@ -875,29 +908,8 @@ fn visit_instance_use<'tcx>(
         ty::InstanceDef::ThreadLocalShim(..) => {
             bug!("{:?} being reified", instance);
         }
-        ty::InstanceDef::DropGlue(_, None) => {}
-        ty::InstanceDef::DropGlue(_, Some(_)) => {
-            // IMPORTANT: We do not want to have an indirection via drop_in_place
-            // and instead directly collect all drop functions that are invoked
-            let body = tcx.instance_mir(instance.def);
-            let terminators = body
-                .basic_blocks
-                .iter()
-                .filter_map(|bb| bb.terminator.as_ref());
-            for terminator in terminators {
-                match terminator.kind {
-                    mir::TerminatorKind::Call { ref func, .. } => {
-                        let callee_ty = func.ty(body, tcx);
-                        let callee_ty = instance.instantiate_mir_and_normalize_erasing_regions(
-                            tcx,
-                            ty::ParamEnv::reveal_all(),
-                            ty::EarlyBinder::bind(callee_ty),
-                        );
-                        visit_fn_use(tcx, callee_ty, true, source, output, edge_type)
-                    }
-                    _ => {}
-                }
-            }
+        ty::InstanceDef::DropGlue(..) => {
+            bug!("unreachable")
         }
         ty::InstanceDef::Item(def_id)
             if tcx.is_closure(def_id)
@@ -1437,7 +1449,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push((
                     create_fn_mono_item(tcx, fn_instance, DUMMY_SP),
-                    // 5.3. static variable -> function that is pointed to 
+                    // 5.3. static variable -> function that is pointed to
                     MonomorphizationContext::Local(EdgeType::FnPtr),
                 ));
                 // IMPORTANT: This ensures that functions referenced in closures contained in Consts are considered
