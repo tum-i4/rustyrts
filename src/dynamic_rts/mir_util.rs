@@ -755,6 +755,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         cache_ret: &mut Option<Local>,
         cache_call: &mut Option<BasicBlock>,
     ) {
+        use crate::names::def_id_name;
+
         trace!("Inserting post_main() into {:?}", self.source.def_id());
 
         let Some(def_id_post_fn) = get_def_id_post_main_fn(tcx) else {
@@ -827,12 +829,22 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                         .terminator()
                         .kind;
 
-                    if let TerminatorKind::Call { destination, .. } = terminator_kind {
+                    if let TerminatorKind::Call {
+                        destination, func, ..
+                    } = terminator_kind
+                    {
                         if let Some(local) = destination.as_local() {
                             if local.as_usize() == 0 {
                                 // LLVM terminates with an error when calls that directly return something from main() are extended with a Resume terminator
                                 continue;
                             }
+                        }
+
+                        // HACK: in tracing, injecting a cleanup into a particular terminator results in an LLVM error
+                        if func.const_fn_def().is_some_and(|(def, _)| {
+                            def_id_name(tcx, def, false, true).contains("__is_enabled")
+                        }) {
+                            continue;
                         }
                     }
 
