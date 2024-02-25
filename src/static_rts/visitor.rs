@@ -35,10 +35,7 @@ use rustc_middle::{
     ty::TyKind,
 };
 use rustc_session::{config::EntryFnType, Limit};
-use rustc_span::{
-    def_id::LocalDefId,
-    symbol::sym,
-};
+use rustc_span::{def_id::LocalDefId, symbol::sym};
 use rustc_span::{
     source_map::{dummy_spanned, respan, Spanned},
     ErrorGuaranteed,
@@ -540,6 +537,14 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
+    // fn visit_body(&mut self, body: &mir::Body<'tcx>) {
+    //     let name = def_id_name(self.tcx, body.source.def_id(), false, true);
+    //     if name.contains("spans_field_collision") {
+    //         info!("Found body {:?}", body);
+    //     }
+    //     self.super_body(body);
+    // }
+
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: Location) {
         trace!("visiting rvalue {:?}", *rvalue);
 
@@ -745,7 +750,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         self.visiting_call_terminator = false;
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>, _: TyContext) {
+    fn visit_ty(&mut self, ty: Ty<'tcx>, context: TyContext) {
         let source = self.body.span;
 
         let tcx = self.tcx;
@@ -755,7 +760,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             // 2. function -> contained closure
             visit_fn_use(tcx, ty, false, source, self.output, EdgeType::Contained);
         }
-        self.super_ty(ty)
+        if let TyKind::Ref(_region, ty, _mtblt) = *ty.kind() {
+            // Also account for closures behind references
+            self.visit_ty(ty, context);
+        }
+        // self.super_ty(ty) //Weirdly, this is just empty
     }
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
@@ -1121,16 +1130,35 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                         None
                     }
                     VtblEntry::Method(instance) => {
-                        Some(*instance).filter(|instance| should_codegen_locally(tcx, instance))
+                        Some(*instance) // .filter(|instance| should_codegen_locally(tcx, instance)) // Fitering later on
                     }
                 })
-                .map(|item| {
-                    (
+                .filter_map(|item| {
+                    let instance = item;
+
+                    // IMPORTANT: This connects the graphs of multiple crates
+                    if tcx.is_reachable_non_generic(instance.def_id())
+                        || instance
+                            .polymorphize(tcx)
+                            .upstream_monomorphization(tcx)
+                            .is_some()
+                    {
+                        return Some((
+                            create_fn_mono_item(tcx, instance, source),
+                            MonomorphizationContext::NonLocal(EdgeType::Unsize),
+                        ));
+                    }
+
+                    if !should_codegen_locally(tcx, &instance) {
+                        return None;
+                    }
+
+                    Some((
                         create_fn_mono_item(tcx, item, source),
                         // 2.1 function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion)
                         // 2.1 function -> function in the vtable of a type that is converted into a dynamic trait object (unsized coercion) + !dyn
                         MonomorphizationContext::Local(EdgeType::Unsize),
-                    )
+                    ))
                 });
             output.extend(methods);
         }
