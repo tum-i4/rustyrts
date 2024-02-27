@@ -78,6 +78,8 @@ class CargoMutantsHook(Hook):
         )
         if self.ask_for_skip and input(" Skip? ") == "y":
             return True
+        else:
+            self.ask_for_skip = False
 
         # keep track of current working directory
         has_failed = False
