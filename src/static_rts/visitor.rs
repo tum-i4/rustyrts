@@ -860,17 +860,23 @@ fn visit_instance_use<'tcx>(
     }
 
     // IMPORTANT: This connects the graphs of multiple crates
-    if tcx.is_reachable_non_generic(instance.def_id())
-        || instance
-            .polymorphize(tcx)
-            .upstream_monomorphization(tcx)
-            .is_some()
-    {
+    if tcx.is_reachable_non_generic(instance.def_id()) {
         output.push((
             create_fn_mono_item(tcx, instance, source),
             MonomorphizationContext::NonLocal(edge_type),
         ));
     }
+    if instance
+        .polymorphize(tcx)
+        .upstream_monomorphization(tcx)
+        .is_some()
+    {
+        output.push((
+            create_fn_mono_item(tcx, instance, source),
+            MonomorphizationContext::Local(edge_type), // Local is necessary here
+        ));
+    }
+
     if let DefKind::Static(_) = tcx.def_kind(instance.def_id()) {
         output.push((
             create_fn_mono_item(tcx, instance, source),
@@ -1137,15 +1143,20 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                     let instance = item;
 
                     // IMPORTANT: This connects the graphs of multiple crates
-                    if tcx.is_reachable_non_generic(instance.def_id())
-                        || instance
-                            .polymorphize(tcx)
-                            .upstream_monomorphization(tcx)
-                            .is_some()
-                    {
+                    if tcx.is_reachable_non_generic(instance.def_id()) {
                         return Some((
                             create_fn_mono_item(tcx, instance, source),
                             MonomorphizationContext::NonLocal(EdgeType::Unsize),
+                        ));
+                    }
+                    if instance
+                        .polymorphize(tcx)
+                        .upstream_monomorphization(tcx)
+                        .is_some()
+                    {
+                        return Some((
+                            create_fn_mono_item(tcx, instance, source),
+                            MonomorphizationContext::Local(EdgeType::Unsize), // Local is necessary here
                         ));
                     }
 
