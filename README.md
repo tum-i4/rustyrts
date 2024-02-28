@@ -8,11 +8,24 @@
 - rustyrts (branch develop/main)
 - mutants-rts (branch mutants-rts)
 
-- Non-exhaustive list of other packages required to run the evaluation or compile the projects:
+- Non-exhaustive list of other packages that may be required to run the evaluation or compile the projects:
 ```bash
 sudo apt-get install snapd python3-dev postgresql-client python3-pip python3.10-venv
 sudo apt-get install gcc lld libssl-dev cmake protobuf-compiler clang libsqlite3-dev
+sudo apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev liblz4-dev libzstd-dev
 sudo snap install scc
+```
+
+### Install rocksdb to decrease compilation time of several projects
+```
+sudo apt-get install librocksdb-dev
+```
+
+Then add to your `~/.cargo/config.toml`:
+```
+[env]
+ROCKSDB_LIB_DIR = "/usr/lib/"
+SNAPPY_LIB_DIR = "/usr/lib/"
 ```
 
 ## Set default toolchain
@@ -21,14 +34,14 @@ rustup default nightly-2023-12-28-x86_64-unknown-linux-gnu
 rustup toolchain uninstall stable-x86_64-unknown-linux-gnu
 ```
 
-## Install evaluation library
+## Install evaluation library (inside repository on branch evaluation)
 ```bash
 pip install -e .
 ```
 
 ## Start Postgres database in docker
 ```bash
-docker run --shm-size=1g --name rustyrts-evaluation -e POSTGRES_PASSWORD=rustyrts -p 5432:5432 -d postgres:12-bookworm
+sudo docker run --shm-size=1g --name rustyrts-evaluation -e POSTGRES_PASSWORD=rustyrts -p 5432:5432 -d postgres:12-bookworm
 ```
 
 
@@ -53,10 +66,21 @@ rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_parallel 
 rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/mutants mutants
 ```
 
+## Start recording git history walk
+```bash
+rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/history_parallel history hardcoded parallel
+rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/history_sequential history hardcoded sequential
+```
+
 
 # Utilities
 
 ## Dump database
 ```bash
-rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/<db_name> dump <name>
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/<db_name> dump <file_name>
+```
+
+## Restore database backup
+```bash
+rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/<db_name> restore <file_name>
 ```

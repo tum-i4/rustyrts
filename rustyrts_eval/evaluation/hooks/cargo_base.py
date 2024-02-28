@@ -108,18 +108,6 @@ class CargoHook(Hook, ABC):
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
 
-            # for filename in glob.glob("**/Cargo.toml", recursive=True):
-            #     # chrono apparently has introduced breaking changes in 0.4.30 (violating SemVer)
-            #     # we need to provide an upper bound on the version, instead of letting cargo use the latest one
-            #     file = Path(filename)
-            #     content = file.read_text()
-            #     content = re.sub(
-            #         r'chrono = "(0.4(.[12]?[123456789])?)"',
-            #         r'chrono = "\1,<=0.4.29"',
-            #         content,
-            #     )
-            #     file.write_text(content)
-
             # clean
             proc: SubprocessContainer = SubprocessContainer(
                 command=self.clean_command(), output_filepath=self.prepare_cache_file()
@@ -306,16 +294,6 @@ class CargoHook(Hook, ABC):
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
-
-            for filename in glob.glob("**/Cargo.toml", recursive=True):
-                file = Path(filename)
-                content = file.read_text()
-                content = re.sub(
-                    r'chrono = "(0.4(.[12]?[123456789])?)"',
-                    r'chrono = "\1,<=0.4.29"',
-                    content,
-                )
-                file.write_text(content)
 
             # update dependencies
             proc: SubprocessContainer = SubprocessContainer(
