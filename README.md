@@ -16,18 +16,6 @@ sudo apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgfla
 sudo snap install scc
 ```
 
-### Install rocksdb to decrease compilation time of several projects
-```
-sudo apt-get install librocksdb-dev
-```
-
-Then add to your `~/.cargo/config.toml`:
-```
-[env]
-ROCKSDB_LIB_DIR = "/usr/lib/"
-SNAPPY_LIB_DIR = "/usr/lib/"
-```
-
 ## Set default toolchain
 ```bash
 rustup default nightly-2023-12-28-x86_64-unknown-linux-gnu
