@@ -49,7 +49,7 @@ class CargoRustyRTSHook(CargoHook):
             env["RUSTC_WRAPPER"] = abspath(expanduser("~/.cargo/bin/cargo-rustyrts"))
             env["RUSTYRTS_MODE"] = "dynamic"
             env["CARGO_TARGET_DIR"] = self.target_dir
-            env["rustyrts_args"] = "[]"
+            env["RUSTYRTS_ARGS"] = "[]"
         return os.environ | self.env_vars | env
 
     def clean_command(self):
