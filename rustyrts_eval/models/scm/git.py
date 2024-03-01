@@ -5,7 +5,14 @@ from typing import Union, Optional, Dict, List
 
 from git import Repo
 
-from .base import SCMClient, ChangelistItemAction, Repository, ChangelistItem, ChangelistItemKind, Commit
+from .base import (
+    SCMClient,
+    ChangelistItemAction,
+    Repository,
+    ChangelistItem,
+    ChangelistItemKind,
+    Commit,
+)
 from ...util.logging.logger import get_logger
 from ...util.os.exec import check_executable_exists
 
@@ -42,7 +49,7 @@ class GitClient(SCMClient):
         return self.repository
 
     def get_file_content_at_commit(
-            self, revision: Union[int, str], file_path: Path
+        self, revision: Union[int, str], file_path: Path
     ) -> str:
         valid_file_path: str = str(
             file_path.relative_to(Path(self.repository.path).absolute())
@@ -53,10 +60,14 @@ class GitClient(SCMClient):
         content: str = self.git_repo.git.show(git_object)
         return content
 
+    def get_file_is_tracked(self, revision: Union[int, str], file: str):
+        files: str = self.git_repo.git.ls_files().splitlines()
+        return file in files
+
     def get_diff(
-            self,
-            from_revision: Union[int, str],
-            to_revision: Optional[Union[int, str]] = "HEAD",
+        self,
+        from_revision: Union[int, str],
+        to_revision: Optional[Union[int, str]] = "HEAD",
     ) -> List[ChangelistItem]:
         return self._get_changelist_from_objects(
             objects="{}..{}".format(from_revision, to_revision)
@@ -110,24 +121,36 @@ class GitClient(SCMClient):
             return self._parse_changelist_from_changes(changes=changes)
         else:
             arg = objects
-            if objects not in self.git_repo.git.rev_list(objects, max_parents=0).splitlines():
+            if (
+                objects
+                not in self.git_repo.git.rev_list(objects, max_parents=0).splitlines()
+            ):
                 arg += "^.." + objects
-            return self._parse_changelist_from_changes(changes=self._add_changes_content_from_git_diff(changes, arg))
+            return self._parse_changelist_from_changes(
+                changes=self._add_changes_content_from_git_diff(changes, arg)
+            )
 
     def _changes_from_git_show(self, objects: str) -> List[List[str]]:
-        return [change for change in self._parse_raw_changes(
-            self.git_repo.git.show(
-                objects,
-                pretty="format:",
-                oneline=True,
-                name_status=True,
-                m="--first-parent",  # this will use the first parent commit in a merge commit
-            )) if len(change) > 1]
+        return [
+            change
+            for change in self._parse_raw_changes(
+                self.git_repo.git.show(
+                    objects,
+                    pretty="format:",
+                    oneline=True,
+                    name_status=True,
+                    m="--first-parent",  # this will use the first parent commit in a merge commit
+                )
+            )
+            if len(change) > 1
+        ]
 
     def _changes_from_git_status(self) -> List[List[str]]:
         return self._parse_raw_changes(self.git_repo.git.status(porcelain=True))
 
-    def _add_changes_content_from_git_diff(self, changes: list[list[str]], objects: str) -> list[list[str]]:
+    def _add_changes_content_from_git_diff(
+        self, changes: list[list[str]], objects: str
+    ) -> list[list[str]]:
         result = self.git_repo.git.diff(objects, unified=0, text=True)
         changes_contents = self._parse_raw_changes_content(result)
         for change in changes:
@@ -169,14 +192,22 @@ class GitClient(SCMClient):
         return changes
 
     @classmethod
-    def _parse_changelist_from_changes(cls, changes: List[List[str]]) -> List[ChangelistItem]:
+    def _parse_changelist_from_changes(
+        cls, changes: List[List[str]]
+    ) -> List[ChangelistItem]:
         return [
             ChangelistItem(
                 action=cls._get_changelist_item_action(change[0]),
                 filepath=change[1],
                 kind=ChangelistItemKind.FILE,
-                content=(change[2].encode('utf-8', 'replace').decode('utf-8').replace("\x00", "") if len(
-                    change) > 2 else None),
+                content=(
+                    change[2]
+                    .encode("utf-8", "replace")
+                    .decode("utf-8")
+                    .replace("\x00", "")
+                    if len(change) > 2
+                    else None
+                ),
             )
             for change in changes
             if len(change) > 0 and len(change[0]) <= 2

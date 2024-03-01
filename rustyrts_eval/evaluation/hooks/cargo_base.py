@@ -115,35 +115,7 @@ class CargoHook(Hook, ABC):
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
             # update dependencies
-            update_command = self.update_command()
-            # if a Cargo.lock is supplied via git, we only update some packages which have shown to be problematic
-            # if glob.glob("Cargo.lock"): # TODO: resolve this
-            # update_command += " proc-macro2 value-bag"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
-
-            # additionally update actix_derive which has shown to be problematic
-            update_command = self.update_command() + " actix_derive --precise 0.6.0"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
-
-            # additionally update chrono which has shown to be problematic
-            update_command = self.update_command() + " chrono --precise 0.4.29"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
-
-            # additionally update regex which has shown to be problematic
-            update_command = self.update_command() + " regex --precise 1.4.3"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
+            self.update_dependencies(parent_commit)
 
             # Check if we need to build before testing
             for file in glob.glob("**/*.rs", recursive=True):
@@ -302,36 +274,8 @@ class CargoHook(Hook, ABC):
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
 
-                        # update dependencies
-            update_command = self.update_command()
-            # if a Cargo.lock is supplied via git, we only update some packages which have shown to be problematic
-            # if glob.glob("Cargo.lock"): # TODO: resolve this
-            # update_command += " proc-macro2 value-bag"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
-
-            # additionally update actix_derive which has shown to be problematic
-            update_command = self.update_command() + " actix_derive --precise 0.6.0"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
-
-            # additionally update chrono which has shown to be problematic
-            update_command = self.update_command() + " chrono --precise 0.4.29"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
-
-            # additionally update regex which has shown to be problematic
-            update_command = self.update_command() + " regex --precise 1.4.3"
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
+            # update dependencies
+            self.update_dependencies(commit)
 
             if self.build_debug:
                 ########################################################################################################
@@ -484,6 +428,57 @@ class CargoHook(Hook, ABC):
         _LOGGER.info("gc has freed " + str(freed) + " objects")
 
         return not has_errored
+
+    def update_dependencies(self, commit):
+        if not self.git_client.get_file_is_tracked(
+            commit, "Cargo.lock"
+        ):  # if Cargo.lock is versioned using git, we do not want to update all packages
+            update_command = self.update_command()
+            proc: SubprocessContainer = SubprocessContainer(
+                command=update_command, output_filepath=self.prepare_cache_file()
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
+        else:
+            _LOGGER.debug(
+                "Found versioned Carg.lock, skipping update of all dependencies"
+            )
+
+        ## The following commands will just silently fail if not applicable
+
+        # additionally update actix_derive which has shown to be problematic
+        update_command = self.update_command() + " actix_derive --precise 0.6.0"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update chrono which has shown to be problematic
+        update_command = self.update_command() + " chrono --precise 0.4.29"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update regex which has shown to be problematic
+        update_command = self.update_command() + " regex --precise 1.4.3"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update proc-macro2@1.0.47 which has shown to be problematic in meilisearch
+        update_command = self.update_command() + " proc-macro2@1.0.47"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update reedline which has shown to be problematic in meilisearch
+        update_command = self.update_command() + " proc-macro2@1.0.47"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
 
     def prepare_cache_file(self) -> str:
         # prepare cache dir/file
