@@ -52,13 +52,19 @@ class CargoTestHook(CargoHook):
         return "cargo build --all-targets {0}".format(build_options)
 
     def test_command_parent(self, features):
-        return self.test_command(features)
+        build_options = " ".join(self.build_options) + (
+            " --features {0}".format(features) if features else ""
+        )
+        return "cargo test --tests --examples {0} --no-fail-fast -- {1}".format(
+            build_options,
+            " ".join(self.test_options),
+        )
 
     def test_command(self, features):
         build_options = " ".join(self.build_options) + (
             " --features {0}".format(features) if features else ""
         )
-        return "cargo test --tests --examples {0} --no-fail-fast -- {1}".format(
+        return "cargo test --tests --examples {0} -Z no-index-update --no-fail-fast -- {1}".format(
             build_options,
             " ".join(self.test_options),
         )

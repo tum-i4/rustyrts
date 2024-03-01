@@ -54,7 +54,6 @@ def walk(
     )
 
     build_options = build_options if build_options else []
-    build_options += ["-Z no-index-update"]
 
     test_options = test_options if test_options else []
     test_options += ["-Z unstable-options", "--report-time", "--format", "json"]

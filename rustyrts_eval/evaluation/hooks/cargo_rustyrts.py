@@ -79,7 +79,7 @@ class CargoRustyRTSHook(CargoHook):
         build_options = " ".join(self.build_options) + (
             " --features {0}".format(features) if features else ""
         )
-        return "cargo rustyrts {0} -v -- {1} -- {2} -- {1} -- {3}".format(
+        return "cargo rustyrts {0} -v -- -Z no-index-update {1} -- {2} -- {1} -- {3}".format(
             self.mode,
             build_options,
             " ".join(self.rustc_options),
