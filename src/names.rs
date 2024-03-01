@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_hir::{def::Namespace, def_id::DefId, definitions::DefPathData};
 use rustc_middle::ty::{
     print::FmtPrinter, AliasTy, Binder, FnSig, GenericArgs, ParamTy, Ty, TyCtxt, TypeAndMut,
@@ -204,13 +205,15 @@ fn filter_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> Ty<'tcx> {
         TyKind::Dynamic(_predicates, _region, _kind) => {
             return ty;
         } // TODO
-        TyKind::Closure(_def_id, _args) => {
+        TyKind::Closure(def_id, _args) => {
             // TyKind::Closure(*def_id, filter_generic_args(tcx, *def_id, *args))
-            return get_placeholder(tcx, "Fn");
+            let name = format!("Fn#{}",tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher)).0);
+            return get_placeholder(tcx, &name);
         }
-        TyKind::Coroutine(_def_id, _args, _mvblt) => {
+        TyKind::Coroutine(def_id, _args, _mvblt) => {
             // TyKind::Coroutine(*def_id, filter_generic_args(tcx, *def_id, *args), *mvblt)
-            return get_placeholder(tcx, "Fn");
+            let name = format!("Fn#{}",tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher)).0);
+            return get_placeholder(tcx, &name);
         }
         TyKind::CoroutineWitness(def_id, args) => {
             TyKind::CoroutineWitness(*def_id, filter_generic_args(tcx, *args, depth + 1))
