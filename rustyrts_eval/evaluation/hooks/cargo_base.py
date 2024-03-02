@@ -489,6 +489,13 @@ class CargoHook(Hook, ABC):
         )
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
+        # additionally update value-bag and log which have shown to be problematic in feroxbuster
+        update_command = self.update_command() + " value-bag log"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
     def prepare_cache_file(self) -> str:
         # prepare cache dir/file
         cache_file = "run_{}.log".format(
