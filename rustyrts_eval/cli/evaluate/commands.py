@@ -378,27 +378,15 @@ TESTING_PROJECTS = [
             ("720fe59c24d504417c769e7fc559163f8be042a0", None, None),
             ("5e81efd203eb5c9323ecb9ec15e42040863294b6", None, None),
             ("97fabf0b3858600f6b7204cf59962c6896580f41", None, None),
-            (
-                "946117d8543c705b8b887a762036705a92bf1e58",
-                None,
-                None,
-            ),  # timeout (cargo test - parent)
+            ("946117d8543c705b8b887a762036705a92bf1e58", None, None),
             ("627e42c93d2bd460d383df51b3f86dcbc0c43f69", None, None),
             ("e7307b9e5d41d2407da53c1420990ca6c889ed11", None, None),
             ("6c26012e0c8531d70e43db9763d58b089f12af28", None, None),
-            ("5552747e197edf25e5b2390f216c0741f173f29e", None, None),
-            (
-                "1926d3565726181bc2dac7572de95a6534ed2354",
-                None,
-                None,
-            ),  # timeout (cargo rustyrts static - parent)
+            ("5552747e197edf25e5b2390f216c0741f173f29e", "no_jemalloc", "no_jemalloc"),
+            ("1926d3565726181bc2dac7572de95a6534ed2354", None, None),
             ("27119c409276ceec07427d741292e5add703b4cc", None, None),
-            (
-                "83a7cc0c80c8a21d4d9e7eb515eb906edcc12d7d",
-                None,
-                None,
-            ),  # timeout (cargo rustyrts dynamic - parent)
-            ("849561abf2b6a7e564cb1ee8fd07ebd23b3f33df", None, None),
+            ("83a7cc0c80c8a21d4d9e7eb515eb906edcc12d7d", None, None),
+            ("849561abf2b6a7e564cb1ee8fd07ebd23b3f33df", "no_jemalloc", "no_jemalloc"),
             ("b22661175933b7c9db25c8b7375e9b9c8366281b", None, None),
             ("3f5522da3c3c2b6a817f745353a07a3d6a988a34", None, None),
             ("cbbe89611510c0955e0f45076a4ba40164f54985", None, None),

@@ -483,18 +483,41 @@ class CargoHook(Hook, ABC):
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update reedline which has shown to be problematic in meilisearch
-        update_command = self.update_command() + " reedline"
+        # update_command = self.update_command() + " reedline"
+        # proc: SubprocessContainer = SubprocessContainer(
+        #     command=update_command, output_filepath=self.prepare_cache_file()
+        # )
+        # proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update value-bag which has shown to be problematic in feroxbuster
+        update_command = self.update_command() + " value-bag"
         proc: SubprocessContainer = SubprocessContainer(
             command=update_command, output_filepath=self.prepare_cache_file()
         )
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
-        # additionally update value-bag and log which have shown to be problematic in feroxbuster
-        update_command = self.update_command() + " value-bag log"
+        # additionally update log which has shown to be problematic in feroxbuster
+        update_command = self.update_command() + " log"
         proc: SubprocessContainer = SubprocessContainer(
             command=update_command, output_filepath=self.prepare_cache_file()
         )
         proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update rustc-serialize which has shown to be problematic in zenoh
+        update_command = self.update_command() + " rustc-serialize"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update log@0.4.14 which have shown to be problematic in zenoh
+        versions = ["0.4.14"]
+        for v in versions:
+            update_command = self.update_command() + " log@" + v
+            proc: SubprocessContainer = SubprocessContainer(
+                command=update_command, output_filepath=self.prepare_cache_file()
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
 
     def prepare_cache_file(self) -> str:
         # prepare cache dir/file
