@@ -452,12 +452,13 @@ TESTING_PROJECTS = [
         # We selected to use test-singlepass and test-jit if applicable
         #
         # We selected test-no-traps or coverage if present,
-        #   to prevent using signals that would lead to a timeout in rustyrts dynamic
+        #   to prevent using signals that might mess witht the traces of dynamic rustyrts
+        #   or lead to discontinuations in the graph of static rustyrts
         [
             (
-                "65265dbd73c01c8660ed79b570ebef9de8e07a2c",
-                "test-singlepass,test-no-traps",
-                "test-singlepass,test-no-traps",
+                "d2caa60fa1dbc134846a52af945b9661dd498577",
+                "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
+                "test-singlepass,test-cranelift,test-dylib,test-universal,coverage",
             ),
             (
                 "6f2957b4b364c0c664d66e40588282ad5e95a785",
@@ -470,9 +471,9 @@ TESTING_PROJECTS = [
                 "test-singlepass,test-jit,coverage",
             ),
             (
-                "8defffa672cbfcf282ec35262d7baf3939494415",
-                "test-singlepass",
-                "test-singlepass",
+                "c82fd9377d3fc90bb2876e346d407fffe29a2cfc",
+                "test-singlepass,test-cranelift,test-universal,coverage",
+                "test-singlepass,test-cranelift,test-universal,coverage",
             ),
             (
                 "c91e545e03d1a24b083d3ea7368ea0d160e45a4b",
@@ -570,9 +571,9 @@ TESTING_PROJECTS = [
                 "test-singlepass,test-jit,coverage",
             ),
             (
-                "1f08f66ba6e8815b92a53fa065a166f82c865c1f",
-                "test-singlepass,test-jit,test-no-traps",
-                "test-singlepass,test-jit,test-no-traps",
+                "a869daea916863cb63e6fcebe955417aebd3b5b4",
+                "test-singlepass,test-cranelift,test-universal,coverage",
+                "test-singlepass,test-cranelift,test-universal,coverage",
             ),
             (
                 "156f0483b3c7868bcf3fb56f84b1c35cd8eb9531",
