@@ -121,9 +121,9 @@ class HistoryPlotter:
 
         efficiency = select(
             duration.c.repo_id.label("repository"),
-            (100.0 * duration.c.retest_all_mean).label("retest_all_mean"),
-            (100.0 * duration.c.dynamic_mean_relative).label("dynamic_mean_relative"),
-            (100.0 * duration.c.static_mean_relative).label("static_mean_relative"),
+            (1.0 * duration.c.retest_all_mean).label("retest_all_mean"),
+            (1.0 * duration.c.dynamic_mean_relative).label("dynamic_mean_relative"),
+            (1.0 * duration.c.static_mean_relative).label("static_mean_relative"),
         ).select_from(duration)
 
         df = self.connection.query(efficiency)
