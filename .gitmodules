@@ -64,9 +64,6 @@
 [submodule "projects/git_walk/meilisearch"]
 	path = projects/git_walk/meilisearch
 	url = https://github.com/meilisearch/meilisearch
-[submodule "projects/git_walk/sled"]
-	path = projects/git_walk/sled
-	url = https://github.com/spacejam/sled
 [submodule "projects/git_walk/penumbra"]
 	path = projects/git_walk/penumbra
 	url = https://github.com/penumbra-zone/penumbra
