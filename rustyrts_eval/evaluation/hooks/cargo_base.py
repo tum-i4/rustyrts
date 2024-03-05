@@ -466,21 +466,12 @@ class CargoHook(Hook, ABC):
         )
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
-        # additionally update proc-macro2 which has shown to be problematic
-        update_command = self.update_command() + " proc-macro2"
+        # additionally update proc-macro2@1 which has shown to be problematic in several projects
+        update_command = self.update_command() + " proc-macro2@1"
         proc: SubprocessContainer = SubprocessContainer(
             command=update_command, output_filepath=self.prepare_cache_file()
         )
         proc.execute(capture_output=True, shell=True, timeout=100.0)
-
-        # additionally update proc-macro2@1.0.47 which has shown to be problematic in meilisearch
-        versions = ["1.0.47", "1.0.26", "1.0.27", "1.0.32"]
-        for v in versions:
-            update_command = self.update_command() + " proc-macro2@" + v
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
-            proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update reedline which has shown to be problematic in meilisearch
         # update_command = self.update_command() + " reedline"
@@ -518,6 +509,13 @@ class CargoHook(Hook, ABC):
                 command=update_command, output_filepath=self.prepare_cache_file()
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update tokio which have shown to be problematic in penumbra
+        update_command = self.update_command() + " tokio"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
 
     def prepare_cache_file(self) -> str:
         # prepare cache dir/file
