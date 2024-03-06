@@ -18,32 +18,11 @@
 | penumbra-zone/penumbra     | 225     | blockchain              | 22         | 143     | 38min 33s          |                                          |
 | -------------------------- | ------- | ----------------------- | ---------- | ------- | ------------------ | ---------------------------------------- |
 
-## Sorted out
-
-Tests need to be invoked through gradle, otherwise some tests timeout
-| build-trust/ockam          | 3.1k    | cryptography            | 122        | 138     | 5min               | has trybuild tests                       |
-
-
-## Would fit perfectly, but cannot be used due to technical issues
-
-| denoland/deno            | 89.3k | JavaScript runtime    | starts a server using Lazy<> in the tests, that would be started in every test process in dynamic RustyRTS
-| nexttest                 |       | testing framework     | uses signals that call traced functions, results in deadlock
-| vercel/turbo             |       | JavaScript building   | uses custom allocator that calls traced functions, which results in deadlock
-| facebook/buck            |       |                       | uses signals that call traced functions, results in deadlock
-
-
 # Special requirements
-
-## exonum
-Requires that `rocksdb` is installed on the host system.
-Build time of `librocksdb-sys` can then be shortened by using `ROCKSDB_LIB_DIR=<path to>/rust-rocksdb/librocksdb-sys/`
-
 
 ## penumbra
 Requires `RUSTFLAGS="--cfg tokio_unstable`
 Requires `git-lfs` to be installed and setup
-Requires that `rocksdb` is installed on the host system.
-Build time of `librocksdb-sys` can then be shortened by using `ROCKSDB_LIB_DIR=<path to>/rust-rocksdb/librocksdb-sys/`
 
 ## meilisearch
 Tends to open a lot of files.
@@ -51,16 +30,3 @@ Increase soft limit of open files, append to `nano ~/.bashrc`:
 ```
 ulimit -n 4096
 ```
-
-
-## sled
-```
-RUSTFLAGS="-C link-arg=-fuse-ld=mold" cargo rustyrts dynamic -- --features testing -- -- --features testing --
-```
-
-## wasmer
-```
-RUSTFLAGS="-C link-arg=-fuse-ld=mold" cargo rustyrts dynamic -- --features test-singlepass,test-cranelift,test-universal -- -- --features test-singlepass,test-cranelift,test-universal --
-```
-
-- Feature `test-llvm` unfortunately results in linking error
