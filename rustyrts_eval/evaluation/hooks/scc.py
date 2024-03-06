@@ -18,11 +18,11 @@ _LOGGER = get_logger(__name__)
 
 class SccHook(Hook):
     def __init__(
-            self,
-            repository: Repository,
-            connection: DBConnection,
-            language: str,
-            output_path: Optional[str] = None,
+        self,
+        repository: Repository,
+        connection: DBConnection,
+        language: str,
+        output_path: Optional[str] = None,
     ):
         super().__init__(repository, None, git_client=GitClient(repository))
         self.connection = connection
@@ -32,8 +32,13 @@ class SccHook(Hook):
         else:
             self.cache_dir = os.path.join(tempfile.gettempdir(), ".scc-hook")
 
-    def run(self, commit: Commit, features_parent: Optional[str], features: Optional[str]) -> bool:
-
+    def run(
+        self,
+        commit: Commit,
+        features_parent: Optional[str],
+        features: Optional[str],
+        rustflags: Optional[str],
+    ) -> bool:
         _LOGGER.debug("Checking out commit {}.".format(commit.commit_str))
         self.git_client.checkout(commit)
 

@@ -38,19 +38,29 @@ class CargoRustyRTSHook(CargoHook):
         self.rustc_options = rustc_options if rustc_options else []
         self.test_options = test_options if test_options else []
 
-    def env(self):
-        return os.environ | self.env_vars
+    def env(self, rustflags):
+        rustflags = (
+            self.env_vars["RUSTFLAGS"] + " "
+            if self.env_vars and "RUSTFLAGS" in self.env_vars
+            else ""
+        ) + (rustflags if rustflags else "")
+        return os.environ | self.env_vars | {"RUSTFLAGS": rustflags}
 
-    def build_env(self):
+    def build_env(self, rustflags):
         os.makedirs(self.target_dir + "/.rts_dynamic", exist_ok=True)
 
+        rustflags = (
+            self.env_vars["RUSTFLAGS"] + " "
+            if self.env_vars and "RUSTFLAGS" in self.env_vars
+            else ""
+        ) + (rustflags if rustflags else "")
         env = {}
         if self.mode is RustyRTSMode.DYNAMIC:
             env["RUSTC_WRAPPER"] = abspath(expanduser("~/.cargo/bin/cargo-rustyrts"))
             env["RUSTYRTS_MODE"] = "dynamic"
             env["CARGO_TARGET_DIR"] = self.target_dir
             env["RUSTYRTS_ARGS"] = "[]"
-        return os.environ | self.env_vars | env
+        return os.environ | self.env_vars | env | {"RUSTFLAGS": rustflags}
 
     def clean_command(self):
         return "cargo clean"

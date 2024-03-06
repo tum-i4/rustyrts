@@ -20,12 +20,18 @@ class SequentialWalkerStrategy(WalkerStrategy):
         self.branch = branch
 
     def commits(self) -> list[(str, Optional[str], Optional[str])]:
-        start_commit = self.git_repo.git.rev_list(self.branch, max_parents=0).splitlines()[0]
+        start_commit = self.git_repo.git.rev_list(
+            self.branch, max_parents=0
+        ).splitlines()[0]
 
-        return [(commit.hexsha, None, None) for commit in self.git_repo.iter_commits(
-            "{}..{}".format(start_commit, self.branch),
-            ancestry_path=True,
-            no_merges=(not self.include_merge_commits))]
+        return [
+            (commit.hexsha, None, None)
+            for commit in self.git_repo.iter_commits(
+                "{}..{}".format(start_commit, self.branch),
+                ancestry_path=True,
+                no_merges=(not self.include_merge_commits),
+            )
+        ]
 
     def __iter__(self):
         return self.commits().__iter__()
@@ -52,23 +58,18 @@ class GivenWalkerStrategy(WalkerStrategy):
 
 class GitWalker(Walker):
     """
-       GitWalker class to replay git repository history.
-       """
+    GitWalker class to replay git repository history.
+    """
 
     def __init__(
-            self,
-            repository: Repository,
-            connection,
-            strategy: WalkerStrategy,
-            num_commits: Optional[int] = 10,
-            hooks: Optional[List[Hook]] = None,
+        self,
+        repository: Repository,
+        connection,
+        strategy: WalkerStrategy,
+        num_commits: Optional[int] = 10,
+        hooks: Optional[List[Hook]] = None,
     ):
-        super().__init__(
-            repository,
-            strategy,
-            num_commits,
-            hooks
-        )
+        super().__init__(repository, strategy, num_commits, hooks)
         self.git_client: GitClient = GitClient(repository=repository)
         self.connection = connection
 
@@ -80,7 +81,7 @@ class GitWalker(Walker):
         # init counter
         counter = 0
 
-        for (commit, features_parent, features) in self.strategy:
+        for commit, features_parent, features, rustflags in self.strategy:
             # get next commit with changeset
             next_commit = self.git_client.get_commit_from_repo(commit_id=commit)
 
@@ -92,7 +93,7 @@ class GitWalker(Walker):
             # run hooks
             success = True
             for h in self.hooks:
-                success &= h.run(next_commit, features_parent, features)
+                success &= h.run(next_commit, features_parent, features, rustflags)
                 if not success:
                     break
 

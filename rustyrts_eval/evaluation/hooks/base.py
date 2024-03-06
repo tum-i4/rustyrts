@@ -10,17 +10,23 @@ class Hook(ABC):
     """
 
     def __init__(
-            self,
-            repository: Repository,
-            output_path: Optional[str] = None,
-            git_client=None,
+        self,
+        repository: Repository,
+        output_path: Optional[str] = None,
+        git_client=None,
     ):
         self.repository = repository
         self.output_path = output_path
         self.git_client = git_client
 
     @abstractmethod
-    def run(self, commit: Commit, features_parent: Optional[str], features: Optional[str]) -> int:
+    def run(
+        self,
+        commit: Commit,
+        features_parent: Optional[str],
+        features: Optional[str],
+        rustflags: Optional[str],
+    ) -> int:
         pass
 
 
@@ -30,11 +36,11 @@ class Walker(ABC):
     """
 
     def __init__(
-            self,
-            repository: Repository,
-            strategy: "WalkerStrategy",
-            num_commits: Optional[int] = 10,
-            hooks: Optional[List[Hook]] = None,
+        self,
+        repository: Repository,
+        strategy: "WalkerStrategy",
+        num_commits: Optional[int] = 10,
+        hooks: Optional[List[Hook]] = None,
     ):
         """
         Constructor for walkers.

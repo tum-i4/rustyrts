@@ -47,11 +47,11 @@ class CargoHook(Hook, ABC):
         self.build_release = build_release
 
     @abstractmethod
-    def env(self):
+    def env(self, rustflags):
         pass
 
     @abstractmethod
-    def build_env(self):
+    def build_env(self, rustflags):
         pass
 
     @abstractmethod
@@ -75,7 +75,11 @@ class CargoHook(Hook, ABC):
         pass
 
     def run(
-        self, commit: Commit, features_parent: Optional[str], features: Optional[str]
+        self,
+        commit: Commit,
+        features_parent: Optional[str],
+        features: Optional[str],
+        rustflags: Optional[str],
     ) -> bool:
         """
         Run cargo test.
@@ -136,7 +140,7 @@ class CargoHook(Hook, ABC):
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features_parent),
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(),
+                        env=self.build_env(rustflags),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -176,7 +180,7 @@ class CargoHook(Hook, ABC):
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features_parent) + " --release",
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(),
+                        env=self.build_env(rustflags),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -213,7 +217,7 @@ class CargoHook(Hook, ABC):
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.test_command_parent(features_parent),
                     output_filepath=self.prepare_cache_file(),
-                    env=self.env() | env_tmp_override(),
+                    env=self.env(rustflags) | env_tmp_override(),
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_errored |= (
@@ -287,7 +291,7 @@ class CargoHook(Hook, ABC):
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features),
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(),
+                        env=self.build_env(rustflags),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -327,7 +331,7 @@ class CargoHook(Hook, ABC):
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features),
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(),
+                        env=self.build_env(rustflags),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -365,7 +369,8 @@ class CargoHook(Hook, ABC):
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.test_command(features),
                     output_filepath=self.prepare_cache_file(),
-                    env=self.env() | env_tmp_override()  # | {"RUSTYRTS_LOG": "debug"}
+                    env=self.env(rustflags)
+                    | env_tmp_override()  # | {"RUSTYRTS_LOG": "debug"}
                     # e.g. changes trybuild files will be overridden by git reset, so we just use it here as well
                     # this effectively prevents those tests from failing, but there is just no other way
                 )
