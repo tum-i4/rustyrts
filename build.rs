@@ -44,6 +44,7 @@ fn build_library(dir_name: &str) {
     path.push(dir_name);
     cmd.current_dir(path);
     cmd.arg("build");
+    cmd.arg("--release");
 
     match cmd.status() {
         Ok(exit) => {
@@ -66,7 +67,7 @@ fn install_rlib(name: &str, dir_name: &str) {
     path.push(dir);
     path.push(dir_name);
     path.push("target");
-    path.push("debug");
+    path.push("release");
     //path.push("deps");
 
     let files: Vec<DirEntry> = read_dir(path)
@@ -109,7 +110,7 @@ fn install_staticlib(name: &str, dir_name: &str) {
     let mut dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     dir.push(dir_name);
     dir.push("target");
-    dir.push("debug");
+    dir.push("release");
     //dir.push("deps");
 
     let files: Vec<DirEntry> = read_dir(dir)
