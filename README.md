@@ -27,8 +27,8 @@ It has been developed for *v1.77.0-nightly* and can currently only be used with 
 The correct toolchain should be installed automatically when building `rustyRTS`.
 When applying it to any project use one of the following approaches:
 ```
-$ rustup default nightly-2023-01-20 # (recommended: to use this toolchain by default everywhere)
-$ rustup override set nightly-2023-01-20 # (to use this toolchain in current directory only)
+$ rustup default nightly-2023-12-28 # (recommended: to use this toolchain by default everywhere)
+$ rustup override set nightly-2023-12-28 # (to use this toolchain in current directory only)
 ```
 
 # How to install
