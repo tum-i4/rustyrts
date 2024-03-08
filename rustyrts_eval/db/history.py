@@ -515,7 +515,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         metadata=Base.metadata,
     )
 
-    special = " sequential" if sequential else ""
+    special = " sequentially" if sequential else ""
     report, report_parent = register_views_individual(special)
 
     report = create_view(
