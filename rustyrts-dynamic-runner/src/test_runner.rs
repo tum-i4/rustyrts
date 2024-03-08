@@ -215,9 +215,11 @@ fn execute_tests_unix(
                             drop(rx);
                             install_kill_hook();
 
-                            unsafe {
-                                close(std::io::stdout().as_raw_fd());
-                                close(std::io::stderr().as_raw_fd());
+                            if !opts.nocapture {
+                                unsafe {
+                                    close(std::io::stdout().as_raw_fd());
+                                    close(std::io::stderr().as_raw_fd());
+                                }
                             }
 
                             let completed_test = run_test(
@@ -299,7 +301,7 @@ fn execute_tests_single_threaded(
                 get_process_traces_path(path_buf.clone(), &pid)
             });
 
-            remove_file(path_child_traces);
+            let _ = remove_file(path_child_traces);
         }
 
         let completed_test = run_test(

@@ -2,19 +2,16 @@ use itertools::Itertools;
 use log::{debug, trace};
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::mir::Body;
-use rustc_middle::ty::{GenericArg, List, TyCtxt};
-use rustc_span::def_id::DefId;
-use std::collections::HashMap;
+use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::ty::TyCtxt;
 use std::env;
+use std::path::PathBuf;
 use std::{
     collections::HashSet,
     fs::read,
     sync::{atomic::AtomicUsize, Mutex},
 };
 
-use crate::checksums::{get_checksum_body, insert_hashmap};
-use crate::const_visitor::ConstVisitor;
 use crate::constants::ENV_SKIP_ANALYSIS;
 use crate::{
     checksums::Checksums,
@@ -24,10 +21,15 @@ use crate::{
         get_test_path, write_to_file,
     },
     names::def_id_name,
-    static_rts::callback::PATH_BUF,
+};
+use crate::{
+    checksums::{get_checksum_body, insert_hashmap},
+    const_visitor::ResolvingConstVisitor,
 };
 
 pub(crate) static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
+
+pub(crate) static PATH_BUF: OnceCell<PathBuf> = OnceCell::new();
 
 pub(crate) static CRATE_NAME: OnceCell<String> = OnceCell::new();
 pub(crate) static CRATE_ID: OnceCell<u64> = OnceCell::new();
@@ -47,7 +49,7 @@ pub(crate) fn excluded<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
     *EXCLUDED.get_or_init(|| {
         let exclude = env::var(ENV_SKIP_ANALYSIS).is_ok() || no_instrumentation(getter_crate_name);
         if exclude {
-            trace!("Excluding crate {}", getter_crate_name());
+            debug!("Excluding crate {}", getter_crate_name());
         }
         exclude
     })
@@ -65,41 +67,58 @@ pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F)
 
         let no_instrumentation = excluded_crate || trybuild;
         if no_instrumentation {
-            trace!("Not instrumenting crate {}", getter_crate_name());
+            debug!("Not instrumenting crate {}", getter_crate_name());
         }
         no_instrumentation
     })
 }
 
-pub(crate) fn run_analysis_shared<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    bodies: Vec<(&'tcx Body<'tcx>, &'tcx List<GenericArg<'tcx>>)>,
-) {
+pub(crate) fn run_analysis_shared<'tcx>(tcx: TyCtxt<'tcx>) {
     let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-    let crate_id = tcx.sess.local_stable_crate_id().to_u64();
+    let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
+
+    //##############################################################################################################
+    // Collect all MIR bodies that are relevant for code generation
+
+    let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+
+    let bodies = code_gen_units
+        .iter()
+        .flat_map(|c| c.items().keys())
+        .filter(|m| if let MonoItem::Fn(_) = m { true } else { false })
+        .map(|m| {
+            let MonoItem::Fn(instance) = m else {
+                unreachable!()
+            };
+            instance
+        })
+        .map(|i| i.def_id())
+        //.filter(|d| d.is_local()) // It is not feasible to only analyze local MIR
+        .filter(|d| tcx.is_mir_available(d))
+        .unique()
+        .map(|d| tcx.optimized_mir(d))
+        .collect_vec();
+
+    //##############################################################################################################
+    // Continue at shared analysis
 
     CRATE_NAME.get_or_init(|| crate_name.clone());
     CRATE_ID.get_or_init(|| crate_id);
 
-    let mut bodies_map: HashMap<DefId, &'tcx Body> = HashMap::new();
-
-    for (body, _substs) in &bodies {
-        bodies_map.insert(body.source.def_id(), body);
-    }
-    let dedup_bodies: Vec<&'tcx Body> = bodies_map.values().map(|b| *b).collect();
-
     //##########################################################################################################
     // 2. Calculate checksum of every MIR body and the consts that it uses
 
-    let mut const_visitor = ConstVisitor::new(tcx);
-    for (body, substs) in &bodies {
-        const_visitor.visit(&body, substs);
-    }
-
     let mut new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+    let mut new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
 
-    for body in dedup_bodies {
-        let name = def_id_name(tcx, body.source.def_id(), List::empty(), false, true); // IMPORTANT: no substs here
+    for body in &bodies {
+        let name = def_id_name(tcx, body.source.def_id(), false, true);
+
+        let checksums_const = ResolvingConstVisitor::find_consts(tcx, body);
+        for checksum in checksums_const {
+            insert_hashmap(&mut *new_checksums_const, &name, checksum);
+        }
+
         let checksum = get_checksum_body(tcx, body);
         insert_hashmap(&mut *new_checksums, &name, checksum);
     }
@@ -111,7 +130,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
     for def_id in tcx.mir_keys(()) {
         for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                tests.push(def_id_name(tcx, def_id.to_def_id(), &[], false, false));
+                tests.push(def_id_name(tcx, def_id.to_def_id(), false, false));
             }
         }
     }
@@ -125,7 +144,7 @@ pub(crate) fn run_analysis_shared<'tcx>(
         );
     }
 
-    trace!("Exported tests for {}", crate_name);
+    debug!("Exported tests for {}", crate_name);
 }
 
 pub fn export_checksums_and_changes(from_new_revision: bool) {
@@ -178,14 +197,12 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             }
         };
 
-        trace!("Imported checksums for {}", crate_name);
+        debug!("Imported checksums for {}", crate_name);
 
         //##############################################################################################################
         // 4. Calculate names of changed nodes and write this information to filesystem
 
         let mut changed_nodes = HashSet::new();
-
-        trace!("Checksums: {:?}", new_checksums);
 
         // We only consider nodes from the new revision
         // (Dynamic: if something in the old revision has been removed, there must be a change to some other function)
@@ -293,6 +310,6 @@ pub fn export_checksums_and_changes(from_new_revision: bool) {
             false,
         );
 
-        trace!("Exported changes for {}", crate_name);
+        debug!("Exported changes for {}", crate_name);
     }
 }

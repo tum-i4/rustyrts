@@ -181,14 +181,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         config.opts.unstable_opts.cf_protection
     );
     info!(
-        "    cgu_partitioning_strategy: {:?}",
-        config.opts.unstable_opts.cgu_partitioning_strategy
-    );
-    info!(
-        "    codegen_backend: {:?}",
-        config.opts.unstable_opts.codegen_backend
-    );
-    info!(
         "    combine_cgu: {:?}",
         config.opts.unstable_opts.combine_cgu
     );
@@ -209,19 +201,9 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         "    dep_info_omit_d_target: {:?}",
         config.opts.unstable_opts.dep_info_omit_d_target
     );
-    info!("    dep_tasks: {:?}", config.opts.unstable_opts.dep_tasks);
-    info!(
-        "    diagnostic_width: {:?}",
-        config.opts.unstable_opts.diagnostic_width
-    );
-    info!("    dlltool: {:?}", config.opts.unstable_opts.dlltool);
     info!(
         "    dont_buffer_diagnostics: {:?}",
         config.opts.unstable_opts.dont_buffer_diagnostics
-    );
-    info!(
-        "    drop_tracking: {:?}",
-        config.opts.unstable_opts.drop_tracking
     );
     info!(
         "    dual_proc_macros: {:?}",
@@ -230,10 +212,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
     info!(
         "    dump_dep_graph: {:?}",
         config.opts.unstable_opts.dump_dep_graph
-    );
-    info!(
-        "    dump_drop_tracking_cfg: {:?}",
-        config.opts.unstable_opts.dump_drop_tracking_cfg
     );
     info!("    dump_mir: {:?}", config.opts.unstable_opts.dump_mir);
     info!(
@@ -328,10 +306,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         config.opts.unstable_opts.incremental_info
     );
     info!(
-        "    incremental_relative_spans: {:?}",
-        config.opts.unstable_opts.incremental_relative_spans
-    );
-    info!(
         "    incremental_verify_ich: {:?}",
         config.opts.unstable_opts.incremental_verify_ich
     );
@@ -357,16 +331,8 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         config.opts.unstable_opts.input_stats
     );
     info!(
-        "    instrument_coverage: {:?}",
-        config.opts.unstable_opts.instrument_coverage
-    );
-    info!(
         "    instrument_mcount: {:?}",
         config.opts.unstable_opts.instrument_mcount
-    );
-    info!(
-        "    keep_hygiene_data: {:?}",
-        config.opts.unstable_opts.keep_hygiene_data
     );
     info!(
         "    layout_seed: {:?}",
@@ -414,10 +380,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
     info!(
         "    mir_opt_level: {:?}",
         config.opts.unstable_opts.mir_opt_level
-    );
-    info!(
-        "    mir_pretty_relative_line_numbers: {:?}",
-        config.opts.unstable_opts.mir_pretty_relative_line_numbers
     );
     info!(
         "    move_size_limit: {:?}",
@@ -484,7 +446,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         config.opts.unstable_opts.panic_in_drop
     );
     info!("    parse_only: {:?}", config.opts.unstable_opts.parse_only);
-    info!("    perf_stats: {:?}", config.opts.unstable_opts.perf_stats);
     info!("    plt: {:?}", config.opts.unstable_opts.plt);
     info!("    polonius: {:?}", config.opts.unstable_opts.polonius);
     info!(
@@ -624,11 +585,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         "    strict_init_checks: {:?}",
         config.opts.unstable_opts.strict_init_checks
     );
-    info!("    strip: {:?}", config.opts.unstable_opts.strip);
-    info!(
-        "    symbol_mangling_version: {:?}",
-        config.opts.unstable_opts.symbol_mangling_version
-    );
     info!("    teach: {:?}", config.opts.unstable_opts.teach);
     info!("    temps_dir: {:?}", config.opts.unstable_opts.temps_dir);
     info!("    thinlto: {:?}", config.opts.unstable_opts.thinlto);
@@ -653,10 +609,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
     info!(
         "    track_diagnostics: {:?}",
         config.opts.unstable_opts.track_diagnostics
-    );
-    info!(
-        "    trait_solver: {:?}",
-        config.opts.unstable_opts.trait_solver
     );
     info!(
         "    translate_additional_ftl: {:?}",
@@ -716,7 +668,6 @@ pub(crate) fn print_compiler_config(config: &mut interface::Config) {
         "    validate_mir: {:?}",
         config.opts.unstable_opts.validate_mir
     );
-    info!("    verbose: {:?}", config.opts.unstable_opts.verbose);
     info!(
         "    verify_llvm_ir: {:?}",
         config.opts.unstable_opts.verify_llvm_ir

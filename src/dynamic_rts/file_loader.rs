@@ -1,6 +1,6 @@
 use rustc_span::source_map::{FileLoader, RealFileLoader};
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::SeqCst;
+use std::sync::{atomic::AtomicBool, Arc};
 
 static TEST_RUNNER_INSERTED: AtomicBool = AtomicBool::new(false);
 static EXTERN_CRATE_INSERTED: AtomicBool = AtomicBool::new(false);
@@ -20,17 +20,8 @@ impl FileLoader for TestRunnerFileLoaderProxy {
         if !TEST_RUNNER_INSERTED.load(SeqCst) {
             TEST_RUNNER_INSERTED.store(true, SeqCst);
 
-            if content.contains("#![feature(custom_test_frameworks)]") {
-                panic!("Dynamic RustyRTS does not support using a custom test framework. Please use static RustyRTS instead");
-            }
-
-            let content = content.replace("#![feature(test)]", "");
             let extended_content = format!(
-                "#![feature(test)]
-                #![feature(custom_test_frameworks)]
-                #![test_runner(rustyrts_runner_wrapper)]
-                
-                {}
+                "{}
 
                 #[allow(unused_extern_crates)]
                 extern crate test as rustyrts_test;
@@ -56,6 +47,10 @@ impl FileLoader for TestRunnerFileLoaderProxy {
             Ok(content)
         }
     }
+
+    fn read_binary_file(&self, path: &std::path::Path) -> std::io::Result<Arc<[u8]>> {
+        self.delegate.read_binary_file(path)
+    }
 }
 
 pub struct InstrumentationFileLoaderProxy {
@@ -72,11 +67,6 @@ impl FileLoader for InstrumentationFileLoaderProxy {
         if !EXTERN_CRATE_INSERTED.load(SeqCst) {
             EXTERN_CRATE_INSERTED.store(true, SeqCst);
 
-            if content.contains("#![feature(custom_test_frameworks)]") {
-                panic!("Dynamic RustyRTS does not support using a custom test framework. Please use static RustyRTS instead");
-            }
-
-            let content = content.replace("#![feature(test)]", "");
             let extended_content = format!(
                 "{}
 
@@ -90,5 +80,9 @@ impl FileLoader for InstrumentationFileLoaderProxy {
         } else {
             Ok(content)
         }
+    }
+
+    fn read_binary_file(&self, path: &std::path::Path) -> std::io::Result<Arc<[u8]>> {
+        self.delegate.read_binary_file(path)
     }
 }

@@ -2,15 +2,12 @@
 
 extern crate rustc_driver;
 extern crate rustc_log;
-extern crate rustc_session;
 
-use rustc_session::config::ErrorOutputType;
-use rustc_session::early_error;
-use rustyrts::callbacks_shared::export_checksums_and_changes;
-use rustyrts::constants::ENV_SKIP_ANALYSIS;
+use rustc_log::LoggerConfig;
+use rustyrts::constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::format::create_logger;
 use rustyrts::static_rts::callback::StaticRTSCallbacks;
-use rustyrts::utils;
+use rustyrts::{callbacks_shared::export_checksums_and_changes, constants::ENV_BLACKBOX_TEST};
 use std::env;
 use std::process;
 
@@ -26,10 +23,11 @@ pub const EXIT_SUCCESS: i32 = 0;
 pub const EXIT_FAILURE: i32 = 1;
 
 fn main() {
-    rustc_log::init_rustc_env_logger().unwrap();
+    rustc_log::init_logger(LoggerConfig::from_env("RUSTC")).unwrap();
     create_logger().init();
 
-    let skip = env::var(ENV_SKIP_ANALYSIS).is_ok();
+    let skip = env::var(ENV_SKIP_ANALYSIS).is_ok()
+        && !(env::var(ENV_TARGET_DIR).map(|var| var.ends_with("trybuild")) == Ok(true));
 
     if !skip {
         let result = rustc_driver::catch_fatal_errors(move || {
@@ -37,22 +35,20 @@ fn main() {
                 .enumerate()
                 .map(|(i, arg)| {
                     arg.into_string().unwrap_or_else(|arg| {
-                        early_error(
-                            ErrorOutputType::default(),
-                            &format!("Argument {} is not valid Unicode: {:?}", i, arg),
-                        )
+                        eprintln!("Argument {} is not valid Unicode: {:?}", i, arg);
+                        process::exit(EXIT_FAILURE);
                     })
                 })
+                .map(|arg| {
+                    // when running blackbox tests, this ensures that stable crate ids do not change if features are enabled
+                    if std::env::var(ENV_BLACKBOX_TEST).is_ok() {
+                        if arg.starts_with("metadata=") {
+                            return "metadata=".to_string();
+                        }
+                    }
+                    arg
+                })
                 .collect::<Vec<_>>();
-
-            if let Some(sysroot) = utils::compile_time_sysroot() {
-                let sysroot_flag = "--sysroot";
-                if !rustc_args.iter().any(|e| e == sysroot_flag) {
-                    // We need to overwrite the default that librustc would compute.
-                    rustc_args.push(sysroot_flag.to_owned());
-                    rustc_args.push(sysroot);
-                }
-            }
 
             rustc_args.push("--cap-lints".to_string());
             rustc_args.push("allow".to_string());

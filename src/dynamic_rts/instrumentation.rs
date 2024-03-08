@@ -1,6 +1,6 @@
 use super::mir_util::Traceable;
-use crate::callbacks_shared::TEST_MARKER;
 use crate::names::def_id_name;
+use crate::callbacks_shared::TEST_MARKER;
 use log::trace;
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::DefId;
@@ -10,14 +10,14 @@ use rustc_middle::{mir::Body, ty::TyCtxt};
 #[cfg(unix)]
 static ENTRY_FN: OnceCell<Option<DefId>> = OnceCell::new();
 
-pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+pub(crate) fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let def_id = body.source.instance.def_id();
-    let outer = def_id_name(tcx, def_id, &[], false, true);
+    let outer = def_id_name(tcx, def_id, false, true);
 
     trace!("Visiting {}", outer);
 
     let mut cache_str = None;
-    let mut cache_u8 = None;
+    let mut cache_tuple_of_str_and_ptr = None;
     let mut cache_ret = None;
 
     let attrs = &tcx.hir_crate(()).owners[tcx
@@ -31,7 +31,7 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     for (_, list) in attrs.iter() {
         for attr in *list {
             if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-                let def_path = def_id_name(tcx, def_id, &[], true, false);
+                let def_path = def_id_name(tcx, def_id, true, false);
                 let def_path_test = &def_path[0..def_path.len() - 13];
 
                 // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
@@ -60,7 +60,7 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 
-    body.insert_trace(tcx, &outer, &mut cache_str, &mut cache_u8, &mut cache_ret);
+    body.insert_trace(tcx, &outer, &mut cache_tuple_of_str_and_ptr, &mut cache_ret);
 
     #[cfg(unix)]
     body.check_calls_to_exit(tcx, &mut cache_ret);
@@ -72,3 +72,4 @@ pub fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 }
+

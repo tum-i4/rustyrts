@@ -1,40 +1,53 @@
 use itertools::Itertools;
 use queues::{IsQueue, Queue};
+use rustc_middle::{
+    mir::mono::MonoItem,
+    ty::{List, TyCtxt},
+};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
 
+use crate::{
+    constants::SUFFIX_DYN,
+    names::{def_id_name, mono_def_id_name},
+};
+
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
-    Closure,
-    Generator,
-    FnDef,
-    FnDefTrait,
-    FnDefImpl,
-    FnDefDyn,
-    TraitImpl,
-    DynFn,
+    Call,
+    Unsize,
+    Contained,
     Drop,
+    Static,
+    ReifyPtr,
+    FnPtr,
+
+    Asm,
+    ClosurePtr,
+    Intrinsic,
+    LangItem,
 
     Trimmed,
-    Monomorphization,
 }
 
 impl AsRef<str> for EdgeType {
     fn as_ref(&self) -> &str {
         match self {
-            EdgeType::Closure => "[color = blue]",
-            EdgeType::Generator => "[color = green]",
-            EdgeType::FnDef => "[color = black]",
-            EdgeType::FnDefTrait => "[color = cyan]",
-            EdgeType::FnDefImpl => "[color = yellow]",
-            EdgeType::FnDefDyn => "[color = pink]",
-            EdgeType::TraitImpl => "[color = magenta]",
-            EdgeType::DynFn => "[color = magenta]",
+            EdgeType::Call => "[color = black]",
+            EdgeType::Unsize => "[color = blue]",
+            EdgeType::Contained => "[color = orange]",
             EdgeType::Drop => "[color = yellow]",
+            EdgeType::Static => "[color = green]",
+            EdgeType::ReifyPtr => "[color = magenta]",
+            EdgeType::FnPtr => "[color = cyan]",
+
+            EdgeType::Asm => "[color = grey]",
+            EdgeType::ClosurePtr => "[color = grey]",
+            EdgeType::Intrinsic => "[color = grey]",
+            EdgeType::LangItem => "[color = grey]",
 
             EdgeType::Trimmed => "[color = red]",
-            EdgeType::Monomorphization => "[color = red]",
         }
     }
 }
@@ -44,19 +57,20 @@ impl FromStr for EdgeType {
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
         match input {
-            "Closure" => Ok(Self::Closure),
-            "Generator" => Ok(Self::Generator),
-            "FnDef" => Ok(Self::FnDef),
-            "FnDefTrait" => Ok(Self::FnDefTrait),
-            "FnDefImpl" => Ok(Self::FnDefImpl),
-            "FnDefDyn" => Ok(Self::FnDefDyn),
-            "TraitDef" => Ok(Self::FnDef),
-            "TraitImpl" => Ok(Self::TraitImpl),
-            "DynFn" => Ok(Self::DynFn),
+            "Call" => Ok(Self::Call),
+            "Unsize" => Ok(Self::Unsize),
+            "Contained" => Ok(Self::Contained),
             "Drop" => Ok(Self::Drop),
+            "Static" => Ok(Self::Static),
+            "ReifyPtr" => Ok(Self::Static),
+            "FnPtr" => Ok(Self::Static),
+
+            "ClosurePtr" => Ok(Self::ClosurePtr),
+            "Asm" => Ok(Self::Static),
+            "Intrinsic" => Ok(Self::Static),
+            "LangItem" => Ok(Self::Static),
 
             "Trimmed" => Ok(Self::Trimmed),
-            "Monomorphization" => Ok(Self::Monomorphization),
             _ => Err(()),
         }
     }
@@ -277,6 +291,54 @@ impl DependencyGraph<String> {
     }
 }
 
+impl<'tcx> DependencyGraph<MonoItem<'tcx>> {
+    pub fn convert_to_string(self, tcx: TyCtxt<'tcx>) -> DependencyGraph<String> {
+        let mut new_graph = DependencyGraph::new();
+
+        self.backwards_edges.into_iter().for_each(|(to, from)| {
+            if let Some((new_to, new_to_trimmed)) = Self::mono_item_name(tcx, to) {
+                new_graph.add_edge(new_to.clone(), new_to_trimmed.clone(), EdgeType::Trimmed);
+
+                from.into_iter().for_each(|(node, types)| {
+                    for ty in types {
+                        if let Some((new_from, new_from_trimmed)) = Self::mono_item_name(tcx, node)
+                        {
+                            new_graph.add_edge(
+                                new_from.clone(),
+                                new_from_trimmed,
+                                EdgeType::Trimmed,
+                            );
+                            if ty == EdgeType::Unsize {
+                                new_graph.add_edge(
+                                    new_from.clone(),
+                                    new_to_trimmed.clone() + SUFFIX_DYN,
+                                    ty,
+                                );
+                            }
+                            new_graph.add_edge(new_from, new_to.clone(), ty);
+                        }
+                    }
+                });
+            }
+        });
+
+        new_graph
+    }
+
+    fn mono_item_name(tcx: TyCtxt<'tcx>, mono_item: MonoItem<'tcx>) -> Option<(String, String)> {
+        match mono_item {
+            MonoItem::Fn(instance) => Some((
+                mono_def_id_name(tcx, instance.def_id(), instance.args, false, true),
+                def_id_name(tcx, instance.def_id(), false, true),
+            )),
+            MonoItem::Static(def_id) => Some((
+                mono_def_id_name(tcx, def_id, List::empty(), false, true),
+                def_id_name(tcx, def_id, false, true),
+            )),
+            MonoItem::GlobalAsm(_item_id) => None,
+        }
+    }
+}
 impl ToString for DependencyGraph<String> {
     fn to_string(&self) -> String {
         let mut result = String::new();
@@ -345,47 +407,9 @@ mod test {
         let mut graph: DependencyGraph<String> = DependencyGraph::new();
 
         graph.add_node("lonely_node".to_string());
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
-        graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Closure);
-        graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Closure);
-
-        let serialized = graph.to_string();
-        let deserialized = DependencyGraph::from_str(&serialized).unwrap();
-
-        assert_eq!(graph, deserialized);
-    }
-
-    #[test]
-    pub fn test_graph_deserialization_edge_types() {
-        let mut graph: DependencyGraph<String> = DependencyGraph::new();
-
-        graph.add_edge(
-            "start1".to_string(),
-            "end1".to_string(),
-            EdgeType::TraitImpl,
-        );
-        graph.add_edge(
-            "start1".to_string(),
-            "end1".to_string(),
-            EdgeType::TraitImpl,
-        );
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Closure);
-        graph.add_edge(
-            "start1".to_string(),
-            "end1".to_string(),
-            EdgeType::Generator,
-        );
-        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::FnDef);
-        graph.add_edge(
-            "start1".to_string(),
-            "end1".to_string(),
-            EdgeType::FnDefTrait,
-        );
-        graph.add_edge(
-            "start1".to_string(),
-            "end1".to_string(),
-            EdgeType::FnDefImpl,
-        );
+        graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Call);
+        graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Unsize);
+        graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Drop);
 
         let serialized = graph.to_string();
         let deserialized = DependencyGraph::from_str(&serialized).unwrap();

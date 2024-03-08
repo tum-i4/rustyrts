@@ -17,27 +17,16 @@ extern crate rustc_session;
 // required for analyzing and modifying the MIR
 extern crate rustc_abi;
 extern crate rustc_ast;
+extern crate rustc_attr;
+extern crate rustc_const_eval;
+extern crate rustc_feature;
 extern crate rustc_hir;
 extern crate rustc_middle;
 extern crate rustc_span;
+extern crate rustc_type_ir;
 
-// required for running compiler on strings during testing
-extern crate rustc_error_codes;
-extern crate rustc_errors;
-
-pub mod static_rts {
-    pub mod callback;
-    pub mod graph;
-    pub mod visitor;
-}
-
-pub mod dynamic_rts {
-    pub mod callback;
-    pub mod defid_util;
-    pub mod file_loader;
-    pub mod instrumentation;
-    pub mod mir_util;
-}
+pub mod static_rts;
+pub mod dynamic_rts;
 
 pub mod callbacks_shared;
 pub mod checksums;
@@ -47,5 +36,3 @@ pub mod format;
 pub mod fs_utils;
 pub mod info;
 pub mod names;
-
-pub mod utils;

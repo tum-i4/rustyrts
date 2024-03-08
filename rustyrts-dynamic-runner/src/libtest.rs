@@ -71,16 +71,16 @@ pub struct CustomTestDesc {
     pub name: CustomTestName,
     pub ignore: bool,
     pub ignore_message: Option<&'static str>,
-    //    #[cfg(not(bootstrap))]
-    //    pub source_file: &'static str,
-    //    #[cfg(not(bootstrap))]
-    //    pub start_line: usize,
-    //    #[cfg(not(bootstrap))]
-    //    pub start_col: usize,
-    //    #[cfg(not(bootstrap))]
-    //    pub end_line: usize,
-    //    #[cfg(not(bootstrap))]
-    //    pub end_col: usize,
+       #[cfg(not(bootstrap))]
+       pub source_file: &'static str,
+       #[cfg(not(bootstrap))]
+       pub start_line: usize,
+       #[cfg(not(bootstrap))]
+       pub start_col: usize,
+       #[cfg(not(bootstrap))]
+       pub end_line: usize,
+       #[cfg(not(bootstrap))]
+       pub end_col: usize,
     pub should_panic: CustomShouldPanic,
     pub compile_fail: bool,
     pub no_run: bool,
