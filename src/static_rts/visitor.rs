@@ -358,11 +358,16 @@ fn collect_items_rec<'tcx>(
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
+                            trace!("collecting static {:?}", def_id);
                             if should_codegen_locally(tcx, &instance) {
-                                trace!("collecting static {:?}", def_id);
                                 used_items.push((
                                     dummy_spanned(MonoItem::Static(*def_id)),
                                     MonomorphizationContext::Local(EdgeType::Static),
+                                ));
+                            } else {
+                                used_items.push((
+                                    dummy_spanned(MonoItem::Static(*def_id)),
+                                    MonomorphizationContext::NonLocal(EdgeType::Static),
                                 ));
                             }
                         }
@@ -613,6 +618,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                                 // 6.2. function -> closure that is coerced to a function pointer
                                 MonomorphizationContext::Local(EdgeType::ClosurePtr),
                             ));
+                        } else {
+                            self.output.push((
+                                create_fn_mono_item(self.tcx, instance, span),
+                                // 6.2. function -> closure that is coerced to a function pointer
+                                MonomorphizationContext::NonLocal(EdgeType::ClosurePtr),
+                            ));
                         }
                     }
                     _ => bug!(),
@@ -621,12 +632,18 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(self.tcx.is_thread_local_static(def_id));
                 let instance = Instance::mono(self.tcx, def_id);
+                trace!("collecting thread-local static {:?}", def_id);
                 if should_codegen_locally(self.tcx, &instance) {
-                    trace!("collecting thread-local static {:?}", def_id);
                     self.output.push((
                         respan(span, MonoItem::Static(def_id)),
                         // 5.1. function -> accessed static variable
                         MonomorphizationContext::Local(EdgeType::Static),
+                    ));
+                } else {
+                    self.output.push((
+                        respan(span, MonoItem::Static(def_id)),
+                        // 5.1. function -> accessed static variable
+                        MonomorphizationContext::NonLocal(EdgeType::Static),
                     ));
                 }
             }
@@ -667,6 +684,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     create_fn_mono_item(tcx, instance, source),
                     MonomorphizationContext::Local(EdgeType::LangItem),
                 ));
+            } else {
+                this.output.push((
+                    create_fn_mono_item(tcx, instance, source),
+                    MonomorphizationContext::NonLocal(EdgeType::LangItem),
+                ));
             }
         };
 
@@ -705,11 +727,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
+                            trace!("collecting asm sym static {:?}", def_id);
                             if should_codegen_locally(self.tcx, &instance) {
-                                trace!("collecting asm sym static {:?}", def_id);
                                 self.output.push((
                                     respan(source, MonoItem::Static(def_id)),
                                     MonomorphizationContext::Local(EdgeType::Static),
+                                ));
+                            } else {
+                                self.output.push((
+                                    respan(source, MonoItem::Static(def_id)),
+                                    MonomorphizationContext::NonLocal(EdgeType::Static),
                                 ));
                             }
                         }
@@ -867,7 +894,7 @@ fn visit_instance_use<'tcx>(
         ));
     }
     if instance
-        .polymorphize(tcx)
+        // .polymorphize(tcx)
         .upstream_monomorphization(tcx)
         .is_some()
     {
@@ -901,6 +928,11 @@ fn visit_instance_use<'tcx>(
                     create_fn_mono_item(tcx, panic_instance, source),
                     MonomorphizationContext::Local(EdgeType::Intrinsic),
                 ));
+            } else {
+                output.push((
+                    create_fn_mono_item(tcx, panic_instance, source),
+                    MonomorphizationContext::NonLocal(EdgeType::Intrinsic),
+                ));
             }
         } else if tcx.has_attr(def_id, sym::rustc_safe_intrinsic) {
             // Codegen the fallback body of intrinsics with fallback bodies
@@ -909,6 +941,11 @@ fn visit_instance_use<'tcx>(
                 output.push((
                     create_fn_mono_item(tcx, instance, source),
                     MonomorphizationContext::Local(EdgeType::Intrinsic),
+                ));
+            } else {
+                output.push((
+                    create_fn_mono_item(tcx, instance, source),
+                    MonomorphizationContext::NonLocal(EdgeType::Intrinsic),
                 ));
             }
         }
@@ -963,7 +1000,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 
     if tcx.is_reachable_non_generic(def_id)
         || instance
-            .polymorphize(tcx)
+            // .polymorphize(tcx)
             .upstream_monomorphization(tcx)
             .is_some()
     {
@@ -972,7 +1009,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 
     if let DefKind::Static(_) = tcx.def_kind(def_id) {
         // We cannot monomorphize statics from upstream crates.
-        return false;
+        return true;
     }
 
     if !tcx.is_mir_available(def_id) {
@@ -1099,11 +1136,11 @@ fn find_vtable_types_for_unsizing<'tcx>(
 }
 
 fn create_fn_mono_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    _tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
-    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
+    respan(source, MonoItem::Fn(instance /*.polymorphize(tcx)*/))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -1150,7 +1187,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
                         ));
                     }
                     if instance
-                        .polymorphize(tcx)
+                        // .polymorphize(tcx)
                         .upstream_monomorphization(tcx)
                         .is_some()
                     {
@@ -1185,18 +1222,31 @@ fn collect_used_items<'tcx>(
     instance: Instance<'tcx>,
     output: &mut MonoItems<'tcx>,
 ) {
-    let body = tcx.instance_mir(instance.def);
+    let bodies = {
+        let body = std::iter::once(tcx.instance_mir(instance.def));
 
-    // Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
-    // and abort compilation if any of them errors.
-    MirUsedCollector {
-        tcx,
-        body,
-        output,
-        instance,
-        visiting_call_terminator: false,
+        // info!("DefKind {:?} {:?}", tcx.def_kind(instance.def_id()), instance.def_id());
+        // let is_fn = tcx.trait_of_item(instance.def_id()).is_some_and(|def| tcx.is_fn_trait(def));
+        // if !is_fn {
+        //     body.chain(tcx.promoted_mir(instance.def_id()))
+        // } else {
+        //     body.chain(&[])
+        // }
+        body
+    };
+
+    for body in bodies {
+        // Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
+        // and abort compilation if any of them errors.
+        MirUsedCollector {
+            tcx,
+            body,
+            output,
+            instance,
+            visiting_call_terminator: false,
+        }
+        .visit_body(body);
     }
-    .visit_body(body);
 }
 
 fn collect_const_value<'tcx>(
@@ -1465,13 +1515,21 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         GlobalAlloc::Static(def_id) => {
             assert!(!tcx.is_thread_local_static(def_id));
             let instance = Instance::mono(tcx, def_id);
+            trace!("collecting static {:?}", def_id);
             if should_codegen_locally(tcx, &instance) {
-                trace!("collecting static {:?}", def_id);
                 output.push((
                     dummy_spanned(MonoItem::Static(def_id)),
                     // 5.1. function -> accessed static variable
                     // 5.2. static variable -> static variable that is pointed to
                     MonomorphizationContext::Local(EdgeType::Static),
+                ));
+            } else {
+                // IMPORTANT: This connects the graphs of multiple crates
+                output.push((
+                    dummy_spanned(MonoItem::Static(def_id)),
+                    // 5.1. function -> accessed static variable
+                    // 5.2. static variable -> static variable that is pointed to
+                    MonomorphizationContext::NonLocal(EdgeType::Static),
                 ));
             }
         }
@@ -1484,8 +1542,8 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             }
         }
         GlobalAlloc::Function(fn_instance) => {
+            trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
             if should_codegen_locally(tcx, &fn_instance) {
-                trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push((
                     create_fn_mono_item(tcx, fn_instance, DUMMY_SP),
                     // 5.3. static variable -> function that is pointed to
@@ -1502,6 +1560,12 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                         visit_fn_use(tcx, pointee, false, DUMMY_SP, output, EdgeType::FnPtr);
                     }
                 }
+            } else {
+                output.push((
+                    create_fn_mono_item(tcx, fn_instance, DUMMY_SP),
+                    // 5.3. static variable -> function that is pointed to
+                    MonomorphizationContext::NonLocal(EdgeType::FnPtr),
+                ));
             }
         }
         GlobalAlloc::VTable(ty, trait_ref) => {
