@@ -754,6 +754,11 @@ fn select_and_execute_tests_dynamic() {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
     }
 
+    if std::env::var("RUSTYRTS_RETEST_ALL").is_ok() {
+        let tests = read_lines(&files, ENDING_TEST);
+        affected_tests = tests.into_iter().map(|test| (test, None)).collect_vec();
+    }
+
     let cmd = cargo_test(Mode::Dynamic, affected_tests.iter().map(|(n, _)| n));
     execute(cmd);
 }
