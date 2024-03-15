@@ -256,6 +256,9 @@ fn test_scenario(
                 rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
                 rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
             }
+            if let Phase::Dynamic = phase {
+                rustc_wrapper.push(("RUSTYRTS_RETEST_ALL", ""));
+            }
             let phase_result = run_cargo(
                 build_dir,
                 Some(test_packages),

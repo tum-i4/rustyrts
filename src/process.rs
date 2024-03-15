@@ -79,6 +79,7 @@ impl Process {
         let quoted_argv = cheap_shell_quote(argv);
         log_file.message(&quoted_argv);
         debug!(%quoted_argv, "start process");
+        debug!("{}", format!("{:?}", env));
         let mut os_env = PopenConfig::current_env();
         os_env.extend(
             env.iter()
