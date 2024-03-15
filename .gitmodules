@@ -10,9 +10,6 @@
 [submodule "projects/mutants/ripgrep"]
 	path = projects/mutants/ripgrep
 	url = https://github.com/BurntSushi/ripgrep.git
-[submodule "projects/mutants/rust-brotli"]
-	path = projects/mutants/rust-brotli
-	url = https://github.com/dropbox/rust-brotli.git
 [submodule "projects/mutants/rust-openssl"]
 	path = projects/mutants/rust-openssl
 	url = https://github.com/sfackler/rust-openssl.git
@@ -70,3 +67,6 @@
 [submodule "projects/small/budget"]
 	path = projects/small/budget
 	url = git@github.com:shterrett/budget.git
+[submodule "projects/mutants/rbatis"]
+	path = projects/mutants/rbatis
+	url = https://github.com/rbatis/rbatis.git

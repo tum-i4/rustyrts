@@ -13,6 +13,7 @@
 sudo apt-get install snapd python3-dev postgresql-client python3-pip python3.10-venv
 sudo apt-get install gcc lld libssl-dev cmake protobuf-compiler clang libsqlite3-dev
 sudo apt-get install build-essential libsnappy-dev zlib1g-dev libbz2-dev libgflags-dev liblz4-dev libzstd-dev
+sudo apt-get install git-lfs
 sudo snap install scc
 ```
 

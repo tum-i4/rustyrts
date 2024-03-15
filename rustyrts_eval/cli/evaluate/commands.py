@@ -29,49 +29,49 @@ FAILED_HISTORY_MSG = "Failed git walk"
 
 MUTANTS_PROJECTS = [
     (
-        "projects/mutants/tracing",  # 4.5G
+        "projects/mutants/tracing",
         "master",
         [("3de7f8c6016aebc22228375dc9100c02e955c6d4", None, None, None)],
     ),
     (
-        "projects/mutants/tabled",  # 2.0G
+        "projects/mutants/tabled",
         "master",
         [("cc4a110d5963b7eede0e634c83c44d9e8b8250e4", None, None, None)],
     ),
     (
-        "projects/mutants/regex",  # 1.1G
+        "projects/mutants/regex",
         "master",
         [("b5ef0ec281220d9047fed199ed48c29af9749570", None, None, None)],
     ),
     (
-        "projects/mutants/rustls",  # 709M
+        "projects/mutants/rustls",
         "main",
         [("45197b807cf0699c842fcb85eb8eca555c74cc04", None, None, None)],
     ),
     (
-        "projects/mutants/rust-openssl",  # 559M
+        "projects/mutants/rust-openssl",
         "master",
         [("cc2850fff7c4b0d50a23e09059b0040044dd9616", None, None, None)],
     ),
     (
-        "projects/mutants/pulldown-cmark",  # 507M
+        "projects/mutants/pulldown-cmark",
         "master",
         [("967dd38554399573279855a9e124dc598a0e3200", None, None, None)],
     ),
     (
-        "projects/mutants/orion",  # 472M
+        "projects/mutants/orion",
         "master",
         [("cfa2c0c1e89f1ec3d2ab1ab1d57f88c1201e452c", None, None, None)],
     ),
     (
-        "projects/mutants/ripgrep",  # 441M
+        "projects/mutants/ripgrep",
         "master",
         [("af6b6c543b224d348a8876f0c06245d9ea7929c5", None, None, None)],
     ),
     (
-        "projects/mutants/rust-brotli",  # 273M
+        "projects/mutants/rbatis",
         "master",
-        [("b1f5aed58287cb01795a099230faa7d2ac734740", None, None, None)],
+        [("0149c2862842771dd5a22a7ef69c9501053f546a", None, None, None)],
     ),
 ]
 
