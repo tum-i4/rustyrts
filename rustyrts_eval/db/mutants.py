@@ -381,7 +381,7 @@ class MutantsViewInformation:
             .where(repository.c.id == commit.c.repo_id)
             .where(commit.c.id == overview.c.commit)
             .group_by(commit.c.id, repository.c.id, repository.c.path)
-            .order_by(commit.c.id)
+            .order_by(repository.c.path)
         )
 
         df_labels = connection.query(labels_mutants)

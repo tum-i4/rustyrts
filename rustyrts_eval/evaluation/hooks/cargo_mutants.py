@@ -62,7 +62,11 @@ class CargoMutantsHook(Hook):
         return os.environ | self.env_vars
 
     def run(
-        self, commit: Commit, features_parent: Optional[str], features: Optional[str]
+        self,
+        commit: Commit,
+        features_parent: Optional[str],
+        features: Optional[str],
+        rustflags: Optional[str],
     ) -> bool:
         """
         Run cargo mutants-rts.

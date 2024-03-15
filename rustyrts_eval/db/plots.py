@@ -20,6 +20,14 @@ class HistoryPlotter:
 
         self.labels = view_info.get_labels(connection)
 
+    def query(self, query: Select) -> pd.DataFrame:
+        df = self.connection.query(query)
+        order_dict: dict[int, int] = {}
+        for i, k in enumerate(self.labels.set_index("id")["path"].to_dict(), start=1):
+            order_dict[k] = i
+        df["repository"] = df["repository"].map(lambda x: order_dict[x])
+        return df
+
     def plot_history_duration_absolute(self):
         y_label = "absolute e2e testing time [s]"
         file = "duration_absolute" + self.output_format
@@ -39,7 +47,7 @@ class HistoryPlotter:
             .order_by(testreport_extended.c.commit)
         )
 
-        df = self.connection.query(durations)
+        df = self.query(durations)
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_test_duration"]
@@ -90,7 +98,7 @@ class HistoryPlotter:
             .order_by(testreport_extended.c.commit)
         )
 
-        df = self.connection.query(durations)
+        df = self.query(durations)
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_test_duration"]
@@ -191,8 +199,8 @@ class HistoryPlotter:
             .order_by(target_count.c.commit)
         )
 
-        df_unit = self.connection.query(count_unit)
-        df_integration = self.connection.query(count_integration)
+        df_unit = self.query(count_unit)
+        df_integration = self.query(count_integration)
 
         df_retest_all_unit = df_unit[["repository"]].copy()
         df_retest_all_unit["y"] = df_unit["retest_all_count"]
@@ -299,8 +307,8 @@ class HistoryPlotter:
             .order_by(target_count.c.commit)
         )
 
-        df_unit = self.connection.query(count_unit)
-        df_integration = self.connection.query(count_integration)
+        df_unit = self.query(count_unit)
+        df_integration = self.query(count_integration)
 
         df_dynamic_unit = df_unit[["repository"]].copy()
         df_dynamic_unit["y"] = df_unit["dynamic_count"]
@@ -377,7 +385,7 @@ class HistoryPlotter:
             .order_by(testcases_selected.c.commit)
         )
 
-        df = self.connection.query(selected)
+        df = self.query(selected)
 
         df_selected_dynamic = df[["repository", "dynamic", "commit"]]
         df_selected_static = df[["repository", "static", "commit"]]
@@ -472,7 +480,7 @@ class HistoryPlotter:
             .order_by(testcases_count.c.commit)
         )
 
-        df = self.connection.query(count)
+        df = self.query(count)
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_count"]
@@ -523,7 +531,7 @@ class HistoryPlotter:
             .order_by(testcases_count.c.commit)
         )
 
-        df = self.connection.query(count)
+        df = self.query(count)
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_count"]
@@ -599,8 +607,8 @@ class HistoryPlotter:
             .order_by(testcases_selected.c.commit)
         )
 
-        df_different_retest_all = self.connection.query(different_retest_all)
-        df_selected_rustyrts = self.connection.query(selected)
+        df_different_retest_all = self.query(different_retest_all)
+        df_selected_rustyrts = self.query(selected)
 
         df_selected_dynamic = df_selected_rustyrts[
             ["repository", "commit", "dynamic"]
@@ -747,6 +755,14 @@ class MutantsPlotter:
 
         self.labels = view_info.get_labels(connection)
 
+    def query(self, query: Select) -> pd.DataFrame:
+        df = self.connection.query(query)
+        order_dict: dict[int, int] = {}
+        for i, k in enumerate(self.labels.set_index("id")["path"].to_dict(), start=1):
+            order_dict[k] = i
+        df["repository"] = df["repository"].map(lambda x: order_dict[x])
+        return df
+
     def plot_mutants_duration_absolute(self):
         y_label = "absolute e2e testing time [s]"
         file = "duration_absolute" + self.output_format
@@ -764,7 +780,7 @@ class MutantsPlotter:
             .order_by(mutant_extended.c.commit)
         )
 
-        df = self.connection.query(durations)
+        df = self.query(durations)
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_test_duration"]
@@ -808,7 +824,7 @@ class MutantsPlotter:
             .order_by(mutant_extended.c.commit)
         )
 
-        df = self.connection.query(durations)
+        df = self.query(durations)
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_test_duration"]
@@ -851,8 +867,8 @@ class MutantsPlotter:
             .order_by(target_count.c.commit)
         )
 
-        df_unit = self.connection.query(count_unit)
-        df_integration = self.connection.query(count_integration)
+        df_unit = self.query(count_unit)
+        df_integration = self.query(count_integration)
 
         df_retest_all_unit = df_unit[["repository"]].copy()
         df_retest_all_unit["y"] = df_unit["retest_all_count"]
@@ -955,8 +971,8 @@ class MutantsPlotter:
             .order_by(target_count.c.commit)
         )
 
-        df_unit = self.connection.query(count_unit)
-        df_integration = self.connection.query(count_integration)
+        df_unit = self.query(count_unit)
+        df_integration = self.query(count_integration)
 
         df_dynamic_unit = df_unit[["repository"]].copy()
         df_dynamic_unit["y"] = df_unit["dynamic_count"]
@@ -1030,7 +1046,7 @@ class MutantsPlotter:
             .order_by(testcases_selected.c.commit)
         )
 
-        df = self.connection.query(selected)
+        df = self.query(selected)
 
         df_selected_dynamic = df[
             ["repository", "retest_all_mutant_id", "dynamic", "mutant"]
@@ -1098,7 +1114,7 @@ class MutantsPlotter:
             .order_by(testcases_count.c.commit)
         )
 
-        df = self.connection.query(count)
+        df = self.query(count)
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_count"]
@@ -1142,7 +1158,7 @@ class MutantsPlotter:
             .order_by(testcases_count.c.commit)
         )
 
-        df = self.connection.query(count)
+        df = self.query(count)
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_count"]
@@ -1216,8 +1232,8 @@ class MutantsPlotter:
             .order_by(testcases_selected.c.commit, testcases_selected.c.descr)
         )
 
-        df_failed_retest_all = self.connection.query(failed_retest_all)
-        df_selected_rustyrts = self.connection.query(selected)
+        df_failed_retest_all = self.query(failed_retest_all)
+        df_selected_rustyrts = self.query(selected)
 
         df_selected_dynamic = df_selected_rustyrts[
             ["repository", "retest_all_mutant_id", "dynamic"]
@@ -1416,9 +1432,9 @@ class MutantsPlotter:
             .order_by(testcases_count.c.commit)
         )
 
-        df_retest_all = self.connection.query(count_retest_all)
-        df_dynamic = self.connection.query(count_dynamic)
-        df_static = self.connection.query(count_static)
+        df_retest_all = self.query(count_retest_all)
+        df_dynamic = self.query(count_dynamic)
+        df_static = self.query(count_static)
 
         df_dynamic["algorithm"] = "dynamic"
         df_static["algorithm"] = "static"
