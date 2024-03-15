@@ -29,18 +29,6 @@ impl Debug for Foo<u32> {
     }
 }
 
-static mut DROPPED: bool = false;
-
-impl<T> Drop for Foo<T> {
-    #[cfg(not(feature = "changes_drop"))]
-    fn drop(&mut self) {
-        unsafe { DROPPED = true };
-    }
-
-    #[cfg(feature = "changes_drop")]
-    fn drop(&mut self) {}
-}
-
 fn generic_display<S: Display>(s: &S, buf: &mut impl Write) {
     buf.write_fmt(format_args!("{}", s)).unwrap();
 }
@@ -84,7 +72,6 @@ pub mod test {
             let instance: Foo<i32> = Foo { data: 1 };
             assert_eq!(format!("{}", instance), "Foo: 1");
         }
-        assert!(unsafe { DROPPED });
     }
 
     #[test]

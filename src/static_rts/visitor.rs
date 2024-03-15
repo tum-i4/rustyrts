@@ -765,6 +765,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             let ty = self.monomorphize(ty);
             // 2. function -> contained closure
             visit_fn_use(tcx, ty, false, source, self.output, EdgeType::Contained);
+            visit_drop_use(tcx, ty, false, source, self.output);
         }
         if let TyKind::Ref(_region, ty, _mtblt) = *ty.kind() {
             // Also account for closures behind references
@@ -1123,18 +1124,18 @@ fn collect_used_items<'tcx>(
     instance: Instance<'tcx>,
     output: &mut MonoItems<'tcx>,
 ) {
-        let body = tcx.instance_mir(instance.def);
+    let body = tcx.instance_mir(instance.def);
 
-        // Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
-        // and abort compilation if any of them errors.
-        MirUsedCollector {
-            tcx,
-            body,
-            output,
-            instance,
-            visiting_call_terminator: false,
-        }
-        .visit_body(body);
+    // Here we rely on the visitor also visiting `required_consts`, so that we evaluate them
+    // and abort compilation if any of them errors.
+    MirUsedCollector {
+        tcx,
+        body,
+        output,
+        instance,
+        visiting_call_terminator: false,
+    }
+    .visit_body(body);
 }
 
 fn collect_const_value<'tcx>(
