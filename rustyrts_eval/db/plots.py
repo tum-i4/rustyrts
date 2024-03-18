@@ -19,16 +19,17 @@ class HistoryPlotter:
         self.sequential_watermark = sequential_watermark
 
         self.labels = view_info.get_labels(connection)
+        self.order_dict: dict[int, int] = {}
+        for i, k in enumerate(self.labels.set_index("id")["path"].to_dict(), start=1):
+            self.order_dict[k] = i
+        self.labels["id"] = self.labels["id"].map(lambda x: self.order_dict[x])
 
     def query(self, query: Select) -> pd.DataFrame:
         df = self.connection.query(query)
-        order_dict: dict[int, int] = {}
-        for i, k in enumerate(self.labels.set_index("id")["path"].to_dict(), start=1):
-            order_dict[k] = i
-        df["repository"] = df["repository"].map(lambda x: order_dict[x])
+        df["repository"] = df["repository"].map(lambda x: self.order_dict[x])
         return df
 
-    def plot_history_duration_absolute(self):
+    def plot_history_duration_absolute(self, partition=False):
         y_label = "absolute e2e testing time [s]"
         file = "duration_absolute" + self.output_format
 
@@ -63,14 +64,33 @@ class HistoryPlotter:
 
         df = pd.concat([df_retest_all, df_dynamic, df_static])
 
-        boxplot(
-            df,
-            self.labels["path"],
-            y_label,
-            file,
-            ["#DAD7CB", "#E37222", "#A2AD00"],
-            sequential_watermark=self.sequential_watermark,
-        )
+        if partition:
+            filter_normal = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12]
+            filter_special = [7]
+
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
+
+            df_1 = df[(df["repository"].isin(filter_normal))]
+            df_2 = df[(df["repository"].isin(filter_special))]
+
+            boxplot(
+                [df_1, df_2],
+                [labels_1["path"], labels_2["path"]],
+                y_label,
+                file,
+                ["#DAD7CB", "#E37222", "#A2AD00"],
+                sequential_watermark=self.sequential_watermark,
+            )
+        else:
+            boxplot(
+                [df],
+                [self.labels["path"]],
+                y_label,
+                file,
+                ["#DAD7CB", "#E37222", "#A2AD00"],
+                sequential_watermark=self.sequential_watermark,
+            )
 
     def plot_history_duration_relative(self):
         y_label = "relative e2e testing time [%]"
@@ -111,8 +131,8 @@ class HistoryPlotter:
         df = pd.concat([df_dynamic, df_static])
 
         boxplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file,
             ["#E37222", "#A2AD00"],
@@ -127,14 +147,18 @@ class HistoryPlotter:
 
         duration = self.view_info.duration
 
-        efficiency = select(
-            duration.c.repo_id.label("repository"),
-            (1.0 * duration.c.retest_all_mean).label("retest_all_mean"),
-            (1.0 * duration.c.dynamic_mean_relative).label("dynamic_mean_relative"),
-            (1.0 * duration.c.static_mean_relative).label("static_mean_relative"),
-        ).select_from(duration)
+        efficiency = (
+            select(
+                duration.c.repo_id.label("repository"),
+                (1.0 * duration.c.retest_all_mean).label("retest_all_mean"),
+                (1.0 * duration.c.dynamic_mean_relative).label("dynamic_mean_relative"),
+                (1.0 * duration.c.static_mean_relative).label("static_mean_relative"),
+            )
+            .select_from(duration)
+            .where(duration.c.repo_id != None)
+        )
 
-        df = self.connection.query(efficiency)
+        df = self.query(efficiency)
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["x"] = df["retest_all_mean"]
@@ -244,22 +268,21 @@ class HistoryPlotter:
         )
 
         boxplot(
-            df_dynamic,
-            self.labels["path"],
+            [df_dynamic],
+            [self.labels["path"]],
             y_label,
             file + "_dynamic" + self.output_format,
             ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
             sequential_watermark=self.sequential_watermark,
         )
         boxplot(
-            df_static,
-            self.labels["path"],
+            [df_static],
+            [self.labels["path"]],
             y_label,
             file + "_static" + self.output_format,
             ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
             sequential_watermark=self.sequential_watermark,
         )
-        # boxplot(df, labels, y_label, file, ["#DAD7CB", "#E37222", "#A2AD00"])
 
     def plot_history_target_count_relative(self):
         y_label = "relative number of tests [%]"
@@ -336,39 +359,36 @@ class HistoryPlotter:
         )
 
         boxplot_with_observations(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
             sequential_watermark=self.sequential_watermark,
-            figsize=(24, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         boxplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
             sequential_watermark=self.sequential_watermark,
-            figsize=(24, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
             sequential_watermark=self.sequential_watermark,
-            figsize=(24, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
 
     def plot_history_testcases_contains_relation(self, partition=False):
         y_label = "Tests that have been selected"
-        file = "contains_all_tests"
+        file = "contains_all_tests" + self.output_format
 
         commit = DBCommit.__table__
         testcases_selected = self.view_info.testcases_selected
@@ -418,45 +438,33 @@ class HistoryPlotter:
         df = pd.concat([df_not_selected_static[["repository", "algorithm", "y"]]])
 
         if partition:
-            filter_normal = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12]
-            filter_special = [8]
+            filter_normal = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+            filter_special = [6]
 
-            labels1 = self.labels["path"][:7] + self.labels["path"][8:]
-            labels2 = [self.labels["path"][7]]
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
 
             df_1 = df[(df["repository"].isin(filter_normal))]
             df_2 = df[(df["repository"].isin(filter_special))]
 
             stripplot(
-                df_1,
-                labels1,
+                [df_1, df_2],
+                [labels_1["path"], labels_2["path"]],
                 y_label,
-                file + "_1" + self.output_format,
+                file,
                 ["#E37222"],
                 hue="algorithm",
-                figsize=(18, 15),
                 legend_anchor=(0.3, 0.9, 0.7, 0.1),
                 sequential_watermark=self.sequential_watermark,
             )
-            stripplot(
-                df_2,
-                labels2,
-                "",
-                file + "_2" + self.output_format,
-                ["#E37222"],
-                hue="algorithm",
-                figsize=(3, 15),
-                legend=False,
-            )
         else:
             stripplot(
-                df,
-                self.labels["path"],
+                [df],
+                [self.labels["path"]],
                 y_label,
-                file + self.output_format,
+                file,
                 ["#E37222"],
                 hue="algorithm",
-                figsize=(18, 15),
                 legend_anchor=(0.3, 0.9, 0.7, 0.1),
                 sequential_watermark=self.sequential_watermark,
             )
@@ -497,8 +505,8 @@ class HistoryPlotter:
         df = pd.concat([df_retest_all, df_dynamic, df_static])
 
         boxplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file,
             ["#DAD7CB", "#E37222", "#A2AD00"],
@@ -544,37 +552,34 @@ class HistoryPlotter:
         df = pd.concat([df_dynamic, df_static])
 
         boxplot_with_observations(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + self.output_format,
             ["#E37222", "#A2AD00"],
             sequential_watermark=self.sequential_watermark,
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         boxplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E37222", "#A2AD00"],
             sequential_watermark=self.sequential_watermark,
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E37222", "#A2AD00"],
             sequential_watermark=self.sequential_watermark,
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
 
-    def plot_history_testcases_different_absolute(self):
+    def plot_history_testcases_different_absolute(self, partition=False):
         y_label_selected = "Tests with different result, selected"
         file_selected = "different_and_selected_absolute" + self.output_format
 
@@ -722,18 +727,40 @@ class HistoryPlotter:
             ]
         )
 
+        if partition:
+            filter_normal = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+            filter_special = [2]
+
+            labels_1 = labels[:1] + labels[2:]
+            labels_2 = [labels[1]]
+
+            df_selected_1 = df_selected[(df_selected["repository"].isin(filter_normal))]
+            df_selected_2 = df_selected[
+                (df_selected["repository"].isin(filter_special))
+            ]
+
+            stripplot(
+                [df_selected_1, df_selected_2],
+                [labels_1, labels_2],
+                y_label_selected,
+                file_selected,
+                ["#E37222", "#A2AD00"],
+                hue="algorithm",
+                sequential_watermark=self.sequential_watermark,
+            )
+        else:
+            stripplot(
+                [df_selected],
+                [labels],
+                y_label_selected,
+                file_selected,
+                ["#E37222", "#A2AD00"],
+                hue="algorithm",
+                sequential_watermark=self.sequential_watermark,
+            )
         stripplot(
-            df_selected,
-            labels,
-            y_label_selected,
-            file_selected,
-            ["#E37222", "#A2AD00"],
-            hue="algorithm",
-            sequential_watermark=self.sequential_watermark,
-        )
-        stripplot(
-            df_not_selected,
-            labels,
+            [df_not_selected],
+            [labels],
             y_label_not_selected,
             file_not_selected,
             ["#E37222", "#A2AD00"],
@@ -754,13 +781,14 @@ class MutantsPlotter:
         self.output_format = output_format
 
         self.labels = view_info.get_labels(connection)
+        self.order_dict: dict[int, int] = {}
+        for i, k in enumerate(self.labels.set_index("id")["path"].to_dict(), start=1):
+            self.order_dict[k] = i
+        self.labels["id"] = self.labels["id"].map(lambda x: self.order_dict[x])
 
     def query(self, query: Select) -> pd.DataFrame:
         df = self.connection.query(query)
-        order_dict: dict[int, int] = {}
-        for i, k in enumerate(self.labels.set_index("id")["path"].to_dict(), start=1):
-            order_dict[k] = i
-        df["repository"] = df["repository"].map(lambda x: order_dict[x])
+        df["repository"] = df["repository"].map(lambda x: self.order_dict[x])
         return df
 
     def plot_mutants_duration_absolute(self):
@@ -797,7 +825,11 @@ class MutantsPlotter:
         df = pd.concat([df_retest_all, df_dynamic, df_static])
 
         boxplot(
-            df, self.labels["path"], y_label, file, ["#DAD7CB", "#E37222", "#A2AD00"]
+            [df],
+            [self.labels["path"]],
+            y_label,
+            file,
+            ["#DAD7CB", "#E37222", "#A2AD00"],
         )
 
     def plot_mutants_duration_relative(self):
@@ -836,7 +868,7 @@ class MutantsPlotter:
 
         df = pd.concat([df_dynamic, df_static])
 
-        boxplot(df, self.labels["path"], y_label, file, ["#E37222", "#A2AD00"])
+        boxplot([df], [self.labels["path"]], y_label, file, ["#E37222", "#A2AD00"])
 
     def plot_mutants_target_count_absolute(self):
         y_label = "absolute number of tests"
@@ -912,21 +944,19 @@ class MutantsPlotter:
         )
 
         boxplot(
-            df_dynamic,
-            self.labels["path"],
+            [df_dynamic],
+            [self.labels["path"]],
             y_label,
             file + "_dynamic" + self.output_format,
             ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
         )
         boxplot(
-            df_static,
-            self.labels["path"],
+            [df_static],
+            [self.labels["path"]],
             y_label,
             file + "_static" + self.output_format,
             ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
         )
-
-        # boxplot(df, labels, y_label, file, ["#DAD7CB", "#E37222", "#A2AD00"])
 
     def plot_mutants_target_count_relative(self):
         y_label = "relative number of tests [%]"
@@ -1000,32 +1030,29 @@ class MutantsPlotter:
         )
 
         boxplot_with_observations(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
         )
         boxplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
-            figsize=(24, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
-            figsize=(24, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
@@ -1135,7 +1162,11 @@ class MutantsPlotter:
         df = pd.concat([df_retest_all, df_dynamic, df_static])
 
         boxplot(
-            df, self.labels["path"], y_label, file, ["#DAD7CB", "#E37222", "#A2AD00"]
+            [df],
+            [self.labels["path"]],
+            y_label,
+            file,
+            ["#DAD7CB", "#E37222", "#A2AD00"],
         )
 
     def plot_mutants_testcases_count_relative(self):
@@ -1175,32 +1206,29 @@ class MutantsPlotter:
         df = pd.concat([df_dynamic, df_static])
 
         boxplot_with_observations(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + self.output_format,
             ["#E37222", "#A2AD00"],
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
         )
         boxplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E37222", "#A2AD00"],
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E37222", "#A2AD00"],
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
@@ -1208,10 +1236,10 @@ class MutantsPlotter:
 
     def plot_mutants_testcases_failed_absolute(self, partition=False):
         y_label_selected = "Failed tests, selected"
-        file_selected = "failed_and_selected_absolute"
+        file_selected = "failed_and_selected_absolute" + self.output_format
 
         y_label_not_selected = "Failed tests, not selected"
-        file_not_selected = "failed_and_not_selected_absolute"
+        file_not_selected = "failed_and_not_selected_absolute" + self.output_format
 
         testcases_selected = self.view_info.testcases_selected
         testcases_failed = self.view_info.testcases_failed
@@ -1342,8 +1370,8 @@ class MutantsPlotter:
             filter_normal = [1, 2, 3, 5, 6, 7, 8, 9, 10]
             filter_special = [4]
 
-            labels1 = self.labels[:3] + self.labels[4:]
-            labels2 = [self.labels[3]]
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
 
             df_not_selected_1 = df_not_selected[
                 (df_not_selected["repository"].isin(filter_normal))
@@ -1351,25 +1379,14 @@ class MutantsPlotter:
             df_not_selected_2 = df_not_selected[
                 (df_not_selected["repository"].isin(filter_special))
             ]
+
             stripplot(
-                df_not_selected_1,
-                labels1,
+                [df_not_selected_1, df_not_selected_2],
+                [labels1, labels2],
                 y_label_not_selected,
-                file_not_selected + "_1" + self.output_format,
+                file_not_selected,
                 ["#E37222", "#A2AD00"],
                 hue="algorithm",
-                figsize=(18, 15),
-                legend_anchor=(0.1, 0.9, 0.2, 0.1),
-            )
-            stripplot(
-                df_not_selected_2,
-                labels2,
-                "",
-                file_not_selected + "_2" + self.output_format,
-                ["#E37222", "#A2AD00"],
-                hue="algorithm",
-                figsize=(3, 15),
-                legend=False,
             )
 
         else:
@@ -1377,20 +1394,18 @@ class MutantsPlotter:
                 df_not_selected,
                 self.labels["path"],
                 "",
-                file_not_selected + self.output_format,
+                file_not_selected,
                 ["#E37222", "#A2AD00"],
                 hue="algorithm",
-                figsize=(22, 15),
             )
 
         stripplot(
             df_selected,
             self.labels["path"],
             y_label_selected,
-            file_selected + self.output_format,
+            file_selected,
             ["#E37222", "#A2AD00"],
             hue="algorithm",
-            figsize=(17, 15),
         )
 
     def plot_mutants_percentage_failed(self):
@@ -1450,12 +1465,11 @@ class MutantsPlotter:
         df = pd.concat([df_retest_all, df_dynamic, df_static])
 
         boxplot(
-            df,
-            self.labels["path"],
+            [df],
+            [self.labels["path"]],
             y_label,
             file + self.output_format,
             ["#DAD7CB", "#E37222", "#A2AD00"],
-            figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
 
@@ -1464,8 +1478,18 @@ class MutantsPlotter:
 # Plotting utilities
 
 
+def __get_widths(labels):
+    widths = []
+    sum = 0
+    for label in labels:
+        sum += len(label)
+    for label in labels:
+        widths.append(len(label) * 1.0 / sum)
+    return widths
+
+
 def boxplot(
-    df,
+    dfs,
     labels,
     y_label,
     file,
@@ -1477,43 +1501,66 @@ def boxplot(
     legend_anchor=None,
     sequential_watermark=False,
 ):
-    sns.set_style("whitegrid")
-    sns.set_context("talk", font_scale=2.0)
-    plt.figure(figsize=figsize)
-    ax = sns.boxplot(
-        data=df,
-        x="repository",
-        y="y",
-        hue=hue,
-        showmeans=True,
-        width=0.75,
-        meanprops={
-            "marker": "v",
-            "markerfacecolor": "white",
-            "markeredgecolor": "black",
-            "markersize": "16",
-        },
-        fliersize=14,
-        palette=palette,
+    fig, axes = plt.subplots(
+        1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
     )
-    ax.set_xticklabels(labels=labels, rotation="vertical")
-    ax.set_xlabel("")
-    ax.set_ylabel(y_label)
-    ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
-    ax.grid(which="major", linewidth=1.0)
-    ax.grid(which="minor", linewidth=0.5)
-    if sequential_watermark:
-        plt.figtext(0.01, 0.02, "single-threaded", color="grey", rotation="vertical")
-    if legend:
-        plt.legend(loc=legend_loc, bbox_to_anchor=legend_anchor)
-    else:
-        plt.legend([], [], frameon=False)
-    plt.tight_layout(pad=0.2)
-    plt.savefig(file)
+    if len(dfs) <= 1:
+        axes = [axes]
+
+    for i, (df, label, ax) in enumerate(zip(dfs, labels, axes)):
+        for item in [ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels():
+            item.set_fontsize(32)
+        for item in ax.get_yticklabels():
+            item.set_fontsize(24)
+
+        sns.set_style("whitegrid")
+        sns.set_context("talk", font_scale=1.6)
+        sns.boxplot(
+            ax=ax,
+            data=df,
+            x="repository",
+            y="y",
+            hue=hue,
+            showmeans=True,
+            width=0.75,
+            meanprops={
+                "marker": "v",
+                "markerfacecolor": "white",
+                "markeredgecolor": "black",
+                "markersize": "16",
+            },
+            fliersize=14,
+            palette=palette,
+        )
+        ax.set_xticklabels(labels=label, rotation="vertical")
+        ax.set_xlabel("")
+        ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
+        ax.grid(which="major", linewidth=1.0)
+        ax.grid(which="minor", linewidth=0.5)
+        if i == 0:
+            ax.set_ylabel(y_label)
+        else:
+            ax.set_ylabel(None)
+        if sequential_watermark and i == 0:
+            plt.figtext(
+                0.01,
+                0.02,
+                "single-threaded",
+                color="grey",
+                rotation="vertical",
+                fontsize=24,
+            )
+        if legend and i == 0:
+            ax.legend(title="", loc=legend_loc, bbox_to_anchor=legend_anchor)
+        else:
+            ax.legend([], [], frameon=False)
+
+    fig.tight_layout(pad=0.2)
+    fig.savefig(file)
 
 
 def boxplot_with_observations(
-    df,
+    dfs,
     labels,
     y_label,
     file,
@@ -1527,99 +1574,82 @@ def boxplot_with_observations(
     size=8,
     linewidth=1.0,
 ):
-    sns.set_style("whitegrid")
-    sns.set_context("talk", font_scale=2.0)
-    plt.figure(figsize=figsize)
-    ax = sns.boxplot(
-        data=df,
-        x="repository",
-        y="y",
-        hue=hue,
-        showmeans=True,
-        width=0.75,
-        meanprops={
-            "marker": "v",
-            "markerfacecolor": "white",
-            "markeredgecolor": "black",
-            "markersize": "16",
-        },
-        fliersize=14,
-        palette=palette,
+    fig, axes = plt.subplots(
+        1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
     )
+    if len(dfs) <= 1:
+        axes = [axes]
 
-    sns.stripplot(
-        ax=ax,
-        data=df,
-        x="repository",
-        y="y",
-        hue=hue,
-        dodge=True,
-        jitter=0.3,
-        size=size,
-        linewidth=linewidth,
-        palette=palette,
-        legend=False,
-    )
+    for i, (df, label, ax) in enumerate(zip(dfs, labels, axes)):
+        for item in [ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels():
+            item.set_fontsize(32)
+        for item in ax.get_yticklabels():
+            item.set_fontsize(24)
 
-    ax.set_xticklabels(labels=labels, rotation="vertical")
-    ax.set_xlabel("")
-    ax.set_ylabel(y_label)
-    ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
-    ax.grid(which="major", linewidth=1.0)
-    ax.grid(which="minor", linewidth=0.5)
-    if sequential_watermark:
-        plt.figtext(0.01, 0.02, "single-threaded", color="grey", rotation="vertical")
-    if legend:
-        plt.legend(loc=legend_loc, bbox_to_anchor=legend_anchor)
-    else:
-        plt.legend([], [], frameon=False)
-    plt.tight_layout(pad=0.2)
-    plt.savefig(file)
+        sns.set_style("whitegrid")
+        sns.set_context("talk", font_scale=1.6)
+        sns.boxplot(
+            ax=ax,
+            data=df,
+            x="repository",
+            y="y",
+            hue=hue,
+            showmeans=True,
+            width=0.75,
+            meanprops={
+                "marker": "v",
+                "markerfacecolor": "white",
+                "markeredgecolor": "black",
+                "markersize": "16",
+            },
+            fliersize=14,
+            palette=palette,
+        )
 
+        sns.stripplot(
+            ax=ax,
+            data=df,
+            x="repository",
+            y="y",
+            hue=hue,
+            dodge=True,
+            jitter=0.3,
+            size=size,
+            linewidth=linewidth,
+            palette=palette,
+            legend=False,
+        )
 
-def barplot(
-    df,
-    labels,
-    y_label,
-    file,
-    palette,
-    hue="algorithm",
-    figsize=(20, 15),
-    sequential_watermark=False,
-):
-    sns.set_style("whitegrid")
-    sns.set_context("talk", font_scale=2.0)
-    plt.figure(figsize=figsize)
-    ax = sns.barplot(
-        data=df,
-        x="repository",
-        y="y",
-        hue=hue,
-        # showmeans=True,
-        # width=0.75,
-        # meanprops={
-        #    "marker": "v",
-        #    "markerfacecolor": "white",
-        #    "markeredgecolor": "black",
-        #    "markersize": "8"
-        # },
-        palette=palette,
-    )
-    ax.set_xticklabels(labels=labels)
-    ax.set_xlabel("")
-    ax.set_ylabel(y_label)
-    ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
-    ax.grid(which="major", linewidth=1.0)
-    ax.grid(which="minor", linewidth=0.5)
-    if sequential_watermark:
-        plt.figtext(0.01, 0.02, "single-threaded", color="grey", rotation="vertical")
-    plt.legend(loc="best")
-    plt.tight_layout(pad=0.2)
-    plt.savefig(file)
+        ax.set_xticklabels(labels=label, rotation="vertical")
+        ax.set_xlabel("")
+        ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
+        ax.grid(which="major", linewidth=1.0)
+        ax.grid(which="minor", linewidth=0.5)
+
+        if i == 0:
+            ax.set_ylabel(y_label)
+        else:
+            ax.set_ylabel(None)
+        if sequential_watermark and i == 0:
+            plt.figtext(
+                0.01,
+                0.02,
+                "single-threaded",
+                color="grey",
+                rotation="vertical",
+                fontsize=24,
+            )
+        if legend and i == 0:
+            ax.legend(title="", loc=legend_loc, bbox_to_anchor=legend_anchor)
+        else:
+            ax.legend([], [], frameon=False)
+
+    fig.tight_layout(pad=0.2)
+    fig.savefig(file)
 
 
 def stripplot(
-    df,
+    dfs,
     labels,
     y_label,
     file,
@@ -1633,34 +1663,58 @@ def stripplot(
     size=8,
     linewidth=1.0,
 ):
-    sns.set_style("whitegrid")
-    sns.set_context("talk", font_scale=2.0)
-    plt.figure(figsize=figsize)
-    ax = sns.stripplot(
-        data=df,
-        x="repository",
-        y="y",
-        hue=hue,
-        dodge=True,
-        jitter=0.3,
-        size=size,
-        linewidth=linewidth,
-        palette=palette,
+    fig, axes = plt.subplots(
+        1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
     )
-    ax.set_xticklabels(labels=labels, rotation="vertical")
-    ax.set_xlabel("")
-    ax.set_ylabel(y_label)
-    ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
-    ax.grid(which="major", linewidth=1.0)
-    ax.grid(which="minor", linewidth=0.5)
-    if legend:
-        plt.legend(loc=legend_loc, bbox_to_anchor=legend_anchor)
-    else:
-        plt.legend([], [], frameon=False)
-    if sequential_watermark:
-        plt.figtext(0.01, 0.02, "single-threaded", color="grey", rotation="vertical")
-    plt.tight_layout(pad=0.2)
-    plt.savefig(file)
+    if len(dfs) <= 1:
+        axes = [axes]
+
+    for i, (df, label, ax) in enumerate(zip(dfs, labels, axes)):
+        for item in [ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels():
+            item.set_fontsize(32)
+        for item in ax.get_yticklabels():
+            item.set_fontsize(24)
+
+        sns.set_style("whitegrid")
+        sns.set_context("talk", font_scale=1.6)
+        sns.stripplot(
+            ax=ax,
+            data=df,
+            x="repository",
+            y="y",
+            hue=hue,
+            dodge=True,
+            jitter=0.3,
+            size=size,
+            linewidth=linewidth,
+            palette=palette,
+            legend=i == 0,
+        )
+        ax.set_xticklabels(labels=label, rotation="vertical")
+        ax.set_xlabel("")
+        ax.get_yaxis().set_minor_locator(mpl.ticker.AutoMinorLocator())
+        ax.grid(which="major", linewidth=1.0)
+        ax.grid(which="minor", linewidth=0.5)
+        if i == 0:
+            ax.set_ylabel(y_label)
+        else:
+            ax.set_ylabel(None)
+        if sequential_watermark and i == 0:
+            plt.figtext(
+                0.01,
+                0.02,
+                "single-threaded",
+                color="grey",
+                rotation="vertical",
+                fontsize=24,
+            )
+        if legend and i == 0:
+            ax.legend(title="", loc=legend_loc, bbox_to_anchor=legend_anchor)
+        else:
+            ax.legend([], [], frameon=False)
+
+    fig.tight_layout(pad=0.2)
+    fig.savefig(file)
 
 
 def scatterplot(
@@ -1679,7 +1733,6 @@ def scatterplot(
     legend_anchor=None,
     regression=False,
     sequential_watermark=False,
-    size=8,
     linewidth=1.0,
 ):
     df = pd.concat(df_raw)
@@ -1692,7 +1745,6 @@ def scatterplot(
         x="x",
         y="y",
         hue=hue,
-        size=size,
         linewidth=linewidth,
         edgecolor="black",
         palette=palette,
@@ -1722,9 +1774,9 @@ def scatterplot(
     ax.grid(which="major", linewidth=1.0)
     ax.grid(which="minor", linewidth=0.5)
     if legend:
-        plt.legend(loc=legend_loc, bbox_to_anchor=legend_anchor)
+        ax.legend(title="", loc=legend_loc, bbox_to_anchor=legend_anchor)
     else:
-        plt.legend([], [], frameon=False)
+        ax.legend([], [], frameon=False)
     if sequential_watermark:
         plt.figtext(0.01, 0.02, "single-threaded", color="grey")
     plt.tight_layout(pad=0.2)
