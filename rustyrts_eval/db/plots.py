@@ -51,7 +51,7 @@ class HistoryPlotter:
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_test_duration"]
-        df_retest_all["algorithm"] = "retest_all"
+        df_retest_all["algorithm"] = "retest-all"
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_test_duration"]
@@ -484,7 +484,7 @@ class HistoryPlotter:
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_count"]
-        df_retest_all["algorithm"] = "retest_all"
+        df_retest_all["algorithm"] = "retest-all"
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_count"]
@@ -784,7 +784,7 @@ class MutantsPlotter:
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_test_duration"]
-        df_retest_all["algorithm"] = "retest_all"
+        df_retest_all["algorithm"] = "retest-all"
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_test_duration"]
@@ -1007,6 +1007,8 @@ class MutantsPlotter:
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
             figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
+            size=4,
+            linewidth=0.3,
         )
         boxplot(
             df,
@@ -1025,6 +1027,8 @@ class MutantsPlotter:
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
             figsize=(24, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
+            size=4,
+            linewidth=0.3,
         )
 
     def plot_mutants_testcases_contains_relation(self):
@@ -1118,7 +1122,7 @@ class MutantsPlotter:
 
         df_retest_all = df[["repository"]].copy()
         df_retest_all["y"] = df["retest_all_count"]
-        df_retest_all["algorithm"] = "retest_all"
+        df_retest_all["algorithm"] = "retest-all"
 
         df_dynamic = df[["repository"]].copy()
         df_dynamic["y"] = df["dynamic_count"]
@@ -1178,6 +1182,8 @@ class MutantsPlotter:
             ["#E37222", "#A2AD00"],
             figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
+            size=4,
+            linewidth=0.3,
         )
         boxplot(
             df,
@@ -1196,6 +1202,8 @@ class MutantsPlotter:
             ["#E37222", "#A2AD00"],
             figsize=(22, 15),
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
+            size=4,
+            linewidth=0.3,
         )
 
     def plot_mutants_testcases_failed_absolute(self, partition=False):
@@ -1372,8 +1380,7 @@ class MutantsPlotter:
                 file_not_selected + self.output_format,
                 ["#E37222", "#A2AD00"],
                 hue="algorithm",
-                figsize=(17, 15),
-                legend=False,
+                figsize=(22, 15),
             )
 
         stripplot(
@@ -1436,6 +1443,7 @@ class MutantsPlotter:
         df_dynamic = self.query(count_dynamic)
         df_static = self.query(count_static)
 
+        df_retest_all["algorithm"] = "retest-all"
         df_dynamic["algorithm"] = "dynamic"
         df_static["algorithm"] = "static"
 
@@ -1516,6 +1524,8 @@ def boxplot_with_observations(
     legend_loc="best",
     legend_anchor=None,
     sequential_watermark=False,
+    size=8,
+    linewidth=1.0,
 ):
     sns.set_style("whitegrid")
     sns.set_context("talk", font_scale=2.0)
@@ -1545,8 +1555,8 @@ def boxplot_with_observations(
         hue=hue,
         dodge=True,
         jitter=0.3,
-        size=8,
-        linewidth=1,
+        size=size,
+        linewidth=linewidth,
         palette=palette,
         legend=False,
     )
@@ -1620,6 +1630,8 @@ def stripplot(
     legend_loc="best",
     legend_anchor=None,
     sequential_watermark=False,
+    size=8,
+    linewidth=1.0,
 ):
     sns.set_style("whitegrid")
     sns.set_context("talk", font_scale=2.0)
@@ -1631,8 +1643,8 @@ def stripplot(
         hue=hue,
         dodge=True,
         jitter=0.3,
-        size=8,
-        linewidth=1,
+        size=size,
+        linewidth=linewidth,
         palette=palette,
     )
     ax.set_xticklabels(labels=labels, rotation="vertical")
@@ -1667,6 +1679,8 @@ def scatterplot(
     legend_anchor=None,
     regression=False,
     sequential_watermark=False,
+    size=8,
+    linewidth=1.0,
 ):
     df = pd.concat(df_raw)
 
@@ -1678,7 +1692,8 @@ def scatterplot(
         x="x",
         y="y",
         hue=hue,
-        linewidth=1,
+        size=size,
+        linewidth=linewidth,
         edgecolor="black",
         palette=palette,
         legend="full",

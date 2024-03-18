@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from sqlalchemy import (
+    NUMERIC,
     Column,
     String,
     Integer,
@@ -17,6 +18,7 @@ from sqlalchemy import (
     Table,
     text,
 )
+from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, relationship, Session
 from sqlalchemy.sql.functions import coalesce, count, sum, aggregate_strings
 from sqlalchemy_utils import create_materialized_view, create_view, get_columns
@@ -848,6 +850,292 @@ def register_views() -> MutantsViewInformation:
     testcases_failed = create_materialized_view(
         "TestCasesFailed",
         testcases_failed,
+        # replace=True,
+        metadata=Base.metadata,
+    )
+
+    total_repos = select(
+        literal_column("CAST('1' as int)").label("id"),
+        literal_column("'MutantsTotalRepos'").label("macro"),
+        func.count(distinct(mutant.c.repo_id).label("value")),
+    ).select_from(mutant)
+    number_mutants_total = select(
+        literal_column("'2'"),
+        literal_column("'MutantsNumberMutantsTotal'"),
+        func.count(mutant.c.commit),
+    ).select_from(mutant)
+
+    total_retest_all = select(
+        literal_column("'4'"),
+        literal_column("'MutantsTotalRetestAll'"),
+        func.sum(testcases_count.c.retest_all_count),
+    ).select_from(testcases_count)
+    total_dynamic = select(
+        literal_column("'5'"),
+        literal_column("'MutantsTotalDynamic'"),
+        func.sum(testcases_count.c.dynamic_count),
+    ).select_from(testcases_count)
+    total_static = select(
+        literal_column("'6'"),
+        literal_column("'MutantsTotalStatic'"),
+        func.sum(testcases_count.c.static_count),
+    ).select_from(testcases_count)
+
+    retest_all_failed = select(
+        literal_column("'7'"),
+        literal_column("'MutantsRetestAllFailed'"),
+        func.sum(testcases_count.c.retest_all_count_failed),
+    ).select_from(testcases_count)
+    dynamic_failed = select(
+        literal_column("'8'"),
+        literal_column("'MutantsDynamicFailed'"),
+        func.sum(testcases_count.c.dynamic_count_failed),
+    ).select_from(testcases_count)
+    static_failed = select(
+        literal_column("'9'"),
+        literal_column("'MutantsStaticFailed'"),
+        func.sum(testcases_count.c.static_count_failed),
+    ).select_from(testcases_count)
+
+    relative_dynamic = select(
+        literal_column("'10'"),
+        literal_column("'MutantsRelativeDynamic'"),
+        func.round(
+            func.cast(
+                func.sum(testcases_count.c.dynamic_count)
+                / func.sum(testcases_count.c.retest_all_count)
+                * 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(testcases_count)
+    relative_static = select(
+        literal_column("'11'"),
+        literal_column("'MutantsRelativeStatic'"),
+        func.round(
+            func.cast(
+                func.sum(testcases_count.c.static_count)
+                / func.sum(testcases_count.c.retest_all_count)
+                * 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(testcases_count)
+
+    unit_retest_all = (
+        select(
+            literal_column("'12'"),
+            literal_column("'MutantsUnitRetestAll'"),
+            func.sum(target_count.c.retest_all_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+    unit_dynamic = (
+        select(
+            literal_column("'13'"),
+            literal_column("'MutantsUnitDynamic'"),
+            func.sum(target_count.c.dynamic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+    unit_static = (
+        select(
+            literal_column("'14'"),
+            literal_column("'MutantsUnitStatic'"),
+            func.sum(target_count.c.static_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+
+    unit_relative_dynamic = (
+        select(
+            literal_column("'15'"),
+            literal_column("'MutantsUnitRelativeDynamic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.dynamic_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+    unit_relative_static = (
+        select(
+            literal_column("'16'"),
+            literal_column("'MutantsUnitRelativeStatic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.static_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+
+    integration_retest_all = (
+        select(
+            literal_column("'17'"),
+            literal_column("'MutantsIntegrationRetestAll'"),
+            func.sum(target_count.c.retest_all_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+    integration_dynamic = (
+        select(
+            literal_column("'18'"),
+            literal_column("'MutantsIntegrationDynamic'"),
+            func.sum(target_count.c.dynamic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+    integration_static = (
+        select(
+            literal_column("'19'"),
+            literal_column("'MutantsIntegrationStatic'"),
+            func.sum(target_count.c.static_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+
+    integration_relative_dynamic = (
+        select(
+            literal_column("'20'"),
+            literal_column("'MutantsIntegrationRelativeDynamic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.dynamic_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+    integration_relative_static = (
+        select(
+            literal_column("'21'"),
+            literal_column("'MutantsIntegrationRelativeStatic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.static_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+
+    percentage_failed_retest_all = (
+        select(
+            literal_column("'22'"),
+            literal_column("'MutantsPercentageFailedRetestall'"),
+            func.round(
+                func.cast(
+                    func.avg(
+                        testcases_count.c.retest_all_count_failed
+                        / testcases_count.c.retest_all_count
+                    )
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(testcases_count)
+        .where(testcases_count.c.retest_all_count != 0)
+    )
+    percentage_failed_dynamic = (
+        select(
+            literal_column("'23'"),
+            literal_column("'MutantsPercentageFailedDynamic'"),
+            func.round(
+                func.cast(
+                    func.avg(
+                        testcases_count.c.dynamic_count_failed
+                        / testcases_count.c.dynamic_count
+                    )
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(testcases_count)
+        .where(testcases_count.c.dynamic_count != 0)
+    )
+    percentage_failed_static = (
+        select(
+            literal_column("'24'"),
+            literal_column("'MutantsPercentageFailedStatic'"),
+            func.round(
+                func.cast(
+                    func.avg(
+                        testcases_count.c.static_count_failed
+                        / testcases_count.c.static_count
+                    )
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(testcases_count)
+        .where(testcases_count.c.static_count != 0)
+    )
+
+    facts = total_repos.union(
+        number_mutants_total,
+        total_retest_all,
+        total_dynamic,
+        total_static,
+        retest_all_failed,
+        dynamic_failed,
+        static_failed,
+        relative_dynamic,
+        relative_static,
+        unit_retest_all,
+        unit_dynamic,
+        unit_static,
+        unit_relative_dynamic,
+        unit_relative_static,
+        integration_retest_all,
+        integration_dynamic,
+        integration_static,
+        integration_relative_dynamic,
+        integration_relative_static,
+        percentage_failed_retest_all,
+        percentage_failed_dynamic,
+        percentage_failed_static,
+    )
+
+    facts = create_materialized_view(
+        "Facts",
+        facts,
         # replace=True,
         metadata=Base.metadata,
     )

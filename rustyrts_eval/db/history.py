@@ -414,6 +414,8 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     suite = DBTestSuite.__table__
     case = DBTestCase.__table__
 
+    special = " sequentially" if sequential else ""
+
     check_parsed_tests = (
         select(
             suite,
@@ -470,13 +472,15 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
                 .where(case.c.status != "IGNORED")
                 .scalar_subquery()
             ).label("integration"),
-            func.round(func.cast(sum(suite.c.duration), NUMERIC), 2).label("duration"),
+            func.round(func.cast(sum(suite.c.duration), NUMERIC), 2).label(
+                "test_duration"
+            ),
         )
         .select_from(commit, report, suite)
         .where(commit.c.id == report.c.commit_id)
         .where(report.c.id == suite.c.report_id)
         .where(report.c.has_errored == False)
-        .where(report.c.name == "cargo test")
+        .where(report.c.name == "cargo test" + special)
         .group_by(commit.c.id, commit.c.repo_id)
     )
 
@@ -490,19 +494,34 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     statistics_repository = (
         select(
             statistics_commit.c.repo_id,
-            func.cast(func.avg(statistics_commit.c.lines), NUMERIC).label("avg_lines"),
-            func.cast(func.avg(statistics_commit.c.files), NUMERIC).label("avg_files"),
-            func.cast(func.avg(statistics_commit.c.suites), NUMERIC).label(
-                "avg_suites"
-            ),
-            func.cast(func.avg(statistics_commit.c.cases), NUMERIC).label("avg_cases"),
-            func.cast(func.avg(statistics_commit.c.unit), NUMERIC).label("avg_unit"),
-            func.cast(func.avg(statistics_commit.c.integration), NUMERIC).label(
-                "avg_integration"
-            ),
-            func.cast(func.avg(statistics_commit.c.duration), NUMERIC).label(
-                "avg_duration"
-            ),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.lines), NUMERIC),
+                2,
+            ).label("avg_lines"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.files), NUMERIC),
+                2,
+            ).label("avg_files"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.suites), NUMERIC),
+                2,
+            ).label("avg_suites"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.cases), NUMERIC),
+                2,
+            ).label("avg_cases"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.unit), NUMERIC),
+                2,
+            ).label("avg_unit"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.integration), NUMERIC),
+                2,
+            ).label("avg_integration"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.test_duration), NUMERIC),
+                2,
+            ).label("avg_test_duration"),
         )
         .select_from(statistics_commit)
         .group_by(statistics_commit.c.repo_id)
@@ -515,12 +534,17 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         metadata=Base.metadata,
     )
 
-    special = " sequentially" if sequential else ""
     report, report_parent = register_views_individual(special)
 
     report = create_view(
         "TestReportExtended",
         report,
+        replace=True,
+        metadata=Base.metadata,
+    )
+    report_parent = create_view(
+        "TestReportParentExtended",
+        report_parent,
         replace=True,
         metadata=Base.metadata,
     )
@@ -675,43 +699,88 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
 
     testcase = DBTestCase.__table__
 
+    retest_all_selected = testcase.alias("restest_all_selected")
+    dynamic_selected = testcase.alias("dynamic_selected")
+    static_selected = testcase.alias("static_selected")
+
+    retest_all_different = testcase.alias("restest_all_different")
+    dynamic_different = testcase.alias("dynamic_different")
+    static_different = testcase.alias("static_different")
+
+    testcase_retest_all = testcase.alias("retest_all")
+    testcase_dynamic = testcase.alias("dynamic")
+    testcase_static = testcase.alias("static")
+
     testcases_count = (
         select(
             overview.c.commit,
-            count(distinct(overview.c.retest_all_testcase_id)).label(
-                "retest_all_count"
+            count(distinct(retest_all_selected.c.id)).label("retest_all_count"),
+            count(distinct(retest_all_different.c.id)).label(
+                "retest_all_count_different"
             ),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.retest_all_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("retest_all_count_failed"),
-            count(distinct(overview.c.dynamic_testcase_id)).label("dynamic_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.dynamic_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("dynamic_count_failed"),
-            count(distinct(overview.c.static_testcase_id)).label("static_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.static_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("static_count_failed"),
+            count(distinct(dynamic_selected.c.id)).label("dynamic_count"),
+            count(distinct(dynamic_different.c.id)).label("dynamic_count_different"),
+            count(distinct(static_selected.c.id)).label("static_count"),
+            count(distinct(static_different.c.id)).label("static_count_different"),
         )
         .select_from(overview)
+        .outerjoin(
+            overview_parent,
+            (overview.c.commit == overview_parent.c.commit)
+            & (
+                overview.c.retest_all_suite_name
+                == overview_parent.c.retest_all_suite_name
+            )
+            & (overview.c.retest_all_name == overview_parent.c.retest_all_name),
+        )
+        .outerjoin(
+            retest_all_selected,
+            (overview.c.retest_all_testcase_id == retest_all_selected.c.id),
+        )
+        .outerjoin(
+            retest_all_different,
+            (overview.c.retest_all_testcase_id == retest_all_different.c.id)
+            # & (retest_all_different.c.status == "FAILED"),
+            & ~exists(
+                select()
+                .select_from(testcase_retest_all)
+                .where(
+                    overview_parent.c.retest_all_testcase_id == testcase_retest_all.c.id
+                )
+                .where(testcase_retest_all.c.status == retest_all_different.c.status)
+                .scalar_subquery()
+            ),
+        )
+        .outerjoin(
+            dynamic_selected, (overview.c.dynamic_testcase_id == dynamic_selected.c.id)
+        )
+        .outerjoin(
+            dynamic_different,
+            (overview.c.dynamic_testcase_id == dynamic_different.c.id)
+            # & (dynamic_different.c.status == "FAILED"),
+            & ~exists(
+                select()
+                .select_from(testcase_dynamic)
+                .where(overview_parent.c.dynamic_testcase_id == testcase_dynamic.c.id)
+                .where(testcase_dynamic.c.status == dynamic_different.c.status)
+                .scalar_subquery()
+            ),
+        )
+        .outerjoin(
+            static_selected, (overview.c.static_testcase_id == static_selected.c.id)
+        )
+        .outerjoin(
+            static_different,
+            (overview.c.static_testcase_id == static_different.c.id)
+            # & (static_different.c.status == "FAILED"),
+            & ~exists(
+                select()
+                .select_from(testcase_static)
+                .where(overview_parent.c.static_testcase_id == testcase_static.c.id)
+                .where(testcase_static.c.status == static_different.c.status)
+                .scalar_subquery()
+            ),
+        )
         .group_by(
             overview.c.commit,
             overview.c.retest_all_id,
@@ -731,45 +800,79 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         select(
             overview.c.commit,
             overview.c.target,
-            count(distinct(overview.c.retest_all_testcase_id)).label(
-                "retest_all_count"
+            count(distinct(retest_all_selected.c.id)).label("retest_all_count"),
+            count(distinct(retest_all_different.c.id)).label(
+                "retest_all_count_different"
             ),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.retest_all_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("retest_all_count_failed"),
-            count(distinct(overview.c.dynamic_testcase_id)).label("dynamic_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.dynamic_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("dynamic_count_failed"),
-            count(distinct(overview.c.static_testcase_id)).label("static_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.static_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("static_count_failed"),
+            count(distinct(dynamic_selected.c.id)).label("dynamic_count"),
+            count(distinct(dynamic_different.c.id)).label("dynamic_count_different"),
+            count(distinct(static_selected.c.id)).label("static_count"),
+            count(distinct(static_different.c.id)).label("static_count_different"),
         )
         .select_from(overview)
+        .outerjoin(
+            overview_parent,
+            (overview.c.commit == overview_parent.c.commit)
+            & (
+                overview.c.retest_all_suite_name
+                == overview_parent.c.retest_all_suite_name
+            )
+            & (overview.c.retest_all_name == overview_parent.c.retest_all_name),
+        )
+        .outerjoin(
+            retest_all_selected,
+            (overview.c.retest_all_testcase_id == retest_all_selected.c.id),
+        )
+        .outerjoin(
+            retest_all_different,
+            (overview.c.retest_all_testcase_id == retest_all_different.c.id)
+            # & (retest_all_different.c.status == "FAILED"),
+            & ~exists(
+                select()
+                .select_from(testcase_retest_all)
+                .where(
+                    overview_parent.c.retest_all_testcase_id == testcase_retest_all.c.id
+                )
+                .where(testcase_retest_all.c.status == retest_all_different.c.status)
+                .scalar_subquery()
+            ),
+        )
+        .outerjoin(
+            dynamic_selected, (overview.c.dynamic_testcase_id == dynamic_selected.c.id)
+        )
+        .outerjoin(
+            dynamic_different,
+            (overview.c.dynamic_testcase_id == dynamic_different.c.id)
+            # & (dynamic_different.c.status == "FAILED"),
+            & ~exists(
+                select()
+                .select_from(testcase_dynamic)
+                .where(overview_parent.c.dynamic_testcase_id == testcase_dynamic.c.id)
+                .where(testcase_dynamic.c.status == dynamic_different.c.status)
+                .scalar_subquery()
+            ),
+        )
+        .outerjoin(
+            static_selected, (overview.c.static_testcase_id == static_selected.c.id)
+        )
+        .outerjoin(
+            static_different,
+            (overview.c.static_testcase_id == static_different.c.id)
+            # & (static_different.c.status == "FAILED"),
+            & ~exists(
+                select()
+                .select_from(testcase_static)
+                .where(overview_parent.c.static_testcase_id == testcase_static.c.id)
+                .where(testcase_static.c.status == static_different.c.status)
+                .scalar_subquery()
+            ),
+        )
         .group_by(
             overview.c.commit,
             overview.c.target,
             overview.c.retest_all_id,
             overview.c.dynamic_id,
+            overview.c.static_id,
         )
     )
 
@@ -779,10 +882,6 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         # replace=True,
         metadata=Base.metadata,
     )
-
-    retest_all_selected = testcase.alias("restest_all_selected")
-    dynamic_selected = testcase.alias("dynamic_selected")
-    static_selected = testcase.alias("static_selected")
 
     testcases_selected = (
         select(
@@ -836,10 +935,6 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         # replace=True,
         metadata=Base.metadata,
     )
-
-    testcase_retest_all = testcase.alias("retest_all")
-    testcase_dynamic = testcase.alias("dynamic")
-    testcase_static = testcase.alias("static")
 
     testcases_different = (
         select(
@@ -1072,6 +1167,495 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     duration = create_materialized_view(
         "Duration",
         duration_1.union(duration_2),
+        # replace=True,
+        metadata=Base.metadata,
+    )
+
+    total_repos = select(
+        literal_column("CAST('1' as int)").label("id"),
+        literal_column("'HistoryTotalRepos'").label("macro"),
+        func.count(distinct(report.c.repo_id).label("value")),
+    ).select_from(report)
+    number_commits_total = select(
+        literal_column("'2'"),
+        literal_column("'HistoryNumberCommitsTotal'"),
+        func.count(report.c.commit),
+    ).select_from(report)
+    number_commits_per_repo_sub = (
+        select(func.count(report.c.commit).label("count"))
+        .select_from(report)
+        .group_by(report.c.repo_id)
+        .subquery()
+    )
+    number_commits_per_repo = select(
+        literal_column("'3'"),
+        literal_column("'HistoryNumberCommitsPerRepo'"),
+        func.avg(number_commits_per_repo_sub.c.count),
+    ).select_from(number_commits_per_repo_sub)
+
+    total_retest_all = select(
+        literal_column("'4'"),
+        literal_column("'HistoryTotalRetestAll'"),
+        func.sum(testcases_count.c.retest_all_count),
+    ).select_from(testcases_count)
+    total_dynamic = select(
+        literal_column("'5'"),
+        literal_column("'HistoryTotalDynamic'"),
+        func.sum(testcases_count.c.dynamic_count),
+    ).select_from(testcases_count)
+    total_static = select(
+        literal_column("'6'"),
+        literal_column("'HistoryTotalStatic'"),
+        func.sum(testcases_count.c.static_count),
+    ).select_from(testcases_count)
+
+    retest_all_different = select(
+        literal_column("'7'"),
+        literal_column("'HistoryDifferentRetestAll'"),
+        func.sum(testcases_count.c.retest_all_count_different),
+    ).select_from(testcases_count)
+    dynamic_different = select(
+        literal_column("'8'"),
+        literal_column("'HistoryDifferentDynamic'"),
+        func.sum(testcases_count.c.dynamic_count_different),
+    ).select_from(testcases_count)
+    static_different = select(
+        literal_column("'9'"),
+        literal_column("'HistoryDifferentStatic'"),
+        func.sum(testcases_count.c.static_count_different),
+    ).select_from(testcases_count)
+
+    relative_dynamic = select(
+        literal_column("'10'"),
+        literal_column("'HistoryRelativeDynamic'"),
+        func.round(
+            func.cast(
+                func.sum(testcases_count.c.dynamic_count)
+                / func.sum(testcases_count.c.retest_all_count)
+                * 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(testcases_count)
+    relative_static = select(
+        literal_column("'11'"),
+        literal_column("'HistoryRelativeStatic'"),
+        func.round(
+            func.cast(
+                func.sum(testcases_count.c.static_count)
+                / func.sum(testcases_count.c.retest_all_count)
+                * 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(testcases_count)
+
+    unit_retest_all = (
+        select(
+            literal_column("'12'"),
+            literal_column("'HistoryUnitRetestAll'"),
+            func.sum(target_count.c.retest_all_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+    unit_dynamic = (
+        select(
+            literal_column("'13'"),
+            literal_column("'HistoryUnitDynamic'"),
+            func.sum(target_count.c.dynamic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+    unit_static = (
+        select(
+            literal_column("'14'"),
+            literal_column("'HistoryUnitStatic'"),
+            func.sum(target_count.c.static_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+
+    unit_relative_dynamic = (
+        select(
+            literal_column("'15'"),
+            literal_column("'HistoryUnitRelativeDynamic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.dynamic_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+    unit_relative_static = (
+        select(
+            literal_column("'16'"),
+            literal_column("'HistoryUnitRelativeStatic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.static_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
+
+    integration_retest_all = (
+        select(
+            literal_column("'17'"),
+            literal_column("'HistoryIntegrationRetestAll'"),
+            func.sum(target_count.c.retest_all_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+    integration_dynamic = (
+        select(
+            literal_column("'18'"),
+            literal_column("'HistoryIntegrationDynamic'"),
+            func.sum(target_count.c.dynamic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+    integration_static = (
+        select(
+            literal_column("'19'"),
+            literal_column("'HistoryIntegrationStatic'"),
+            func.sum(target_count.c.static_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+
+    integration_relative_dynamic = (
+        select(
+            literal_column("'20'"),
+            literal_column("'HistoryIntegrationRelativeDynamic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.dynamic_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+    integration_relative_static = (
+        select(
+            literal_column("'21'"),
+            literal_column("'HistoryIntegrationRelativeStatic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.static_count)
+                    / func.sum(target_count.c.retest_all_count)
+                    * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
+
+    average_testing_time = (
+        select(
+            literal_column("22"),
+            literal_column("'HistoryAverageTestingTime'"),
+            duration.c.retest_all_mean,
+        )
+        .select_from(duration)
+        .where(duration.c.path == "all")
+    )
+    average_testing_time_min = (
+        select(
+            literal_column("23"),
+            literal_column("'HistoryAverageTestingTimeMin'"),
+            func.min(duration.c.retest_all_mean),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+    )
+    average_testing_time_max = (
+        select(
+            literal_column("24"),
+            literal_column("'HistoryAverageTestingTimeMax'"),
+            func.max(duration.c.retest_all_mean),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+    )
+
+    efficiency_dynamic = (
+        select(
+            literal_column("25"),
+            literal_column("'HistoryEfficiencyDynamic'"),
+            duration.c.dynamic_mean_relative,
+        )
+        .select_from(duration)
+        .where(duration.c.path == "all")
+    )
+    efficiency_dynamic_min = (
+        select(
+            literal_column("26"),
+            literal_column("'HistoryEfficiencyDynamicMin'"),
+            func.min(duration.c.dynamic_mean_relative),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+    )
+    efficiency_dynamic_max = (
+        select(
+            literal_column("27"),
+            literal_column("'HistoryEfficiencyDynamicMax'"),
+            func.max(duration.c.dynamic_mean_relative),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+    )
+
+    efficiency_static = (
+        select(
+            literal_column("28"),
+            literal_column("'HistoryEfficiencyStatic'"),
+            duration.c.static_mean_relative,
+        )
+        .select_from(duration)
+        .where(duration.c.path == "all")
+    )
+    efficiency_static_min = (
+        select(
+            literal_column("29"),
+            literal_column("'HistoryEfficiencyStaticMin'"),
+            func.min(duration.c.static_mean_relative),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+    )
+    efficiency_static_max = (
+        select(
+            literal_column("30"),
+            literal_column("'HistoryEfficiencyStaticMax'"),
+            func.max(duration.c.static_mean_relative),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+    )
+
+    efficiency_better_dynamic = (
+        select(
+            literal_column("31"),
+            literal_column("'HistoryEfficiencyBetterDynamic'"),
+            0 + func.sum(1),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+        .where(duration.c.dynamic_mean_relative < 100.0)
+    )
+    efficiency_better_static = (
+        select(
+            literal_column("32"),
+            literal_column("'HistoryEfficiencyBetterStatic'"),
+            0 + func.sum(1),
+        )
+        .select_from(duration)
+        .where(duration.c.path != "all")
+        .where(duration.c.static_mean_relative < 100.0)
+    )
+
+    build_overhead_dynamic = select(
+        literal_column("33"),
+        literal_column("'HistoryBuildOverheadDynamic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report.c.dynamic_build_duration / report.c.retest_all_build_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+    build_overhead_static = select(
+        literal_column("34"),
+        literal_column("'HistoryBuildOverheadStatic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report.c.static_build_duration / report.c.retest_all_build_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+
+    build_overhead_dynamic_parent = select(
+        literal_column("35"),
+        literal_column("'HistoryBuildOverheadParentDynamic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report_parent.c.dynamic_build_duration
+                    / report_parent.c.retest_all_build_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+    build_overhead_static_parent = select(
+        literal_column("36"),
+        literal_column("'HistoryBuildOverheadParentStatic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report_parent.c.static_build_duration
+                    / report_parent.c.retest_all_build_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+
+    test_overhead_dynamic = select(
+        literal_column("37"),
+        literal_column("'HistoryTestOverheadDynamic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report.c.dynamic_test_duration / report.c.retest_all_test_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+    test_overhead_static = select(
+        literal_column("38"),
+        literal_column("'HistoryTestOverheadStatic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report.c.static_test_duration / report.c.retest_all_test_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+
+    test_overhead_dynamic_parent = select(
+        literal_column("39"),
+        literal_column("'HistoryTestOverheadParentDynamic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report_parent.c.dynamic_test_duration
+                    / report_parent.c.retest_all_test_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+    test_overhead_static_parent = select(
+        literal_column("40"),
+        literal_column("'HistoryTestOverheadParentStatic'"),
+        func.round(
+            func.cast(
+                func.avg(
+                    report_parent.c.static_test_duration
+                    / report_parent.c.retest_all_test_duration
+                )
+                * 100.0
+                - 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(report_parent)
+
+    facts = total_repos.union(
+        number_commits_total,
+        number_commits_per_repo,
+        total_retest_all,
+        total_dynamic,
+        total_static,
+        retest_all_different,
+        dynamic_different,
+        static_different,
+        relative_dynamic,
+        relative_static,
+        unit_retest_all,
+        unit_dynamic,
+        unit_static,
+        unit_relative_dynamic,
+        unit_relative_static,
+        integration_retest_all,
+        integration_dynamic,
+        integration_static,
+        integration_relative_dynamic,
+        integration_relative_static,
+        average_testing_time,
+        average_testing_time_min,
+        average_testing_time_max,
+        efficiency_dynamic,
+        efficiency_dynamic_min,
+        efficiency_dynamic_max,
+        efficiency_static,
+        efficiency_static_min,
+        efficiency_static_max,
+        efficiency_better_dynamic,
+        efficiency_better_static,
+        build_overhead_dynamic,
+        build_overhead_static,
+        build_overhead_dynamic_parent,
+        build_overhead_static_parent,
+        test_overhead_dynamic,
+        test_overhead_static,
+        test_overhead_dynamic_parent,
+        test_overhead_static_parent,
+    )
+
+    facts = create_materialized_view(
+        "Facts",
+        facts,
         # replace=True,
         metadata=Base.metadata,
     )
