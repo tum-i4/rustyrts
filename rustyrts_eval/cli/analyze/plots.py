@@ -72,16 +72,18 @@ def mutants_cmd(ctx):
         spinner = start_spinner("Plotting results of mutants evaluation...")
 
         info = mutants.register_views()
-        plotter = MutantsPlotter(conn, info, ".svg")
+        plotter = MutantsPlotter(conn, info, output_format)
+
+        partition = True
 
         plotter.plot_mutants_duration_absolute()
         plotter.plot_mutants_duration_relative()
-        plotter.plot_mutants_target_count_absolute()
+        plotter.plot_mutants_target_count_absolute(partition=partition)
         plotter.plot_mutants_target_count_relative()
-        plotter.plot_mutants_testcases_contains_relation()
-        plotter.plot_mutants_testcases_count_absolute()
+        plotter.plot_mutants_testcases_contains_relation(partition=partition)
+        plotter.plot_mutants_testcases_count_absolute(partition=partition)
         plotter.plot_mutants_testcases_count_relative()
-        plotter.plot_mutants_testcases_failed_absolute()
+        plotter.plot_mutants_testcases_failed_absolute(partition=partition)
         plotter.plot_mutants_percentage_failed()
 
         spinner.stop()
@@ -106,18 +108,20 @@ def history_cmd(ctx, strategy):
         plotter = HistoryPlotter(
             conn,
             info,
-            ".svg",
+            output_format,
             True if strategy == "sequential" else False,
         )
 
-        plotter.plot_history_duration_absolute()
+        partition = True
+
+        plotter.plot_history_duration_absolute(partition=partition)
         plotter.plot_history_duration_relative()
-        plotter.plot_history_target_count_absolute()
+        plotter.plot_history_target_count_absolute(partition=partition)
         plotter.plot_history_target_count_relative()
-        plotter.plot_history_testcases_contains_relation()
+        plotter.plot_history_testcases_contains_relation(partition=partition)
         plotter.plot_history_testcases_count_absolute()
         plotter.plot_history_testcases_count_relative()
-        plotter.plot_history_testcases_different_absolute()
+        plotter.plot_history_testcases_different_absolute(partition=partition)
         plotter.plot_history_efficiency_repo()
 
         spinner.stop()

@@ -63,34 +63,33 @@ class HistoryPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_retest_all, df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         if partition:
-            filter_normal = [1, 2, 3, 4, 5, 6, 8, 9, 10, 11, 12]
-            filter_special = [7]
+            filter_normal = [1, 2, 4, 5, 6, 8, 9, 10, 11]
+            filter_special = [3, 12]
+            filter_even_more_special = [7]
 
             labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
+            labels_3 = self.labels[(self.labels["id"].isin(filter_even_more_special))]
 
             df_1 = df[(df["repository"].isin(filter_normal))]
             df_2 = df[(df["repository"].isin(filter_special))]
+            df_3 = df[(df["repository"].isin(filter_even_more_special))]
 
-            boxplot(
-                [df_1, df_2],
-                [labels_1["path"], labels_2["path"]],
-                y_label,
-                file,
-                ["#DAD7CB", "#E37222", "#A2AD00"],
-                sequential_watermark=self.sequential_watermark,
-            )
-        else:
-            boxplot(
-                [df],
-                [self.labels["path"]],
-                y_label,
-                file,
-                ["#DAD7CB", "#E37222", "#A2AD00"],
-                sequential_watermark=self.sequential_watermark,
-            )
+            dfs = [df_1, df_2, df_3]
+            labels = [labels_1["path"], labels_2["path"], labels_3["path"]]
+
+        boxplot(
+            dfs,
+            labels,
+            y_label,
+            file,
+            ["#DAD7CB", "#E37222", "#A2AD00"],
+            sequential_watermark=self.sequential_watermark,
+        )
 
     def plot_history_duration_relative(self):
         y_label = "relative e2e testing time [%]"
@@ -129,10 +128,12 @@ class HistoryPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file,
             ["#E37222", "#A2AD00"],
@@ -191,7 +192,7 @@ class HistoryPlotter:
             sequential_watermark=self.sequential_watermark,
         )
 
-    def plot_history_target_count_absolute(self):
+    def plot_history_target_count_absolute(self, partition=False):
         y_label = "absolute number of tests"
         file = "selected_targets_absolute"
 
@@ -267,17 +268,71 @@ class HistoryPlotter:
             ]
         )
 
+        dfs_dynamic = [df_dynamic]
+        dfs_static = [df_static]
+        labels_dynamic = [self.labels["path"]]
+        labels_static = [self.labels["path"]]
+
+        if partition:
+            filter_normal = [1, 3, 4, 5, 6, 7, 8, 10, 12]
+            filter_special = [2, 11]
+            filter_even_more_special = [9]
+
+            labels_dynamic_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_dynamic_2 = self.labels[(self.labels["id"].isin(filter_special))]
+            labels_dynamic_3 = self.labels[
+                (self.labels["id"].isin(filter_even_more_special))
+            ]
+
+            df_dynamic_1 = df_dynamic[(df_dynamic["repository"].isin(filter_normal))]
+            df_dynamic_2 = df_dynamic[(df_dynamic["repository"].isin(filter_special))]
+            df_dynamic_3 = df_dynamic[
+                (df_dynamic["repository"].isin(filter_even_more_special))
+            ]
+
+            dfs_dynamic = [df_dynamic_1, df_dynamic_2, df_dynamic_3]
+            labels_dynamic = [
+                labels_dynamic_1["path"],
+                labels_dynamic_2["path"],
+                labels_dynamic_3["path"],
+            ]
+
         boxplot(
-            [df_dynamic],
-            [self.labels["path"]],
+            dfs_dynamic,
+            labels_dynamic,
             y_label,
             file + "_dynamic" + self.output_format,
             ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
             sequential_watermark=self.sequential_watermark,
         )
+
+        if partition:
+            filter_normal = [1, 3, 4, 5, 6, 7, 8, 10, 12]
+            filter_special = [2, 11]
+            filter_even_more_special = [9]
+
+            labels_static_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_static_2 = self.labels[(self.labels["id"].isin(filter_special))]
+            labels_static_3 = self.labels[
+                (self.labels["id"].isin(filter_even_more_special))
+            ]
+
+            df_static_1 = df_static[(df_static["repository"].isin(filter_normal))]
+            df_static_2 = df_static[(df_static["repository"].isin(filter_special))]
+            df_static_3 = df_static[
+                (df_static["repository"].isin(filter_even_more_special))
+            ]
+
+            dfs_static = [df_static_1, df_static_2, df_static_3]
+            labels_static = [
+                labels_static_1["path"],
+                labels_static_2["path"],
+                labels_static_3["path"],
+            ]
+
         boxplot(
-            [df_static],
-            [self.labels["path"]],
+            dfs_static,
+            labels_static,
             y_label,
             file + "_static" + self.output_format,
             ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
@@ -357,10 +412,12 @@ class HistoryPlotter:
                 df_static_integration,
             ]
         )
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot_with_observations(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
@@ -368,8 +425,8 @@ class HistoryPlotter:
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
@@ -377,8 +434,8 @@ class HistoryPlotter:
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
@@ -436,6 +493,8 @@ class HistoryPlotter:
 
         df_not_selected_static = pd.DataFrame(not_selected_static)
         df = pd.concat([df_not_selected_static[["repository", "algorithm", "y"]]])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         if partition:
             filter_normal = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
@@ -447,27 +506,19 @@ class HistoryPlotter:
             df_1 = df[(df["repository"].isin(filter_normal))]
             df_2 = df[(df["repository"].isin(filter_special))]
 
-            stripplot(
-                [df_1, df_2],
-                [labels_1["path"], labels_2["path"]],
-                y_label,
-                file,
-                ["#E37222"],
-                hue="algorithm",
-                legend_anchor=(0.3, 0.9, 0.7, 0.1),
-                sequential_watermark=self.sequential_watermark,
-            )
-        else:
-            stripplot(
-                [df],
-                [self.labels["path"]],
-                y_label,
-                file,
-                ["#E37222"],
-                hue="algorithm",
-                legend_anchor=(0.3, 0.9, 0.7, 0.1),
-                sequential_watermark=self.sequential_watermark,
-            )
+            dfs = [df_1, df_2]
+            labels = [labels_1["path"], labels_2["path"]]
+
+        stripplot(
+            dfs,
+            labels,
+            y_label,
+            file,
+            ["#E37222"],
+            hue="algorithm",
+            legend_anchor=(0.3, 0.9, 0.7, 0.1),
+            sequential_watermark=self.sequential_watermark,
+        )
 
     def plot_history_testcases_count_absolute(self):
         y_label = "absolute number of tests"
@@ -503,10 +554,12 @@ class HistoryPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_retest_all, df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file,
             ["#DAD7CB", "#E37222", "#A2AD00"],
@@ -550,10 +603,12 @@ class HistoryPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot_with_observations(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + self.output_format,
             ["#E37222", "#A2AD00"],
@@ -561,8 +616,8 @@ class HistoryPlotter:
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E37222", "#A2AD00"],
@@ -570,8 +625,8 @@ class HistoryPlotter:
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E37222", "#A2AD00"],
@@ -699,9 +754,9 @@ class HistoryPlotter:
         df_not_selected_dynamic = pd.DataFrame(not_selected_dynamic)
         df_not_selected_static = pd.DataFrame(not_selected_static)
 
-        labels = []
+        label = []
         for i in range(len(self.labels)):
-            labels.append(
+            label.append(
                 self.labels["path"][i]
                 + (
                     # "\n(" +
@@ -727,40 +782,39 @@ class HistoryPlotter:
             ]
         )
 
+        dfs_selected = [df_selected]
+        dfs_not_selected = [df_not_selected]
+        labels_selected = [label]
+        labels_not_selected = [label]
+
         if partition:
             filter_normal = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
             filter_special = [2]
 
-            labels_1 = labels[:1] + labels[2:]
-            labels_2 = [labels[1]]
+            labels_1 = label[:1] + label[2:]
+            labels_2 = [label[1]]
 
             df_selected_1 = df_selected[(df_selected["repository"].isin(filter_normal))]
             df_selected_2 = df_selected[
                 (df_selected["repository"].isin(filter_special))
             ]
 
-            stripplot(
-                [df_selected_1, df_selected_2],
-                [labels_1, labels_2],
-                y_label_selected,
-                file_selected,
-                ["#E37222", "#A2AD00"],
-                hue="algorithm",
-                sequential_watermark=self.sequential_watermark,
-            )
-        else:
-            stripplot(
-                [df_selected],
-                [labels],
-                y_label_selected,
-                file_selected,
-                ["#E37222", "#A2AD00"],
-                hue="algorithm",
-                sequential_watermark=self.sequential_watermark,
-            )
+            dfs_selected = [df_selected_1, df_selected_2]
+            labels_selected = [labels_1, labels_2]
+
         stripplot(
-            [df_not_selected],
-            [labels],
+            dfs_selected,
+            labels_selected,
+            y_label_selected,
+            file_selected,
+            ["#E37222", "#A2AD00"],
+            hue="algorithm",
+            sequential_watermark=self.sequential_watermark,
+        )
+
+        stripplot(
+            dfs_not_selected,
+            labels_not_selected,
             y_label_not_selected,
             file_not_selected,
             ["#E37222", "#A2AD00"],
@@ -823,10 +877,12 @@ class MutantsPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_retest_all, df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file,
             ["#DAD7CB", "#E37222", "#A2AD00"],
@@ -867,10 +923,12 @@ class MutantsPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
-        boxplot([df], [self.labels["path"]], y_label, file, ["#E37222", "#A2AD00"])
+        boxplot(dfs, labels, y_label, file, ["#E37222", "#A2AD00"])
 
-    def plot_mutants_target_count_absolute(self):
+    def plot_mutants_target_count_absolute(self, partition=False):
         y_label = "absolute number of tests"
         file = "selected_targets_absolute"
 
@@ -943,16 +1001,70 @@ class MutantsPlotter:
             ]
         )
 
+        dfs_dynamic = [df_dynamic]
+        dfs_static = [df_static]
+        labels_dynamic = [self.labels["path"]]
+        labels_static = [self.labels["path"]]
+
+        if partition:
+            filter_normal = [1, 3, 5, 6, 7, 9]
+            filter_special = [2, 8]
+            filter_even_more_special = [4]
+
+            labels_dynamic_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_dynamic_2 = self.labels[(self.labels["id"].isin(filter_special))]
+            labels_dynamic_3 = self.labels[
+                (self.labels["id"].isin(filter_even_more_special))
+            ]
+
+            df_dynamic_1 = df_dynamic[(df_dynamic["repository"].isin(filter_normal))]
+            df_dynamic_2 = df_dynamic[(df_dynamic["repository"].isin(filter_special))]
+            df_dynamic_3 = df_dynamic[
+                (df_dynamic["repository"].isin(filter_even_more_special))
+            ]
+
+            dfs_dynamic = [df_dynamic_1, df_dynamic_2, df_dynamic_3]
+            labels_dynamic = [
+                labels_dynamic_1["path"],
+                labels_dynamic_2["path"],
+                labels_dynamic_3["path"],
+            ]
+
         boxplot(
-            [df_dynamic],
-            [self.labels["path"]],
+            dfs_dynamic,
+            labels_dynamic,
             y_label,
             file + "_dynamic" + self.output_format,
             ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
         )
+
+        if partition:
+            filter_normal = [1, 3, 5, 6, 7, 9]
+            filter_special = [2, 8]
+            filter_even_more_special = [4]
+
+            labels_static_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_static_2 = self.labels[(self.labels["id"].isin(filter_special))]
+            labels_static_3 = self.labels[
+                (self.labels["id"].isin(filter_even_more_special))
+            ]
+
+            df_static_1 = df_static[(df_static["repository"].isin(filter_normal))]
+            df_static_2 = df_static[(df_static["repository"].isin(filter_special))]
+            df_static_3 = df_static[
+                (df_static["repository"].isin(filter_even_more_special))
+            ]
+
+            dfs_static = [df_static_1, df_static_2, df_static_3]
+            labels_static = [
+                labels_static_1["path"],
+                labels_static_2["path"],
+                labels_static_3["path"],
+            ]
+
         boxplot(
-            [df_static],
-            [self.labels["path"]],
+            dfs_static,
+            labels_static,
             y_label,
             file + "_static" + self.output_format,
             ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
@@ -1028,10 +1140,12 @@ class MutantsPlotter:
                 df_static_integration,
             ]
         )
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot_with_observations(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
@@ -1040,16 +1154,16 @@ class MutantsPlotter:
             linewidth=0.3,
         )
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
@@ -1058,7 +1172,7 @@ class MutantsPlotter:
             linewidth=0.3,
         )
 
-    def plot_mutants_testcases_contains_relation(self):
+    def plot_mutants_testcases_contains_relation(self, partition=False):
         y_label = "Tests that have been selected"
         file = "contains_all_tests" + self.output_format
 
@@ -1116,19 +1230,33 @@ class MutantsPlotter:
         df_not_selected_static = pd.DataFrame(not_selected_static)
 
         df = pd.concat([df_not_selected_static[["repository", "algorithm", "y"]]])
+        dfs = [df]
+        labels = [self.labels["path"]]
+
+        if partition:
+            filter_normal = [1, 2, 3, 4, 6, 8]
+            filter_special = [5, 7, 9]
+
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
+
+            df_1 = df[(df["repository"].isin(filter_normal))]
+            df_2 = df[(df["repository"].isin(filter_special))]
+
+            dfs = [df_1, df_2]
+            labels = [labels_1["path"], labels_2["path"]]
 
         stripplot(
-            df,
-            self.labels["path"],
+            dfs,
+            labels,
             y_label,
             file,
             ["#E37222"],
             hue="algorithm",
             legend_loc="upper left",
-            legend_anchor=(0.5, 0.7, 0.4, 0.3),
         )
 
-    def plot_mutants_testcases_count_absolute(self):
+    def plot_mutants_testcases_count_absolute(self, partition=False):
         y_label = "absolute number of tests"
         file = "selected_tests_absolute" + self.output_format
 
@@ -1160,10 +1288,25 @@ class MutantsPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_retest_all, df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
+
+        if partition:
+            filter_normal = [1, 2, 3, 5, 6, 7, 8, 9]
+            filter_special = [4]
+
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
+
+            df_1 = df[(df["repository"].isin(filter_normal))]
+            df_2 = df[(df["repository"].isin(filter_special))]
+
+            dfs = [df_1, df_2]
+            labels = [labels_1["path"], labels_2["path"]]
 
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file,
             ["#DAD7CB", "#E37222", "#A2AD00"],
@@ -1204,10 +1347,12 @@ class MutantsPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot_with_observations(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + self.output_format,
             ["#E37222", "#A2AD00"],
@@ -1216,16 +1361,16 @@ class MutantsPlotter:
             linewidth=0.3,
         )
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_boxplot" + self.output_format,
             ["#E37222", "#A2AD00"],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + "_stripplot" + self.output_format,
             ["#E37222", "#A2AD00"],
@@ -1365,10 +1510,14 @@ class MutantsPlotter:
             ]
         )
 
-        dfs = []
+        dfs_selected = [df_selected]
+        dfs_not_selected = [df_not_selected]
+        labels_selected = [self.labels["path"]]
+        labels_not_selected = [self.labels["path"]]
+
         if partition:
-            filter_normal = [1, 2, 3, 5, 6, 7, 8, 9, 10]
-            filter_special = [4]
+            filter_normal = [1, 2, 3, 4, 6, 8, 9]
+            filter_special = [5, 7]
 
             labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
@@ -1380,28 +1529,36 @@ class MutantsPlotter:
                 (df_not_selected["repository"].isin(filter_special))
             ]
 
-            stripplot(
-                [df_not_selected_1, df_not_selected_2],
-                [labels1, labels2],
-                y_label_not_selected,
-                file_not_selected,
-                ["#E37222", "#A2AD00"],
-                hue="algorithm",
-            )
-
-        else:
-            stripplot(
-                df_not_selected,
-                self.labels["path"],
-                "",
-                file_not_selected,
-                ["#E37222", "#A2AD00"],
-                hue="algorithm",
-            )
+            dfs_not_selected = [df_not_selected_1, df_not_selected_2]
+            labels_not_selected = [labels_1["path"], labels_2["path"]]
 
         stripplot(
-            df_selected,
-            self.labels["path"],
+            dfs_not_selected,
+            labels_not_selected,
+            y_label_not_selected,
+            file_not_selected,
+            ["#E37222", "#A2AD00"],
+            hue="algorithm",
+        )
+
+        if partition:
+            filter_normal = [1, 3, 5, 6, 7, 9]
+            filter_special = [2, 4, 8]
+
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
+
+            df_selected_1 = df_selected[(df_selected["repository"].isin(filter_normal))]
+            df_selected_2 = df_selected[
+                (df_selected["repository"].isin(filter_special))
+            ]
+
+            dfs_selected = [df_selected_1, df_selected_2]
+            labels_selected = [labels_1["path"], labels_2["path"]]
+
+        stripplot(
+            dfs_selected,
+            labels_selected,
             y_label_selected,
             file_selected,
             ["#E37222", "#A2AD00"],
@@ -1463,10 +1620,12 @@ class MutantsPlotter:
         df_static["algorithm"] = "static"
 
         df = pd.concat([df_retest_all, df_dynamic, df_static])
+        dfs = [df]
+        labels = [self.labels["path"]]
 
         boxplot(
-            [df],
-            [self.labels["path"]],
+            dfs,
+            labels,
             y_label,
             file + self.output_format,
             ["#DAD7CB", "#E37222", "#A2AD00"],
@@ -1572,7 +1731,7 @@ def boxplot_with_observations(
     legend_anchor=None,
     sequential_watermark=False,
     size=8,
-    linewidth=1.0,
+    linewidth=0.5,
 ):
     fig, axes = plt.subplots(
         1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
@@ -1661,7 +1820,7 @@ def stripplot(
     legend_anchor=None,
     sequential_watermark=False,
     size=8,
-    linewidth=1.0,
+    linewidth=0.5,
 ):
     fig, axes = plt.subplots(
         1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
