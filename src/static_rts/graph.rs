@@ -62,13 +62,13 @@ impl FromStr for EdgeType {
             "Contained" => Ok(Self::Contained),
             "Drop" => Ok(Self::Drop),
             "Static" => Ok(Self::Static),
-            "ReifyPtr" => Ok(Self::Static),
-            "FnPtr" => Ok(Self::Static),
+            "ReifyPtr" => Ok(Self::ReifyPtr),
+            "FnPtr" => Ok(Self::FnPtr),
 
             "ClosurePtr" => Ok(Self::ClosurePtr),
-            "Asm" => Ok(Self::Static),
-            "Intrinsic" => Ok(Self::Static),
-            "LangItem" => Ok(Self::Static),
+            "Asm" => Ok(Self::Asm),
+            "Intrinsic" => Ok(Self::Intrinsic),
+            "LangItem" => Ok(Self::LangItem),
 
             "Trimmed" => Ok(Self::Trimmed),
             _ => Err(()),

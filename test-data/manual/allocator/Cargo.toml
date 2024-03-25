@@ -1,12 +1,9 @@
 [package]
-name = "adt"
+name = "allocator"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-changes_display = []
-changes_debug = []
-
 [dependencies]
+jemallocator = "0.1"

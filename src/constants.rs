@@ -2,7 +2,7 @@
 
 pub const DESC_FLAG: &str = "--descriptions";
 
-pub const VERBOSE_COUNT: usize = 5;
+pub const VERBOSE_COUNT: usize = 16;
 
 //######################################################################################################################
 // Environment variables

@@ -9,6 +9,11 @@ rustc_private=true
 [profile.release]
 debug = true
 
+[features]
+default = []
+print_paths = []
+
+
 [[bin]]
 name = "cargo-rustyrts"
 

@@ -545,6 +545,8 @@ fn select_and_execute_tests_static() {
 
     println!("#Tests that have been found: {}\n", tests.iter().count());
 
+    #[cfg(not(feature = "print_paths"))]
+    {
         let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
         let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
 
@@ -565,6 +567,51 @@ fn select_and_execute_tests_static() {
         let cmd = cargo_test(Mode::Static, affected_tests.into_iter().map(|test| *test));
 
         execute(cmd);
+    }
+    #[cfg(feature = "print_paths")]
+    {
+        let (reached_nodes, affected_tests) = dependency_graph.affected_tests(changed_nodes, tests);
+
+        println!(
+            "#Nodes that reach any changed node in the graph: {}\n",
+            reached_nodes.iter().count()
+        );
+
+        if verbose {
+            println!(
+                "Affected tests:\n{}\n",
+                affected_tests
+                    .iter()
+                    .sorted()
+                    .map(|(k, v)| {
+                        let path = format!(
+                            "< {}{} >",
+                            v[0],
+                            if v.len() >= VERBOSE_COUNT {
+                                format!(
+                                    "<- ... <- {}",
+                                    v[v.len() - VERBOSE_COUNT..].iter().join(" <- ")
+                                )
+                            } else {
+                                v[1..].iter().map(|s| format!(" <- {}", s)).join("")
+                            }
+                        );
+
+                        format!("{}: {}", k, path)
+                    })
+                    .join("\n")
+            );
+        } else {
+            println!("#Affected tests: {}\n", affected_tests.iter().count());
+        }
+
+        let cmd = cargo_test(
+            Mode::Static,
+            affected_tests.keys().into_iter().map(|test| *test),
+        );
+
+        execute(cmd);
+    }
 }
 
 //######################################################################################################################
@@ -705,6 +752,11 @@ fn select_and_execute_tests_dynamic() {
         );
     } else {
         println!("#Affected tests: {}\n", affected_tests.iter().count());
+    }
+
+    if std::env::var("RUSTYRTS_RETEST_ALL").is_ok() {
+        let tests = read_lines(&files, ENDING_TEST);
+        affected_tests = tests.into_iter().map(|test| (test, None)).collect_vec();
     }
 
     let cmd = cargo_test(Mode::Dynamic, affected_tests.iter().map(|(n, _)| n));

@@ -17,7 +17,7 @@ use crate::constants::ENDING_PROCESS_TRACE;
 pub fn get_target_dir(mode: &str) -> PathBuf {
     get_target_dir_relative(mode)
         .canonicalize()
-        .expect("Failed to canonicalize ENV_TARGET_DIR")
+        .expect(&format!("Failed to canonicalize ENV_TARGET_DIR: {:?}", std::env::var(ENV_TARGET_DIR)))
 }
 
 pub fn get_target_dir_relative(mode: &str) -> PathBuf {
