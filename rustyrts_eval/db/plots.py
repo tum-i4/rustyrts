@@ -8,6 +8,19 @@ from sqlalchemy.sql.functions import coalesce, count, sum, aggregate_strings
 from .analysis import get_test_diff, get_test_diff_and_intersection
 from .git import DBCommit, DBRepository
 
+COLORS_BLIND = [
+    ["#4343F9", "#BA1414", "#14BA14"],
+    ["#BA1414", "#14BA14"],
+    [
+        ["#D85B5B", "#A51A1A", "#53BC53", "#118411"],
+        ["#7E7EfC", "#24249E", "#D85B5B", "#A51A1A"],
+        ["#7E7EfC", "#24249E", "#53BC53", "#118411"],
+    ],
+    ["#BA1414"],
+]
+
+COLORS = COLORS_BLIND
+
 
 class HistoryPlotter:
     def __init__(
@@ -87,7 +100,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file,
-            ["#DAD7CB", "#E37222", "#A2AD00"],
+            COLORS[0],
             sequential_watermark=self.sequential_watermark,
         )
 
@@ -136,7 +149,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             sequential_watermark=self.sequential_watermark,
         )
 
@@ -177,7 +190,7 @@ class HistoryPlotter:
             x_label,
             y_label,
             file + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             sequential_watermark=self.sequential_watermark,
         )
 
@@ -187,7 +200,7 @@ class HistoryPlotter:
             x_label,
             y_label,
             file + "_with_regression" + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             regression=True,
             sequential_watermark=self.sequential_watermark,
         )
@@ -302,7 +315,7 @@ class HistoryPlotter:
             labels_dynamic,
             y_label,
             file + "_dynamic" + self.output_format,
-            ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
+            COLORS[2][1],
             sequential_watermark=self.sequential_watermark,
         )
 
@@ -335,7 +348,7 @@ class HistoryPlotter:
             labels_static,
             y_label,
             file + "_static" + self.output_format,
-            ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
+            COLORS[2][2],
             sequential_watermark=self.sequential_watermark,
         )
 
@@ -420,7 +433,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file + self.output_format,
-            ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
+            COLORS[2][0],
             sequential_watermark=self.sequential_watermark,
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
@@ -429,7 +442,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file + "_boxplot" + self.output_format,
-            ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
+            COLORS[2][0],
             sequential_watermark=self.sequential_watermark,
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
@@ -438,7 +451,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file + "_stripplot" + self.output_format,
-            ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
+            COLORS[2][0],
             sequential_watermark=self.sequential_watermark,
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
@@ -514,7 +527,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file,
-            ["#E37222"],
+            COLORS[3],
             hue="algorithm",
             legend_anchor=(0.3, 0.9, 0.7, 0.1),
             sequential_watermark=self.sequential_watermark,
@@ -562,7 +575,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file,
-            ["#DAD7CB", "#E37222", "#A2AD00"],
+            COLORS[0],
             sequential_watermark=self.sequential_watermark,
         )
 
@@ -611,7 +624,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             sequential_watermark=self.sequential_watermark,
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
@@ -620,7 +633,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file + "_boxplot" + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             sequential_watermark=self.sequential_watermark,
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
@@ -629,7 +642,7 @@ class HistoryPlotter:
             labels,
             y_label,
             file + "_stripplot" + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             sequential_watermark=self.sequential_watermark,
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
@@ -807,7 +820,7 @@ class HistoryPlotter:
             labels_selected,
             y_label_selected,
             file_selected,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             hue="algorithm",
             sequential_watermark=self.sequential_watermark,
         )
@@ -817,7 +830,7 @@ class HistoryPlotter:
             labels_not_selected,
             y_label_not_selected,
             file_not_selected,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             hue="algorithm",
             sequential_watermark=self.sequential_watermark,
         )
@@ -885,7 +898,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file,
-            ["#DAD7CB", "#E37222", "#A2AD00"],
+            COLORS[0],
         )
 
     def plot_mutants_duration_relative(self):
@@ -926,7 +939,7 @@ class MutantsPlotter:
         dfs = [df]
         labels = [self.labels["path"]]
 
-        boxplot(dfs, labels, y_label, file, ["#E37222", "#A2AD00"])
+        boxplot(dfs, labels, y_label, file, COLORS[1])
 
     def plot_mutants_target_count_absolute(self, partition=False):
         y_label = "absolute number of tests"
@@ -1035,7 +1048,7 @@ class MutantsPlotter:
             labels_dynamic,
             y_label,
             file + "_dynamic" + self.output_format,
-            ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
+            COLORS[2][1],
         )
 
         if partition:
@@ -1067,7 +1080,7 @@ class MutantsPlotter:
             labels_static,
             y_label,
             file + "_static" + self.output_format,
-            ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
+            COLORS[2][2],
         )
 
     def plot_mutants_target_count_relative(self):
@@ -1148,7 +1161,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file + self.output_format,
-            ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
+            COLORS[2][0],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
@@ -1158,7 +1171,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file + "_boxplot" + self.output_format,
-            ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
+            COLORS[2][0],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
@@ -1166,7 +1179,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file + "_stripplot" + self.output_format,
-            ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
+            COLORS[2][0],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
@@ -1251,7 +1264,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file,
-            ["#E37222"],
+            COLORS[3],
             hue="algorithm",
             legend_loc="upper left",
         )
@@ -1309,7 +1322,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file,
-            ["#DAD7CB", "#E37222", "#A2AD00"],
+            COLORS[0],
         )
 
     def plot_mutants_testcases_count_relative(self):
@@ -1355,7 +1368,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
@@ -1365,7 +1378,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file + "_boxplot" + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
         stripplot(
@@ -1373,7 +1386,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file + "_stripplot" + self.output_format,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
             linewidth=0.3,
@@ -1537,7 +1550,7 @@ class MutantsPlotter:
             labels_not_selected,
             y_label_not_selected,
             file_not_selected,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             hue="algorithm",
         )
 
@@ -1561,7 +1574,7 @@ class MutantsPlotter:
             labels_selected,
             y_label_selected,
             file_selected,
-            ["#E37222", "#A2AD00"],
+            COLORS[1],
             hue="algorithm",
         )
 
@@ -1628,7 +1641,7 @@ class MutantsPlotter:
             labels,
             y_label,
             file + self.output_format,
-            ["#DAD7CB", "#E37222", "#A2AD00"],
+            COLORS[0],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
         )
 
