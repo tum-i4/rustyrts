@@ -457,7 +457,7 @@ class HistoryPlotter:
         )
 
     def plot_history_testcases_contains_relation(self, partition=False):
-        y_label = "Tests that have been selected"
+        y_label = "tests that have been selected"
         file = "contains_all_tests" + self.output_format
 
         commit = DBCommit.__table__
@@ -1186,7 +1186,7 @@ class MutantsPlotter:
         )
 
     def plot_mutants_testcases_contains_relation(self, partition=False):
-        y_label = "Tests that have been selected"
+        y_label = "tests that have been selected"
         file = "contains_all_tests" + self.output_format
 
         testcases_selected = self.view_info.testcases_selected

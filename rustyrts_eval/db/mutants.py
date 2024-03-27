@@ -862,8 +862,8 @@ def register_views() -> MutantsViewInformation:
     number_mutants_total = select(
         literal_column("'2'"),
         literal_column("'MutantsNumberMutantsTotal'"),
-        func.count(mutant.c.commit),
-    ).select_from(mutant)
+        func.count(testcases_selected.c.commit),
+    ).select_from(testcases_selected)
 
     total_retest_all = select(
         literal_column("'4'"),
