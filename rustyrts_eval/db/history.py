@@ -286,6 +286,7 @@ class HistoryViewInformation:
         testcases_different,
         testcases_selected,
         statistics_commit,
+        statistics_repository,
     ):
         super().__init__()
         self.overview = overview
@@ -296,6 +297,7 @@ class HistoryViewInformation:
         self.testcases_different = testcases_different
         self.testcases_selected = testcases_selected
         self.statistics_commit = statistics_commit
+        self.statistics_repository = statistics_repository
 
     def get_labels(self, connection):
         repository = DBRepository.__table__
@@ -1669,4 +1671,5 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         testcases_different,
         testcases_selected,
         statistics_commit,
+        statistics_repository,
     )

@@ -156,31 +156,35 @@ class HistoryPlotter:
     def plot_history_efficiency_repo(self):
         reg_label = "linear regression x~log(y)"
         y_label = "average relative e2e testing time [%]"
-        x_label = "average absolute e2e testing time of retest-all [s]"
+        x_label = "average absolute testing time (excluding compilation time)\n of retest-all [s]"
         file = "efficiency_repo"
 
         duration = self.view_info.duration
+        statistics = self.view_info.statistics_repository
 
         efficiency = (
             select(
                 duration.c.repo_id.label("repository"),
-                (1.0 * duration.c.retest_all_mean).label("retest_all_mean"),
+                (1.0 * statistics.c.avg_test_duration).label(
+                    "retest_all_mean_testing_time"
+                ),
                 (1.0 * duration.c.dynamic_mean_relative).label("dynamic_mean_relative"),
                 (1.0 * duration.c.static_mean_relative).label("static_mean_relative"),
             )
-            .select_from(duration)
+            .select_from(duration, statistics)
+            .where(duration.c.repo_id == statistics.c.repo_id)
             .where(duration.c.repo_id != None)
         )
 
         df = self.query(efficiency)
 
         df_dynamic = df[["repository"]].copy()
-        df_dynamic["x"] = df["retest_all_mean"]
+        df_dynamic["x"] = df["retest_all_mean_testing_time"]
         df_dynamic["y"] = df["dynamic_mean_relative"]
         df_dynamic["algorithm"] = "dynamic"
 
         df_static = df[["repository"]].copy()
-        df_static["x"] = df["retest_all_mean"]
+        df_static["x"] = df["retest_all_mean_testing_time"]
         df_static["y"] = df["static_mean_relative"]
         df_static["algorithm"] = "static"
 
