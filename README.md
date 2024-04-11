@@ -55,12 +55,18 @@ rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_parallel 
 rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/mutants mutants
 ```
 
-## Start recording git history walk
+## Start recording history changes
 ```bash
 rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/history_parallel history hardcoded parallel
 rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/history_sequential history hardcoded sequential
 ```
 
+## Analyze results
+```bash
+rustyrts_eval analyze postgresql://postgres:rustyrts@localhost:5432/mutants mutants
+rustyrts_eval analyze postgresql://postgres:rustyrts@localhost:5432/history_parallel history
+rustyrts_eval analyze postgresql://postgres:rustyrts@localhost:5432/history_sequential history
+```
 
 # Utilities
 
