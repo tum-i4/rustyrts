@@ -1,0 +1,159 @@
+digraph {
+"test::test_main_static"
+"test::assert_test_result::<()>"
+"test::assert_test_result"
+"std::lang_start_internal"
+"std::lang_start::{closure#0}!dyn"
+"std::lang_start::{closure#0}"
+"std::lang_start::<()>::{closure#0}"
+"std::lang_start::<()>"
+"std::lang_start"
+"std::_print"
+"std::__rust_begin_short_backtrace::<fn(), ()>"
+"std::__rust_begin_short_backtrace"
+"std::<() as Termination>::report"
+"drop::tests::test_drop"
+"drop::test_drop::{closure#0}"
+"drop::test_drop"
+"drop::main"
+"drop::DROPPED"
+"drop::<Foo as Drop>::drop"
+"core::panic_in_cleanup"
+"core::panic_fmt"
+"core::panic"
+"core::inner"
+"core::fmt::num::imp::<impl Display for i32>::fmt"
+"core::drop_in_place::<Foo>"
+"core::drop_in_place::<Fn#e6bcedfe09e584e0-5689cd392f40eff1>"
+"core::drop_in_place::<Fn#8ca417bb7e88f110-71d1f223c85eaebd>"
+"core::drop_in_place::<Fn#88cbe155639556c6-b7766713e448852b>"
+"core::drop_in_place::<Fn#88cbe155639556c6-b16427c196489e19>"
+"core::drop_in_place::<Bar>"
+"core::drop_in_place"
+"core::Option::<T>::map_or_else"
+"core::Option::<&str>::map_or_else::<String, Fn#e6bcedfe09e584e0-5689cd392f40eff1, fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned}>"
+"core::FnOnce::call_once!dyn"
+"core::FnOnce::call_once"
+"core::Arguments::new_v1"
+"core::Argument::new_display::<i32>"
+"core::Argument::new_display"
+"core::<fn() as FnOnce<()>>::call_once"
+"core::<fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned} as FnOnce<(&str,)>>::call_once"
+"core::<Fn#8ca417bb7e88f110-71d1f223c85eaebd as FnOnce<()>>::call_once"
+"core::<Fn#88cbe155639556c6-b7766713e448852b as FnOnce<()>>::call_once"
+"alloc::str::<impl ToOwned for str>::to_owned"
+"alloc::handle_alloc_error"
+"alloc::format_inner"
+"alloc::format::{closure#0}"
+"alloc::format"
+"alloc::capacity_overflow"
+"alloc::RawVec::<u8>::allocate_in"
+"alloc::RawVec::<T, A>::allocate_in"
+"alloc::Global::alloc_impl"
+"alloc::<u8 as ConvertVec>::to_vec::<Global>"
+"alloc::<T as ConvertVec>::to_vec"
+"alloc::<Global as Allocator>::allocate_zeroed"
+"alloc::<Global as Allocator>::allocate"
+"test::test_main_static" -> "test::test_main_static" // {Trimmed}
+"test::assert_test_result::<()>" -> "test::assert_test_result" // {Trimmed}
+"test::assert_test_result::<()>" -> "std::<() as Termination>::report" // {Call}
+"test::assert_test_result::<()>" -> "core::fmt::num::imp::<impl Display for i32>::fmt" // {ReifyPtr}
+"test::assert_test_result::<()>" -> "core::Arguments::new_v1" // {Call}
+"test::assert_test_result::<()>" -> "alloc::format" // {Call}
+"std::lang_start_internal" -> "std::lang_start_internal" // {Trimmed}
+"std::lang_start::<()>::{closure#0}" -> "std::lang_start::{closure#0}" // {Trimmed}
+"std::lang_start::<()>::{closure#0}" -> "std::lang_start::<()>::{closure#0}" // {Contained}
+"std::lang_start::<()>::{closure#0}" -> "std::__rust_begin_short_backtrace::<fn(), ()>" // {Call}
+"std::lang_start::<()>::{closure#0}" -> "std::<() as Termination>::report" // {Call}
+"std::lang_start::<()>::{closure#0}" -> "core::drop_in_place::<Fn#8ca417bb7e88f110-71d1f223c85eaebd>" // {Drop}
+"std::lang_start::<()>" -> "std::lang_start_internal" // {Call}
+"std::lang_start::<()>" -> "std::lang_start::{closure#0}!dyn" // {Unsize}
+"std::lang_start::<()>" -> "std::lang_start::<()>::{closure#0}" // {Contained, Unsize}
+"std::lang_start::<()>" -> "std::lang_start" // {Trimmed}
+"std::lang_start::<()>" -> "core::drop_in_place::<Fn#8ca417bb7e88f110-71d1f223c85eaebd>" // {Drop}
+"std::lang_start::<()>" -> "core::FnOnce::call_once!dyn" // {Unsize}
+"std::lang_start::<()>" -> "core::<Fn#8ca417bb7e88f110-71d1f223c85eaebd as FnOnce<()>>::call_once" // {Unsize}
+"std::_print" -> "std::_print" // {Trimmed}
+"std::__rust_begin_short_backtrace::<fn(), ()>" -> "std::__rust_begin_short_backtrace" // {Trimmed}
+"std::__rust_begin_short_backtrace::<fn(), ()>" -> "core::<fn() as FnOnce<()>>::call_once" // {Call}
+"std::<() as Termination>::report" -> "std::<() as Termination>::report" // {Trimmed}
+"drop::tests::test_drop" -> "drop::test_drop" // {Trimmed}
+"drop::test_drop::{closure#0}" -> "test::assert_test_result::<()>" // {Call}
+"drop::test_drop::{closure#0}" -> "drop::test_drop::{closure#0}" // {Trimmed, Contained}
+"drop::test_drop::{closure#0}" -> "drop::test_drop" // {Call}
+"drop::test_drop::{closure#0}" -> "core::drop_in_place::<Fn#88cbe155639556c6-b7766713e448852b>" // {Drop}
+"drop::test_drop::{closure#0}" -> "core::drop_in_place::<Fn#88cbe155639556c6-b16427c196489e19>" // {Drop}
+"drop::test_drop::{closure#0}" -> "core::drop_in_place::<Bar>" // {Drop}
+"drop::test_drop" -> "drop::test_drop::{closure#0}" // {Contained}
+"drop::test_drop" -> "drop::test_drop" // {Trimmed}
+"drop::test_drop" -> "drop::DROPPED" // {Static}
+"drop::test_drop" -> "core::panic" // {Call}
+"drop::test_drop" -> "core::drop_in_place::<Fn#88cbe155639556c6-b16427c196489e19>" // {Drop}
+"drop::main" -> "test::test_main_static" // {Call}
+"drop::main" -> "drop::test_drop::{closure#0}" // {FnPtr}
+"drop::main" -> "drop::main" // {Trimmed}
+"drop::main" -> "core::<Fn#88cbe155639556c6-b7766713e448852b as FnOnce<()>>::call_once" // {FnPtr}
+"drop::DROPPED" -> "drop::DROPPED" // {Trimmed}
+"drop::<Foo as Drop>::drop" -> "std::_print" // {Call}
+"drop::<Foo as Drop>::drop" -> "drop::DROPPED" // {Static}
+"drop::<Foo as Drop>::drop" -> "drop::<Foo as Drop>::drop" // {Trimmed}
+"drop::<Foo as Drop>::drop" -> "core::Arguments::new_v1" // {Call}
+"drop::<Foo as Drop>::drop" -> "core::Argument::new_display::<i32>" // {Call}
+"core::panic_in_cleanup" -> "core::panic_in_cleanup" // {Trimmed}
+"core::panic_fmt" -> "core::panic_fmt" // {Trimmed}
+"core::panic" -> "core::panic" // {Trimmed}
+"core::inner" -> "core::panic" // {LangItem}
+"core::inner" -> "core::inner" // {Trimmed}
+"core::fmt::num::imp::<impl Display for i32>::fmt" -> "core::fmt::num::imp::<impl Display for i32>::fmt" // {Trimmed}
+"core::drop_in_place::<Foo>" -> "drop::<Foo as Drop>::drop" // {Call}
+"core::drop_in_place::<Foo>" -> "core::drop_in_place" // {Trimmed}
+"core::drop_in_place::<Fn#e6bcedfe09e584e0-5689cd392f40eff1>" -> "core::drop_in_place" // {Trimmed}
+"core::drop_in_place::<Fn#8ca417bb7e88f110-71d1f223c85eaebd>" -> "core::drop_in_place" // {Trimmed}
+"core::drop_in_place::<Fn#88cbe155639556c6-b7766713e448852b>" -> "core::drop_in_place" // {Trimmed}
+"core::drop_in_place::<Fn#88cbe155639556c6-b16427c196489e19>" -> "core::drop_in_place::<Bar>" // {Drop}
+"core::drop_in_place::<Fn#88cbe155639556c6-b16427c196489e19>" -> "core::drop_in_place" // {Trimmed}
+"core::drop_in_place::<Bar>" -> "core::drop_in_place::<Foo>" // {Drop}
+"core::drop_in_place::<Bar>" -> "core::drop_in_place" // {Trimmed}
+"core::Option::<&str>::map_or_else::<String, Fn#e6bcedfe09e584e0-5689cd392f40eff1, fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned}>" -> "core::panic_in_cleanup" // {LangItem}
+"core::Option::<&str>::map_or_else::<String, Fn#e6bcedfe09e584e0-5689cd392f40eff1, fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned}>" -> "core::Option::<T>::map_or_else" // {Trimmed}
+"core::Option::<&str>::map_or_else::<String, Fn#e6bcedfe09e584e0-5689cd392f40eff1, fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned}>" -> "core::<fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned} as FnOnce<(&str,)>>::call_once" // {Call}
+"core::Arguments::new_v1" -> "core::panic_fmt" // {Call}
+"core::Arguments::new_v1" -> "core::Arguments::new_v1" // {Trimmed}
+"core::Argument::new_display::<i32>" -> "core::fmt::num::imp::<impl Display for i32>::fmt" // {ReifyPtr}
+"core::Argument::new_display::<i32>" -> "core::Argument::new_display" // {Trimmed}
+"core::<fn() as FnOnce<()>>::call_once" -> "core::FnOnce::call_once" // {Trimmed}
+"core::<fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned} as FnOnce<(&str,)>>::call_once" -> "core::FnOnce::call_once" // {Trimmed}
+"core::<fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned} as FnOnce<(&str,)>>::call_once" -> "alloc::str::<impl ToOwned for str>::to_owned" // {Call}
+"core::<Fn#8ca417bb7e88f110-71d1f223c85eaebd as FnOnce<()>>::call_once" -> "core::panic_in_cleanup" // {LangItem}
+"core::<Fn#8ca417bb7e88f110-71d1f223c85eaebd as FnOnce<()>>::call_once" -> "core::FnOnce::call_once" // {Trimmed}
+"core::<Fn#8ca417bb7e88f110-71d1f223c85eaebd as FnOnce<()>>::call_once" -> "core::<Fn#8ca417bb7e88f110-71d1f223c85eaebd as FnOnce<()>>::call_once" // {Call}
+"core::<Fn#88cbe155639556c6-b7766713e448852b as FnOnce<()>>::call_once" -> "core::panic_in_cleanup" // {LangItem}
+"core::<Fn#88cbe155639556c6-b7766713e448852b as FnOnce<()>>::call_once" -> "core::FnOnce::call_once" // {Trimmed}
+"alloc::str::<impl ToOwned for str>::to_owned" -> "alloc::str::<impl ToOwned for str>::to_owned" // {Trimmed}
+"alloc::str::<impl ToOwned for str>::to_owned" -> "alloc::<u8 as ConvertVec>::to_vec::<Global>" // {Call}
+"alloc::handle_alloc_error" -> "alloc::handle_alloc_error" // {Trimmed}
+"alloc::format_inner" -> "alloc::format_inner" // {Trimmed}
+"alloc::format::{closure#0}" -> "core::drop_in_place::<Fn#e6bcedfe09e584e0-5689cd392f40eff1>" // {Drop}
+"alloc::format::{closure#0}" -> "alloc::format_inner" // {Call}
+"alloc::format::{closure#0}" -> "alloc::format::{closure#0}" // {Trimmed, Contained}
+"alloc::format" -> "core::drop_in_place::<Fn#e6bcedfe09e584e0-5689cd392f40eff1>" // {Drop}
+"alloc::format" -> "core::Option::<&str>::map_or_else::<String, Fn#e6bcedfe09e584e0-5689cd392f40eff1, fn(&str) -> <str as ToOwned>::Owned {<str as ToOwned>::to_owned}>" // {Call}
+"alloc::format" -> "alloc::format::{closure#0}" // {Contained}
+"alloc::format" -> "alloc::format" // {Trimmed}
+"alloc::capacity_overflow" -> "alloc::capacity_overflow" // {Trimmed}
+"alloc::RawVec::<u8>::allocate_in" -> "core::panic_in_cleanup" // {LangItem}
+"alloc::RawVec::<u8>::allocate_in" -> "core::inner" // {Call}
+"alloc::RawVec::<u8>::allocate_in" -> "alloc::handle_alloc_error" // {Call}
+"alloc::RawVec::<u8>::allocate_in" -> "alloc::capacity_overflow" // {Call}
+"alloc::RawVec::<u8>::allocate_in" -> "alloc::RawVec::<T, A>::allocate_in" // {Trimmed}
+"alloc::RawVec::<u8>::allocate_in" -> "alloc::<Global as Allocator>::allocate_zeroed" // {Call}
+"alloc::RawVec::<u8>::allocate_in" -> "alloc::<Global as Allocator>::allocate" // {Call}
+"alloc::Global::alloc_impl" -> "alloc::Global::alloc_impl" // {Trimmed}
+"alloc::<u8 as ConvertVec>::to_vec::<Global>" -> "core::panic_in_cleanup" // {LangItem}
+"alloc::<u8 as ConvertVec>::to_vec::<Global>" -> "alloc::RawVec::<u8>::allocate_in" // {Call}
+"alloc::<u8 as ConvertVec>::to_vec::<Global>" -> "alloc::<T as ConvertVec>::to_vec" // {Trimmed}
+"alloc::<Global as Allocator>::allocate_zeroed" -> "alloc::Global::alloc_impl" // {Call}
+"alloc::<Global as Allocator>::allocate_zeroed" -> "alloc::<Global as Allocator>::allocate_zeroed" // {Trimmed}
+"alloc::<Global as Allocator>::allocate" -> "alloc::Global::alloc_impl" // {Call}
+"alloc::<Global as Allocator>::allocate" -> "alloc::<Global as Allocator>::allocate" // {Trimmed}
+}

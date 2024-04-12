@@ -1,15 +1,14 @@
 [package]
-name = "drop"
+name = "closure"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-changes_drop = []
-drop_inner = []
-drop_outer = []
-drop_direct = []
-drop_delegate = []
-drop_closure = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+changes_outer = []
+changes_inner = []
+changes_fn_ptr = []
+changes_dyn = []
 
 [dependencies]

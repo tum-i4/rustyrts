@@ -99,6 +99,10 @@ fn check_same_crate_id(mode: Mode) {
 #[test_case(Mode::Static, "drop", "drop_inner,drop_delegate", "drop_inner,drop_delegate,changes_drop")]
 #[test_case(Mode::Dynamic, "drop", "drop_outer,drop_delegate", "drop_outer,drop_delegate,changes_drop")]
 #[test_case(Mode::Static, "drop", "drop_outer,drop_delegate", "drop_outer,drop_delegate,changes_drop")]
+#[test_case(Mode::Dynamic, "drop", "drop_inner,drop_closure", "drop_inner,drop_closure,changes_drop")]
+#[test_case(Mode::Static, "drop", "drop_inner,drop_closure", "drop_inner,drop_closure,changes_drop")]
+#[test_case(Mode::Dynamic, "drop", "drop_outer,drop_closure", "drop_outer,drop_closure,changes_drop")]
+#[test_case(Mode::Static, "drop", "drop_outer,drop_closure", "drop_outer,drop_closure,changes_drop")]
 #[test_case(Mode::Dynamic, "command", "", "changes_return")]
 #[test_case(Mode::Dynamic, "dynamic", "", "changes_direct")]
 #[test_case(Mode::Static, "dynamic", "", "changes_direct")]
@@ -132,6 +136,14 @@ fn check_same_crate_id(mode: Mode) {
 #[test_case(Mode::Static, "derive", "", "changes_hash")]
 #[test_case(Mode::Dynamic, "blanket_impl", "", "changes_inner")]
 #[test_case(Mode::Static, "blanket_impl", "", "changes_inner")]
+#[test_case(Mode::Dynamic, "closure", "", "changes_inner")]
+#[test_case(Mode::Static, "closure", "", "changes_inner")]
+#[test_case(Mode::Dynamic, "closure", "", "changes_outer")]
+#[test_case(Mode::Static, "closure", "", "changes_outer")]
+#[test_case(Mode::Dynamic, "closure", "", "changes_fn_ptr")]
+#[test_case(Mode::Static, "closure", "", "changes_fn_ptr")]
+#[test_case(Mode::Dynamic, "closure", "", "changes_dyn")]
+#[test_case(Mode::Static, "closure", "", "changes_dyn")]
 #[test_case(
     Mode::Dynamic,
     "fn_ptr",

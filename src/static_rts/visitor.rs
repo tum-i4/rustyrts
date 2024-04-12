@@ -757,21 +757,24 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: Ty<'tcx>, context: TyContext) {
-        let source = self.body.span;
+        // But not inside drop glue
+        if self.body.source.def_id() != self.tcx.require_lang_item(LangItem::DropInPlace, None) {
+            let source = self.body.span;
 
-        let tcx = self.tcx;
+            let tcx = self.tcx;
 
-        if let ty::TyKind::Closure(..) | TyKind::Coroutine(..) = ty.kind() {
-            let ty = self.monomorphize(ty);
-            // 2. function -> contained closure
-            visit_fn_use(tcx, ty, false, source, self.output, EdgeType::Contained);
-            visit_drop_use(tcx, ty, false, source, self.output);
+            if let ty::TyKind::Closure(..) | TyKind::Coroutine(..) = ty.kind() {
+                let ty = self.monomorphize(ty);
+                // 2. function -> contained closure
+                visit_fn_use(tcx, ty, false, source, self.output, EdgeType::Contained);
+                visit_drop_use(tcx, ty, false, source, self.output);
+            }
+            if let TyKind::Ref(_region, ty, _mtblt) = *ty.kind() {
+                // Also account for closures behind references
+                self.visit_ty(ty, context);
+            }
+            // self.super_ty(ty) //Weirdly, this is just empty
         }
-        if let TyKind::Ref(_region, ty, _mtblt) = *ty.kind() {
-            // Also account for closures behind references
-            self.visit_ty(ty, context);
-        }
-        // self.super_ty(ty) //Weirdly, this is just empty
     }
 
     fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {

@@ -51,6 +51,14 @@ mod tests {
 
             #[cfg(feature = "drop_delegate")]
             delegate(bar);
+
+            #[cfg(feature = "drop_closure")]
+            {
+                let f = move || {
+                    let b = bar;
+                };
+                f();
+            }
         }
         assert!(unsafe { DROPPED })
     }
