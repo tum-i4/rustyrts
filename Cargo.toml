@@ -11,7 +11,6 @@ debug = true
 
 [features]
 default = []
-print_paths = []
 
 
 [[bin]]
@@ -21,9 +20,27 @@ name = "cargo-rustyrts"
 name = "rustyrts-static"
 
 [[bin]]
+name = "rustyrts-static-doctest"
+
+[[bin]]
 name = "rustyrts-dynamic"
 
 [dependencies]
+cargo = "0.77.0"
+cargo-util = "0.2.11"
+anyhow = "1.0.83"
+color-print = "0.3.6"
+clap = "4.5.4"
+tracing-subscriber = "0.3.18"
+tracing = "0.1.40"
+humantime = "2.1.0"
+git2 = "0.18.3"
+git2-curl = "0.19.0"
+os_info = "3.8.2"
+curl = "0.4.46"
+curl-sys = "0.4.72+curl-8.6.0"
+anstyle = "1.0.7"
+
 log = "0.4"
 serde_json = "1.0.61"
 queues = "1.0.2"

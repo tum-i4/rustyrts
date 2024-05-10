@@ -25,8 +25,10 @@ extern crate rustc_middle;
 extern crate rustc_span;
 extern crate rustc_type_ir;
 
-pub mod static_rts;
+extern crate cargo;
+
 pub mod dynamic_rts;
+pub mod static_rts;
 
 pub mod callbacks_shared;
 pub mod checksums;

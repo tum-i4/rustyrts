@@ -18,19 +18,18 @@ use rustc_span::{
     symbol::Ident,
     Symbol, DUMMY_SP,
 };
-use std::mem::transmute;
 use std::sync::Mutex;
-use std::sync::atomic::AtomicUsize;
+use std::{mem::transmute, sync::atomic::AtomicBool};
+use std::{path::PathBuf, sync::atomic::AtomicUsize};
 
 use crate::callbacks_shared::{
-        excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
-        NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
-    };
+    excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
+    NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
+};
 
 use super::file_loader::{InstrumentationFileLoaderProxy, TestRunnerFileLoaderProxy};
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
 use crate::dynamic_rts::instrumentation::modify_body;
-use crate::fs_utils::get_dynamic_path;
 use crate::names::def_id_name;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
 
@@ -39,8 +38,10 @@ static OLD_OPTIMIZED_MIR: AtomicUsize = AtomicUsize::new(0);
 pub struct DynamicRTSCallbacks {}
 
 impl DynamicRTSCallbacks {
-    pub fn new() -> Self {
-        PATH_BUF.get_or_init(|| get_dynamic_path(true));
+    pub fn new(maybe_path: Option<PathBuf>) -> Self {
+        if let Some(path) = maybe_path {
+            PATH_BUF.get_or_init(|| path);
+        }
         Self {}
     }
 }
@@ -61,17 +62,23 @@ impl Callbacks for DynamicRTSCallbacks {
             EXCLUDED.get_or_init(|| true);
         }
 
-        let file_loader =
-            if !no_instrumentation(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
-                Box::new(TestRunnerFileLoaderProxy {
-                    delegate: InstrumentationFileLoaderProxy {
-                        delegate: RealFileLoader,
-                    },
-                }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
-            } else {
-                Box::new(RealFileLoader {})
-                    as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
-            };
+        let file_loader = if !no_instrumentation(|| {
+            config
+                .opts
+                .crate_name
+                .as_ref()
+                .cloned()
+                .unwrap_or("rustc_out".to_string())
+        }) {
+            Box::new(TestRunnerFileLoaderProxy {
+                delegate: InstrumentationFileLoaderProxy {
+                    delegate: RealFileLoader,
+                },
+            }) as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+        } else {
+            Box::new(RealFileLoader {})
+                as Box<dyn FileLoader + std::marker::Send + std::marker::Sync>
+        };
         config.file_loader = Some(file_loader);
 
         if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
@@ -202,7 +209,9 @@ fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> &'tcx Body<
 
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        run_analysis_shared(tcx);
+        if let Some(path) = PATH_BUF.get() {
+            run_analysis_shared(tcx, false, path);
+        }
     }
 }
 

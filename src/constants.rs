@@ -1,7 +1,5 @@
 #![allow(dead_code)]
 
-pub const DESC_FLAG: &str = "--descriptions";
-
 pub const VERBOSE_COUNT: usize = 16;
 
 //######################################################################################################################
@@ -12,6 +10,9 @@ pub const ENV_RUSTYRTS_MODE: &str = "RUSTYRTS_MODE";
 
 /// Can be set to overwrite the executable that is used when rustc is invoked
 pub const ENV_RUSTC_WRAPPER: &str = "RUSTC_WRAPPER";
+
+/// Can be set to control the behvior of rustdoc
+pub const ENV_RUSTDOCFLAGS: &str = "RUSTDOCFLAGS";
 
 /// Is set by cargo
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
@@ -35,6 +36,7 @@ pub const ENV_BLACKBOX_TEST: &str = "RUSTYRTS_BLACKBOX_TEST";
 
 pub const DIR_STATIC: &str = ".rts_static";
 pub const DIR_DYNAMIC: &str = ".rts_dynamic";
+pub const DIR_DOCTEST: &str = ".rts_doctest";
 
 pub const FILE_COMPLETE_GRAPH: &str = "!complete_graph.dot";
 

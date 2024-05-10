@@ -1,13 +1,16 @@
-use std::mem::transmute;
 use std::sync::Mutex;
+use std::{mem::transmute, path::PathBuf};
 
-use crate::{constants::SUFFIX_DYN, static_rts::visitor::{create_dependency_graph, MonoItemCollectionMode}};
 use crate::{
     callbacks_shared::{
         excluded, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS, NEW_CHECKSUMS_CONST,
         NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
     },
     fs_utils::get_graph_path,
+};
+use crate::{
+    constants::SUFFIX_DYN,
+    static_rts::visitor::{create_dependency_graph, MonoItemCollectionMode},
 };
 use log::{debug, trace};
 use rustc_driver::{Callbacks, Compilation};
@@ -18,15 +21,21 @@ use rustc_session::config::CrateType;
 use std::sync::atomic::Ordering::SeqCst;
 
 use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
-use crate::fs_utils::{get_static_path, write_to_file};
+use crate::fs_utils::write_to_file;
 use crate::names::def_id_name;
 
-pub struct StaticRTSCallbacks {}
+pub struct StaticRTSCallbacks {
+    is_compiling_doctests: bool,
+}
 
 impl StaticRTSCallbacks {
-    pub fn new() -> Self {
-        PATH_BUF.get_or_init(|| get_static_path(true));
-        Self {}
+    pub fn new(maybe_path: Option<PathBuf>, is_compiling_doctests: bool) -> Self {
+        if let Some(path) = maybe_path {
+            PATH_BUF.get_or_init(|| path);
+        }
+        Self {
+            is_compiling_doctests,
+        }
     }
 }
 
@@ -56,11 +65,9 @@ impl Callbacks for StaticRTSCallbacks {
             providers.vtable_entries = custom_vtable_entries_monomorphized;
         });
 
-        if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
-            NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
-            NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
-            NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
-        }
+        NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
+        NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
+        NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
     }
 
     fn after_analysis<'compiler, 'tcx>(
@@ -79,21 +86,23 @@ impl Callbacks for StaticRTSCallbacks {
 
 impl StaticRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
-        let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
+        if let Some(path) = PATH_BUF.get() {
+            let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+            let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
 
-        let graph = create_dependency_graph(tcx, MonoItemCollectionMode::Lazy);
+            let graph = create_dependency_graph(tcx, MonoItemCollectionMode::Lazy);
 
-        debug!("Created graph for {}", crate_name);
-        
-        write_to_file(
-            graph.to_string(),
-            PATH_BUF.get().unwrap().clone(),
-            |buf| get_graph_path(buf, &crate_name, crate_id),
-            false,
-        );
+            debug!("Created graph for {}", crate_name);
 
-        run_analysis_shared(tcx);
+            write_to_file(
+                graph.to_string(),
+                path.clone(),
+                |buf| get_graph_path(buf, &crate_name, crate_id),
+                self.is_compiling_doctests,
+            );
+
+            run_analysis_shared(tcx, self.is_compiling_doctests, path);
+        }
     }
 }
 

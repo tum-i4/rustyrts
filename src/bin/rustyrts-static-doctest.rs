@@ -4,15 +4,13 @@ extern crate rustc_driver;
 extern crate rustc_log;
 
 use rustc_log::LoggerConfig;
-use rustyrts::static_rts::callback::StaticRTSCallbacks;
+use rustyrts::constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::{callbacks_shared::export_checksums_and_changes, constants::ENV_BLACKBOX_TEST};
-use rustyrts::{
-    constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR},
-    fs_utils::get_cache_path,
-};
-use rustyrts::{format::create_logger, fs_utils::CacheKind};
-use std::env;
+use rustyrts::{format::create_logger, fs_utils::get_cache_path};
+use rustyrts::{fs_utils::CacheKind, static_rts::callback::StaticRTSCallbacks};
+use std::path::PathBuf;
 use std::process;
+use std::{env, fs::create_dir_all};
 
 //######################################################################################################################
 // This file is heavily inspired by rust-mir-checker
@@ -35,7 +33,6 @@ fn main() {
     if !skip {
         let result = rustc_driver::catch_fatal_errors(move || {
             let mut rustc_args = env::args_os()
-                .skip(1)
                 .enumerate()
                 .map(|(i, arg)| {
                     arg.into_string().unwrap_or_else(|arg| {
@@ -54,11 +51,19 @@ fn main() {
                 })
                 .collect::<Vec<_>>();
 
+            // Provide information on where to find rustyrts-dynamic-rlib
+            let mut rlib_source =
+                PathBuf::from(std::env::var("CARGO_HOME").expect("Did not find CARGO_HOME"));
+            rlib_source.push("bin");
+
+            rustc_args.push("-L".to_string());
+            rustc_args.push(rlib_source.display().to_string());
+
             rustc_args.push("--cap-lints".to_string());
             rustc_args.push("allow".to_string());
 
-            let maybe_cache_path = get_cache_path(CacheKind::Static);
-            let mut callbacks = StaticRTSCallbacks::new(maybe_cache_path, false);
+            let maybe_cache_path = get_cache_path(CacheKind::Doctests);
+            let mut callbacks = StaticRTSCallbacks::new(maybe_cache_path, true);
 
             let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
             run_compiler.run()
@@ -67,7 +72,7 @@ fn main() {
         let result = result.unwrap();
         let exit_code = match result {
             Ok(_) => {
-                export_checksums_and_changes(true, false);
+                export_checksums_and_changes(true, true);
                 EXIT_SUCCESS
             }
             Err(_) => EXIT_FAILURE,

@@ -1,48 +1,40 @@
 #![allow(dead_code)]
 
-use std::collections::HashSet;
 use std::fs::{read_to_string, DirEntry, OpenOptions};
 use std::hash::Hash;
 use std::io::Write;
 use std::path::PathBuf;
+use std::{collections::HashSet, convert::Into};
 
 use crate::constants::{
-    ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_CONST, ENDING_CHECKSUM_VTBL,
-    ENDING_DEPENDENCIES, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, ENV_TARGET_DIR,
+    DIR_DOCTEST, DIR_DYNAMIC, DIR_STATIC, ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_CONST,
+    ENDING_CHECKSUM_VTBL, ENDING_DEPENDENCIES, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE,
+    ENV_TARGET_DIR,
 };
 
 #[cfg(unix)]
 use crate::constants::ENDING_PROCESS_TRACE;
 
-pub fn get_target_dir(mode: &str) -> PathBuf {
-    get_target_dir_relative(mode)
-        .canonicalize()
-        .expect(&format!("Failed to canonicalize ENV_TARGET_DIR: {:?}", std::env::var(ENV_TARGET_DIR)))
+pub enum CacheKind {
+    Static,
+    Dynamic,
+    Doctests,
 }
 
-pub fn get_target_dir_relative(mode: &str) -> PathBuf {
-    let path = std::env::var(ENV_TARGET_DIR).unwrap_or(format!("target_{}", mode).to_string());
-    PathBuf::from(path)
+impl From<CacheKind> for &str {
+    fn from(val: CacheKind) -> Self {
+        match val {
+            CacheKind::Static => DIR_STATIC,
+            CacheKind::Dynamic => DIR_DYNAMIC,
+            CacheKind::Doctests => DIR_DOCTEST,
+        }
+    }
 }
 
-pub fn get_static_path(absolute: bool) -> PathBuf {
-    let mut path_buf = if !absolute {
-        get_target_dir_relative("static")
-    } else {
-        get_target_dir("static")
-    };
-    path_buf.push(".rts_static");
-    path_buf
-}
-
-pub fn get_dynamic_path(absolute: bool) -> PathBuf {
-    let mut path_buf = if !absolute {
-        get_target_dir_relative("dynamic")
-    } else {
-        get_target_dir("dynamic")
-    };
-    path_buf.push(".rts_dynamic");
-    path_buf
+pub fn get_cache_path(kind: CacheKind) -> Option<PathBuf> {
+    let mut path_buf = PathBuf::from(std::env::var(ENV_TARGET_DIR).ok()?);
+    path_buf.push(Into::<&str>::into(kind));
+    Some(path_buf)
 }
 
 pub fn get_graph_path(mut path_buf: PathBuf, crate_name: &str, id: u64) -> PathBuf {

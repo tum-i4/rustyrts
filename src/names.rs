@@ -207,12 +207,20 @@ fn filter_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> Ty<'tcx> {
         } // TODO
         TyKind::Closure(def_id, _args) => {
             // TyKind::Closure(*def_id, filter_generic_args(tcx, *def_id, *args))
-            let name = format!("Fn#{}",tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher)).0);
+            let name = format!(
+                "Fn#{}",
+                tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher))
+                    .0
+            );
             return get_placeholder(tcx, &name);
         }
         TyKind::Coroutine(def_id, _args, _mvblt) => {
             // TyKind::Coroutine(*def_id, filter_generic_args(tcx, *def_id, *args), *mvblt)
-            let name = format!("Fn#{}",tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher)).0);
+            let name = format!(
+                "Fn#{}",
+                tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher))
+                    .0
+            );
             return get_placeholder(tcx, &name);
         }
         TyKind::CoroutineWitness(def_id, args) => {

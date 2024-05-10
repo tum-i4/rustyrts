@@ -1,4 +1,7 @@
-use fs_utils::{get_dynamic_path, get_process_traces_path, get_traces_path, write_to_file};
+use constants::ENV_RUSTDOCFLAGS;
+use fs_utils::{
+    get_cache_path, get_process_traces_path, get_traces_path, write_to_file, CacheKind,
+};
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicPtr;
@@ -25,24 +28,24 @@ pub fn trace(input: &'static mut (&str, usize)) {
     if traced.1.load(Ordering::Acquire) as u64 == u64::MAX {
         // Append to list
         LIST.fetch_update(Ordering::AcqRel, Ordering::Acquire, |prev| {
-                if let Ok(_) = traced.1.fetch_update(
-                    Ordering::AcqRel,
-                    Ordering::Acquire,
-                    |supposed_to_be_max| {
-                        if supposed_to_be_max as u64 == u64::MAX {
-                            Some(prev)
-                        } else {
-                            None
-                        }
-                    },
-                ) {
-                    Some(traced)
-                } else {
-                    None
-                }
-            })
-            .map(|_| ())
-            .unwrap_or_default();
+            if traced
+                .1
+                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |supposed_to_be_max| {
+                    if supposed_to_be_max as u64 == u64::MAX {
+                        Some(prev)
+                    } else {
+                        None
+                    }
+                })
+                .is_ok()
+            {
+                Some(traced)
+            } else {
+                None
+            }
+        })
+        .map(|_| ())
+        .unwrap_or_default();
     }
 }
 
@@ -84,7 +87,7 @@ fn read_list<'a>() -> HashSet<Cow<'a, str>> {
 
     let mut ptr = LIST.load(Ordering::Acquire);
     while let Some(traced) = unsafe { ptr.as_ref() } {
-        traces.insert(Cow::Borrowed(traced.0.clone()));
+        traces.insert(Cow::Borrowed(traced.0));
         ptr = traced.1.load(Ordering::Acquire);
     }
 
@@ -99,18 +102,23 @@ fn reset_list<'a>() -> HashSet<Cow<'a, str>> {
         Some(next_ptr.load(Ordering::Acquire))
     }) {
         let Traced(name, ptr) = unsafe { prev.as_ref() }.unwrap();
-        traces.insert(Cow::Borrowed((*name).clone()));
+        traces.insert(Cow::Borrowed(*name));
         ptr.store(u64::MAX as *mut Traced, Ordering::Release);
     }
 
     traces
 }
 
-fn export_traces<'a, F>(traces: HashSet<Cow<'a, str>>, path_buf_init: F, append: bool)
+fn export_traces<F>(traces: HashSet<Cow<'_, str>>, path_buf_init: F, append: bool)
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
-    let path_buf = get_dynamic_path(true);
+    let cache_kind = if std::env::var(ENV_RUSTDOCFLAGS).is_ok() {
+        CacheKind::Doctests
+    } else {
+        CacheKind::Dynamic
+    };
+    let path_buf = get_cache_path(cache_kind).unwrap();
     let mut traces = traces;
 
     #[cfg(unix)]
@@ -130,7 +138,7 @@ where
 
     let output = traces.into_iter().fold(String::new(), |mut acc, node| {
         acc.push_str(&node);
-        acc.push_str("\n");
+        acc.push('\n');
         acc
     });
 

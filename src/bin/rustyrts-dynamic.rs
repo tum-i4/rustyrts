@@ -5,11 +5,14 @@ extern crate rustc_log;
 
 use rustc_log::LoggerConfig;
 use rustyrts::callbacks_shared::export_checksums_and_changes;
-use rustyrts::constants::{ENV_BLACKBOX_TEST, ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::dynamic_rts::callback::DynamicRTSCallbacks;
 use rustyrts::format::create_logger;
-use std::process;
+use rustyrts::{
+    constants::{ENV_BLACKBOX_TEST, ENV_SKIP_ANALYSIS, ENV_TARGET_DIR},
+    fs_utils::{get_cache_path, CacheKind},
+};
 use std::{env, path::PathBuf};
+use std::{fs::create_dir_all, process};
 
 //######################################################################################################################
 // This file is heavily inspired by rust-mir-checker
@@ -32,6 +35,7 @@ fn main() {
     if !skip {
         let result = rustc_driver::catch_fatal_errors(move || {
             let mut rustc_args = env::args_os()
+                .skip(1)
                 .enumerate()
                 .map(|(i, arg)| {
                     arg.into_string().unwrap_or_else(|arg| {
@@ -61,7 +65,8 @@ fn main() {
             rustc_args.push("--cap-lints".to_string());
             rustc_args.push("allow".to_string());
 
-            let mut callbacks = DynamicRTSCallbacks::new();
+            let maybe_cache_path = get_cache_path(CacheKind::Dynamic);
+            let mut callbacks = DynamicRTSCallbacks::new(maybe_cache_path);
 
             let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
             run_compiler.run()
@@ -70,7 +75,7 @@ fn main() {
         let result = result.unwrap();
         let exit_code = match result {
             Ok(_) => {
-                export_checksums_and_changes(false);
+                export_checksums_and_changes(false, false);
                 EXIT_SUCCESS
             }
             Err(_) => EXIT_FAILURE,

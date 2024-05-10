@@ -1,6 +1,6 @@
 use super::mir_util::Traceable;
-use crate::names::def_id_name;
 use crate::callbacks_shared::TEST_MARKER;
+use crate::names::def_id_name;
 use log::trace;
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::DefId;
@@ -72,4 +72,3 @@ pub(crate) fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 }
-
