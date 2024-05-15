@@ -60,7 +60,7 @@ impl Callbacks for StaticRTSCallbacks {
         // The only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers| {
             // SAFETY: We store the address of the original vtable_entries function as a usize.
-            OLD_VTABLE_ENTRIES.store(unsafe { transmute(providers.vtable_entries) }, SeqCst);
+            OLD_VTABLE_ENTRIES.store(providers.vtable_entries as usize, SeqCst);
 
             providers.vtable_entries = custom_vtable_entries_monomorphized;
         });
@@ -80,6 +80,7 @@ impl Callbacks for StaticRTSCallbacks {
                 self.run_analysis(tcx);
             }
         });
+
         Compilation::Continue
     }
 }
@@ -90,7 +91,8 @@ impl StaticRTSCallbacks {
             let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
             let crate_id = tcx.stable_crate_id(LOCAL_CRATE).as_u64();
 
-            let graph = create_dependency_graph(tcx, MonoItemCollectionMode::Lazy);
+            let arena = internment::Arena::new();
+            let graph = create_dependency_graph(tcx, &arena, MonoItemCollectionMode::Lazy);
 
             debug!("Created graph for {}", crate_name);
 

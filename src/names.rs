@@ -2,12 +2,12 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_hir::{def::Namespace, def_id::DefId, definitions::DefPathData};
+use rustc_middle::ty::TyKind;
 use rustc_middle::ty::{
     print::FmtPrinter, AliasTy, Binder, FnSig, GenericArgs, ParamTy, Ty, TyCtxt, TypeAndMut,
 };
 use rustc_middle::ty::{print::Printer, List};
 use rustc_span::{def_id::LOCAL_CRATE, Symbol};
-use rustc_type_ir::TyKind;
 
 lazy_static! {
     static ref RE_LIFETIME: [Regex; 2] = [

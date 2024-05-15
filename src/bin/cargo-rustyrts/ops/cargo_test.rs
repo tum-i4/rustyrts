@@ -1,15 +1,19 @@
+#![allow(dead_code)]
 use anyhow::format_err;
-use cargo::core::{TargetKind, Workspace};
-use cargo::ops;
-use cargo::util::errors::CargoResult;
-use cargo::util::{add_path_args, CliError, CliResult, Config};
-use cargo::{
-    core::compiler::{Compilation, CompileKind, Doctest, Metadata, Unit, UnitOutput},
-    ops::TestOptions,
-};
+use cargo::core::compiler::{Compilation, CompileKind, Doctest, Metadata, Unit, UnitOutput};
+use cargo::util::{config::Definition, errors::CargoResult};
 use cargo::{
     core::{compiler::Executor, shell::Verbosity},
     ops::compile_with_exec,
+};
+use cargo::{
+    core::{TargetKind, Workspace},
+    util::config::CargoBuildConfig,
+};
+use cargo::{ops, util::config::ConfigRelativePath};
+use cargo::{
+    ops::CompileOptions,
+    util::{add_path_args, config::Value, CliError, CliResult, Config},
 };
 use cargo_util::{ProcessBuilder, ProcessError};
 use itertools::Itertools;
@@ -69,66 +73,55 @@ impl UnitTestError {
 /// On error, the returned [`CliError`] will have the appropriate process exit
 /// code that Cargo should use.
 pub fn run_tests(
-    test: (Workspace<'_>, TestOptions, PathBuf),
-    doctest: Option<(Workspace<'_>, TestOptions, PathBuf)>,
+    ws: &Workspace<'_>,
+    options: &CompileOptions,
+    target_dir: PathBuf,
     test_args: &[String],
     mode: &dyn SelectionMode,
 ) -> CliResult {
-    let (ws_test, options_test, target_dir_test) = &test;
+    mode.clean_intermediate_files(target_dir.clone());
 
-    mode.clean_intermediate_files(target_dir_test.clone());
+    let exec: Arc<dyn Executor> = Arc::new(TestExecutor::new(target_dir.clone()));
+    let compilation = compile_tests(ws, options, exec, mode.cmd())?;
 
-    let exec_test: Arc<dyn Executor> = Arc::new(TestExecutor::new(target_dir_test.clone()));
-    let compilation_test = compile_tests(ws_test, options_test, exec_test)?;
-
-    let mut compilation_doctest = None;
-    if let Some((ws_doctest, options_doctest, target_dir_doctest)) = &doctest {
-        let exec_doctest: Arc<dyn Executor> =
-            Arc::new(TestExecutor::new(target_dir_doctest.clone()));
-        compilation_doctest = Some(compile_tests(ws_doctest, options_doctest, exec_doctest)?);
-    }
-
-    if options_test.no_run {
-        if !options_test.compile_opts.build_config.emit_json() {
-            display_no_run_information(ws_test, test_args, &compilation_test, "unittests")?;
-        }
-        return Ok(());
-    }
+    let affected_tests = mode.select_tests(ws.config(), target_dir.clone());
 
     let mut errors: Vec<UnitTestError> = run_unit_tests(
-        ws_test,
-        options_test,
+        ws,
+        options,
         test_args,
-        &compilation_test,
+        &compilation,
         TestKind::Test,
-        &mode.select_tests(ws_test.config(), target_dir_test.clone()),
+        &affected_tests,
     )?;
 
-    if let Some((ws_doctest, options_doctest, target_dir_doctest)) = &doctest {
-        if let Some(compilation_doctest) = compilation_doctest {
-            let doctest_errors = run_doc_tests(
-                ws_doctest,
-                options_doctest,
-                test_args,
-                &compilation_doctest,
-                &mode.select_doctests(ws_doctest.config(), target_dir_doctest.clone()),
-            )?;
-            errors.extend(doctest_errors);
-        }
-    }
+    let doctest_errors = run_doc_tests(
+        ws,
+        options,
+        test_args,
+        &compilation,
+        &mode.select_doc_tests(&ws, &compilation, target_dir),
+    )?;
 
-    no_fail_fast_err(ws_test, &options_test.compile_opts, &errors)
+    errors.extend(doctest_errors);
+    no_fail_fast_err(ws, options, &errors)
 }
 
 fn compile_tests<'a>(
     ws: &Workspace<'a>,
-    options: &TestOptions,
+    options: &CompileOptions,
     exec: Arc<dyn Executor>,
+    rustc_wrapper: PathBuf,
 ) -> CargoResult<Compilation<'a>> {
-    let mut compilation = {
-        let options = &options.compile_opts;
-        compile_with_exec(ws, options, &exec)
-    }?;
+    #[allow(mutable_transmutes)]
+    let build_config: &mut CargoBuildConfig =
+        unsafe { std::mem::transmute(ws.config().build_config().unwrap()) };
+    build_config.rustc_wrapper = Some(ConfigRelativePath::new(Value {
+        val: rustc_wrapper.to_str().unwrap().to_string(),
+        definition: Definition::Cli(None),
+    }));
+
+    let mut compilation = compile_with_exec(ws, options, &exec)?;
     compilation.tests.sort();
     Ok(compilation)
 }
@@ -139,7 +132,7 @@ fn compile_tests<'a>(
 /// If `--no-fail-fast` is *not* used, then this returns an `Err`.
 fn run_unit_tests(
     ws: &Workspace<'_>,
-    options: &TestOptions,
+    options: &CompileOptions,
     test_args: &[String],
     compilation: &Compilation<'_>,
     test_kind: TestKind,
@@ -150,7 +143,7 @@ fn run_unit_tests(
     let mut errors = Vec::new();
 
     let mut test_args = Vec::from(test_args);
-    if test_args.iter().any(|s| s == "--exact") {
+    if !test_args.iter().any(|s| s == "--exact") {
         test_args.push("--exact".to_string());
     }
 
@@ -199,16 +192,12 @@ fn run_unit_tests(
             .verbose(|shell| shell.status("Running", &cmd))?;
 
         if let Err(e) = cmd.exec() {
-            let code = fail_fast_code(&e);
             let unit_err = UnitTestError {
                 unit: unit.clone(),
                 kind: test_kind,
             };
-            report_test_error(ws, &test_args, &options.compile_opts, &unit_err, e);
+            report_test_error(ws, &test_args, &options, &unit_err, e);
             errors.push(unit_err);
-            if !options.no_fail_fast {
-                return Err(CliError::code(code));
-            }
         }
     }
     Ok(errors)
@@ -220,45 +209,51 @@ fn run_unit_tests(
 /// If `--no-fail-fast` is *not* used, then this returns an `Err`.
 fn run_doc_tests(
     ws: &Workspace<'_>,
-    options: &TestOptions,
+    options: &CompileOptions,
     test_args: &[String],
     compilation: &Compilation<'_>,
     affected_tests: &[String],
 ) -> Result<Vec<UnitTestError>, CliError> {
     let config = ws.config();
     let mut errors = Vec::new();
-    let doctest_xcompile = config.cli_unstable().doctest_xcompile;
+
+    let test_args = Vec::from(test_args);
+    // ISSUE: rustdoc splits arguments on whitespaces
+    // Since all names of doctests include spaces, we cannot use --exact here
+    //
+    // if !test_args.iter().any(|s| s == "--exact") {
+    //     test_args.push("--exact".to_string());
+    // }
 
     for doctest_info in &compilation.to_doc_test {
         let Doctest {
             args,
             unstable_opts,
             unit,
-            linker,
+            linker: _,
             script_meta,
             env,
         } = doctest_info;
 
-        if !doctest_xcompile {
-            match unit.kind {
-                CompileKind::Host => {}
-                CompileKind::Target(target) => {
-                    if target.short_name() != compilation.host {
-                        // Skip doctests, -Zdoctest-xcompile not enabled.
-                        config.shell().verbose(|shell| {
-                            shell.note(format!(
-                                "skipping doctests for {} ({}), \
-                                 cross-compilation doctests are not yet supported\n\
-                                 See https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#doctest-xcompile \
-                                 for more information.",
-                                unit.pkg,
-                                unit.target.description_named()
-                            ))
-                        })?;
-                        continue;
-                    }
+        let prefix = unit.target.name().to_string() + "/";
+        let mut affected_tests = affected_tests
+            .iter()
+            .filter_map(|s| s.strip_prefix(&prefix))
+            .map(|s| {
+                if let Some((_, path)) = s.split_once(" - ") {
+                    path
+                } else {
+                    s
                 }
-            }
+            })
+            .map(|s| s.to_string())
+            .collect_vec();
+
+        let mut test_args = test_args.clone();
+        if affected_tests.is_empty() {
+            test_args.push("?".to_string()); // This excludes all tests
+        } else {
+            test_args.append(&mut affected_tests);
         }
 
         config.shell().status("Doc-tests", unit.target.name())?;
@@ -279,22 +274,6 @@ fn run_doc_tests(
             p.arg("--target").arg(target.rustc_target());
         }
 
-        if doctest_xcompile {
-            p.arg("-Zunstable-options");
-            p.arg("--enable-per-target-ignores");
-            if let Some((runtool, runtool_args)) = compilation.target_runner(unit.kind) {
-                p.arg("--runtool").arg(runtool);
-                for arg in runtool_args {
-                    p.arg("--runtool-arg").arg(arg);
-                }
-            }
-            if let Some(linker) = linker {
-                let mut joined = OsString::from("linker=");
-                joined.push(linker);
-                p.arg("-C").arg(joined);
-            }
-        }
-
         for &rust_dep in &[
             &compilation.deps_output[&unit.kind],
             &compilation.deps_output[&CompileKind::Host],
@@ -308,7 +287,7 @@ fn run_doc_tests(
             p.arg("-L").arg(native_dep);
         }
 
-        for arg in test_args {
+        for arg in &test_args {
             p.arg("--test-args").arg(arg);
         }
 
@@ -333,16 +312,12 @@ fn run_doc_tests(
             .verbose(|shell| shell.status("Running", p.to_string()))?;
 
         if let Err(e) = p.exec() {
-            let code = fail_fast_code(&e);
             let unit_err = UnitTestError {
                 unit: unit.clone(),
                 kind: TestKind::Doctest,
             };
-            report_test_error(ws, test_args, &options.compile_opts, &unit_err, e);
+            report_test_error(ws, &test_args, &options, &unit_err, e);
             errors.push(unit_err);
-            if !options.no_fail_fast {
-                return Err(CliError::code(code));
-            }
         }
     }
     Ok(errors)
@@ -430,23 +405,6 @@ fn cmd_builds(
     Ok((exe_display, cmd))
 }
 
-/// Returns the error code to use when *not* using `--no-fail-fast`.
-///
-/// Cargo will return the error code from the test process itself. If some
-/// other error happened (like a failure to launch the process), then it will
-/// return a standard 101 error code.
-///
-/// When using `--no-fail-fast`, Cargo always uses the 101 exit code (since
-/// there may not be just one process to report).
-fn fail_fast_code(error: &anyhow::Error) -> i32 {
-    if let Some(proc_err) = error.downcast_ref::<ProcessError>() {
-        if let Some(code) = proc_err.code {
-            return code;
-        }
-    }
-    101
-}
-
 /// Returns the `CliError` when using `--no-fail-fast` and there is at least
 /// one error.
 fn no_fail_fast_err(
@@ -454,7 +412,6 @@ fn no_fail_fast_err(
     opts: &ops::CompileOptions,
     errors: &[UnitTestError],
 ) -> CliResult {
-    // TODO: This could be improved by combining the flags on a single line when feasible.
     let args: Vec<_> = errors
         .iter()
         .map(|unit_err| format!("    `{}`", unit_err.cli_args(ws, opts)))

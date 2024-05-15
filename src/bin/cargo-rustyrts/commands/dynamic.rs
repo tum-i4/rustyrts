@@ -5,10 +5,11 @@ use std::{
 };
 
 use cargo::util::command_prelude::*;
+use internment::{Arena, ArenaIntern};
 use itertools::Itertools;
 use rustyrts::{
     constants::{ENDING_CHANGES, ENDING_PROCESS_TRACE, ENDING_TEST, ENDING_TRACE},
-    fs_utils::{read_lines, CacheKind},
+    fs_utils::{read_lines, read_lines_filter_map, CacheKind},
 };
 
 use super::SelectionMode;
@@ -77,16 +78,22 @@ impl SelectionMode for DynamicMode {
             .map(|maybe_path| maybe_path.unwrap())
             .collect();
 
+        let arena: Arena<String> = Arena::new();
+
         // Read tests
-        let tests = read_lines(&files, ENDING_TEST);
+        let tests = read_lines_filter_map(&files, ENDING_TEST, |_s| true, |s| arena.intern(s));
 
         // Read changed nodes
-        let changed_nodes = read_lines(&files, ENDING_CHANGES);
+        let changed_nodes =
+            read_lines_filter_map(&files, ENDING_CHANGES, |_s| true, |s| arena.intern(s));
 
         if verbose {
             println!(
                 "Nodes that have changed:\n{}\n",
-                changed_nodes.iter().sorted().join(", ")
+                changed_nodes
+                    .iter()
+                    .sorted_by(|a, b| Ord::cmp(&***a, &***b))
+                    .join(", ")
             );
         } else {
             println!("#Nodes that have changed: {}\n", changed_nodes.len());
@@ -111,20 +118,21 @@ impl SelectionMode for DynamicMode {
             })
             .collect();
 
-        let analyzed_tests_names: HashSet<String> = analyzed_tests
+        let analyzed_tests_names: HashSet<ArenaIntern<'_, String>> = analyzed_tests
             .iter()
             .map(|f| {
-                f.file_name()
-                    .to_os_string()
-                    .into_string()
-                    .unwrap()
-                    .split_once('.')
-                    .unwrap()
-                    .0
-                    .split_once("::")
-                    .unwrap()
-                    .1
-                    .to_string()
+                arena.intern(
+                    f.file_name()
+                        .into_string()
+                        .unwrap()
+                        .split_once('.')
+                        .unwrap()
+                        .0
+                        .split_once("::")
+                        .unwrap()
+                        .1
+                        .to_string(),
+                )
             })
             .collect();
 
@@ -133,23 +141,20 @@ impl SelectionMode for DynamicMode {
         affected_tests.append(
             &mut tests
                 .difference(&analyzed_tests_names)
-                .map(|s| s.clone())
+                .map(|s| (**s).clone())
                 .collect_vec(),
         );
 
         for file in analyzed_tests {
-            let traced_nodes: HashSet<String> = read_to_string(file.path())
+            let traced_nodes: HashSet<ArenaIntern<String>> = read_to_string(file.path())
                 .unwrap()
                 .split('\n')
                 .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
+                .map(|s| arena.intern(s.to_string()))
                 .collect();
 
-            let intersection: HashSet<String> = traced_nodes
-                .intersection(&changed_nodes)
-                .map(|s| s.to_string())
-                .collect();
-            if !intersection.is_empty() {
+            let mut intersection = traced_nodes.intersection(&changed_nodes);
+            if intersection.next().is_some() {
                 let test_name = file
                     .file_name()
                     .into_string()
@@ -182,11 +187,16 @@ impl SelectionMode for DynamicMode {
         affected_tests
     }
 
-    fn select_doctests(&self, config: &Config, target_dir: PathBuf) -> Vec<String> {
-        todo!()
-    }
-
     fn clean_intermediate_files(&self, target_dir: PathBuf) {
+        let path_buf = {
+            let mut target_dir = target_dir.clone();
+            target_dir.push(std::convert::Into::<&str>::into(CacheKind::Doctests));
+            target_dir
+        };
+
+        create_dir_all(path_buf.as_path())
+            .unwrap_or_else(|_| panic!("Failed to create directory {}", path_buf.display()));
+
         let path_buf = {
             let mut target_dir = target_dir;
             target_dir.push(std::convert::Into::<&str>::into(CacheKind::Dynamic));

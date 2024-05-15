@@ -31,6 +31,9 @@ pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP";
 
 pub const ENV_BLACKBOX_TEST: &str = "RUSTYRTS_BLACKBOX_TEST";
 
+/// Indicates whether the crate that is currently compiled is doctested
+pub const ENV_DOCTESTED: &str = "RUSTYRTS_DOCTESTED";
+
 //######################################################################################################################
 // File endings or names
 

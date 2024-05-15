@@ -6,9 +6,9 @@ use log::{error, trace};
 use rustc_abi::HasDataLayout;
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
-use rustc_const_eval::interpret::CtfeProvenance;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::mir::interpret::CtfeProvenance;
 use rustc_middle::{
     mir::{interpret::AllocId, CallSource, Const, ConstOperand, ConstValue, UnwindAction},
     ty::Region,

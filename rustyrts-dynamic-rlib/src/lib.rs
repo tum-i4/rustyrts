@@ -113,12 +113,7 @@ fn export_traces<F>(traces: HashSet<Cow<'_, str>>, path_buf_init: F, append: boo
 where
     F: FnOnce(PathBuf) -> PathBuf,
 {
-    let cache_kind = if std::env::var(ENV_RUSTDOCFLAGS).is_ok() {
-        CacheKind::Doctests
-    } else {
-        CacheKind::Dynamic
-    };
-    let path_buf = get_cache_path(cache_kind).unwrap();
+    let path_buf = get_cache_path(CacheKind::Dynamic).unwrap();
     let mut traces = traces;
 
     #[cfg(unix)]

@@ -7,10 +7,11 @@ use std::{
 
 use cargo::util::command_prelude::*;
 
+use internment::Arena;
 use itertools::Itertools;
 use rustyrts::{
     checksums::Checksums,
-    constants::{ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, FILE_COMPLETE_GRAPH},
+    constants::{ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_TEST, FILE_COMPLETE_GRAPH},
     fs_utils::{read_lines_filter_map, CacheKind},
     static_rts::graph::DependencyGraph,
 };
@@ -81,8 +82,11 @@ impl SelectionMode for StaticMode {
             .map(|maybe_path| maybe_path.unwrap())
             .collect();
 
+        let arena = Arena::new();
+
         // Read graphs
-        let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new();
+        let mut dependency_graph: DependencyGraph<String> = DependencyGraph::new(&arena);
+
         let edges = read_lines_filter_map(
             &files,
             ENDING_GRAPH,
@@ -134,31 +138,33 @@ impl SelectionMode for StaticMode {
         let changed_nodes = read_lines_filter_map(
             &files,
             ENDING_CHANGES,
-            |line| !line.is_empty() && dependency_graph.get_node(line).is_some(),
-            |line| dependency_graph.get_node(&line).unwrap(),
+            |_line| true,
+            |line| arena.intern(line),
         );
 
         if verbose {
             println!(
                 "Nodes that have changed:\n{}\n",
-                changed_nodes.iter().sorted().join(", ")
+                changed_nodes
+                    .iter()
+                    .sorted_by(|a, b| Ord::cmp(&***a, &***b,))
+                    .join(", ")
             );
         } else {
             println!("#Nodes that have changed: {}\n", changed_nodes.len());
         }
 
         // Read possibly affected tests
-        let tests = read_lines_filter_map(
-            &files,
-            "test",
-            |line| !line.is_empty() && dependency_graph.get_node(line).is_some(),
-            |line| dependency_graph.get_node(&line).unwrap(),
-        );
+        let tests =
+            read_lines_filter_map(&files, ENDING_TEST, |_line| true, |line| arena.intern(line));
 
         println!("#Tests that have been found: {}\n", tests.len());
 
         let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
-        let affected_tests: HashSet<&&String> = tests.intersection(&reached_nodes).collect();
+        let affected_tests: HashSet<String> = tests
+            .intersection(&reached_nodes)
+            .map(|interned| interned.to_string())
+            .collect();
 
         println!(
             "#Nodes that reach any changed node in the graph: {}\n",
@@ -180,11 +186,16 @@ impl SelectionMode for StaticMode {
             .collect_vec()
     }
 
-    fn select_doctests(&self, config: &Config, target_dir: PathBuf) -> Vec<String> {
-        vec![]
-    }
-
     fn clean_intermediate_files(&self, target_dir: PathBuf) {
+        let path_buf = {
+            let mut target_dir = target_dir.clone();
+            target_dir.push(std::convert::Into::<&str>::into(CacheKind::Doctests));
+            target_dir
+        };
+
+        create_dir_all(path_buf.as_path())
+            .unwrap_or_else(|_| panic!("Failed to create directory {}", path_buf.display()));
+
         let path_buf = {
             let mut target_dir = target_dir;
             target_dir.push(std::convert::Into::<&str>::into(CacheKind::Static));

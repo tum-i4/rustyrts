@@ -5,9 +5,13 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_middle::mir::interpret::ConstAllocation;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{ScalarInt, TyCtxt, VtblEntry};
-use std::collections::{HashMap, HashSet};
+use rustc_span::sym;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hasher,
+};
 
 /// Wrapper of HashMap to provide serialization and deserialization of checksums
 /// (Newtype Pattern)
@@ -104,6 +108,15 @@ pub(crate) fn get_checksum_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u
         context.without_hir_bodies(|context| {
             context.while_hashing_spans(false, |context| {
                 let mut hasher = StableHasher::new();
+                if tcx
+                    .get_attr(body.source.def_id(), sym::should_panic)
+                    .is_some()
+                {
+                    hasher.write("should_panic".as_bytes());
+                }
+                if tcx.get_attr(body.source.def_id(), sym::ignore).is_some() {
+                    hasher.write("ignore".as_bytes());
+                }
                 body.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
             })

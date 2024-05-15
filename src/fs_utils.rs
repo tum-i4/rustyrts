@@ -103,7 +103,7 @@ pub fn read_lines_filter_map<F, M, O>(
 where
     F: Fn(&String) -> bool,
     M: std::ops::FnMut(std::string::String) -> O,
-    O: Eq + Hash + Ord,
+    O: Eq + Hash,
 {
     let tokens: HashSet<O> = files
         .iter()

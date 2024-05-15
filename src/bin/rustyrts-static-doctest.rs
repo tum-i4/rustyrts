@@ -8,9 +8,9 @@ use rustyrts::constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR};
 use rustyrts::{callbacks_shared::export_checksums_and_changes, constants::ENV_BLACKBOX_TEST};
 use rustyrts::{format::create_logger, fs_utils::get_cache_path};
 use rustyrts::{fs_utils::CacheKind, static_rts::callback::StaticRTSCallbacks};
+use std::env;
 use std::path::PathBuf;
 use std::process;
-use std::{env, fs::create_dir_all};
 
 //######################################################################################################################
 // This file is heavily inspired by rust-mir-checker

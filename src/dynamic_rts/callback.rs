@@ -18,8 +18,8 @@ use rustc_span::{
     symbol::Ident,
     Symbol, DUMMY_SP,
 };
+use std::mem::transmute;
 use std::sync::Mutex;
-use std::{mem::transmute, sync::atomic::AtomicBool};
 use std::{path::PathBuf, sync::atomic::AtomicUsize};
 
 use crate::callbacks_shared::{

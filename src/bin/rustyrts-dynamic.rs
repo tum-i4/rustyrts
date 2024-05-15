@@ -11,8 +11,8 @@ use rustyrts::{
     constants::{ENV_BLACKBOX_TEST, ENV_SKIP_ANALYSIS, ENV_TARGET_DIR},
     fs_utils::{get_cache_path, CacheKind},
 };
+use std::process;
 use std::{env, path::PathBuf};
-use std::{fs::create_dir_all, process};
 
 //######################################################################################################################
 // This file is heavily inspired by rust-mir-checker
