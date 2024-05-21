@@ -1,11 +1,11 @@
 use super::mir_util::Traceable;
-use crate::names::def_id_name;
 use crate::callbacks_shared::TEST_MARKER;
-use log::trace;
+use crate::names::def_id_name;
 use once_cell::sync::OnceCell;
 use rustc_hir::def_id::DefId;
 use rustc_hir::AttributeMap;
 use rustc_middle::{mir::Body, ty::TyCtxt};
+use tracing::trace;
 
 #[cfg(unix)]
 static ENTRY_FN: OnceCell<Option<DefId>> = OnceCell::new();
@@ -72,4 +72,3 @@ pub(crate) fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
     }
 }
-

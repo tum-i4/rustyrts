@@ -4,14 +4,17 @@ extern crate rustc_driver;
 extern crate rustc_log;
 
 use rustc_log::LoggerConfig;
-use rustyrts::format::setup_logger;
-use rustyrts::{constants::ENV_DOCTESTED, dynamic_rts::callback::DynamicRTSCallbacks};
+use rustyrts::constants::ENV_BLACKBOX_TEST;
+use rustyrts::fs_utils::get_cache_path;
 use rustyrts::{
-    constants::{ENV_BLACKBOX_TEST, ENV_SKIP_ANALYSIS, ENV_TARGET_DIR},
-    fs_utils::{get_cache_path, CacheKind},
+    constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR},
+    format::setup_logger,
 };
+use rustyrts::{fs_utils::CacheKind, static_rts::callback::StaticRTSCallbacks};
+use std::env;
+use std::path::PathBuf;
 use std::process;
-use std::{env, path::PathBuf};
+use tracing::info;
 
 //######################################################################################################################
 // This file is heavily inspired by rust-mir-checker
@@ -34,7 +37,6 @@ fn main() {
     if !skip {
         let result = rustc_driver::catch_fatal_errors(move || {
             let mut rustc_args = env::args_os()
-                .skip(1)
                 .enumerate()
                 .map(|(i, arg)| {
                     arg.into_string().unwrap_or_else(|arg| {
@@ -64,12 +66,8 @@ fn main() {
             rustc_args.push("--cap-lints".to_string());
             rustc_args.push("allow".to_string());
 
-            let maybe_cache_path = get_cache_path(CacheKind::Dynamic);
-            let maybe_doctest_cache_path = std::env::var(ENV_DOCTESTED)
-                .ok()
-                .and_then(|_| get_cache_path(CacheKind::Doctests));
-            let mut callbacks =
-                DynamicRTSCallbacks::new(maybe_cache_path, maybe_doctest_cache_path);
+            let maybe_cache_path = get_cache_path(CacheKind::Doctests);
+            let mut callbacks = StaticRTSCallbacks::new(maybe_cache_path, None, true);
 
             let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
             run_compiler.run()

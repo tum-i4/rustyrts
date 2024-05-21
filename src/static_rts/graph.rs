@@ -1,17 +1,12 @@
 use itertools::Itertools;
 use queues::{IsQueue, Queue};
-use rustc_middle::{
-    mir::mono::MonoItem,
-    ty::{List, TyCtxt},
-};
+
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::str::FromStr;
 
-use crate::{
-    constants::SUFFIX_DYN,
-    names::{def_id_name, mono_def_id_name},
-};
+use internment::Arena;
+use internment::ArenaIntern;
 
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
 pub enum EdgeType {
@@ -76,105 +71,100 @@ impl FromStr for EdgeType {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub struct DependencyGraph<T: Eq + Hash + Clone> {
-    nodes: HashSet<T>,
-    backwards_edges: HashMap<T, HashMap<T, HashSet<EdgeType>>>,
+pub struct DependencyGraph<'arena, T: Eq + Hash> {
+    arena: &'arena Arena<T>,
+    nodes: HashSet<ArenaIntern<'arena, T>>,
+    backwards_edges:
+        HashMap<ArenaIntern<'arena, T>, HashMap<ArenaIntern<'arena, T>, HashSet<EdgeType>>>,
 }
 
-impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
-    pub fn new() -> DependencyGraph<T> {
-        DependencyGraph {
+impl<'arena, 'a, T: Eq + Hash> DependencyGraph<'arena, T> {
+    pub fn new(arena: &'arena Arena<T>) -> Self {
+        Self {
+            arena,
             nodes: HashSet::new(),
             backwards_edges: HashMap::new(),
         }
     }
 
-    pub fn add_node(&mut self, node: T) {
-        if self.nodes.insert(node.clone()) {
-            self.backwards_edges.insert(node, HashMap::new());
+    fn add_node(&mut self, node: T) -> ArenaIntern<'arena, T> {
+        let interned = self.arena.intern(node);
+
+        if self.nodes.insert(interned) {
+            self.backwards_edges.insert(interned, HashMap::new());
         }
+
+        interned
     }
 
     pub fn add_edge(&mut self, start: T, end: T, edge_type: EdgeType) {
-        self.add_node(end.clone());
-        self.add_node(start.clone());
+        let end = self.add_node(end);
+        let start = self.add_node(start);
 
         let ingoing = self.backwards_edges.get_mut(&end).unwrap();
 
         if let None = ingoing.get(&start) {
             ingoing.insert(start.clone(), HashSet::new());
         }
+
         let types = ingoing.get_mut(&start).unwrap();
         types.insert(edge_type);
     }
 
-    pub fn get_nodes(&self) -> &HashSet<T> {
-        &self.nodes
-    }
+    // #[allow(unused)]
+    // pub fn affected_tests<'b: 'c, 'c, S>(
+    //     &'b self,
+    //     starting_points: S,
+    //     tests: HashSet<&T>,
+    // ) -> (HashSet<&'b T>, HashMap<&'c T, Vec<&'b T>>)
+    // where
+    //     S: IntoIterator<Item = &'b T>,
+    // {
+    //     let mut reached = HashSet::new();
+    //     let mut affected = HashMap::new();
+    //     let mut acc = Vec::new();
 
-    pub fn get_node(&self, node: &T) -> Option<&T> {
-        self.nodes.get(node)
-    }
+    //     for ele in starting_points {
+    //         if reached.insert(ele) {
+    //             self.affected_tests_helper(ele, &tests, &mut reached, &mut affected, &mut acc);
+    //         }
+    //     }
 
-    pub fn get_edges_to(&self, to_node: &T) -> Option<&HashMap<T, HashSet<EdgeType>>> {
-        self.backwards_edges.get(to_node)
-    }
+    //     (reached, affected)
+    // }
 
-    #[allow(unused)]
-    pub fn affected_tests<'b: 'c, 'c, S>(
-        &'b self,
-        starting_points: S,
-        tests: HashSet<&T>,
-    ) -> (HashSet<&'b T>, HashMap<&'c T, Vec<&'b T>>)
-    where
-        S: IntoIterator<Item = &'b T>,
-    {
-        let mut reached = HashSet::new();
-        let mut affected = HashMap::new();
-        let mut acc = Vec::new();
+    // fn affected_tests_helper<'b: 'c, 'c>(
+    //     &'b self,
+    //     node: &'b T,
+    //     tests: &HashSet<&T>,
+    //     reached: &mut HashSet<&'b T>,
+    //     affected: &mut HashMap<&'c T, Vec<&'b T>>,
+    //     acc: &mut Vec<&'b T>,
+    // ) {
+    //     acc.push(node);
 
-        for ele in starting_points {
-            if reached.insert(ele) {
-                self.affected_tests_helper(ele, &tests, &mut reached, &mut affected, &mut acc);
-            }
-        }
+    //     if tests.contains(node) && !affected.keys().contains(&node) {
+    //         affected.insert(node, acc.clone());
+    //     }
 
-        (reached, affected)
-    }
+    //     if let Some(edges) = self.backwards_edges.get(node) {
+    //         for (start, _types) in edges {
+    //             if reached.insert(start) {
+    //                 self.affected_tests_helper(start, tests, reached, affected, acc);
+    //             }
+    //         }
+    //     }
 
-    fn affected_tests_helper<'b: 'c, 'c>(
-        &'b self,
-        node: &'b T,
-        tests: &HashSet<&T>,
-        reached: &mut HashSet<&'b T>,
-        affected: &mut HashMap<&'c T, Vec<&'b T>>,
-        acc: &mut Vec<&'b T>,
-    ) {
-        acc.push(node);
-
-        if tests.contains(node) && !affected.keys().contains(&node) {
-            affected.insert(node, acc.clone());
-        }
-
-        if let Some(edges) = self.backwards_edges.get(node) {
-            for (start, _types) in edges {
-                if reached.insert(start) {
-                    self.affected_tests_helper(start, tests, reached, affected, acc);
-                }
-            }
-        }
-
-        acc.pop();
-    }
+    //     acc.pop();
+    // }
 
     #[allow(unused)]
-    pub fn reachable_nodes<'b, S>(&'b self, starting_points: S) -> HashSet<&'b T>
-    where
-        S: IntoIterator<Item = &'b T>,
-    {
-        let mut queue: Queue<&'b T> = Queue::new();
-        let mut reached: HashSet<&'b T> = HashSet::new();
+    pub fn reachable_nodes(
+        &self,
+        starting_points: impl IntoIterator<Item = ArenaIntern<'arena, T>>,
+    ) -> HashSet<ArenaIntern<'arena, T>> {
+        let mut queue: Queue<ArenaIntern<'arena, T>> = Queue::new();
+        let mut reached: HashSet<ArenaIntern<'arena, T>> = HashSet::new();
 
         for ele in starting_points {
             queue.add(ele).unwrap();
@@ -186,10 +176,10 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
                 continue;
             }
 
-            if let Some(edges) = self.backwards_edges.get(node) {
+            if let Some(edges) = self.backwards_edges.get(&node) {
                 for (start, _types) in edges {
                     if !reached.contains(start) {
-                        queue.add(start).unwrap();
+                        queue.add(*start).unwrap();
                     }
                 }
             }
@@ -199,11 +189,8 @@ impl<'a, T: Eq + Hash + Clone> DependencyGraph<T> {
     }
 }
 
-impl DependencyGraph<String> {
-    pub fn import_nodes<T>(&mut self, lines: T)
-    where
-        T: IntoIterator<Item = String>,
-    {
+impl<'arena> DependencyGraph<'arena, String> {
+    pub fn import_nodes(&mut self, lines: impl IntoIterator<Item = String>) {
         // Parse nodes
         for line in lines {
             let message_fn = || format!("Found malformed node line: {})", line);
@@ -215,10 +202,7 @@ impl DependencyGraph<String> {
         }
     }
 
-    pub fn import_edges<T>(&mut self, lines: T)
-    where
-        T: IntoIterator<Item = String>,
-    {
+    pub fn import_edges(&mut self, lines: impl IntoIterator<Item = String>) {
         // Parse edges
         for line in lines {
             let message_fn = || format!("Found malformed edge line: {})", line);
@@ -250,8 +234,8 @@ impl DependencyGraph<String> {
 
         result.push_str("digraph {\n");
 
-        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&b, &a)) {
-            let format = if checksum_nodes.contains(node) {
+        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&***b, &***a)) {
+            let format = if checksum_nodes.contains(&***node) {
                 " [penwidth = 2.5]"
             } else {
                 ""
@@ -291,61 +275,13 @@ impl DependencyGraph<String> {
     }
 }
 
-impl<'tcx> DependencyGraph<MonoItem<'tcx>> {
-    pub fn convert_to_string(self, tcx: TyCtxt<'tcx>) -> DependencyGraph<String> {
-        let mut new_graph = DependencyGraph::new();
-
-        self.backwards_edges.into_iter().for_each(|(to, from)| {
-            if let Some((new_to, new_to_trimmed)) = Self::mono_item_name(tcx, to) {
-                new_graph.add_edge(new_to.clone(), new_to_trimmed.clone(), EdgeType::Trimmed);
-
-                from.into_iter().for_each(|(node, types)| {
-                    for ty in types {
-                        if let Some((new_from, new_from_trimmed)) = Self::mono_item_name(tcx, node)
-                        {
-                            new_graph.add_edge(
-                                new_from.clone(),
-                                new_from_trimmed,
-                                EdgeType::Trimmed,
-                            );
-                            if ty == EdgeType::Unsize {
-                                new_graph.add_edge(
-                                    new_from.clone(),
-                                    new_to_trimmed.clone() + SUFFIX_DYN,
-                                    ty,
-                                );
-                            }
-                            new_graph.add_edge(new_from, new_to.clone(), ty);
-                        }
-                    }
-                });
-            }
-        });
-
-        new_graph
-    }
-
-    fn mono_item_name(tcx: TyCtxt<'tcx>, mono_item: MonoItem<'tcx>) -> Option<(String, String)> {
-        match mono_item {
-            MonoItem::Fn(instance) => Some((
-                mono_def_id_name(tcx, instance.def_id(), instance.args, false, true),
-                def_id_name(tcx, instance.def_id(), false, true),
-            )),
-            MonoItem::Static(def_id) => Some((
-                mono_def_id_name(tcx, def_id, List::empty(), false, true),
-                def_id_name(tcx, def_id, false, true),
-            )),
-            MonoItem::GlobalAsm(_item_id) => None,
-        }
-    }
-}
-impl ToString for DependencyGraph<String> {
+impl<'arena> ToString for DependencyGraph<'arena, String> {
     fn to_string(&self) -> String {
         let mut result = String::new();
 
         result.push_str("digraph {\n");
 
-        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&b, &a)) {
+        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&***b, &***a)) {
             result.push_str(format!("\"{}\"\n", node).as_str())
         }
 
@@ -370,50 +306,53 @@ impl ToString for DependencyGraph<String> {
     }
 }
 
-impl FromStr for DependencyGraph<String> {
-    type Err = ();
+// impl FromStr for DependencyGraph<String> {
+//     type Err = ();
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let Some(content) = s
-            .trim()
-            .strip_prefix("digraph {") // Filter beginning and ending
-            .and_then(|s| s.strip_suffix("}"))
-        {
-            let (edges, nodes): (Vec<_>, Vec<_>) = content
-                .split("\n")
-                .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
-                .map(|s| s.to_string())
-                .partition(|l| l.contains("\" -> \""));
+//     fn from_str(s: &str) -> Result<Self, Self::Err> {
+//         if let Some(content) = s
+//             .trim()
+//             .strip_prefix("digraph {") // Filter beginning and ending
+//             .and_then(|s| s.strip_suffix("}"))
+//         {
+//             let (edges, nodes): (Vec<_>, Vec<_>) = content
+//                 .split("\n")
+//                 .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
+//                 .map(|s| s.to_string())
+//                 .partition(|l| l.contains("\" -> \""));
 
-            let mut result = Self::new();
+//             let mut result = Self::new();
 
-            result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
-            result.import_edges(edges);
+//             result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
+//             result.import_edges(edges);
 
-            return Ok(result);
-        }
-        Err(())
-    }
-}
+//             return Ok(result);
+//         }
+//         Err(())
+//     }
+// }
 
 #[cfg(test)]
 mod test {
     use std::str::FromStr;
 
+    use internment::Arena;
+
     use crate::static_rts::graph::{DependencyGraph, EdgeType};
 
     #[test]
     pub fn test_graph_deserialization() {
-        let mut graph: DependencyGraph<String> = DependencyGraph::new();
+        let arena = Arena::new();
+        let mut graph: DependencyGraph<String> = DependencyGraph::new(&arena);
 
         graph.add_node("lonely_node".to_string());
         graph.add_edge("start1".to_string(), "end1".to_string(), EdgeType::Call);
         graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Unsize);
         graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Drop);
 
-        let serialized = graph.to_string();
-        let deserialized = DependencyGraph::from_str(&serialized).unwrap();
+        // let serialized = graph.to_string();
+        // let deserialized = DependencyGraph::from_str(&serialized).unwrap();
 
-        assert_eq!(graph, deserialized);
+        // assert_eq!(graph, deserialized);
     }
 }

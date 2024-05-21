@@ -4,8 +4,8 @@
 // Adapted to extract the dependency relation instead of monomorphization
 
 use hir::{AttributeMap, ConstContext};
+use internment::Arena;
 use itertools::Itertools;
-use log::trace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_hir as hir;
@@ -41,10 +41,15 @@ use rustc_span::{
     ErrorGuaranteed,
 };
 use rustc_span::{Span, DUMMY_SP};
-use std::path::PathBuf;
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
+use tracing::trace;
 
 use crate::{
     callbacks_shared::TEST_MARKER,
+    constants::SUFFIX_DYN,
     names::{def_id_name, mono_def_id_name},
     static_rts::graph::EdgeType,
 };
@@ -59,17 +64,12 @@ pub enum MonoItemCollectionMode {
     Lazy,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Default, PartialEq, Debug)]
 pub enum MonomorphizationContext {
+    #[default]
     Root,
     Local(EdgeType),
     NonLocal(EdgeType),
-}
-
-impl Default for MonomorphizationContext {
-    fn default() -> Self {
-        MonomorphizationContext::Root
-    }
 }
 
 #[derive(Debug)]
@@ -90,7 +90,7 @@ impl<'a> TryInto<EdgeType> for &'a MonomorphizationContext {
 }
 
 pub struct CustomUsageMap<'tcx> {
-    graph: DependencyGraph<MonoItem<'tcx>>,
+    dependencies: HashMap<MonoItem<'tcx>, HashMap<MonoItem<'tcx>, HashSet<EdgeType>>>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -99,7 +99,7 @@ type MonoItems<'tcx> = Vec<(Spanned<MonoItem<'tcx>>, MonomorphizationContext)>;
 impl<'tcx> CustomUsageMap<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> CustomUsageMap<'tcx> {
         CustomUsageMap {
-            graph: DependencyGraph::new(),
+            dependencies: HashMap::new(),
             tcx,
         }
     }
@@ -111,21 +111,74 @@ impl<'tcx> CustomUsageMap<'tcx> {
     ) where
         'tcx: 'a,
     {
-        for (used_item, context) in used_items.into_iter() {
-            self.graph
-                .add_edge(user_item, used_item.node, context.try_into().unwrap());
+        for (used_item, context) in used_items.iter() {
+            let used_item = used_item.node;
+
+            if self.dependencies.get(&used_item).is_none() {
+                self.dependencies.insert(used_item, HashMap::new());
+            }
+
+            let ingoing = self.dependencies.get_mut(&used_item).unwrap();
+
+            if ingoing.get(&user_item).is_none() {
+                ingoing.insert(user_item, HashSet::new());
+            }
+
+            let types = ingoing.get_mut(&user_item).unwrap();
+            types.insert(context.try_into().unwrap());
         }
     }
 
-    pub fn finalize(self) -> DependencyGraph<String> {
-        self.graph.convert_to_string(self.tcx)
+    pub fn finalize(self, arena: &Arena<String>) -> DependencyGraph<String> {
+        let mut graph = DependencyGraph::new(arena);
+
+        self.dependencies.into_iter().for_each(|(to, from)| {
+            if let Some((new_to, new_to_trimmed)) = Self::mono_item_name(self.tcx, to) {
+                graph.add_edge(new_to.clone(), new_to_trimmed.clone(), EdgeType::Trimmed);
+
+                from.into_iter().for_each(|(node, types)| {
+                    for ty in types {
+                        if let Some((new_from, new_from_trimmed)) =
+                            Self::mono_item_name(self.tcx, node)
+                        {
+                            graph.add_edge(new_from.clone(), new_from_trimmed, EdgeType::Trimmed);
+                            if ty == EdgeType::Unsize {
+                                graph.add_edge(
+                                    new_from.clone(),
+                                    new_to_trimmed.clone() + SUFFIX_DYN,
+                                    ty,
+                                );
+                            }
+                            graph.add_edge(new_from, new_to.clone(), ty);
+                        }
+                    }
+                });
+            }
+        });
+
+        graph
+    }
+
+    fn mono_item_name(tcx: TyCtxt<'tcx>, mono_item: MonoItem<'tcx>) -> Option<(String, String)> {
+        match mono_item {
+            MonoItem::Fn(instance) => Some((
+                mono_def_id_name(tcx, instance.def_id(), instance.args, false, true),
+                def_id_name(tcx, instance.def_id(), false, true),
+            )),
+            MonoItem::Static(def_id) => Some((
+                mono_def_id_name(tcx, def_id, List::empty(), false, true),
+                def_id_name(tcx, def_id, false, true),
+            )),
+            MonoItem::GlobalAsm(_item_id) => None,
+        }
     }
 }
 
-pub fn create_dependency_graph<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn create_dependency_graph<'arena>(
+    tcx: TyCtxt<'_>,
+    arena: &'arena Arena<String>,
     mode: MonoItemCollectionMode,
-) -> DependencyGraph<String> {
+) -> DependencyGraph<'arena, String> {
     let _prof_timer = tcx.prof.generic_activity("dependency_graph_creation");
 
     let roots = tcx
@@ -159,18 +212,18 @@ pub fn create_dependency_graph<'tcx>(
         });
     }
 
-    let mut graph = usage_map.into_inner().finalize();
+    let mut graph = usage_map.into_inner().finalize(arena);
 
-    let tests = tcx.sess.time("dependency_graph_root_collection", || {
-        collect_test_functions(tcx)
-    });
+    // let tests = tcx.sess.time("dependency_graph_root_collection", || {
+    //     collect_test_functions(tcx)
+    // });
 
-    for test in tests {
-        let def_id = test.def_id();
-        let name_trimmed = def_id_name(tcx, def_id, false, true);
-        let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
-        graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
-    }
+    // for test in tests {
+    //     let def_id = test.def_id();
+    //     let name_trimmed = def_id_name(tcx, def_id, false, true);
+    //     let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
+    //     graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
+    // }
 
     graph
 }
@@ -248,14 +301,16 @@ pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
                     let first_call = maybe_first_bb.and_then(|bb| bb.terminator.as_ref());
 
                     if let Some(terminator) = first_call {
-                        if let TerminatorKind::Call { func, .. } = &terminator.kind {
-                            if let Operand::Constant(const_operand) = func {
-                                let ty = const_operand.ty();
-                                if let TyKind::FnDef(def_id, substs) = ty.kind() {
-                                    let instance = Instance::new(*def_id, substs);
-                                    let mono_item = MonoItem::Fn(instance);
-                                    roots.push(dummy_spanned(mono_item))
-                                }
+                        if let TerminatorKind::Call {
+                            func: Operand::Constant(const_operand),
+                            ..
+                        } = &terminator.kind
+                        {
+                            let ty = const_operand.ty();
+                            if let TyKind::FnDef(def_id, substs) = ty.kind() {
+                                let instance = Instance::new(*def_id, substs);
+                                let mono_item = MonoItem::Fn(instance);
+                                roots.push(dummy_spanned(mono_item))
                             }
                         }
                     }
@@ -685,7 +740,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     callee_ty,
                     true,
                     source,
-                    &mut self.output,
+                    self.output,
                     // 1. function -> callee function (static dispatch)
                     EdgeType::Call,
                 )
@@ -756,7 +811,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         self.visiting_call_terminator = false;
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>, context: TyContext) {
+    fn visit_ty(&mut self, ty: Ty<'tcx>, _context: TyContext) {
         // But not inside drop glue
         if self.body.source.def_id() != self.tcx.require_lang_item(LangItem::DropInPlace, None) {
             let source = self.body.span;
@@ -771,7 +826,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             }
             if let TyKind::Ref(_region, ty, _mtblt) = *ty.kind() {
                 // Also account for closures behind references
-                self.visit_ty(ty, context);
+                self.visit_ty(ty, _context);
             }
             // self.super_ty(ty) //Weirdly, this is just empty
         }
@@ -905,8 +960,7 @@ fn maybe_codegen_context<'tcx>(
     edge_type: Option<EdgeType>,
 ) -> Option<MonomorphizationContext> {
     let Some(def_id) = instance.def.def_id_if_not_guaranteed_local_codegen() else {
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     };
 
     if tcx.is_foreign_item(def_id) {
@@ -916,14 +970,12 @@ fn maybe_codegen_context<'tcx>(
 
     if def_id.is_local() {
         // Local items cannot be referred to locally without monomorphizing them locally.
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     }
 
     // IMPORTANT: This connects the graphs of multiple crates
     if tcx.is_reachable_non_generic(instance.def_id()) {
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::NonLocal(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::NonLocal);
     }
 
     if instance
@@ -932,13 +984,11 @@ fn maybe_codegen_context<'tcx>(
         .is_some()
     {
         // Local is necessary here
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     }
 
     if let DefKind::Static(_) = tcx.def_kind(def_id) {
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     }
 
     if !tcx.is_mir_available(def_id) {
@@ -949,7 +999,7 @@ fn maybe_codegen_context<'tcx>(
         );
     }
 
-    Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type))).unwrap_or_default()
+    edge_type.map(MonomorphizationContext::Local)
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,
@@ -1434,7 +1484,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
                 // IMPORTANT: This ensures that functions referenced in closures contained in Consts are considered
                 // For instance this is the case for all test functions
                 if fn_instance.args.len() > 0 {
-                    let maybe_arg = fn_instance.args.get(0);
+                    let maybe_arg = fn_instance.args.first();
                     let maybe_pointee = maybe_arg.and_then(|arg| arg.as_type());
 
                     if let Some(pointee) = maybe_pointee {

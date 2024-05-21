@@ -26,13 +26,7 @@ fn command(mode: &Mode, dir: &PathBuf, target_dir: &Path, feature: Option<&str>)
     ret.current_dir(dir);
 
     if let Some(name) = feature {
-        ret.arg("--")
-            .arg("--features")
-            .arg(name)
-            .arg("--")
-            .arg("--")
-            .arg("--features")
-            .arg(name);
+        ret.arg("--features").arg(name);
     }
 
     ret.env(ENV_TARGET_DIR, target_dir);
@@ -91,18 +85,78 @@ fn check_same_crate_id(mode: Mode) {
 #[test_case(Mode::Static, "drop", "drop_inner", "drop_inner,changes_drop")]
 #[test_case(Mode::Dynamic, "drop", "drop_outer", "drop_outer,changes_drop")]
 #[test_case(Mode::Static, "drop", "drop_outer", "drop_outer,changes_drop")]
-#[test_case(Mode::Dynamic, "drop", "drop_inner,drop_direct", "drop_inner,drop_direct,changes_drop")]
-#[test_case(Mode::Static, "drop", "drop_inner,drop_direct", "drop_inner,drop_direct,changes_drop")]
-#[test_case(Mode::Dynamic, "drop", "drop_outer,drop_direct", "drop_outer,drop_direct,changes_drop")]
-#[test_case(Mode::Static, "drop", "drop_outer,drop_direct", "drop_outer,drop_direct,changes_drop")]
-#[test_case(Mode::Dynamic, "drop", "drop_inner,drop_delegate", "drop_inner,drop_delegate,changes_drop")]
-#[test_case(Mode::Static, "drop", "drop_inner,drop_delegate", "drop_inner,drop_delegate,changes_drop")]
-#[test_case(Mode::Dynamic, "drop", "drop_outer,drop_delegate", "drop_outer,drop_delegate,changes_drop")]
-#[test_case(Mode::Static, "drop", "drop_outer,drop_delegate", "drop_outer,drop_delegate,changes_drop")]
-#[test_case(Mode::Dynamic, "drop", "drop_inner,drop_closure", "drop_inner,drop_closure,changes_drop")]
-#[test_case(Mode::Static, "drop", "drop_inner,drop_closure", "drop_inner,drop_closure,changes_drop")]
-#[test_case(Mode::Dynamic, "drop", "drop_outer,drop_closure", "drop_outer,drop_closure,changes_drop")]
-#[test_case(Mode::Static, "drop", "drop_outer,drop_closure", "drop_outer,drop_closure,changes_drop")]
+#[test_case(
+    Mode::Dynamic,
+    "drop",
+    "drop_inner,drop_direct",
+    "drop_inner,drop_direct,changes_drop"
+)]
+#[test_case(
+    Mode::Static,
+    "drop",
+    "drop_inner,drop_direct",
+    "drop_inner,drop_direct,changes_drop"
+)]
+#[test_case(
+    Mode::Dynamic,
+    "drop",
+    "drop_outer,drop_direct",
+    "drop_outer,drop_direct,changes_drop"
+)]
+#[test_case(
+    Mode::Static,
+    "drop",
+    "drop_outer,drop_direct",
+    "drop_outer,drop_direct,changes_drop"
+)]
+#[test_case(
+    Mode::Dynamic,
+    "drop",
+    "drop_inner,drop_delegate",
+    "drop_inner,drop_delegate,changes_drop"
+)]
+#[test_case(
+    Mode::Static,
+    "drop",
+    "drop_inner,drop_delegate",
+    "drop_inner,drop_delegate,changes_drop"
+)]
+#[test_case(
+    Mode::Dynamic,
+    "drop",
+    "drop_outer,drop_delegate",
+    "drop_outer,drop_delegate,changes_drop"
+)]
+#[test_case(
+    Mode::Static,
+    "drop",
+    "drop_outer,drop_delegate",
+    "drop_outer,drop_delegate,changes_drop"
+)]
+#[test_case(
+    Mode::Dynamic,
+    "drop",
+    "drop_inner,drop_closure",
+    "drop_inner,drop_closure,changes_drop"
+)]
+#[test_case(
+    Mode::Static,
+    "drop",
+    "drop_inner,drop_closure",
+    "drop_inner,drop_closure,changes_drop"
+)]
+#[test_case(
+    Mode::Dynamic,
+    "drop",
+    "drop_outer,drop_closure",
+    "drop_outer,drop_closure,changes_drop"
+)]
+#[test_case(
+    Mode::Static,
+    "drop",
+    "drop_outer,drop_closure",
+    "drop_outer,drop_closure,changes_drop"
+)]
 #[test_case(Mode::Dynamic, "command", "", "changes_return")]
 #[test_case(Mode::Dynamic, "dynamic", "", "changes_direct")]
 #[test_case(Mode::Static, "dynamic", "", "changes_direct")]
@@ -195,7 +249,12 @@ fn blackbox_test_affected(mode: Mode, name: &str, features_baseline: &str, featu
     "test1_panic",
     "test1_panic, changes_test2"
 )]
-#[test_case(Mode::Dynamic, "threading", "test2_panic", "test2_panic, changes_test1")]
+#[test_case(
+    Mode::Dynamic,
+    "threading",
+    "test2_panic",
+    "test2_panic, changes_test1"
+)]
 fn blackbox_test_not_affected(
     mode: Mode,
     name: &str,

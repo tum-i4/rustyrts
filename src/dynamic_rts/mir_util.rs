@@ -2,13 +2,12 @@ use std::mem::transmute;
 
 use super::defid_util::{get_def_id_post_test_fn, get_def_id_pre_test_fn, get_def_id_trace_fn};
 use crate::constants::EDGE_CASES_NO_TRACE;
-use log::{error, trace};
 use rustc_abi::HasDataLayout;
 use rustc_abi::{Align, Size};
 use rustc_ast::Mutability;
-use rustc_const_eval::interpret::CtfeProvenance;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::mir::interpret::CtfeProvenance;
 use rustc_middle::{
     mir::{interpret::AllocId, CallSource, Const, ConstOperand, ConstValue, UnwindAction},
     ty::Region,
@@ -22,6 +21,7 @@ use rustc_middle::{
     ty::{List, RegionKind, Ty, TyCtxt, TyKind, TypeAndMut, UintTy},
 };
 use rustc_span::Span;
+use tracing::{error, trace};
 
 #[cfg(unix)]
 use super::defid_util::{get_def_id_post_main_fn, get_def_id_pre_main_fn};
