@@ -66,33 +66,21 @@ impl Drop for DynamicRTSCallbacks {
             };
             let crate_id = *crate_id;
 
-            let new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
-            let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
-            let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
+            if !excluded(crate_name) {
+                let new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+                let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
+                let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
 
-            let old_checksums =
-                import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM);
-            let old_checksums_vtbl =
-                import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_VTBL);
-            let old_checksums_const =
-                import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_CONST);
+                let old_checksums =
+                    import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM);
+                let old_checksums_vtbl =
+                    import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_VTBL);
+                let old_checksums_const =
+                    import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_CONST);
 
-            export_changes(
-                false, // IMPORTANT: static RTS selects based on the old revision
-                path.clone(),
-                crate_name,
-                crate_id,
-                &old_checksums,
-                &old_checksums_vtbl,
-                &old_checksums_const,
-                &new_checksums,
-                &new_checksums_vtbl,
-                &new_checksums_const,
-            );
-            if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
                 export_changes(
-                    true,
-                    path_doctests.clone(),
+                    false, // IMPORTANT: static RTS selects based on the old revision
+                    path.clone(),
                     crate_name,
                     crate_id,
                     &old_checksums,
@@ -102,19 +90,33 @@ impl Drop for DynamicRTSCallbacks {
                     &new_checksums_vtbl,
                     &new_checksums_const,
                 );
-            }
+                if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
+                    export_changes(
+                        true,
+                        path_doctests.clone(),
+                        crate_name,
+                        crate_id,
+                        &old_checksums,
+                        &old_checksums_vtbl,
+                        &old_checksums_const,
+                        &new_checksums,
+                        &new_checksums_vtbl,
+                        &new_checksums_const,
+                    );
+                }
 
-            export_checksums(
-                path.clone(),
-                crate_name,
-                crate_id,
-                &new_checksums,
-                &new_checksums_vtbl,
-                &new_checksums_const,
-                false,
-            );
-            if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
-                link_checksums(path.clone(), path_doctests.clone(), crate_name, crate_id);
+                export_checksums(
+                    path.clone(),
+                    crate_name,
+                    crate_id,
+                    &new_checksums,
+                    &new_checksums_vtbl,
+                    &new_checksums_const,
+                    false,
+                );
+                if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
+                    link_checksums(path.clone(), path_doctests.clone(), crate_name, crate_id);
+                }
             }
         }
     }
@@ -136,14 +138,14 @@ impl Callbacks for DynamicRTSCallbacks {
             EXCLUDED.get_or_init(|| true);
         }
 
-        let file_loader = if !no_instrumentation(|| {
-            config
+        let file_loader = if !no_instrumentation(
+            &config
                 .opts
                 .crate_name
                 .as_ref()
                 .cloned()
-                .unwrap_or("rustc_out".to_string())
-        }) {
+                .unwrap_or("rustc_out".to_string()),
+        ) {
             Box::new(TestRunnerFileLoaderProxy {
                 delegate: InstrumentationFileLoaderProxy {
                     delegate: RealFileLoader,
@@ -242,7 +244,7 @@ impl Callbacks for DynamicRTSCallbacks {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            if !excluded(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
+            if !excluded(CRATE_NAME.get().unwrap()) {
                 self.run_analysis(tcx)
             }
         });
@@ -266,7 +268,7 @@ fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> &'tcx Body<
 
     let result = orig_function(tcx, key);
 
-    if !no_instrumentation(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
+    if !no_instrumentation(tcx.crate_name(LOCAL_CRATE).as_str()) {
         //##############################################################
         // 1. Here the MIR is modified to debug this function at runtime
 
@@ -301,7 +303,7 @@ fn custom_vtable_entries<'tcx>(
 
     let result = orig_function(tcx, key);
 
-    if !excluded(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
+    if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
         for entry in result {
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();

@@ -111,7 +111,8 @@ pub fn run_tests(
         affected_tests,
     )?;
 
-    let affected_doc_tests = mode.select_doc_tests(ws, test_args, &compilation, target_dir.clone());
+    let affected_doc_tests =
+        mode.select_doc_tests(ws, test_args, &compilation, target_dir.clone())?;
     let doctest_errors = run_doc_tests(ws, options, test_args, &compilation, affected_doc_tests)?;
 
     errors.extend(doctest_errors);
@@ -232,7 +233,7 @@ fn run_doc_tests(
     let config = ws.config();
     let mut errors = Vec::new();
 
-    let mut test_args = Vec::from(test_args);
+    let test_args = Vec::from(test_args);
     // ISSUE: rustdoc splits arguments on whitespaces
     // Since all names of doctests include spaces, we cannot use --exact here
     //

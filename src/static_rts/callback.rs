@@ -64,34 +64,22 @@ impl Drop for StaticRTSCallbacks {
             };
             let crate_id = *crate_id;
 
-            let new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
-            let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
-            let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
+            if !excluded(crate_name) {
+                let new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+                let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
+                let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
 
-            if !self.compiling_doctests {
-                let old_checksums =
-                    import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM);
-                let old_checksums_vtbl =
-                    import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_VTBL);
-                let old_checksums_const =
-                    import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_CONST);
+                if !self.compiling_doctests {
+                    let old_checksums =
+                        import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM);
+                    let old_checksums_vtbl =
+                        import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_VTBL);
+                    let old_checksums_const =
+                        import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_CONST);
 
-                export_changes(
-                    true, // IMPORTANT: static RTS selects based on the new revision
-                    path.clone(),
-                    crate_name,
-                    crate_id,
-                    &old_checksums,
-                    &old_checksums_vtbl,
-                    &old_checksums_const,
-                    &new_checksums,
-                    &new_checksums_vtbl,
-                    &new_checksums_const,
-                );
-                if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
                     export_changes(
-                        true,
-                        path_doctests.clone(),
+                        true, // IMPORTANT: static RTS selects based on the new revision
+                        path.clone(),
                         crate_name,
                         crate_id,
                         &old_checksums,
@@ -101,21 +89,35 @@ impl Drop for StaticRTSCallbacks {
                         &new_checksums_vtbl,
                         &new_checksums_const,
                     );
+                    if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
+                        export_changes(
+                            true,
+                            path_doctests.clone(),
+                            crate_name,
+                            crate_id,
+                            &old_checksums,
+                            &old_checksums_vtbl,
+                            &old_checksums_const,
+                            &new_checksums,
+                            &new_checksums_vtbl,
+                            &new_checksums_const,
+                        );
+                    }
                 }
-            }
 
-            export_checksums(
-                path.clone(),
-                crate_name,
-                crate_id,
-                &new_checksums,
-                &new_checksums_vtbl,
-                &new_checksums_const,
-                self.compiling_doctests,
-            );
+                export_checksums(
+                    path.clone(),
+                    crate_name,
+                    crate_id,
+                    &new_checksums,
+                    &new_checksums_vtbl,
+                    &new_checksums_const,
+                    self.compiling_doctests,
+                );
 
-            if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
-                link_checksums(path.clone(), path_doctests.clone(), crate_name, crate_id);
+                if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
+                    link_checksums(path.clone(), path_doctests.clone(), crate_name, crate_id);
+                }
             }
         }
     }
@@ -187,7 +189,7 @@ impl Callbacks for StaticRTSCallbacks {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            if !excluded(|| tcx.crate_name(LOCAL_CRATE).as_str().to_string()) {
+            if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
                 self.run_analysis(tcx);
             }
         });
@@ -253,7 +255,7 @@ fn custom_vtable_entries_monomorphized<'tcx>(
 
     let result = orig_function(tcx, key);
 
-    if !excluded(|| tcx.crate_name(LOCAL_CRATE).as_str().to_string()) {
+    if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
         for entry in result {
             if let VtblEntry::Method(instance) = entry {
                 let def_id = instance.def_id();

@@ -125,12 +125,11 @@ pub trait SelectionMode {
         test_args: &[String],
         compilation: &Compilation,
         target_dir: PathBuf,
-    ) -> HashSet<String> {
+    ) -> Result<HashSet<String>, CliError> {
         let config = ws.config();
 
         // Updates the graph
-        let test_names =
-            run_analysis_doctests(ws, test_args, compilation).expect("Failed to analyze doc tests");
+        let test_names = run_analysis_doctests(ws, test_args, compilation)?;
 
         let path_buf = {
             let mut target_dir = target_dir;
@@ -257,7 +256,7 @@ pub trait SelectionMode {
         )
         .unwrap();
 
-        affected_tests
+        Ok(affected_tests)
     }
 }
 

@@ -206,7 +206,7 @@ pub(crate) fn print_stats<T: Display>(
         shell.print_ansi_stderr(format!("Changed: {:?}\n", changed_nodes).as_bytes())
     })?;
     shell.verbose(|shell| {
-        shell.print_ansi_stderr(format!("Reachable: {:?}\n", reachable_nodes).as_bytes())
+        shell.print_ansi_stderr(format!("Reachable: {:?}\n", reachable_nodes.len()).as_bytes())
     })?;
     shell.verbose(|shell| {
         shell.print_ansi_stderr(format!("Affected: {:?}\n", affected_tests).as_bytes())

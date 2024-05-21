@@ -48,21 +48,19 @@ pub const DOCTEST_PREFIX: &str = "rust_out::_doctest_main_";
 pub(crate) static EXCLUDED: OnceCell<bool> = OnceCell::new();
 static NO_INSTRUMENTATION: OnceCell<bool> = OnceCell::new();
 
-pub(crate) fn excluded<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
+pub(crate) fn excluded(crate_name: &str) -> bool {
     *EXCLUDED.get_or_init(|| {
-        let exclude = env::var(ENV_SKIP_ANALYSIS).is_ok() || no_instrumentation(getter_crate_name);
+        let exclude = env::var(ENV_SKIP_ANALYSIS).is_ok() || no_instrumentation(crate_name);
         if exclude {
-            debug!("Excluding crate {}", getter_crate_name());
+            debug!("Excluding crate {}", crate_name);
         }
         exclude
     })
 }
 
-pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F) -> bool {
+pub(crate) fn no_instrumentation(crate_name: &str) -> bool {
     *NO_INSTRUMENTATION.get_or_init(|| {
-        let excluded_crate = EXCLUDED_CRATES
-            .iter()
-            .any(|krate| *krate == getter_crate_name());
+        let excluded_crate = EXCLUDED_CRATES.iter().any(|krate| *krate == crate_name);
 
         let trybuild = std::env::var(ENV_TARGET_DIR)
             .map(|d| d.ends_with("trybuild"))
@@ -70,7 +68,7 @@ pub(crate) fn no_instrumentation<F: Copy + Fn() -> String>(getter_crate_name: F)
 
         let no_instrumentation = excluded_crate || trybuild;
         if no_instrumentation {
-            debug!("Not instrumenting crate {}", getter_crate_name());
+            debug!("Not instrumenting crate {}", crate_name);
         }
         no_instrumentation
     })

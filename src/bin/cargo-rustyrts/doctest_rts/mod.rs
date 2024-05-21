@@ -7,15 +7,14 @@ use cargo::{
     },
     ops::CompileOptions,
     util::add_path_args,
-    CliError,
+    CliError, CliResult,
 };
 use itertools::Itertools;
 use rustyrts::constants::{ENV_DOCTESTED, ENV_TARGET_DIR};
 
-/// Runs doc tests.
+/// Analyzes doc tests.
 ///
-/// Returns a `Vec` of tests that failed when `--no-fail-fast` is used.
-/// If `--no-fail-fast` is *not* used, then this returns an `Err`.
+/// Returns a `Vec` of tests that have been found.
 pub(crate) fn run_analysis_doctests(
     ws: &Workspace<'_>,
     test_args: &[String],
@@ -46,7 +45,8 @@ pub(crate) fn run_analysis_doctests(
 
             config
                 .shell()
-                .status("Analyzing Doc-tests", unit.target.name())?;
+                .status("Analyzing", format!("{} (doc-tests)", unit.target.name()))?;
+
             let mut p = compilation.rustdoc_process(unit, *script_meta)?;
 
             for (var, value) in env {
@@ -108,10 +108,11 @@ pub(crate) fn run_analysis_doctests(
             let mut p = p.clone();
             p.arg("--test-args");
             p.arg("--list");
-            let output = p.exec_with_output()?;
-            let stdout = std::str::from_utf8(&output.stdout).unwrap();
-            let tests = parse_tests(stdout);
-            test_names.extend(tests);
+            if let Ok(output) = p.output() {
+                let stdout = std::str::from_utf8(&output.stdout).unwrap();
+                let tests = parse_tests(stdout);
+                test_names.extend(tests);
+            }
         }
 
         {
@@ -135,7 +136,6 @@ pub(crate) fn run_analysis_doctests(
 
             p.arg("--nocapture");
 
-            // let _ = p.output();
             let _ = p.output();
         }
     }
