@@ -1,12 +1,12 @@
-use constants::ENV_RUSTDOCFLAGS;
-use fs_utils::{
-    get_cache_path, get_process_traces_path, get_traces_path, write_to_file, CacheKind,
-};
+use constants::ENDING_TRACE;
+use fs_utils::{get_cache_path, get_process_traces_path, init_path, write_to_file, CacheKind};
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicPtr;
 use std::sync::atomic::Ordering;
 use std::{collections::HashSet, fs::read_to_string};
+
+use crate::constants::ENDING_PROCESS_TRACE;
 
 mod constants;
 mod fs_utils;
@@ -62,7 +62,7 @@ pub fn post_test(test_name: &str) {
     let traces = reset_list();
     export_traces(
         traces,
-        |path_buf| get_traces_path(path_buf, test_name),
+        |path_buf| init_path(path_buf, test_name, None, ENDING_TRACE),
         false,
     );
 }
@@ -72,12 +72,14 @@ pub fn post_test(test_name: &str) {
 pub fn post_main() {
     use std::os::unix::process::parent_id;
 
+    use crate::constants::ENDING_PROCESS_TRACE;
+
     let traces = read_list();
 
     let ppid = parent_id();
     export_traces(
         traces,
-        |path_buf| get_process_traces_path(path_buf, &ppid),
+        |path_buf| init_path(path_buf, &format!("{}", ppid), None, ENDING_PROCESS_TRACE),
         true,
     );
 }
@@ -111,7 +113,7 @@ fn reset_list<'a>() -> HashSet<Cow<'a, str>> {
 
 fn export_traces<F>(traces: HashSet<Cow<'_, str>>, path_buf_init: F, append: bool)
 where
-    F: FnOnce(PathBuf) -> PathBuf,
+    F: FnOnce(&mut PathBuf),
 {
     let path_buf = get_cache_path(CacheKind::Dynamic).unwrap();
     let mut traces = traces;
@@ -120,7 +122,13 @@ where
     {
         use std::process::id;
         let pid = id();
-        let path_child_traces = get_process_traces_path(path_buf.clone(), &pid);
+        let mut path_child_traces = path_buf.clone();
+        init_path(
+            &mut path_child_traces,
+            &format!("{}", pid),
+            None,
+            ENDING_PROCESS_TRACE,
+        );
         if path_child_traces.is_file() {
             read_to_string(path_child_traces)
                 .unwrap()

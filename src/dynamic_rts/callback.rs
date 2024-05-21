@@ -1,4 +1,3 @@
-use log::{debug, trace};
 use rustc_ast::{
     token::{Delimiter, Token, TokenKind},
     tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree},
@@ -19,16 +18,23 @@ use rustc_span::{
     Symbol, DUMMY_SP,
 };
 use std::mem::transmute;
-use std::sync::Mutex;
-use std::{path::PathBuf, sync::atomic::AtomicUsize};
 
-use crate::callbacks_shared::{
-    excluded, no_instrumentation, run_analysis_shared, EXCLUDED, NEW_CHECKSUMS,
-    NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
+use std::{path::PathBuf, sync::atomic::AtomicUsize};
+use tracing::{debug, trace};
+
+use crate::{
+    callbacks_shared::{
+        excluded, export_changes, export_checksums, import_checksums, init_analysis,
+        link_checksums, no_instrumentation, run_analysis_shared, CRATE_ID, CRATE_NAME, EXCLUDED,
+        NEW_CHECKSUMS, NEW_CHECKSUMS_CONST, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES, PATH_BUF,
+        PATH_BUF_DOCTESTS,
+    },
+    constants::{ENDING_CHECKSUM, ENDING_CHECKSUM_CONST, ENDING_CHECKSUM_VTBL},
+    doctest_rts::{self, dynamic::doctests_analysis},
 };
 
 use super::file_loader::{InstrumentationFileLoaderProxy, TestRunnerFileLoaderProxy};
-use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap, Checksums};
+use crate::checksums::{get_checksum_vtbl_entry, insert_hashmap};
 use crate::dynamic_rts::instrumentation::modify_body;
 use crate::names::def_id_name;
 use rustc_hir::def_id::{LocalDefId, LOCAL_CRATE};
@@ -38,11 +44,79 @@ static OLD_OPTIMIZED_MIR: AtomicUsize = AtomicUsize::new(0);
 pub struct DynamicRTSCallbacks {}
 
 impl DynamicRTSCallbacks {
-    pub fn new(maybe_path: Option<PathBuf>) -> Self {
+    pub fn new(maybe_path: Option<PathBuf>, maybe_doctest_path: Option<PathBuf>) -> Self {
         if let Some(path) = maybe_path {
             PATH_BUF.get_or_init(|| path);
         }
+        if let Some(path) = maybe_doctest_path {
+            PATH_BUF_DOCTESTS.get_or_init(|| path);
+        }
         Self {}
+    }
+}
+
+impl Drop for DynamicRTSCallbacks {
+    fn drop(&mut self) {
+        if let Some(path) = PATH_BUF.get() {
+            let Some(crate_name) = CRATE_NAME.get() else {
+                return;
+            };
+            let Some(crate_id) = CRATE_ID.get() else {
+                return;
+            };
+            let crate_id = *crate_id;
+
+            let new_checksums = NEW_CHECKSUMS.get().unwrap().lock().unwrap();
+            let new_checksums_vtbl = NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
+            let new_checksums_const = NEW_CHECKSUMS_CONST.get().unwrap().lock().unwrap();
+
+            let old_checksums =
+                import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM);
+            let old_checksums_vtbl =
+                import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_VTBL);
+            let old_checksums_const =
+                import_checksums(path.clone(), crate_name, crate_id, ENDING_CHECKSUM_CONST);
+
+            export_changes(
+                false, // IMPORTANT: static RTS selects based on the old revision
+                path.clone(),
+                crate_name,
+                crate_id,
+                &old_checksums,
+                &old_checksums_vtbl,
+                &old_checksums_const,
+                &new_checksums,
+                &new_checksums_vtbl,
+                &new_checksums_const,
+            );
+            if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
+                export_changes(
+                    true,
+                    path_doctests.clone(),
+                    crate_name,
+                    crate_id,
+                    &old_checksums,
+                    &old_checksums_vtbl,
+                    &old_checksums_const,
+                    &new_checksums,
+                    &new_checksums_vtbl,
+                    &new_checksums_const,
+                );
+            }
+
+            export_checksums(
+                path.clone(),
+                crate_name,
+                crate_id,
+                &new_checksums,
+                &new_checksums_vtbl,
+                &new_checksums_const,
+                false,
+            );
+            if let Some(path_doctests) = PATH_BUF_DOCTESTS.get() {
+                link_checksums(path.clone(), path_doctests.clone(), crate_name, crate_id);
+            }
+        }
     }
 }
 
@@ -81,12 +155,6 @@ impl Callbacks for DynamicRTSCallbacks {
         };
         config.file_loader = Some(file_loader);
 
-        if !excluded(|| config.opts.crate_name.as_ref().unwrap().to_string()) {
-            NEW_CHECKSUMS.get_or_init(|| Mutex::new(Checksums::new()));
-            NEW_CHECKSUMS_VTBL.get_or_init(|| Mutex::new(Checksums::new()));
-            NEW_CHECKSUMS_CONST.get_or_init(|| Mutex::new(Checksums::new()));
-        }
-
         // We need to replace this in any case, since we also want to instrument rlib crates
         // Further, the only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers| {
@@ -105,8 +173,9 @@ impl Callbacks for DynamicRTSCallbacks {
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         queries.global_ctxt().unwrap().enter(|tcx| {
-            // if !excluded(|| tcx.crate_name(LOCAL_CRATE).to_string()) {
             {
+                init_analysis(tcx);
+
                 // Inject #![feature(test)] and #![feature(custom_test_runner)] into the inner crate attributes
                 let features: &mut Features = unsafe { std::mem::transmute(tcx.features()) };
 
@@ -209,8 +278,9 @@ fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> &'tcx Body<
 
 impl DynamicRTSCallbacks {
     fn run_analysis(&mut self, tcx: TyCtxt) {
-        if let Some(path) = PATH_BUF.get() {
-            run_analysis_shared(tcx, false, path);
+        run_analysis_shared(tcx);
+        if let Some(_path) = PATH_BUF_DOCTESTS.get() {
+            doctest_rts::dynamic::doctests_analysis(tcx);
         }
     }
 }

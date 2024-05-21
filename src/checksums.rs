@@ -207,12 +207,10 @@ pub(crate) fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
 }
 
 #[cfg(test)]
-mod teest {
-
-    use crate::checksums::insert_hashmap;
+mod test {
 
     use super::Checksums;
-    use test_log::test;
+    use crate::checksums::insert_hashmap;
 
     #[test]
     pub fn test_checksum_deserialization() {

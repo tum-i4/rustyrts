@@ -1,5 +1,5 @@
-use log::info;
 use rustc_interface::interface;
+use tracing::info;
 
 #[allow(dead_code)]
 pub(crate) fn print_compiler_config(config: &mut interface::Config) {

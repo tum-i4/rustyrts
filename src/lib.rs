@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(let_chains)]
 #![allow(mutable_transmutes)]
 
 // required for calling the compiler and providing callbacks
@@ -24,6 +23,8 @@ extern crate rustc_lexer;
 extern crate rustc_middle;
 extern crate rustc_span;
 extern crate rustc_target;
+
+extern crate rustc_incremental;
 
 // required by code from librustdoc
 extern crate rustc_resolve;

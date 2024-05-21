@@ -6,7 +6,6 @@
 use hir::{AttributeMap, ConstContext};
 use internment::Arena;
 use itertools::Itertools;
-use log::trace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_hir as hir;
@@ -46,6 +45,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
 };
+use tracing::trace;
 
 use crate::{
     callbacks_shared::TEST_MARKER,
@@ -214,16 +214,16 @@ pub fn create_dependency_graph<'arena>(
 
     let mut graph = usage_map.into_inner().finalize(arena);
 
-    let tests = tcx.sess.time("dependency_graph_root_collection", || {
-        collect_test_functions(tcx)
-    });
+    // let tests = tcx.sess.time("dependency_graph_root_collection", || {
+    //     collect_test_functions(tcx)
+    // });
 
-    for test in tests {
-        let def_id = test.def_id();
-        let name_trimmed = def_id_name(tcx, def_id, false, true);
-        let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
-        graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
-    }
+    // for test in tests {
+    //     let def_id = test.def_id();
+    //     let name_trimmed = def_id_name(tcx, def_id, false, true);
+    //     let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
+    //     graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
+    // }
 
     graph
 }

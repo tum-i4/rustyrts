@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 use anyhow::format_err;
-use cargo::core::compiler::{Compilation, CompileKind, Doctest, Metadata, Unit, UnitOutput};
 use cargo::util::{config::Definition, errors::CargoResult};
+use cargo::{
+    core::compiler::{Compilation, CompileKind, Doctest, Metadata, Unit, UnitInterner, UnitOutput},
+    ops::create_bcx,
+};
 use cargo::{
     core::{compiler::Executor, shell::Verbosity},
     ops::compile_with_exec,
@@ -17,10 +20,11 @@ use cargo::{
 };
 use cargo_util::{ProcessBuilder, ProcessError};
 use itertools::Itertools;
-use rustyrts::constants::ENV_TARGET_DIR;
-use std::fmt::Write;
+use rustyrts::{constants::ENV_TARGET_DIR, fs_utils::CacheKind};
 use std::path::{Path, PathBuf};
+use std::{collections::HashSet, fmt::Write};
 use std::{ffi::OsString, sync::Arc};
+use tracing::debug;
 
 use crate::commands::SelectionMode;
 
@@ -79,7 +83,19 @@ pub fn run_tests(
     test_args: &[String],
     mode: &dyn SelectionMode,
 ) -> CliResult {
-    mode.clean_intermediate_files(target_dir.clone());
+    let mode_path = {
+        let mut path_buf = target_dir.clone();
+        path_buf.push(Into::<&str>::into(mode.cache_kind()));
+        path_buf
+    };
+    let doctest_path = {
+        let mut path_buf = target_dir.clone();
+        path_buf.push(Into::<&str>::into(CacheKind::Doctests));
+        path_buf
+    };
+
+    mode.prepare_intermediate_files(&mode_path);
+    mode.prepare_intermediate_files(&doctest_path);
 
     let exec: Arc<dyn Executor> = Arc::new(TestExecutor::new(target_dir.clone()));
     let compilation = compile_tests(ws, options, exec, mode.cmd())?;
@@ -92,18 +108,17 @@ pub fn run_tests(
         test_args,
         &compilation,
         TestKind::Test,
-        &affected_tests,
+        affected_tests,
     )?;
 
-    let doctest_errors = run_doc_tests(
-        ws,
-        options,
-        test_args,
-        &compilation,
-        &mode.select_doc_tests(&ws, &compilation, target_dir),
-    )?;
+    let affected_doc_tests = mode.select_doc_tests(ws, test_args, &compilation, target_dir.clone());
+    let doctest_errors = run_doc_tests(ws, options, test_args, &compilation, affected_doc_tests)?;
 
     errors.extend(doctest_errors);
+
+    mode.clean_intermediate_files(&mode_path);
+    mode.clean_intermediate_files(&doctest_path);
+
     no_fail_fast_err(ws, options, &errors)
 }
 
@@ -136,7 +151,7 @@ fn run_unit_tests(
     test_args: &[String],
     compilation: &Compilation<'_>,
     test_kind: TestKind,
-    affected_tests: &[String],
+    affected_tests: HashSet<String>,
 ) -> Result<Vec<UnitTestError>, CliError> {
     let config = ws.config();
     let cwd = config.cwd();
@@ -196,7 +211,7 @@ fn run_unit_tests(
                 unit: unit.clone(),
                 kind: test_kind,
             };
-            report_test_error(ws, &test_args, &options, &unit_err, e);
+            report_test_error(ws, &test_args, options, &unit_err, e);
             errors.push(unit_err);
         }
     }
@@ -212,12 +227,12 @@ fn run_doc_tests(
     options: &CompileOptions,
     test_args: &[String],
     compilation: &Compilation<'_>,
-    affected_tests: &[String],
+    affected_tests: HashSet<String>,
 ) -> Result<Vec<UnitTestError>, CliError> {
     let config = ws.config();
     let mut errors = Vec::new();
 
-    let test_args = Vec::from(test_args);
+    let mut test_args = Vec::from(test_args);
     // ISSUE: rustdoc splits arguments on whitespaces
     // Since all names of doctests include spaces, we cannot use --exact here
     //
@@ -235,17 +250,25 @@ fn run_doc_tests(
             env,
         } = doctest_info;
 
-        let prefix = unit.target.name().to_string() + "/";
+        let mut args = args.to_owned();
+
+        let mut rlib_source =
+            PathBuf::from(std::env::var("CARGO_HOME").expect("Did not find CARGO_HOME"));
+        rlib_source.push("bin");
+        args.push("-L".into());
+        args.push(rlib_source.into_os_string());
+
+        let prefix = {
+            let target_name = unit.target.name();
+            if target_name != "doctests" {
+                target_name.to_string() + "/"
+            } else {
+                "src/".to_string()
+            }
+        };
         let mut affected_tests = affected_tests
             .iter()
             .filter_map(|s| s.strip_prefix(&prefix))
-            .map(|s| {
-                if let Some((_, path)) = s.split_once(" - ") {
-                    path
-                } else {
-                    s
-                }
-            })
             .map(|s| s.to_string())
             .collect_vec();
 
@@ -266,8 +289,7 @@ fn run_doc_tests(
         p.arg("--test");
 
         add_path_args(ws, unit, &mut p);
-        p.arg("--test-run-directory")
-            .arg(unit.pkg.root().to_path_buf());
+        p.arg("--test-run-directory").arg(unit.pkg.root());
 
         if let CompileKind::Target(target) = unit.kind {
             // use `rustc_target()` to properly handle JSON target paths
@@ -297,7 +319,7 @@ fn run_doc_tests(
 
         p.args(unit.pkg.manifest().lint_rustflags());
 
-        p.args(args);
+        p.args(&args);
 
         if *unstable_opts {
             p.arg("-Zunstable-options");
@@ -316,7 +338,7 @@ fn run_doc_tests(
                 unit: unit.clone(),
                 kind: TestKind::Doctest,
             };
-            report_test_error(ws, &test_args, &options, &unit_err, e);
+            report_test_error(ws, &test_args, options, &unit_err, e);
             errors.push(unit_err);
         }
     }
@@ -358,7 +380,7 @@ fn display_no_run_information(
             .verbose(|shell| shell.status("Executable", &cmd))?;
     }
 
-    return Ok(());
+    Ok(())
 }
 
 /// Creates a [`ProcessBuilder`] for executing a single test.

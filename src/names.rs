@@ -1,6 +1,8 @@
+use std::sync::atomic::AtomicBool;
+
 use lazy_static::lazy_static;
 use regex::Regex;
-use rustc_data_structures::stable_hasher::ToStableHashKey;
+use rustc_data_structures::{stable_hasher::ToStableHashKey, sync::Ordering};
 use rustc_hir::{def::Namespace, def_id::DefId, definitions::DefPathData};
 use rustc_middle::ty::TyKind;
 use rustc_middle::ty::{
@@ -8,6 +10,10 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{print::Printer, List};
 use rustc_span::{def_id::LOCAL_CRATE, Symbol};
+
+use crate::callbacks_shared::DOCTEST_PREFIX;
+
+pub(crate) static IS_COMPILING_DOCTESTS: AtomicBool = AtomicBool::new(false);
 
 lazy_static! {
     static ref RE_LIFETIME: [Regex; 2] = [
@@ -75,7 +81,14 @@ pub(crate) fn mono_def_id_name<'tcx>(
     }
 
     // Occasionally, there is a newline which we do not want to keep
-    def_path_str = def_path_str.replace("\n", "");
+    def_path_str = def_path_str.replace('\n', "");
+
+    if IS_COMPILING_DOCTESTS.load(Ordering::SeqCst) && def_path_str.starts_with(DOCTEST_PREFIX) {
+        // IMPORTANT: We need to remove the line number from the name of the test function in doctests
+        if let Some(without_line) = def_path_str.rsplitn(3, '_').nth(2) {
+            def_path_str = without_line.to_string();
+        }
+    }
 
     def_path_str
 }

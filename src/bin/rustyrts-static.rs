@@ -4,13 +4,13 @@ extern crate rustc_driver;
 extern crate rustc_log;
 
 use rustc_log::LoggerConfig;
-use rustyrts::static_rts::callback::StaticRTSCallbacks;
-use rustyrts::{callbacks_shared::export_checksums_and_changes, constants::ENV_BLACKBOX_TEST};
+use rustyrts::constants::ENV_BLACKBOX_TEST;
+use rustyrts::{constants::ENV_DOCTESTED, fs_utils::CacheKind};
 use rustyrts::{
     constants::{ENV_SKIP_ANALYSIS, ENV_TARGET_DIR},
     fs_utils::get_cache_path,
 };
-use rustyrts::{format::create_logger, fs_utils::CacheKind};
+use rustyrts::{format::setup_logger, static_rts::callback::StaticRTSCallbacks};
 use std::env;
 use std::process;
 
@@ -27,12 +27,19 @@ pub const EXIT_FAILURE: i32 = 1;
 
 fn main() {
     rustc_log::init_logger(LoggerConfig::from_env("RUSTC")).unwrap();
-    create_logger().init();
+    setup_logger();
 
     let skip = env::var(ENV_SKIP_ANALYSIS).is_ok()
         && !(env::var(ENV_TARGET_DIR).map(|var| var.ends_with("trybuild")) == Ok(true));
 
     if !skip {
+        let maybe_cache_path = get_cache_path(CacheKind::Static);
+        let maybe_doctest_cache_path = std::env::var(ENV_DOCTESTED)
+            .ok()
+            .and_then(|_| get_cache_path(CacheKind::Doctests));
+        let mut callbacks =
+            StaticRTSCallbacks::new(maybe_cache_path, maybe_doctest_cache_path, false);
+
         let result = rustc_driver::catch_fatal_errors(move || {
             let mut rustc_args = env::args_os()
                 .skip(1)
@@ -57,19 +64,13 @@ fn main() {
             rustc_args.push("--cap-lints".to_string());
             rustc_args.push("allow".to_string());
 
-            let maybe_cache_path = get_cache_path(CacheKind::Static);
-            let mut callbacks = StaticRTSCallbacks::new(maybe_cache_path, false);
-
             let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
             run_compiler.run()
         });
 
         let result = result.unwrap();
         let exit_code = match result {
-            Ok(_) => {
-                export_checksums_and_changes(true, false);
-                EXIT_SUCCESS
-            }
+            Ok(_) => EXIT_SUCCESS,
             Err(_) => EXIT_FAILURE,
         };
 

@@ -1,18 +1,17 @@
 use std::{
+    cell::RefMut,
     collections::HashSet,
-    fs::{create_dir_all, read, read_dir, remove_file, DirEntry, OpenOptions},
-    io::Write,
+    fmt::Display,
+    fs::{read_dir, DirEntry},
     path::PathBuf,
 };
 
-use cargo::util::command_prelude::*;
+use cargo::{core::Shell, util::command_prelude::*, CargoResult};
 
-use internment::Arena;
-use itertools::Itertools;
+use internment::{Arena, ArenaIntern};
 use rustyrts::{
-    checksums::Checksums,
-    constants::{ENDING_CHANGES, ENDING_CHECKSUM, ENDING_GRAPH, ENDING_TEST, FILE_COMPLETE_GRAPH},
-    fs_utils::{read_lines_filter_map, CacheKind},
+    constants::{ENDING_CHANGES, ENDING_GRAPH, ENDING_TEST},
+    fs_utils::{read_lines, read_lines_filter_map, CacheKind},
     static_rts::graph::DependencyGraph,
 };
 
@@ -62,15 +61,17 @@ impl SelectionMode for StaticMode {
         path_buf
     }
 
+    fn cache_kind(&self) -> CacheKind {
+        CacheKind::Static
+    }
+
     fn default_target_dir(&self, target_dir: PathBuf) -> std::path::PathBuf {
         let mut target_dir = target_dir;
         target_dir.push("static");
         target_dir
     }
 
-    fn select_tests(&self, config: &Config, target_dir: PathBuf) -> Vec<String> {
-        let verbose = config.extra_verbose();
-
+    fn select_tests(&self, config: &Config, target_dir: PathBuf) -> HashSet<String> {
         let path_buf = {
             let mut target_dir = target_dir;
             target_dir.push(std::convert::Into::<&str>::into(CacheKind::Static));
@@ -95,44 +96,44 @@ impl SelectionMode for StaticMode {
         );
         dependency_graph.import_edges(edges);
 
-        if verbose {
-            let mut complete_graph_path = path_buf.clone();
-            complete_graph_path.push(FILE_COMPLETE_GRAPH);
-            let mut file = match OpenOptions::new()
-                .create(true)
-                .write(true)
-                .append(false)
-                .open(complete_graph_path.as_path())
-            {
-                Ok(file) => file,
-                Err(reason) => panic!("Failed to open file: {}", reason),
-            };
+        // if verbose {
+        //     let mut complete_graph_path = path_buf.clone();
+        //     complete_graph_path.push(FILE_COMPLETE_GRAPH);
+        //     let mut file = match OpenOptions::new()
+        //         .create(true)
+        //         .write(true)
+        //         .append(false)
+        //         .open(complete_graph_path.as_path())
+        //     {
+        //         Ok(file) => file,
+        //         Err(reason) => panic!("Failed to open file: {}", reason),
+        //     };
 
-            let checksum_files = files.iter().filter(|path| {
-                path.file_name()
-                    .to_str()
-                    .unwrap()
-                    .ends_with(ENDING_CHECKSUM)
-            });
-            let mut checksums_nodes = HashSet::new();
+        //     let checksum_files = files.iter().filter(|path| {
+        //         path.file_name()
+        //             .to_str()
+        //             .unwrap()
+        //             .ends_with(ENDING_CHECKSUM)
+        //     });
+        //     let mut checksums_nodes = HashSet::new();
 
-            for checkums_path in checksum_files {
-                let maybe_checksums = read(checkums_path.path());
-                if let Ok(checksums) = maybe_checksums {
-                    let checksums = Checksums::from(checksums.as_slice());
-                    for node in checksums.keys() {
-                        checksums_nodes.insert(node.clone());
-                    }
-                }
-            }
+        //     for checkums_path in checksum_files {
+        //         let maybe_checksums = read(checkums_path.path());
+        //         if let Ok(checksums) = maybe_checksums {
+        //             let checksums = Checksums::from(checksums.as_slice());
+        //             for node in checksums.keys() {
+        //                 checksums_nodes.insert(node.clone());
+        //             }
+        //         }
+        //     }
 
-            match file
-                .write_all(format!("{}\n", dependency_graph.pretty(checksums_nodes)).as_bytes())
-            {
-                Ok(_) => {}
-                Err(reason) => panic!("Failed to write to file: {}", reason),
-            };
-        }
+        //     match file
+        //         .write_all(format!("{}\n", dependency_graph.pretty(checksums_nodes)).as_bytes())
+        //     {
+        //         Ok(_) => {}
+        //         Err(reason) => panic!("Failed to write to file: {}", reason),
+        //     };
+        // }
 
         // Read changed nodes
         let changed_nodes = read_lines_filter_map(
@@ -142,80 +143,74 @@ impl SelectionMode for StaticMode {
             |line| arena.intern(line),
         );
 
-        if verbose {
-            println!(
-                "Nodes that have changed:\n{}\n",
-                changed_nodes
-                    .iter()
-                    .sorted_by(|a, b| Ord::cmp(&***a, &***b,))
-                    .join(", ")
-            );
-        } else {
-            println!("#Nodes that have changed: {}\n", changed_nodes.len());
-        }
-
         // Read possibly affected tests
-        let tests =
+        let tests_found =
             read_lines_filter_map(&files, ENDING_TEST, |_line| true, |line| arena.intern(line));
 
-        println!("#Tests that have been found: {}\n", tests.len());
-
-        let reached_nodes = dependency_graph.reachable_nodes(changed_nodes);
-        let affected_tests: HashSet<String> = tests
-            .intersection(&reached_nodes)
+        let reachable_nodes = dependency_graph.reachable_nodes(changed_nodes.clone());
+        let mut affected_tests: HashSet<String> = tests_found
+            .intersection(&reachable_nodes)
             .map(|interned| interned.to_string())
             .collect();
 
-        println!(
-            "#Nodes that reach any changed node in the graph: {}\n",
-            reached_nodes.len()
-        );
-
-        if verbose {
-            println!(
-                "Affected tests:\n{}\n",
-                affected_tests.iter().sorted().join(", ")
-            );
-        } else {
-            println!("#Affected tests: {}\n", affected_tests.len());
+        if std::env::var("RUSTYRTS_RETEST_ALL").is_ok() {
+            let tests = read_lines(&files, ENDING_TEST);
+            affected_tests.extend(tests);
         }
+
+        print_stats(
+            &mut *config.shell(),
+            "Static RTS\n",
+            &tests_found,
+            &changed_nodes,
+            &reachable_nodes,
+            &affected_tests,
+        )
+        .unwrap();
 
         affected_tests
-            .into_iter()
-            .map(|s| s.clone().clone())
-            .collect_vec()
-    }
-
-    fn clean_intermediate_files(&self, target_dir: PathBuf) {
-        let path_buf = {
-            let mut target_dir = target_dir.clone();
-            target_dir.push(std::convert::Into::<&str>::into(CacheKind::Doctests));
-            target_dir
-        };
-
-        create_dir_all(path_buf.as_path())
-            .unwrap_or_else(|_| panic!("Failed to create directory {}", path_buf.display()));
-
-        let path_buf = {
-            let mut target_dir = target_dir;
-            target_dir.push(std::convert::Into::<&str>::into(CacheKind::Static));
-            target_dir
-        };
-
-        create_dir_all(path_buf.as_path())
-            .unwrap_or_else(|_| panic!("Failed to create directory {}", path_buf.display()));
-
-        if let Ok(files) = read_dir(path_buf.as_path()) {
-            for path in files.flatten() {
-                let file_name = path.file_name();
-                if file_name.to_str().unwrap().ends_with(ENDING_CHANGES) {
-                    remove_file(path.path()).unwrap();
-                }
-            }
-        }
     }
 }
 
 pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     super::exec(config, args, &StaticMode)
+}
+
+pub(crate) fn print_stats<T: Display>(
+    shell: &mut Shell,
+    status: T,
+    tests_found: &HashSet<ArenaIntern<'_, String>>,
+    changed_nodes: &HashSet<ArenaIntern<'_, String>>,
+    reachable_nodes: &HashSet<ArenaIntern<'_, String>>,
+    affected_tests: &HashSet<String>,
+) -> CargoResult<()> {
+    shell.status_header(status)?;
+
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!("Tests found: {}    ", tests_found.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!("Changed: {}    ", changed_nodes.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!("Reachable: {}    ", reachable_nodes.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!("Affected: {}\n", affected_tests.len()).as_bytes())
+    })?;
+
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Tests found: {:?}\n", tests_found).as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Changed: {:?}\n", changed_nodes).as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Reachable: {:?}\n", reachable_nodes).as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Affected: {:?}\n", affected_tests).as_bytes())
+    })?;
+
+    Ok(())
 }

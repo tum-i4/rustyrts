@@ -4,9 +4,8 @@ extern crate rustc_driver;
 extern crate rustc_log;
 
 use rustc_log::LoggerConfig;
-use rustyrts::callbacks_shared::export_checksums_and_changes;
-use rustyrts::dynamic_rts::callback::DynamicRTSCallbacks;
-use rustyrts::format::create_logger;
+use rustyrts::format::setup_logger;
+use rustyrts::{constants::ENV_DOCTESTED, dynamic_rts::callback::DynamicRTSCallbacks};
 use rustyrts::{
     constants::{ENV_BLACKBOX_TEST, ENV_SKIP_ANALYSIS, ENV_TARGET_DIR},
     fs_utils::{get_cache_path, CacheKind},
@@ -27,7 +26,7 @@ pub const EXIT_FAILURE: i32 = 1;
 
 fn main() {
     rustc_log::init_logger(LoggerConfig::from_env("RUSTC")).unwrap();
-    create_logger().init();
+    setup_logger();
 
     let skip = env::var(ENV_SKIP_ANALYSIS).is_ok()
         && !(env::var(ENV_TARGET_DIR).map(|var| var.ends_with("trybuild")) == Ok(true));
@@ -66,7 +65,11 @@ fn main() {
             rustc_args.push("allow".to_string());
 
             let maybe_cache_path = get_cache_path(CacheKind::Dynamic);
-            let mut callbacks = DynamicRTSCallbacks::new(maybe_cache_path);
+            let maybe_doctest_cache_path = std::env::var(ENV_DOCTESTED)
+                .ok()
+                .and_then(|_| get_cache_path(CacheKind::Doctests));
+            let mut callbacks =
+                DynamicRTSCallbacks::new(maybe_cache_path, maybe_doctest_cache_path);
 
             let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
             run_compiler.run()
@@ -74,10 +77,7 @@ fn main() {
 
         let result = result.unwrap();
         let exit_code = match result {
-            Ok(_) => {
-                export_checksums_and_changes(false, false);
-                EXIT_SUCCESS
-            }
+            Ok(_) => EXIT_SUCCESS,
             Err(_) => EXIT_FAILURE,
         };
 
