@@ -4,8 +4,9 @@
 
 use std::env;
 
+use assert_cmd::assert::IntoOutputPredicate;
 use indoc::indoc;
-use predicates::prelude::*;
+use predicates::{function::FnPredicate, prelude::*};
 
 use super::{copy_of_testdata, run};
 
@@ -39,7 +40,7 @@ fn no_config_option_disables_config_file_so_error_value_is_not_generated() {
         .assert()
         .code(0)
         .stderr("")
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -64,7 +65,7 @@ fn list_mutants_with_error_value_from_command_line_list() {
         .assert()
         .code(0)
         .stderr("")
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));

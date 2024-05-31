@@ -581,33 +581,33 @@ mod test {
         );
     }
 
-    //    // / As a generic protection against regressions in discovery, the the mutants
-    //    // / generated from `cargo-mutants` own tree against a checked-in list.
-    //    // /
-    //    // / The snapshot will need to be updated when functions are added or removed,
-    //    // / as well as when new mutation patterns are added.
-    //    // /
-    //    // / To stop it being too noisy, we use a custom format with no line numbers.
-    // #[test]
-    // fn expected_mutants_for_own_source_tree() {
-    //     let options = Options {
-    //         error_values: vec!["::anyhow::anyhow!(\"mutated!\")".to_owned()],
-    //         show_line_col: false,
-    //         ..Default::default()
-    //     };
-    //     let mut list_output = String::new();
-    //     let console = Console::new();
-    //     let workspace = Workspace::open(
-    //         Utf8Path::new(".")
-    //             .canonicalize_utf8()
-    //             .expect("Canonicalize source path"),
-    //     )
-    //     .unwrap();
-    //     let discovered = workspace
-    //         .discover(&PackageFilter::All, &options, &console)
-    //         .expect("Discover mutants");
-    //     crate::list_mutants(&mut list_output, &discovered.mutants, &options)
-    //         .expect("Discover mutants in own source tree");
-    //     insta::assert_snapshot!(list_output);
-    // }
+    // / As a generic protection against regressions in discovery, the the mutants
+    // / generated from `cargo-mutants` own tree against a checked-in list.
+    // /
+    // / The snapshot will need to be updated when functions are added or removed,
+    // / as well as when new mutation patterns are added.
+    // /
+    // / To stop it being too noisy, we use a custom format with no line numbers.
+    #[test]
+    fn expected_mutants_for_own_source_tree() {
+        let options = Options {
+            error_values: vec!["::anyhow::anyhow!(\"mutated!\")".to_owned()],
+            show_line_col: false,
+            ..Default::default()
+        };
+        let mut list_output = String::new();
+        let console = Console::new();
+        let workspace = Workspace::open(
+            Utf8Path::new(".")
+                .canonicalize_utf8()
+                .expect("Canonicalize source path"),
+        )
+        .unwrap();
+        let discovered = workspace
+            .discover(&PackageFilter::All, &options, &console)
+            .expect("Discover mutants");
+        crate::list_mutants(&mut list_output, &discovered.mutants, &options)
+            .expect("Discover mutants in own source tree");
+        insta::assert_snapshot!(list_output);
+    }
 }

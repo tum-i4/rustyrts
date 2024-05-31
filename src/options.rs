@@ -107,30 +107,6 @@ pub struct Options {
     pub test_tool: TestTool,
 }
 
-// TODO: remove
-// #[derive(ValueEnum, PartialEq, Clone, Debug)]
-// pub enum Mode {
-//     Test,
-//     Dynamic,
-//     Static,
-// }
-
-// impl Mode {
-//     pub fn phase(&self) -> Phase {
-//         match self {
-//             Mode::Test => Phase::Test,
-//             Mode::Dynamic => Phase::Dynamic,
-//             Mode::Static => Phase::Static,
-//         }
-//     }
-// }
-
-// impl Default for Mode {
-//     fn default() -> Self {
-//         Self::Test
-//     }
-// }
-
 /// Choice of tool to use to run tests.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Display, Deserialize)]
 #[strum(serialize_all = "snake_case")]
@@ -210,7 +186,7 @@ impl Options {
         );
 
         let json_args = if args.json {
-            vec!["--", "-Zunstable-options", "--format=json", "--report-time"]
+            vec!["-Zunstable-options", "--format=json", "--report-time"]
         } else {
             Vec::new()
         };

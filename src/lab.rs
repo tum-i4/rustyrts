@@ -74,7 +74,6 @@ pub fn test_mutants(
                 &options,
                 console,
                 true,
-                "",
             )?;
             if !outcome.success() {
                 error!(
@@ -138,7 +137,6 @@ pub fn test_mutants(
                             &options,
                             console,
                             false,
-                            "debug",
                         )
                         .expect("scenario test");
                     } else {
@@ -211,7 +209,6 @@ fn test_scenario(
     options: &Options,
     console: &Console,
     trybuild_overwrite: bool,
-    rustyrts_log: &str,
 ) -> Result<ScenarioOutcome> {
     let phases: Vec<Phase> = if options.check_only {
         vec![Phase::Check]
@@ -244,21 +241,22 @@ fn test_scenario(
             } else {
                 Duration::MAX
             };
-            let mut rustc_wrapper = vec![];
-            let target_dir = build_dir.path().to_string() + "/target";
-            let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/cargo-rustyrts";
-            if let Phase::BuildDynamic = phase {
+            let rustc_wrapper = if let Phase::BuildDynamic = phase {
+                let target_dir = build_dir.path().to_string() + "/target";
+                let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/rustyrts-dynamic";
+                create_dir_all(Path::new(&(target_dir.clone() + "/.rts"))).unwrap();
                 create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
 
-                rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
-                rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
-
-                rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
-                rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
-            }
-            if let Phase::Dynamic = phase {
-                rustc_wrapper.push(("RUSTYRTS_RETEST_ALL", ""));
-            }
+                Some(vec![
+                    ("RUSTC_WRAPPER", rustyrts_bin),
+                    ("CARGO_TARGET_DIR", target_dir),
+                    ("RUSTYRTS_ONLY_INSTRUMENTATION", "true".to_string()),
+                ])
+            } else if let Phase::Dynamic = phase {
+                Some(vec![("RUSTYRTS_RETEST_ALL", "true".to_string())])
+            } else {
+                None
+            };
             let phase_result = run_cargo(
                 build_dir,
                 Some(test_packages),
@@ -267,7 +265,6 @@ fn test_scenario(
                 &mut log_file,
                 options,
                 console,
-                "",
                 trybuild_overwrite,
                 rustc_wrapper,
             )?;
@@ -303,18 +300,20 @@ fn test_scenario(
         } else {
             Duration::MAX
         };
-        let mut rustc_wrapper = vec![];
-        let target_dir = build_dir.path().to_string() + "/target";
-        let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/cargo-rustyrts";
-        if let Phase::BuildDynamic = phase {
+        let rustc_wrapper = if let Phase::BuildDynamic = phase {
+            let target_dir = build_dir.path().to_string() + "/target";
+            let rustyrts_bin = std::env::var("CARGO_HOME").unwrap() + "/bin/rustyrts-dynamic";
+            create_dir_all(Path::new(&(target_dir.clone() + "/.rts"))).unwrap();
             create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
 
-            rustc_wrapper.push(("RUSTC_WRAPPER", &*rustyrts_bin));
-            rustc_wrapper.push(("RUSTYRTS_MODE", "dynamic"));
-
-            rustc_wrapper.push(("CARGO_TARGET_DIR", &target_dir));
-            rustc_wrapper.push(("RUSTYRTS_ARGS", "[]"))
-        }
+            Some(vec![
+                ("RUSTC_WRAPPER", rustyrts_bin),
+                ("CARGO_TARGET_DIR", target_dir),
+                ("RUSTYRTS_ONLY_INSTRUMENTATION", "true".to_string()),
+            ])
+        } else {
+            None
+        };
         let phase_result = run_cargo(
             build_dir,
             Some(test_packages),
@@ -323,7 +322,6 @@ fn test_scenario(
             &mut log_file,
             options,
             console,
-            rustyrts_log,
             trybuild_overwrite,
             rustc_wrapper,
         )?;

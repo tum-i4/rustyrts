@@ -498,7 +498,7 @@ fn small_well_tested_tree_is_clean() {
         .current_dir(tmp_src_dir.path())
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -545,7 +545,7 @@ fn test_small_well_tested_tree_with_baseline_skip() {
         .arg(tmp_src_dir.path())
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }))
@@ -570,42 +570,42 @@ fn cdylib_tree_is_well_tested() {
         .current_dir(tmp_src_dir.path())
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
 }
 
-// #[test] // Would succeed if doctests were enabled
-// fn well_tested_tree_finds_no_problems() {
-//     let tmp_src_dir = copy_of_testdata("well_tested");
-//     run()
-//         .arg("mutants-rts")
-//         .args(["--no-times", "--caught", "--unviable", "--no-shuffle"])
-//         .current_dir(tmp_src_dir.path())
-//         .assert()
-//         .success()
-//         .stdout(predicate::function(|stdout| {
-//             insta::assert_snapshot!(stdout);
-//             true
-//         }));
-//     assert!(tmp_src_dir
-//         .path()
-//         .join("mutants.out/outcomes.json")
-//         .exists());
-//     let outcomes_json =
-//         fs::read_to_string(tmp_src_dir.path().join("mutants.out/outcomes.json")).unwrap();
-//     let outcomes: serde_json::Value = outcomes_json.parse().unwrap();
-//     let caught = outcomes["caught"]
-//         .as_i64()
-//         .expect("outcomes['caught'] is an integer");
-//     assert!(caught > 40, "expected more outcomes caught than {caught}");
-//     assert_eq!(outcomes["unviable"], 0);
-//     assert_eq!(outcomes["missed"], 0);
-//     assert_eq!(outcomes["timeout"], 0);
-//     assert_eq!(outcomes["total_mutants"], outcomes["caught"]);
-//     check_text_list_output(tmp_src_dir.path(), "well_tested_tree_finds_no_problems");
-// }
+#[test]
+fn well_tested_tree_finds_no_problems() {
+    let tmp_src_dir = copy_of_testdata("well_tested");
+    run()
+        .arg("mutants-rts")
+        .args(["--no-times", "--caught", "--unviable", "--no-shuffle"])
+        .current_dir(tmp_src_dir.path())
+        .assert()
+        .success()
+        .stdout(predicate::function(|stdout: &str| {
+            insta::assert_snapshot!(stdout);
+            true
+        }));
+    assert!(tmp_src_dir
+        .path()
+        .join("mutants.out/outcomes.json")
+        .exists());
+    let outcomes_json =
+        fs::read_to_string(tmp_src_dir.path().join("mutants.out/outcomes.json")).unwrap();
+    let outcomes: serde_json::Value = outcomes_json.parse().unwrap();
+    let caught = outcomes["caught"]
+        .as_i64()
+        .expect("outcomes['caught'] is an integer");
+    assert!(caught > 40, "expected more outcomes caught than {caught}");
+    assert_eq!(outcomes["unviable"], 0);
+    assert_eq!(outcomes["missed"], 0);
+    assert_eq!(outcomes["timeout"], 0);
+    assert_eq!(outcomes["total_mutants"], outcomes["caught"]);
+    check_text_list_output(tmp_src_dir.path(), "well_tested_tree_finds_no_problems");
+}
 
 #[test]
 fn well_tested_tree_check_only() {
@@ -615,7 +615,7 @@ fn well_tested_tree_check_only() {
         .current_dir(tmp_src_dir.path())
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -703,7 +703,7 @@ fn uncaught_mutant_in_factorial() {
         .assert()
         .code(2)
         .stderr("")
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -771,52 +771,52 @@ fn factorial_mutants_with_all_logs_and_nocapture() {
         ;
 }
 
-// #[test] // Appears to be flaky
-// fn factorial_mutants_no_copy_target() {
-//     let tmp_src_dir = copy_of_testdata("factorial");
-//     run()
-//         .arg("mutants-rts")
-//         .args(["--no-times"])
-//         .arg("-d")
-//         .arg(tmp_src_dir.path())
-//         .assert()
-//         .code(2)
-//         .stderr("")
-//         .stdout(predicate::function(|stdout| {
-//             insta::assert_snapshot!(stdout);
-//             true
-//         }));
-// }
+#[test] // Appears to be flaky
+fn factorial_mutants_no_copy_target() {
+    let tmp_src_dir = copy_of_testdata("factorial");
+    run()
+        .arg("mutants-rts")
+        .args(["--no-times"])
+        .arg("-d")
+        .arg(tmp_src_dir.path())
+        .assert()
+        .code(2)
+        .stderr("")
+        .stdout(predicate::function(|stdout: &str| {
+            insta::assert_snapshot!(stdout);
+            true
+        }));
+}
 
-// #[test] // We want to build in test mode, which is a contradiction to this test
-// fn small_well_tested_mutants_with_cargo_arg_release() {
-//     let tmp_src_dir = copy_of_testdata("small_well_tested");
-//     run()
-//         .arg("mutants-rts")
-//         .args(["--no-times", "--cargo-arg", "--release"])
-//         .arg("-d")
-//         .arg(tmp_src_dir.path())
-//         .assert()
-//         .success()
-//         .stderr("")
-//         .stdout(predicate::function(|stdout| {
-//             insta::assert_snapshot!(stdout);
-//             true
-//         }));
-//     // Check that it was actually passed.
-//     let baseline_log_path = &tmp_src_dir.path().join("mutants.out/log/baseline.log");
-//     println!("{}", baseline_log_path.display());
-//     let log_content = fs::read_to_string(baseline_log_path).unwrap();
-//     println!("{log_content}");
-//     regex::Regex::new(r"cargo.* build --tests --manifest-path .* --release")
-//         .unwrap()
-//         .captures(&log_content)
-//         .unwrap();
-//     regex::Regex::new(r"cargo.* test --manifest-path .* --release")
-//         .unwrap()
-//         .captures(&log_content)
-//         .unwrap();
-// }
+#[test] // We want to build in test mode, which is a contradiction to this test
+fn small_well_tested_mutants_with_cargo_arg_release() {
+    let tmp_src_dir = copy_of_testdata("small_well_tested");
+    run()
+        .arg("mutants-rts")
+        .args(["--no-times", "--cargo-arg", "--release"])
+        .arg("-d")
+        .arg(tmp_src_dir.path())
+        .assert()
+        .success()
+        .stderr("")
+        .stdout(predicate::function(|stdout: &str| {
+            insta::assert_snapshot!(stdout);
+            true
+        }));
+    // Check that it was actually passed.
+    let baseline_log_path = &tmp_src_dir.path().join("mutants.out/log/baseline.log");
+    println!("{}", baseline_log_path.display());
+    let log_content = fs::read_to_string(baseline_log_path).unwrap();
+    println!("{log_content}");
+    regex::Regex::new(r"cargo.* build --tests --release")
+        .unwrap()
+        .captures(&log_content)
+        .unwrap();
+    regex::Regex::new(r"cargo.* test .* --release")
+        .unwrap()
+        .captures(&log_content)
+        .unwrap();
+}
 
 #[test]
 /// The `--output` directory creates the named directory if necessary, and then
@@ -868,7 +868,7 @@ fn check_succeeds_in_tree_that_builds_but_fails_tests() {
         .env_remove("RUST_BACKTRACE")
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -884,7 +884,7 @@ fn check_tree_with_mutants_skip() {
         .env_remove("RUST_BACKTRACE")
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -915,23 +915,23 @@ fn already_failing_tests_are_detected_before_running_mutants() {
         ));
 }
 
-// #[test] // We disabled doctests entirely, which is why this test would fail
-// fn already_failing_doctests_are_detected() {
-//     let tmp_src_dir = copy_of_testdata("already_failing_doctests");
-//     run()
-//         .arg("mutants-rts")
-//         .current_dir(tmp_src_dir.path())
-//         .env_remove("RUST_BACKTRACE")
-//         .assert()
-//         .code(4) // CLEAN_TESTS_FAILED
-//         .stdout(contains("lib.rs - takes_one_arg (line 5) ... FAILED"))
-//         .stdout(contains(
-//             "this function takes 1 argument but 3 arguments were supplied",
-//         ))
-//         .stderr(predicate::str::contains(
-//             "cargo test failed in an unmutated tree, so no mutants were tested",
-//         ));
-// }
+#[test]
+fn already_failing_doctests_are_detected() {
+    let tmp_src_dir = copy_of_testdata("already_failing_doctests");
+    run()
+        .arg("mutants-rts")
+        .current_dir(tmp_src_dir.path())
+        .env_remove("RUST_BACKTRACE")
+        .assert()
+        .code(4) // CLEAN_TESTS_FAILED
+        .stdout(contains("lib.rs - takes_one_arg (line 5) ... FAILED"))
+        .stdout(contains(
+            "this function takes 1 argument but 3 arguments were supplied",
+        ))
+        .stderr(predicate::str::contains(
+            "cargo test failed in an unmutated tree, so no mutants were tested",
+        ));
+}
 
 #[test]
 fn already_failing_doctests_can_be_skipped_with_cargo_arg() {
@@ -1209,7 +1209,7 @@ fn cargo_mutants_in_override_dependency_tree_passes() {
         .arg("testdata/override_dependency")
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -1227,7 +1227,7 @@ fn cargo_mutants_in_relative_dependency_tree_passes() {
         .arg("testdata/relative_dependency")
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -1245,7 +1245,7 @@ fn cargo_mutants_in_replace_dependency_tree_passes() {
         .arg("testdata/replace_dependency")
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -1263,7 +1263,7 @@ fn cargo_mutants_in_patch_dependency_tree_passes() {
         .arg("testdata/patch_dependency")
         .assert()
         .success()
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));
@@ -1285,7 +1285,7 @@ fn mutants_are_unapplied_after_testing_so_later_missed_mutants_are_found() {
         .arg(tmp_src_dir.path())
         .assert()
         .code(2) // some were missed
-        .stdout(predicate::function(|stdout| {
+        .stdout(predicate::function(|stdout: &str| {
             insta::assert_snapshot!(stdout);
             true
         }));

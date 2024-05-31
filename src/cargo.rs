@@ -23,16 +23,14 @@ pub fn run_cargo(
     log_file: &mut LogFile,
     options: &Options,
     console: &Console,
-    rustyrts_log: &str,
     trybuild_overwrite: bool,
-    rustc_wrapper: Vec<(&str, &str)>,
+    rustc_wrapper: Option<Vec<(&str, String)>>,
 ) -> Result<PhaseResult> {
     let _span = debug_span!("run", ?phase).entered();
     let start = Instant::now();
     let argv = cargo_argv(build_dir.path(), packages, phase, options);
 
     let mut env = vec![
-        ("RUSTYRTS_LOG".to_owned(), rustyrts_log.to_owned()),
         ("CARGO_ENCODED_RUSTFLAGS".to_owned(), rustflags()),
         // The tests might use Insta <https://insta.rs>, and we don't want it to write
         // updates to the source tree, and we *certainly* don't want it to write
@@ -44,8 +42,10 @@ pub fn run_cargo(
         env.push(("TRYBUILD".to_owned(), "overwrite".to_owned()));
     }
 
-    for (k, v) in rustc_wrapper {
-        env.push((k.to_owned(), v.to_owned()));
+    if let Some(e) = rustc_wrapper {
+        for (k, v) in e {
+            env.push((k.to_owned(), v.to_owned()));
+        }
     }
 
     let process_status = Process::run(
@@ -87,13 +87,7 @@ pub fn cargo_argv(
     cargo_args.extend(phase.name().iter().map(|s| s.to_string()));
 
     if phase == Phase::Check || phase == Phase::Build || phase == Phase::BuildDynamic {
-        //cargo_args.push("--lib".to_string());
-        //cargo_args.push("--bins".to_string());
         cargo_args.push("--tests".to_string());
-        cargo_args.push("--examples".to_string());
-
-        cargo_args.push("--profile".to_string());
-        cargo_args.push("test".to_string());
     }
 
     match phase {
@@ -116,39 +110,13 @@ pub fn cargo_argv(
         cargo_args.push("no-index-update".to_string());
         if phase == Phase::Test {
             cargo_args.push("--no-fail-fast".to_string());
-
-            //cargo_args.push("--lib".to_string());
-            //cargo_args.push("--bins".to_string());
-            cargo_args.push("--tests".to_string());
-            cargo_args.push("--examples".to_string());
         }
-
-        if phase == Phase::Dynamic || phase == Phase::Static {
-            //cargo_args.push("-v".to_string());
-            cargo_args.push("--".to_string());
-
-            // Add args to `cargo build` here
-            cargo_args.extend(options.additional_cargo_args.iter().cloned());
-            // append_packages(&mut cargo_args, packages, build_dir); // IMPORTANT: would lead to pre-selection
-        }
-
-        if phase == Phase::Dynamic || phase == Phase::Static {
-            cargo_args.push("--".to_string());
-            // Add args to `rustc` here
-
-            if options.emit_mir {
-                cargo_args.push("--emit=mir".to_string());
-            }
-
-            cargo_args.push("--".to_string());
-        }
-        // Add args to cargo test here
-        //...
     }
 
     cargo_args.extend(options.additional_cargo_args.iter().cloned());
     // append_packages(&mut cargo_args, packages, build_dir); // IMPORTANT: would lead to pre-selection
-    if phase.is_test_phase() {
+    if phase.is_test_phase() && !options.additional_cargo_test_args.is_empty() {
+        // cargo_args.push("--".to_string());
         cargo_args.extend(options.additional_cargo_test_args.iter().cloned());
     }
     cargo_args
@@ -231,12 +199,7 @@ mod test {
             cargo_argv(build_dir, None, Phase::Check, &options)[1..],
             [
                 "check",
-                //"--lib",
-                //"--bins",
                 "--tests",
-                "--examples",
-                "--profile",
-                "test",
                 "--target-dir",
                 "target_check",
                 // "--workspace"
@@ -245,26 +208,14 @@ mod test {
         assert_eq!(
             cargo_argv(build_dir, None, Phase::Build, &options)[1..],
             [
-                "build",
-                //"--lib",
-                //"--bins",
-                "--tests",
-                "--examples",
-                "--profile",
-                "test",
+                "build", "--tests",
                 // "--workspace"
             ]
         );
         assert_eq!(
             cargo_argv(build_dir, None, Phase::BuildDynamic, &options)[1..],
             [
-                "build",
-                //"--lib",
-                //"--bins",
-                "--tests",
-                "--examples",
-                "--profile",
-                "test",
+                "build", "--tests",
                 // "--workspace"
             ]
         );
@@ -277,10 +228,6 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--no-fail-fast",
-                //"--lib",
-                //"--bins",
-                "--tests",
-                "--examples",
                 // "--workspace"
             ]
         );
@@ -291,11 +238,7 @@ mod test {
                 "dynamic",
                 "-Z",
                 "no-index-update",
-                "--",
                 // "--workspace",
-                "--",
-                "--",
-                // "--workspace"
             ]
         );
         assert_eq!(
@@ -305,11 +248,7 @@ mod test {
                 "static",
                 "-Z",
                 "no-index-update",
-                "--",
                 // "--workspace",
-                "--",
-                "--",
-                // "--workspace"
             ]
         );
     }
@@ -331,12 +270,7 @@ mod test {
             cargo_argv(build_dir, Some(&[&package]), Phase::Check, &options)[1..],
             [
                 "check",
-                //"--lib",
-                //"--bins",
                 "--tests",
-                "--examples",
-                "--profile",
-                "test",
                 "--target-dir",
                 "target_check",
                 // "--manifest-path",
@@ -347,12 +281,7 @@ mod test {
             cargo_argv(build_dir, Some(&[&package]), Phase::Build, &options)[1..],
             [
                 "build",
-                //"--lib",
-                //"--bins",
                 "--tests",
-                "--examples",
-                "--profile",
-                "test",
                 // "--manifest-path",
                 // build_manifest_path.as_str(),
             ]
@@ -361,12 +290,7 @@ mod test {
             cargo_argv(build_dir, Some(&[&package]), Phase::BuildDynamic, &options)[1..],
             [
                 "build",
-                //"--lib",
-                //"--bins",
                 "--tests",
-                "--examples",
-                "--profile",
-                "test",
                 // "--manifest-path",
                 // build_manifest_path.as_str(),
             ]
@@ -380,45 +304,17 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--no-fail-fast",
-                //"--lib",
-                //"--bins",
-                "--tests",
-                "--examples",
                 // "--manifest-path",
                 // build_manifest_path.as_str(),
             ]
         );
         assert_eq!(
             cargo_argv(build_dir, Some(&[&package]), Phase::Dynamic, &options)[1..],
-            [
-                "rustyrts",
-                "dynamic",
-                "-Z",
-                "no-index-update",
-                "--",
-                // "--manifest-path",
-                // build_manifest_path.as_str(),
-                "--",
-                "--",
-                // "--manifest-path",
-                // build_manifest_path.as_str(),
-            ]
+            ["rustyrts", "dynamic", "-Z", "no-index-update",]
         );
         assert_eq!(
             cargo_argv(build_dir, Some(&[&package]), Phase::Static, &options)[1..],
-            [
-                "rustyrts",
-                "static",
-                "-Z",
-                "no-index-update",
-                "--",
-                // "--manifest-path",
-                // build_manifest_path.as_str(),
-                "--",
-                "--",
-                // "--manifest-path",
-                // build_manifest_path.as_str(),
-            ]
+            ["rustyrts", "static", "-Z", "no-index-update",]
         );
     }
 
@@ -436,12 +332,7 @@ mod test {
             cargo_argv(build_dir, None, Phase::Check, &options)[1..],
             [
                 "check",
-                //"--lib",
-                //"--bins",
                 "--tests",
-                "--examples",
-                "--profile",
-                "test",
                 "--target-dir",
                 "target_check",
                 "--verbose",
@@ -452,12 +343,7 @@ mod test {
             cargo_argv(build_dir, None, Phase::Build, &options)[1..],
             [
                 "build",
-                //"--lib",
-                //"--bins",
                 "--tests",
-                "--examples",
-                "--profile",
-                "test",
                 "--verbose",
                 // "--workspace"
             ]
@@ -466,12 +352,7 @@ mod test {
             cargo_argv(build_dir, None, Phase::BuildDynamic, &options)[1..],
             [
                 "build",
-                //"--lib",
-                //"--bins",
                 "--tests",
-                "--examples",
-                "--profile",
-                "test",
                 "--verbose",
                 // "--workspace"
             ]
@@ -485,10 +366,6 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--no-fail-fast",
-                //"--lib",
-                //"--bins",
-                "--tests",
-                "--examples",
                 "--verbose",
                 // "--workspace",
                 "--",
@@ -502,11 +379,6 @@ mod test {
                 "dynamic",
                 "-Z",
                 "no-index-update",
-                "--",
-                "--verbose",
-                // "--workspace",
-                "--",
-                "--",
                 "--verbose",
                 // "--workspace",
                 "--",
@@ -520,11 +392,6 @@ mod test {
                 "static",
                 "-Z",
                 "no-index-update",
-                "--",
-                "--verbose",
-                // "--workspace",
-                "--",
-                "--",
                 "--verbose",
                 // "--workspace",
                 "--",
