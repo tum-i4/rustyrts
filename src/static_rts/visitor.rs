@@ -212,20 +212,7 @@ pub fn create_dependency_graph<'arena>(
         });
     }
 
-    let mut graph = usage_map.into_inner().finalize(arena);
-
-    // let tests = tcx.sess.time("dependency_graph_root_collection", || {
-    //     collect_test_functions(tcx)
-    // });
-
-    // for test in tests {
-    //     let def_id = test.def_id();
-    //     let name_trimmed = def_id_name(tcx, def_id, false, true);
-    //     let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
-    //     graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
-    // }
-
-    graph
+    usage_map.into_inner().finalize(arena)
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to

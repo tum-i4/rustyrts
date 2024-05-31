@@ -1,35 +1,30 @@
-use super::graph::DependencyGraph;
-use crate::fs_utils::write_to_file;
-use crate::names::def_id_name;
 use crate::{
     callbacks_shared::{
         AnalysisCallback, ChecksumsCallback, RTSContext, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
     },
-    constants::ENV_SKIP_ANALYSIS,
-    fs_utils::{CacheFileDescr, CacheFileKind, CacheKind, ChecksumKind},
-    names::mono_def_id_name,
-    static_rts::{graph::EdgeType, visitor::collect_test_functions},
+    constants::{ENV_SKIP_ANALYSIS, SUFFIX_DYN},
+    fs_utils::{append_to_file, CacheFileDescr, CacheFileKind, CacheKind, ChecksumKind},
+    names::IS_COMPILING_DOCTESTS,
+    static_rts::callback::GraphAnalysisCallback,
 };
-use crate::{
-    constants::SUFFIX_DYN,
-    static_rts::visitor::{create_dependency_graph, MonoItemCollectionMode},
-};
-use internment::Arena;
 use once_cell::sync::OnceCell;
-use rustc_driver::{Callbacks, Compilation};
-use rustc_interface::{interface, Queries};
-use rustc_middle::ty::{List, TyCtxt};
+use rustc_data_structures::sync::Ordering::SeqCst;
+use rustc_driver_impl::{Callbacks, Compilation};
+use rustc_interface::{interface::Compiler, Config, Queries};
+use rustc_middle::ty::TyCtxt;
 use std::path::PathBuf;
-use std::sync::atomic::Ordering::SeqCst;
 use tracing::{debug, trace};
 
-pub struct StaticRTSCallbacks {
+use super::graph::DependencyGraph;
+
+pub struct StaticDoctestRTSCallbacks {
     path: PathBuf,
     context: OnceCell<RTSContext>,
 }
 
-impl StaticRTSCallbacks {
+impl StaticDoctestRTSCallbacks {
     pub fn new(target_dir: PathBuf) -> Self {
+        IS_COMPILING_DOCTESTS.store(true, SeqCst);
         Self {
             path: target_dir,
             context: OnceCell::new(),
@@ -37,9 +32,9 @@ impl StaticRTSCallbacks {
     }
 }
 
-impl<'tcx> AnalysisCallback<'tcx> for StaticRTSCallbacks {}
+impl<'tcx> AnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {}
 
-impl ChecksumsCallback for StaticRTSCallbacks {
+impl ChecksumsCallback for StaticDoctestRTSCallbacks {
     fn path(&self) -> &std::path::Path {
         &self.path
     }
@@ -53,7 +48,7 @@ impl ChecksumsCallback for StaticRTSCallbacks {
     }
 }
 
-impl<'tcx> GraphAnalysisCallback<'tcx> for StaticRTSCallbacks {
+impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
     fn export_graph(&self, tcx: TyCtxt<'tcx>) {
         let RTSContext {
             crate_name,
@@ -63,21 +58,11 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticRTSCallbacks {
         } = self.context();
 
         let arena = internment::Arena::new();
-        let mut graph = self.create_graph(&arena, tcx);
-
-        let tests = tcx.sess.time("dependency_graph_root_collection", || {
-            collect_test_functions(tcx)
-        });
-
-        for test in tests {
-            let def_id = test.def_id();
-            let name_trimmed = def_id_name(tcx, def_id, false, true);
-            let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
-            graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
-        }
+        let graph: DependencyGraph<'_, String> = self.create_graph(&arena, tcx);
 
         let path = CacheKind::Static.map(self.path.clone());
-        write_to_file(
+        append_to_file(
+            // IMPORTANT: requires filesystem locking, since multiple threads write to this file in parallel
             graph.to_string(),
             path.clone(),
             |buf| {
@@ -89,36 +74,19 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticRTSCallbacks {
                 )
                 .apply(buf)
             },
-            false,
         );
     }
 }
 
-impl Drop for StaticRTSCallbacks {
+impl Drop for StaticDoctestRTSCallbacks {
     fn drop(&mut self) {
         if self.context.get().is_some() {
-            let old_checksums = self.import_checksums(ChecksumKind::Checksum, false);
-            let old_checksums_vtbl = self.import_checksums(ChecksumKind::VtblChecksum, false);
-            let old_checksums_const = self.import_checksums(ChecksumKind::ConstChecksum, false);
-
-            let context = &mut self.context.get_mut().unwrap();
-
-            context.old_checksums.get_or_init(|| old_checksums);
-            context
-                .old_checksums_vtbl
-                .get_or_init(|| old_checksums_vtbl);
-            context
-                .old_checksums_const
-                .get_or_init(|| old_checksums_const);
-
             let new_checksums_vtbl = &*NEW_CHECKSUMS_VTBL.get().unwrap().lock().unwrap();
             self.context
                 .get()
                 .unwrap()
                 .new_checksums_vtbl
                 .get_or_init(|| new_checksums_vtbl.clone());
-
-            self.export_changes(CacheKind::Static);
 
             let RTSContext {
                 new_checksums,
@@ -127,25 +95,23 @@ impl Drop for StaticRTSCallbacks {
                 ..
             } = self.context();
 
-            self.export_checksums(ChecksumKind::Checksum, new_checksums.get().unwrap(), false);
+            self.export_checksums(ChecksumKind::Checksum, new_checksums.get().unwrap(), true);
             self.export_checksums(
                 ChecksumKind::VtblChecksum,
                 new_checksums_vtbl.get().unwrap(),
-                false,
+                true,
             );
             self.export_checksums(
                 ChecksumKind::ConstChecksum,
                 new_checksums_const.get().unwrap(),
-                false,
+                true,
             );
-        } else {
-            debug!("Aborting without exporting changes");
         }
     }
 }
 
-impl Callbacks for StaticRTSCallbacks {
-    fn config(&mut self, config: &mut interface::Config) {
+impl Callbacks for StaticDoctestRTSCallbacks {
+    fn config(&mut self, config: &mut Config) {
         // The only possibility to intercept vtable entries, which I found, is in their local crate
         config.override_queries = Some(|_session, providers| {
             debug!("Modifying providers");
@@ -160,9 +126,9 @@ impl Callbacks for StaticRTSCallbacks {
         });
     }
 
-    fn after_analysis<'tcx>(
+    fn after_crate_root_parsing<'tcx>(
         &mut self,
-        _compiler: &interface::Compiler,
+        _compiler: &Compiler,
         queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
         if std::env::var(ENV_SKIP_ANALYSIS).is_err() {
@@ -175,22 +141,6 @@ impl Callbacks for StaticRTSCallbacks {
             });
         }
 
-        Compilation::Continue
-    }
-}
-
-pub trait GraphAnalysisCallback<'tcx>: AnalysisCallback<'tcx> {
-    fn export_graph(&self, tcx: TyCtxt<'tcx>);
-
-    fn create_graph<'arena>(
-        &self,
-        arena: &'arena Arena<String>,
-        tcx: TyCtxt<'tcx>,
-    ) -> DependencyGraph<'arena, String> {
-        let RTSContext { crate_name, .. } = self.context();
-
-        let graph = create_dependency_graph(tcx, arena, MonoItemCollectionMode::Lazy);
-        debug!("Created graph for {}", crate_name);
-        graph
+        Compilation::Stop
     }
 }

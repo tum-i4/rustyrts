@@ -9,6 +9,11 @@ use cargo::{self, drop_println, CargoResult, CliResult, Config};
 use clap::{builder::UnknownArgumentValueParser, Arg, ArgMatches};
 use std::ffi::OsString;
 
+//#####################################################################################################################
+// Source: https://github.com/rust-lang/cargo/blob/d0390c22b16ea6c800754fb7620ab8ee31debcc7/src/bin/cargo/cli.rs
+// Adapted to provid custom command instead of cargo
+//#####################################################################################################################
+
 pub fn main(config: &mut LazyConfig) -> CliResult {
     let args = cli().try_get_matches()?.remove_subcommand().unwrap().1;
 
@@ -205,10 +210,19 @@ pub fn cli() -> Command {
                     "Use verbose output (-vv very verbose/build.rs output)",
                 )
                 .short('v')
-                .action(ArgAction::Count),
+                .action(ArgAction::Count)
+                .global(true),
             )
-            .arg(flag("quiet", "Do not print cargo log messages").short('q'))
-            .arg(opt("color", "Coloring: auto, always, never").value_name("WHEN"))
+            .arg(
+                flag("quiet", "Do not print cargo log messages")
+                    .short('q')
+                    .global(true),
+            )
+            .arg(
+                opt("color", "Coloring: auto, always, never")
+                    .value_name("WHEN")
+                    .global(true),
+            )
             .arg(
                 Arg::new("directory")
                     .help("Change to DIRECTORY before doing anything (nightly-only)")
@@ -219,15 +233,18 @@ pub fn cli() -> Command {
             )
             .arg(
                 flag("frozen", "Require Cargo.lock and cache are up to date")
-                    .help_heading(heading::MANIFEST_OPTIONS),
+                    .help_heading(heading::MANIFEST_OPTIONS)
+                    .global(true),
             )
             .arg(
                 flag("locked", "Require Cargo.lock is up to date")
-                    .help_heading(heading::MANIFEST_OPTIONS),
+                    .help_heading(heading::MANIFEST_OPTIONS)
+                    .global(true),
             )
             .arg(
                 flag("offline", "Run without accessing the network")
-                    .help_heading(heading::MANIFEST_OPTIONS),
+                    .help_heading(heading::MANIFEST_OPTIONS)
+                    .global(true),
             )
             // Better suggestion for the unsupported short config flag.
             .arg(
@@ -236,13 +253,10 @@ pub fn cli() -> Command {
                     .short('c')
                     .value_parser(UnknownArgumentValueParser::suggest_arg("--config"))
                     .action(ArgAction::SetTrue)
+                    .global(true)
                     .hide(true),
             )
-            .arg(multi_opt(
-                "config",
-                "KEY=VALUE",
-                "Override a configuration value",
-            ))
+            .arg(multi_opt("config", "KEY=VALUE", "Override a configuration value").global(true))
             // Better suggestion for the unsupported lowercase unstable feature flag.
             .arg(
                 Arg::new("unsupported-lowercase-unstable-feature-flag")
@@ -250,6 +264,7 @@ pub fn cli() -> Command {
                     .short('z')
                     .value_parser(UnknownArgumentValueParser::suggest_arg("-Z"))
                     .action(ArgAction::SetTrue)
+                    .global(true)
                     .hide(true),
             )
             .arg(
@@ -257,7 +272,8 @@ pub fn cli() -> Command {
                     .help("Unstable (nightly-only) flags to Cargo, see 'cargo -Z help' for details")
                     .short('Z')
                     .value_name("FLAG")
-                    .action(ArgAction::Append),
+                    .action(ArgAction::Append)
+                    .global(true),
             )
             .subcommands(commands::commands()),
     )

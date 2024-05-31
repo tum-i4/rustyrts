@@ -164,10 +164,7 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
         if let Some(allocation_or_int) = maybe_allocation_or_int {
             let checksum = match allocation_or_int {
                 Ok(allocation) => get_checksum_const_allocation(self.tcx, &allocation),
-                Err(scalar_int) => {
-                    let checksum = get_checksum_scalar_int(self.tcx, &scalar_int);
-                    checksum
-                }
+                Err(scalar_int) => get_checksum_scalar_int(self.tcx, &scalar_int),
             };
             self.acc.insert(checksum);
         }

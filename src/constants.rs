@@ -5,29 +5,19 @@ pub const VERBOSE_COUNT: usize = 16;
 //######################################################################################################################
 // Environment variables
 
-/// Either "static" or "dynamic"
-pub const ENV_RUSTYRTS_MODE: &str = "RUSTYRTS_MODE";
-
-/// Can be set to overwrite the executable that is used when rustc is invoked
-pub const ENV_RUSTC_WRAPPER: &str = "RUSTC_WRAPPER";
-
-/// Can be set to control the behvior of rustdoc
-pub const ENV_RUSTDOCFLAGS: &str = "RUSTDOCFLAGS";
-
 /// Is set by cargo
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
-/// Used to buffer arguments to rustc
-pub const ENV_RUSTYRTS_ARGS: &str = "RUSTYRTS_ARGS";
+/// Is set by cargo
+pub const ENV_COMPILE_MODE: &str = "RUSTYRTS_COMPILE_MODE";
 
-/// Used to specify whether rustyrts should provide verbose output
-pub const ENV_RUSTYRTS_VERBOSE: &str = "RUSTYRTS_VERBOSE";
-
-/// Used to specify the log level
-pub const ENV_RUSTYRTS_LOG: &str = "RUSTYRTS_LOG";
+/// May be used to instruct RustyRTS to only emit checksums and changed nodes
+pub const ENV_ONLY_INSTRUMENTATION: &str = "RUSTYRTS_ONLY_INSTRUMENTATION";
 
 /// May be used to skip the analysis
-pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP";
+pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP_ANALYSIS";
+/// May be used to skip the analysis
+pub const ENV_SKIP_INSTRUMENTATION: &str = "RUSTYRTS_SKIP_INSTRUMENTATION";
 
 pub const ENV_BLACKBOX_TEST: &str = "RUSTYRTS_BLACKBOX_TEST";
 
@@ -39,7 +29,7 @@ pub const ENV_DOCTESTED: &str = "RUSTYRTS_DOCTESTED";
 
 pub const DIR_STATIC: &str = ".rts_static";
 pub const DIR_DYNAMIC: &str = ".rts_dynamic";
-pub const DIR_DOCTEST: &str = ".rts_doctest";
+pub const DIR_GENERAL: &str = ".rts";
 
 pub const FILE_COMPLETE_GRAPH: &str = "!complete_graph.dot";
 

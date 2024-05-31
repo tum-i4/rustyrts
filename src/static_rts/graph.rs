@@ -192,6 +192,7 @@ impl<'arena, 'a, T: Eq + Hash> DependencyGraph<'arena, T> {
 impl<'arena> DependencyGraph<'arena, String> {
     pub fn import_nodes(&mut self, lines: impl IntoIterator<Item = String>) {
         // Parse nodes
+        // TODO: improve error handling
         for line in lines {
             let message_fn = || format!("Found malformed node line: {})", line);
 
@@ -306,31 +307,25 @@ impl<'arena> ToString for DependencyGraph<'arena, String> {
     }
 }
 
-// impl FromStr for DependencyGraph<String> {
-//     type Err = ();
+impl<'arena> DependencyGraph<'arena, String> {
+    pub fn from_str(arena: &'arena Arena<String>, s: &str) -> Result<Self, ()> {
+        let content = s.trim();
+        let (edges, nodes): (Vec<_>, Vec<_>) = content
+            .split("\n")
+            .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
+            .filter(|l| l != &"digraph {")
+            .filter(|l| l != &"}")
+            .map(|s| s.to_string())
+            .partition(|l| l.contains("\" -> \""));
 
-//     fn from_str(s: &str) -> Result<Self, Self::Err> {
-//         if let Some(content) = s
-//             .trim()
-//             .strip_prefix("digraph {") // Filter beginning and ending
-//             .and_then(|s| s.strip_suffix("}"))
-//         {
-//             let (edges, nodes): (Vec<_>, Vec<_>) = content
-//                 .split("\n")
-//                 .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
-//                 .map(|s| s.to_string())
-//                 .partition(|l| l.contains("\" -> \""));
+        let mut result = Self::new(arena);
 
-//             let mut result = Self::new();
+        result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
+        result.import_edges(edges);
 
-//             result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
-//             result.import_edges(edges);
-
-//             return Ok(result);
-//         }
-//         Err(())
-//     }
-// }
+        return Ok(result);
+    }
+}
 
 #[cfg(test)]
 mod test {

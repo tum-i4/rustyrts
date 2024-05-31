@@ -54,7 +54,7 @@ impl FileLoader for TestRunnerFileLoaderProxy {
 }
 
 pub struct InstrumentationFileLoaderProxy {
-    pub(crate) delegate: RealFileLoader,
+    pub delegate: RealFileLoader,
 }
 
 impl FileLoader for InstrumentationFileLoaderProxy {

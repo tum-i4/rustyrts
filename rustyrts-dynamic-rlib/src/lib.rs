@@ -1,12 +1,12 @@
-use constants::ENDING_TRACE;
-use fs_utils::{get_cache_path, get_process_traces_path, init_path, write_to_file, CacheKind};
+use fs_utils::{get_cache_path, write_to_file, CacheFileDescr, CacheFileKind, CacheKind};
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicPtr;
 use std::sync::atomic::Ordering;
-use std::{collections::HashSet, fs::read_to_string};
 
-use crate::constants::ENDING_PROCESS_TRACE;
+#[cfg(unix)]
+use std::fs::read_to_string;
 
 mod constants;
 mod fs_utils;
@@ -58,13 +58,11 @@ pub fn pre_test() {
 pub fn pre_main() {}
 
 #[no_mangle]
-pub fn post_test(test_name: &str) {
+pub fn post_test(test_name: &str, append: bool) {
     let traces = reset_list();
-    export_traces(
-        traces,
-        |path_buf| init_path(path_buf, test_name, None, ENDING_TRACE),
-        false,
-    );
+
+    let file_descr = CacheFileDescr::new(test_name, None, None, CacheFileKind::Traces);
+    export_traces(traces, |path_buf| file_descr.apply(path_buf), append);
 }
 
 #[no_mangle]
@@ -72,18 +70,14 @@ pub fn post_test(test_name: &str) {
 pub fn post_main() {
     use std::os::unix::process::parent_id;
 
-    use crate::constants::ENDING_PROCESS_TRACE;
-
     let traces = read_list();
 
-    let ppid = parent_id();
-    export_traces(
-        traces,
-        |path_buf| init_path(path_buf, &format!("{}", ppid), None, ENDING_PROCESS_TRACE),
-        true,
-    );
+    let ppid = format!("{}", parent_id());
+    let file_descr = CacheFileDescr::new(&ppid, None, None, CacheFileKind::ProcessTraces);
+    export_traces(traces, |path_buf| file_descr.apply(path_buf), true);
 }
 
+#[cfg(unix)]
 fn read_list<'a>() -> HashSet<Cow<'a, str>> {
     let mut traces = HashSet::new();
 
@@ -116,19 +110,16 @@ where
     F: FnOnce(&mut PathBuf),
 {
     let path_buf = get_cache_path(CacheKind::Dynamic).unwrap();
-    let mut traces = traces;
 
     #[cfg(unix)]
-    {
+    let traces = {
         use std::process::id;
-        let pid = id();
+
+        let mut traces = traces;
+        let pid = format!("{}", id());
         let mut path_child_traces = path_buf.clone();
-        init_path(
-            &mut path_child_traces,
-            &format!("{}", pid),
-            None,
-            ENDING_PROCESS_TRACE,
-        );
+        let file_descr = CacheFileDescr::new(&pid, None, None, CacheFileKind::ProcessTraces);
+        file_descr.apply(&mut path_child_traces);
         if path_child_traces.is_file() {
             read_to_string(path_child_traces)
                 .unwrap()
@@ -137,7 +128,8 @@ where
                     traces.insert(Cow::Owned(l.to_string()));
                 });
         }
-    }
+        traces
+    };
 
     let output = traces.into_iter().fold(String::new(), |mut acc, node| {
         acc.push_str(&node);
@@ -145,5 +137,16 @@ where
         acc
     });
 
+    #[cfg(all(unix, feature = "fs_lock_syscall"))]
+    use fs_utils::append_to_file;
+
+    #[cfg(all(unix, feature = "fs_lock_syscall"))]
+    if append {
+        append_to_file(output, path_buf, path_buf_init);
+    } else {
+        write_to_file(output, path_buf, path_buf_init, false);
+    }
+
+    #[cfg(windows)] // TODO: fix file system races
     write_to_file(output, path_buf, path_buf_init, append);
 }

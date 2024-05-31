@@ -33,6 +33,12 @@ impl Checksums {
     }
 }
 
+impl Default for Checksums {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deref for Checksums {
     type Target = HashMap<String, HashSet<(u64, u64)>>;
 
@@ -47,17 +53,17 @@ impl DerefMut for Checksums {
     }
 }
 
-impl Into<Vec<u8>> for &Checksums {
-    fn into(self) -> Vec<u8> {
+impl From<&Checksums> for Vec<u8> {
+    fn from(val: &Checksums) -> Self {
         let mut output = Vec::new();
 
-        for (name, checksums) in &self.inner {
+        for (name, checksums) in &val.inner {
             for (first, second) in checksums {
                 output.extend(name.as_bytes());
                 output.extend(" - ".as_bytes());
                 output.extend(Vec::from(first.to_ne_bytes()));
                 output.extend(Vec::from(second.to_ne_bytes()));
-                output.push('\n' as u8);
+                output.push(b'\n');
             }
         }
         output
@@ -74,7 +80,6 @@ impl From<&[u8]> for Checksums {
 
         REGEX_LINE
             .find_iter(value)
-            .into_iter()
             .map(|m| m.as_bytes())
             .map(|line| {
                 // spilt into name and checksum
@@ -83,7 +88,7 @@ impl From<&[u8]> for Checksums {
                     line.get(line.len() - 17..line.len() - 1).unwrap(), // checksums begin 17 bytes before end + removing \n at the end
                 )
             })
-            .map(|(name, checksum)| (std::str::from_utf8(&name).unwrap(), checksum.split_at(8))) // parse name and split checksum
+            .map(|(name, checksum)| (std::str::from_utf8(name).unwrap(), checksum.split_at(8))) // parse name and split checksum
             .map(|(name, (first_str, second_str))| {
                 // Parse checksums from two [u8,8] in two u64s
                 let first = u64::from_ne_bytes(first_str.try_into().unwrap());
@@ -98,7 +103,7 @@ impl From<&[u8]> for Checksums {
 }
 
 /// Function to obtain a stable checksum of a MIR body
-pub(crate) fn get_checksum_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
+pub(crate) fn get_checksum_body(tcx: TyCtxt<'_>, body: &Body) -> (u64, u64) {
     let mut hash = (0, 0);
 
     tcx.with_stable_hashing_context(|ref mut context| {
@@ -173,10 +178,7 @@ pub(crate) fn get_checksum_const_allocation<'tcx>(
 }
 
 /// Function to obtain a stable checksum of a scalar int
-pub(crate) fn get_checksum_scalar_int<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    scalar_int: &ScalarInt,
-) -> (u64, u64) {
+pub(crate) fn get_checksum_scalar_int(tcx: TyCtxt<'_>, scalar_int: &ScalarInt) -> (u64, u64) {
     let mut hash = (0, 0);
 
     tcx.with_stable_hashing_context(|ref mut context| {
@@ -200,7 +202,7 @@ pub(crate) fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
     key: &K,
     value: V,
 ) {
-    if let None = map.get(key) {
+    if map.get(key).is_none() {
         map.insert(key.clone(), HashSet::new()).unwrap_or_default();
     }
     map.get_mut(key).unwrap().insert(value);

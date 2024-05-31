@@ -3,7 +3,9 @@
 
 // required for calling the compiler and providing callbacks
 extern crate rustc_driver;
+extern crate rustc_driver_impl;
 extern crate rustc_interface;
+extern crate rustc_log;
 extern crate rustc_session;
 
 // required for hashing and computing checksums
@@ -32,7 +34,6 @@ extern crate rustc_resolve;
 // TODO: maybe this could be moved to the commands module?
 extern crate cargo;
 
-pub mod doctest_rts;
 pub mod dynamic_rts;
 pub mod static_rts;
 
@@ -44,3 +45,58 @@ pub mod format;
 pub mod fs_utils;
 pub mod info;
 pub mod names;
+
+use constants::ENV_BLACKBOX_TEST;
+use format::setup_logger;
+use rustc_driver_impl::Callbacks;
+use rustc_log::LoggerConfig;
+use std::path::PathBuf;
+
+const EXIT_SUCCESS: i32 = 0;
+const EXIT_FAILURE: i32 = 1;
+
+pub fn main_rustyrts(mut callbacks: impl Callbacks + Send, fail_fast: bool) {
+    rustc_log::init_logger(LoggerConfig::from_env("RUSTC")).unwrap();
+    setup_logger();
+
+    let result = rustc_driver::catch_fatal_errors(move || {
+        let mut rustc_args = std::env::args()
+            .enumerate()
+            .filter(|(i, arg)| !(*i == 1 && arg.ends_with("rustc")))
+            .map(|(_i, arg)| {
+                // when running blackbox tests, this ensures that stable crate ids do not change if features are enabled
+                if std::env::var(ENV_BLACKBOX_TEST).is_ok() && arg.starts_with("metadata=") {
+                    return "metadata=".to_string();
+                }
+                arg
+            })
+            .collect::<Vec<_>>();
+
+        // Provide information on where to find rustyrts-dynamic-rlib
+        let mut rlib_source =
+            PathBuf::from(std::env::var("CARGO_HOME").expect("Did not find CARGO_HOME"));
+        rlib_source.push("bin");
+
+        rustc_args.push("-L".to_string());
+        rustc_args.push(rlib_source.display().to_string());
+
+        rustc_args.push("--cap-lints".to_string());
+        rustc_args.push("warn".to_string());
+
+        let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
+        run_compiler.run()
+    });
+
+    let result = result.unwrap();
+
+    if fail_fast {
+        std::process::exit(EXIT_FAILURE);
+    }
+
+    let exit_code = match result {
+        Ok(_) => EXIT_SUCCESS,
+        Err(_) => EXIT_FAILURE,
+    };
+
+    std::process::exit(exit_code);
+}

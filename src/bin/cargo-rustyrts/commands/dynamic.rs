@@ -1,20 +1,43 @@
 use std::{
-    cell::RefMut,
-    collections::HashSet,
-    fmt::Display,
-    fs::{read_dir, read_to_string, DirEntry},
-    path::PathBuf,
+    collections::{HashMap, HashSet},
+    fs::{read_dir, read_to_string},
+    path::{Path, PathBuf},
+    time::Instant,
+    vec::Vec,
 };
 
-use cargo::{core::Shell, util::command_prelude::*, CargoResult};
+use cargo::util::command_prelude::*;
+use cargo::{
+    core::{
+        compiler::{
+            unit_graph::{UnitDep, UnitGraph},
+            Unit,
+        },
+        Shell,
+    },
+    CargoResult,
+};
+use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
 
+use itertools::Itertools;
 use rustyrts::{
-    constants::{ENDING_CHANGES, ENDING_TEST, ENDING_TRACE},
-    fs_utils::{read_lines, read_lines_filter_map, CacheKind},
+    callbacks_shared::DOCTEST_PREFIX,
+    constants::{
+        ENDING_CHANGES, ENDING_PROCESS_TRACE, ENV_COMPILE_MODE, ENV_DOCTESTED,
+        ENV_ONLY_INSTRUMENTATION, ENV_TARGET_DIR,
+    },
+    fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
 };
 
-use super::SelectionMode;
+use crate::{
+    commands::{convert_doctest_name, TestInfo},
+    ops::TestExecutor,
+};
+
+use super::{
+    cache::HashCache, DependencyUnit, SelectionContext, SelectionMode, Selector, TestUnit,
+};
 
 pub fn cli() -> Command {
     subcommand("dynamic")
@@ -54,122 +77,61 @@ pub fn cli() -> Command {
 pub(crate) struct DynamicMode;
 
 impl SelectionMode for DynamicMode {
-    fn cmd(&self) -> std::path::PathBuf {
-        let mut path_buf = std::env::current_exe().expect("current executable path invalid");
-        path_buf.set_file_name("rustyrts-dynamic");
-        path_buf
-    }
-
-    fn cache_kind(&self) -> CacheKind {
-        CacheKind::Dynamic
-    }
-
     fn default_target_dir(&self, target_dir: PathBuf) -> std::path::PathBuf {
         let mut target_dir = target_dir;
         target_dir.push("dynamic");
         target_dir
     }
 
-    fn select_tests(&self, config: &Config, target_dir: PathBuf) -> HashSet<String> {
-        let path_buf = {
-            let mut target_dir = target_dir;
-            target_dir.push(std::convert::Into::<&str>::into(CacheKind::Dynamic));
-            target_dir
-        };
+    fn executor(&self, target_dir: PathBuf) -> TestExecutor {
+        let mut path_buf = std::env::current_exe().expect("current executable path invalid");
+        path_buf.set_file_name("rustyrts-dynamic");
 
-        let files: Vec<DirEntry> = read_dir(path_buf.as_path())
-            .unwrap()
-            .map(|maybe_path| maybe_path.unwrap())
-            .collect();
+        TestExecutor::new(path_buf, target_dir)
+    }
 
-        let arena: Arena<String> = Arena::new();
+    fn prepare_cache(&self, target_dir: &std::path::Path, unit_graph: &UnitGraph) {
+        for kind in [CacheKind::General, CacheKind::Dynamic] {
+            let path = kind.map(target_dir.to_path_buf());
+            std::fs::create_dir_all(path).expect("Failed to create cache directory");
+        }
 
-        // Read tests
-        let tests_found =
-            read_lines_filter_map(&files, ENDING_TEST, |_s| true, |s| arena.intern(s));
-
-        // Read changed nodes
-        let changed_nodes =
-            read_lines_filter_map(&files, ENDING_CHANGES, |_s| true, |s| arena.intern(s));
-
-        // Read traces or dependencies
-        let mut affected_tests = HashSet::new();
-
-        let analyzed_tests: Vec<&DirEntry> = files
-            .iter()
-            .filter(|traces| {
-                traces
-                    .file_name()
-                    .to_os_string()
-                    .into_string()
-                    .unwrap()
-                    .ends_with(ENDING_TRACE)
-            })
-            .collect();
-
-        let traced_tests: HashSet<ArenaIntern<'_, String>> = analyzed_tests
-            .iter()
-            .map(|f| {
-                arena.intern(
-                    f.file_name()
-                        .into_string()
-                        .unwrap()
-                        .split_once('.')
-                        .unwrap()
-                        .0
-                        .split_once("::")
-                        .unwrap()
-                        .1
-                        .to_string(),
-                )
-            })
-            .collect();
-
-        println!("#Tests with information: {}\n", traced_tests.len());
-
-        affected_tests.extend(tests_found.difference(&traced_tests).map(|s| (**s).clone()));
-
-        for file in analyzed_tests {
-            let traced_nodes: HashSet<ArenaIntern<String>> = read_to_string(file.path())
-                .unwrap()
-                .split('\n')
-                .filter(|s| !s.is_empty())
-                .map(|s| arena.intern(s.to_string()))
-                .collect();
-
-            let mut intersection = traced_nodes.intersection(&changed_nodes);
-            if intersection.next().is_some() {
-                let test_name = file
-                    .file_name()
-                    .into_string()
-                    .unwrap()
-                    .split_once('.')
-                    .unwrap()
-                    .0
-                    .split_once("::")
-                    .unwrap()
-                    .1
-                    .to_string();
-                affected_tests.insert(test_name);
+        for unit in unit_graph.keys() {
+            match unit.mode {
+                CompileMode::Test
+                | CompileMode::Build
+                | CompileMode::Doctest
+                | CompileMode::RunCustomBuild => {}
+                mode => panic!("Found unexpected compile mode, {:?}", mode),
             }
         }
+    }
 
-        if std::env::var("RUSTYRTS_RETEST_ALL").is_ok() {
-            let tests = read_lines(&files, ENDING_TEST);
-            affected_tests.extend(tests);
+    fn clean_cache(&self, target_dir: &Path) {
+        let path = CacheKind::Dynamic.map(target_dir.to_path_buf());
+        if let Ok(files) = read_dir(path) {
+            for dir_entry in files.flatten() {
+                let file_name = dir_entry.file_name();
+                let file_name = file_name.to_str().unwrap();
+
+                if file_name.ends_with(ENDING_CHANGES) {
+                    std::fs::remove_file(dir_entry.path()).unwrap();
+                }
+                #[cfg(unix)]
+                if file_name.ends_with(ENDING_PROCESS_TRACE) {
+                    std::fs::remove_file(dir_entry.path()).unwrap();
+                }
+            }
         }
+    }
 
-        print_stats(
-            &mut *config.shell(),
-            "Dynamic RTS\n",
-            &tests_found,
-            &traced_tests,
-            &changed_nodes,
-            &affected_tests,
-        )
-        .unwrap();
-
-        affected_tests
+    fn selection_context<'context, 'arena: 'context>(
+        &self,
+        target_dir: &'context Path,
+        arena: &'arena Arena<String>,
+        units: &'context HashMap<Unit, Vec<UnitDep>>,
+    ) -> Box<dyn SelectionContext<'context> + 'context> {
+        Box::new(DynamicSelectionContext::new(target_dir, arena, units))
     }
 }
 
@@ -177,41 +139,384 @@ pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
     super::exec(config, args, &DynamicMode)
 }
 
-pub(crate) fn print_stats<T: Display>(
-    shell: &mut Shell,
-    status: T,
-    tests_found: &HashSet<ArenaIntern<'_, String>>,
-    traced_tests: &HashSet<ArenaIntern<'_, String>>,
-    changed_nodes: &HashSet<ArenaIntern<'_, String>>,
-    affected_tests: &HashSet<String>,
-) -> CargoResult<()> {
-    shell.status_header(status)?;
+pub(crate) struct DynamicSelectionContext<'arena, 'context> {
+    selector: DynamicSelector<'arena, 'context>,
+}
 
-    shell.concise(|shell| {
-        shell.print_ansi_stderr(format!("Tests found: {}    ", tests_found.len()).as_bytes())
-    })?;
-    shell.concise(|shell| {
-        shell.print_ansi_stderr(format!("Changed: {}    ", changed_nodes.len()).as_bytes())
-    })?;
-    shell.concise(|shell| {
-        shell.print_ansi_stderr(format!("Traced tests: {}    ", traced_tests.len()).as_bytes())
-    })?;
-    shell.concise(|shell| {
-        shell.print_ansi_stderr(format!("Affected: {}\n", affected_tests.len()).as_bytes())
-    })?;
+impl<'arena: 'context, 'context> DynamicSelectionContext<'arena, 'context> {
+    fn new(
+        target_dir: &'context Path,
+        arena: &'arena Arena<String>,
+        unit_graph: &'context HashMap<Unit, Vec<UnitDep>>,
+    ) -> Self {
+        Self {
+            selector: DynamicSelector::new(target_dir, arena, unit_graph),
+        }
+    }
+}
 
-    shell.verbose(|shell| {
-        shell.print_ansi_stderr(format!("Tests found: {:?}\n", tests_found).as_bytes())
-    })?;
-    shell.verbose(|shell| {
-        shell.print_ansi_stderr(format!("Changed: {:?}\n", changed_nodes).as_bytes())
-    })?;
-    shell.verbose(|shell| {
-        shell.print_ansi_stderr(format!("Traced tests: {:?}\n", traced_tests).as_bytes())
-    })?;
-    shell.verbose(|shell| {
-        shell.print_ansi_stderr(format!("Affected: {:?}\n", affected_tests).as_bytes())
-    })?;
+impl<'arena: 'context, 'context> SelectionContext<'context>
+    for DynamicSelectionContext<'arena, 'context>
+{
+    fn selector(&mut self) -> &mut dyn Selector<'context> {
+        &mut self.selector
+    }
+}
 
-    Ok(())
+pub(crate) struct DynamicSelector<'arena, 'context> {
+    cache: HashCache<'context, DependencyUnit<'context>, HashSet<ArenaIntern<'arena, String>>>,
+    target_dir: &'context Path,
+    arena: &'arena Arena<String>,
+}
+
+impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
+    pub fn new(
+        target_dir: &'context Path,
+        arena: &'arena Arena<String>,
+        unit_graph: &'context HashMap<Unit, Vec<UnitDep>>,
+    ) -> Self {
+        Self {
+            cache: HashCache::recursive(
+                move |cache: &mut HashCache<'context, _, _>, unit: &DependencyUnit<'context>| {
+                    Self::import_changes(target_dir.to_path_buf(), arena, unit_graph, cache, unit)
+                },
+            ),
+            target_dir,
+            arena,
+        }
+    }
+
+    fn import_changes(
+        target_dir: PathBuf,
+        arena: &'arena Arena<String>,
+        unit_graph: &'context HashMap<Unit, Vec<UnitDep>>,
+        cache: &mut HashCache<
+            'context,
+            DependencyUnit<'context>,
+            HashSet<ArenaIntern<'arena, String>>,
+        >,
+        unit: &DependencyUnit<'context>,
+    ) -> HashSet<ArenaIntern<'arena, String>> {
+        let (unit, maybe_doctest_name) = match unit {
+            DependencyUnit::Unit(u) => {
+                debug_assert!(
+                    matches!(u.mode, CompileMode::Test | CompileMode::Build),
+                    "Got {:?} in {:?}",
+                    u.mode,
+                    u
+                );
+                (u, None)
+            }
+            DependencyUnit::DoctestUnit(u, s) => {
+                debug_assert!(
+                    matches!(u.mode, CompileMode::Doctest),
+                    "Got {:?} in {:?}",
+                    u.mode,
+                    u
+                );
+                (u, Some(s.as_str()))
+            }
+        };
+
+        let crate_name = unit.target.crate_name();
+        let compile_mode = format!("{:?}", unit.mode);
+
+        let changes_path = {
+            let mut path = CacheKind::Dynamic.map(target_dir.clone());
+            CacheFileDescr::new(
+                &crate_name,
+                Some(&compile_mode),
+                maybe_doctest_name,
+                CacheFileKind::Changes,
+            )
+            .apply(&mut path);
+            path
+        };
+
+        let mut changed_nodes: HashSet<ArenaIntern<'arena, String>> = read_to_string(changes_path)
+            .ok()
+            .map(|s| {
+                s.lines()
+                    .map(|l| l.to_string())
+                    .map(|l| Arena::<String>::intern(arena, l))
+                    .collect()
+            })
+            .unwrap_or_else(HashSet::new);
+
+        for other in unit_graph.get(unit).unwrap() {
+            if other.unit.mode == CompileMode::Build // No point in including the graph of build scripts and proc_macros
+                            && !other.unit.target.proc_macro()
+            {
+                let other_unit = DependencyUnit::Unit(&other.unit);
+                let changes = cache.get(other_unit);
+
+                changed_nodes.extend(changes);
+            }
+        }
+
+        changed_nodes
+    }
+}
+
+impl<'arena, 'context> DynamicSelector<'arena, 'context> {
+    fn changed_nodes(
+        &mut self,
+        unit: DependencyUnit<'context>,
+    ) -> &HashSet<ArenaIntern<'arena, String>> {
+        self.cache.get(unit)
+    }
+
+    fn print_stats(
+        &self,
+        shell: &mut Shell,
+        changed_nodes: &HashSet<ArenaIntern<'_, String>>,
+        traced_tests: &HashSet<ArenaIntern<'_, String>>,
+        tests_found: &HashSet<ArenaIntern<'_, String>>,
+        affected_tests: &Vec<String>,
+        start_time: Instant,
+    ) -> CargoResult<()> {
+        shell.status_header("Dynamic RTS")?;
+
+        shell.concise(|shell| {
+            shell.print_ansi_stderr(format!("{} changed;", changed_nodes.len()).as_bytes())
+        })?;
+        shell.concise(|shell| {
+            shell.print_ansi_stderr(format!(" {} traces;", traced_tests.len()).as_bytes())
+        })?;
+        shell.concise(|shell| {
+            shell.print_ansi_stderr(format!(" {} tests found;", tests_found.len()).as_bytes())
+        })?;
+        shell.concise(|shell| {
+            shell.print_ansi_stderr(format!(" {} affected;", affected_tests.len()).as_bytes())
+        })?;
+        shell.concise(|shell| {
+            shell.print_ansi_stderr(
+                format!(" took {:.2}s\n", start_time.elapsed().as_secs_f64()).as_bytes(),
+            )
+        })?;
+
+        shell.verbose(|shell| {
+            shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
+        })?;
+        shell.verbose(|shell| {
+            shell.print_ansi_stderr(format!("\nChanged: {:?}\n", changed_nodes).as_bytes())
+        })?;
+        shell.verbose(|shell| {
+            shell.print_ansi_stderr(format!("Traces: {:?}\n", traced_tests).as_bytes())
+        })?;
+        shell.verbose(|shell| {
+            shell.print_ansi_stderr(format!("Tests found: {:?}\n", tests_found).as_bytes())
+        })?;
+        shell.verbose(|shell| {
+            shell.print_ansi_stderr(format!("Affected: {:?}\n", affected_tests).as_bytes())
+        })?;
+
+        Ok(())
+    }
+}
+
+impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> {
+    fn select_tests(
+        &mut self,
+        test_unit: TestUnit<'context, 'context>,
+        shell: &mut Shell,
+        start_time: Instant,
+    ) -> Vec<String> {
+        let TestUnit(unit, test_info) = test_unit;
+
+        let mut changed_nodes = HashSet::new();
+        let mut traced_tests = HashSet::new();
+        let mut affected_tests = Vec::new();
+
+        match test_info {
+            TestInfo::Test(tests_found) => {
+                debug_assert!(
+                    matches!(unit.mode, CompileMode::Test),
+                    "Got {:?} in {:?}",
+                    unit.mode,
+                    unit
+                );
+
+                let dependency_unit = DependencyUnit::Unit(unit);
+                let changed = self.changed_nodes(dependency_unit).clone();
+
+                let traces: HashMap<ArenaIntern<'_, String>, HashSet<ArenaIntern<'_, String>>> = {
+                    let mut map = HashMap::new();
+
+                    let path = CacheKind::Dynamic.map(self.target_dir.to_path_buf());
+
+                    for test in tests_found.iter() {
+                        let descr =
+                            CacheFileDescr::new(test.as_str(), None, None, CacheFileKind::Traces);
+                        let mut path = path.clone();
+                        descr.apply(&mut path);
+
+                        if let Some(traces) = read_to_string(path.clone()).ok().map(|s| {
+                            s.lines()
+                                .map(|l| l.to_string())
+                                .map(|l| Arena::<String>::intern(self.arena, l))
+                                .collect()
+                        }) {
+                            map.insert(*test, traces);
+                        } else {
+                            affected_tests.push(test.to_string())
+                        }
+                    }
+
+                    map
+                };
+
+                changed_nodes.extend(changed.clone());
+
+                affected_tests.extend(
+                    traces
+                        .iter()
+                        .filter(|&(_test, traces)| {
+                            traces.intersection(&changed_nodes).next().is_some()
+                        })
+                        .map(|(test, _traces)| test.to_string()),
+                );
+
+                traced_tests.extend(traces.into_keys());
+
+                self.print_stats(
+                    shell,
+                    &changed_nodes,
+                    &traced_tests,
+                    &tests_found,
+                    &affected_tests,
+                    start_time,
+                )
+                .unwrap();
+            }
+
+            TestInfo::Doctest(tests) => {
+                debug_assert!(
+                    matches!(unit.mode, CompileMode::Doctest),
+                    "Got {:?} in {:?}",
+                    unit.mode,
+                    unit
+                );
+
+                let mut tests_found = HashSet::new();
+                let tests = tests.into_iter().map(|s| convert_doctest_name(&s)).unique();
+
+                let traces: HashMap<ArenaIntern<'_, String>, HashSet<ArenaIntern<'_, String>>> = {
+                    let mut map = HashMap::new();
+
+                    for (trimmed, fn_name) in tests.into_iter() {
+                        let dependency_unit = DependencyUnit::DoctestUnit(unit, fn_name.clone());
+                        let changed = self.changed_nodes(dependency_unit).clone();
+
+                        let path = CacheKind::Dynamic.map(self.target_dir.to_path_buf());
+
+                        let interned = self.arena.intern(trimmed.clone());
+
+                        tests_found.insert(interned);
+
+                        let descr = CacheFileDescr::new(
+                            fn_name.as_str(),
+                            None,
+                            None,
+                            CacheFileKind::Traces,
+                        );
+                        let mut path = path.clone();
+                        descr.apply(&mut path);
+
+                        let traces = if let Some(traces) =
+                            read_to_string(path.clone()).ok().map(|s| {
+                                s.lines()
+                                    .map(|l| l.to_string())
+                                    .map(|l| Arena::<String>::intern(self.arena, l))
+                                    .collect()
+                            }) {
+                            traces
+                        } else {
+                            // If no traces are found, this test is compile_fail or no_run
+                            // To nevertheless select it, if it has just been added, we emulate traces containing only this function
+                            let name = DOCTEST_PREFIX.to_string() + &fn_name;
+                            let mut traces = HashSet::new();
+                            traces.insert(Arena::<String>::intern(self.arena, name));
+                            traces
+                        };
+                        map.insert(interned, traces);
+                        changed_nodes.extend(changed.clone());
+                    }
+
+                    map
+                };
+
+                affected_tests.extend(
+                    traces
+                        .iter()
+                        .filter(|&(_test, traces)| {
+                            traces.intersection(&changed_nodes).next().is_some()
+                        })
+                        .map(|(test, _traces)| test.to_string()),
+                );
+
+                traced_tests.extend(traces.into_keys());
+
+                self.print_stats(
+                    shell,
+                    &changed_nodes,
+                    &traced_tests,
+                    &tests_found,
+                    &affected_tests,
+                    start_time,
+                )
+                .unwrap();
+            }
+        };
+
+        affected_tests
+    }
+
+    fn cache_kind(&self) -> CacheKind {
+        CacheKind::Dynamic
+    }
+
+    fn doctest_callback_analysis(
+        &self,
+    ) -> fn(&mut cargo_util::ProcessBuilder, &std::path::Path, &cargo::core::compiler::Unit) {
+        |p: &mut ProcessBuilder, target_dir: &Path, unit: &Unit| {
+            let rustc_wrapper = {
+                let mut path_buf =
+                    std::env::current_exe().expect("current executable path invalid");
+                path_buf.set_file_name("rustyrts-dynamic-doctest");
+                path_buf
+            };
+            p.arg("-Z");
+            p.arg("unstable-options");
+            p.arg("--test-builder");
+            p.arg(rustc_wrapper);
+
+            p.env(ENV_TARGET_DIR, target_dir);
+            p.env(ENV_DOCTESTED, unit.target.crate_name());
+            p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+        }
+    }
+
+    fn doctest_callback_execution(
+        &self,
+    ) -> fn(&mut cargo_util::ProcessBuilder, &std::path::Path, &cargo::core::compiler::Unit) {
+        |p: &mut ProcessBuilder, target_dir: &Path, unit: &Unit| {
+            let rustc_wrapper = {
+                let mut path_buf =
+                    std::env::current_exe().expect("current executable path invalid");
+                path_buf.set_file_name("rustyrts-dynamic-doctest");
+                path_buf
+            };
+            p.arg("-Z");
+            p.arg("unstable-options");
+            p.arg("--test-builder");
+            p.arg(rustc_wrapper);
+
+            p.env(ENV_TARGET_DIR, target_dir);
+            p.env(ENV_DOCTESTED, unit.target.crate_name());
+            p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+
+            p.env(ENV_ONLY_INSTRUMENTATION, "true");
+        }
+    }
 }

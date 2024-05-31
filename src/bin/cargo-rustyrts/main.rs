@@ -1,5 +1,6 @@
-#![feature(let_chains)]
+#![allow(clippy::all)]
 #![feature(rustc_private)]
+
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
 extern crate rustc_data_structures;
@@ -24,8 +25,14 @@ use cargo::util::{command_prelude, Config};
 
 mod cli;
 mod commands;
+
 mod doctest_rts;
 mod ops;
+
+//#####################################################################################################################
+// Source: https://github.com/rust-lang/cargo/blob/d0390c22b16ea6c800754fb7620ab8ee31debcc7/src/bin/cargo/main.rs
+// Adapted to provide custom command instead of cargo
+//#####################################################################################################################
 
 fn main() {
     setup_logger();

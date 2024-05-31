@@ -1,34 +1,48 @@
 #![allow(dead_code)]
+
 use anyhow::format_err;
-use cargo::util::{config::Definition, errors::CargoResult};
+use cargo::core::{TargetKind, Workspace};
+use cargo::ops;
+use cargo::{
+    core::compiler::{BuildContext, Context},
+    util::errors::CargoResult,
+};
 use cargo::{
     core::compiler::{Compilation, CompileKind, Doctest, Metadata, Unit, UnitInterner, UnitOutput},
     ops::create_bcx,
 };
 use cargo::{
-    core::{compiler::Executor, shell::Verbosity},
-    ops::compile_with_exec,
+    core::{
+        compiler::{
+            unit_graph::{self},
+            Executor,
+        },
+        shell::Verbosity,
+    },
+    util::profile,
 };
-use cargo::{
-    core::{TargetKind, Workspace},
-    util::config::CargoBuildConfig,
-};
-use cargo::{ops, util::config::ConfigRelativePath};
 use cargo::{
     ops::CompileOptions,
-    util::{add_path_args, config::Value, CliError, CliResult, Config},
+    util::{add_path_args, CliError, CliResult, Config},
 };
 use cargo_util::{ProcessBuilder, ProcessError};
+use internment::Arena;
 use itertools::Itertools;
-use rustyrts::{constants::ENV_TARGET_DIR, fs_utils::CacheKind};
+use rustyrts::constants::ENV_TARGET_DIR;
 use std::path::{Path, PathBuf};
-use std::{collections::HashSet, fmt::Write};
 use std::{ffi::OsString, sync::Arc};
-use tracing::debug;
+use std::{fmt::Write, time::Instant};
+use tracing::info;
 
-use crate::commands::SelectionMode;
+use crate::{
+    commands::{SelectionMode, Selector, TestUnit},
+    doctest_rts::run_analysis_doctests,
+};
 
-use super::TestExecutor;
+//#####################################################################################################################
+// Source: https://github.com/rust-lang/cargo/blob/d0390c22b16ea6c800754fb7620ab8ee31debcc7/src/cargo/ops/cargo_test.rs
+// Adapted into selecting tests before executing them
+//#####################################################################################################################
 
 /// The kind of test.
 ///
@@ -79,28 +93,39 @@ impl UnitTestError {
 pub fn run_tests(
     ws: &Workspace<'_>,
     options: &CompileOptions,
-    target_dir: PathBuf,
-    test_args: &[String],
+    test_args: &[&str],
     mode: &dyn SelectionMode,
 ) -> CliResult {
-    let mode_path = {
-        let mut path_buf = target_dir.clone();
-        path_buf.push(Into::<&str>::into(mode.cache_kind()));
-        path_buf
-    };
-    let doctest_path = {
-        let mut path_buf = target_dir.clone();
-        path_buf.push(Into::<&str>::into(CacheKind::Doctests));
-        path_buf
-    };
+    let target_dir = ws.target_dir().into_path_unlocked();
 
-    mode.prepare_intermediate_files(&mode_path);
-    mode.prepare_intermediate_files(&doctest_path);
+    let interner = UnitInterner::new();
+    let bcx = create_bcx(ws, options, &interner)?;
+    let unit_graph = &bcx.unit_graph;
 
-    let exec: Arc<dyn Executor> = Arc::new(TestExecutor::new(target_dir.clone()));
-    let compilation = compile_tests(ws, options, exec, mode.cmd())?;
+    for (k, v) in unit_graph.iter() {
+        info!(
+            "Unit Graph | {:?}(mode: {:?}, kind: {:?}, profile: {:?}, features: {:?}, artifact: {:?}, is_std: {:?}, dep_hash: {:?} ) -> {:?}",
+            k.target.crate_name(),
+            k.mode,
+            k.kind,
+            k.profile,
+            k.features,
+            k.artifact.is_true(),
+            k.is_std,
+            k.dep_hash,
+            v.iter().map(|u| u.unit.target.crate_name()).collect_vec()
+        );
+    }
 
-    let affected_tests = mode.select_tests(ws.config(), target_dir.clone());
+    mode.prepare_cache(&target_dir, unit_graph);
+    mode.prepare_cache(&target_dir, unit_graph);
+
+    let exec: Arc<dyn Executor> = Arc::new(mode.executor(target_dir.clone()));
+    let compilation = compile_tests(ws, options, &bcx, exec)?;
+
+    let arena = Arena::new();
+    let mut selection_context = mode.selection_context(&target_dir, &arena, unit_graph);
+    let selector = selection_context.selector();
 
     let mut errors: Vec<UnitTestError> = run_unit_tests(
         ws,
@@ -108,59 +133,45 @@ pub fn run_tests(
         test_args,
         &compilation,
         TestKind::Test,
-        affected_tests,
+        selector,
+        &arena,
+        &target_dir,
     )?;
 
-    let affected_doc_tests =
-        mode.select_doc_tests(ws, test_args, &compilation, target_dir.clone())?;
-    let doctest_errors = run_doc_tests(ws, options, test_args, &compilation, affected_doc_tests)?;
+    let doctest_errors =
+        run_doc_tests(ws, options, test_args, &compilation, selector, &target_dir)?;
 
     errors.extend(doctest_errors);
 
-    mode.clean_intermediate_files(&mode_path);
-    mode.clean_intermediate_files(&doctest_path);
+    mode.clean_cache(&target_dir);
+    mode.clean_cache(&target_dir);
 
     no_fail_fast_err(ws, options, &errors)
-}
-
-fn compile_tests<'a>(
-    ws: &Workspace<'a>,
-    options: &CompileOptions,
-    exec: Arc<dyn Executor>,
-    rustc_wrapper: PathBuf,
-) -> CargoResult<Compilation<'a>> {
-    #[allow(mutable_transmutes)]
-    let build_config: &mut CargoBuildConfig =
-        unsafe { std::mem::transmute(ws.config().build_config().unwrap()) };
-    build_config.rustc_wrapper = Some(ConfigRelativePath::new(Value {
-        val: rustc_wrapper.to_str().unwrap().to_string(),
-        definition: Definition::Cli(None),
-    }));
-
-    let mut compilation = compile_with_exec(ws, options, &exec)?;
-    compilation.tests.sort();
-    Ok(compilation)
 }
 
 /// Runs the unit and integration tests of a package.
 ///
 /// Returns a `Vec` of tests that failed when `--no-fail-fast` is used.
 /// If `--no-fail-fast` is *not* used, then this returns an `Err`.
-fn run_unit_tests(
+fn run_unit_tests<'compilation, 'context, 'arena: 'context>(
     ws: &Workspace<'_>,
     options: &CompileOptions,
-    test_args: &[String],
-    compilation: &Compilation<'_>,
+    test_args: &[&str],
+    compilation: &'context Compilation<'compilation>,
     test_kind: TestKind,
-    affected_tests: HashSet<String>,
+    selector: &mut dyn Selector<'context>,
+    arena: &'arena Arena<String>,
+    target_dir: &Path,
 ) -> Result<Vec<UnitTestError>, CliError> {
     let config = ws.config();
     let cwd = config.cwd();
     let mut errors = Vec::new();
 
     let mut test_args = Vec::from(test_args);
-    if !test_args.iter().any(|s| s == "--exact") {
-        test_args.push("--exact".to_string());
+    if !test_args.iter().any(|s| s == &"--exact") {
+        test_args.push("--exact");
+    } else {
+        panic!("Regression Test Selection is incompatible to using --exact");
     }
 
     for UnitOutput {
@@ -169,16 +180,19 @@ fn run_unit_tests(
         script_meta,
     } in compilation.tests.iter()
     {
+        let start_time = Instant::now();
+        let test_unit = TestUnit::test(unit, arena, target_dir);
+        let affected_tests = selector.select_tests(test_unit, &mut config.shell(), start_time);
+
         let prefix = unit.target.name().to_string() + "::";
         let mut affected_tests = affected_tests
             .iter()
             .filter_map(|s| s.strip_prefix(&prefix))
-            .map(|s| s.to_string())
             .collect_vec();
 
         let mut test_args = test_args.clone();
         if affected_tests.is_empty() {
-            test_args.push("?".to_string()); // This excludes all tests
+            test_args.push("?"); // This excludes all tests
         } else {
             test_args.append(&mut affected_tests);
         }
@@ -223,17 +237,17 @@ fn run_unit_tests(
 ///
 /// Returns a `Vec` of tests that failed when `--no-fail-fast` is used.
 /// If `--no-fail-fast` is *not* used, then this returns an `Err`.
-fn run_doc_tests(
+fn run_doc_tests<'compilation, 'context, 'arena: 'context>(
     ws: &Workspace<'_>,
     options: &CompileOptions,
-    test_args: &[String],
-    compilation: &Compilation<'_>,
-    affected_tests: HashSet<String>,
+    test_args: &[&str],
+    compilation: &'context Compilation<'compilation>,
+    selector: &mut dyn Selector<'context>,
+    target_dir: &Path,
 ) -> Result<Vec<UnitTestError>, CliError> {
     let config = ws.config();
     let mut errors = Vec::new();
 
-    let test_args = Vec::from(test_args);
     // ISSUE: rustdoc splits arguments on whitespaces
     // Since all names of doctests include spaces, we cannot use --exact here
     //
@@ -259,6 +273,19 @@ fn run_doc_tests(
         args.push("-L".into());
         args.push(rlib_source.into_os_string());
 
+        let start = Instant::now();
+        let tests = run_analysis_doctests(
+            ws,
+            test_args,
+            compilation,
+            target_dir,
+            doctest_info,
+            selector.cache_kind(),
+            selector.doctest_callback_analysis(),
+        )?;
+        let test_unit = TestUnit::doctest(unit, tests);
+        let affected_tests = selector.select_tests(test_unit, &mut config.shell(), start);
+
         let prefix = {
             let target_name = unit.target.name();
             if target_name != "doctests" {
@@ -267,15 +294,15 @@ fn run_doc_tests(
                 "src/".to_string()
             }
         };
+
+        let mut test_args = Vec::from(test_args);
         let mut affected_tests = affected_tests
             .iter()
             .filter_map(|s| s.strip_prefix(&prefix))
-            .map(|s| s.to_string())
             .collect_vec();
 
-        let mut test_args = test_args.clone();
         if affected_tests.is_empty() {
-            test_args.push("?".to_string()); // This excludes all tests
+            test_args.push("?"); // This excludes all tests
         } else {
             test_args.append(&mut affected_tests);
         }
@@ -322,6 +349,9 @@ fn run_doc_tests(
 
         p.args(&args);
 
+        let callback = selector.doctest_callback_execution();
+        callback(&mut p, target_dir, unit);
+
         if *unstable_opts {
             p.arg("-Zunstable-options");
         }
@@ -346,44 +376,6 @@ fn run_doc_tests(
     Ok(errors)
 }
 
-/// Displays human-readable descriptions of the test executables.
-///
-/// This is used when `cargo test --no-run` is used.
-fn display_no_run_information(
-    ws: &Workspace<'_>,
-    test_args: &[String],
-    compilation: &Compilation<'_>,
-    exec_type: &str,
-) -> CargoResult<()> {
-    let config = ws.config();
-    let cwd = config.cwd();
-    for UnitOutput {
-        unit,
-        path,
-        script_meta,
-    } in compilation.tests.iter()
-    {
-        let (exe_display, cmd) = cmd_builds(
-            config,
-            cwd,
-            unit,
-            path,
-            script_meta,
-            test_args,
-            compilation,
-            exec_type,
-        )?;
-        config
-            .shell()
-            .concise(|shell| shell.status("Executable", &exe_display))?;
-        config
-            .shell()
-            .verbose(|shell| shell.status("Executable", &cmd))?;
-    }
-
-    Ok(())
-}
-
 /// Creates a [`ProcessBuilder`] for executing a single test.
 ///
 /// Returns a tuple `(exe_display, process)` where `exe_display` is a string
@@ -395,7 +387,7 @@ fn cmd_builds(
     unit: &Unit,
     path: &PathBuf,
     script_meta: &Option<Metadata>,
-    test_args: &[String],
+    test_args: &[&str],
     compilation: &Compilation<'_>,
     exec_type: &str,
 ) -> CargoResult<(String, ProcessBuilder)> {
@@ -450,7 +442,7 @@ fn no_fail_fast_err(
 /// Displays an error on the console about a test failure.
 fn report_test_error(
     ws: &Workspace<'_>,
-    test_args: &[String],
+    test_args: &[&str],
     opts: &ops::CompileOptions,
     unit_err: &UnitTestError,
     test_error: anyhow::Error,
@@ -476,11 +468,54 @@ fn report_test_error(
     cargo::display_error(&err, &mut ws.config().shell());
 
     let harness: bool = unit_err.unit.target.harness();
-    let nocapture: bool = test_args.iter().any(|s| s == "--nocapture");
+    let nocapture: bool = test_args.iter().any(|s| s == &"--nocapture");
 
     if !is_simple && executed && harness && !nocapture {
         drop(ws.config().shell().note(
             "test exited abnormally; to see the full output pass --nocapture to the harness.",
         ));
     }
+}
+
+//#####################################################################################################################
+// Source: https://github.com/rust-lang/cargo/blob/d0390c22b16ea6c800754fb7620ab8ee31debcc7/src/cargo/ops/cargo_compile/mod.rs
+// Adapted to use custom executor
+//#####################################################################################################################
+
+fn compile_tests<'a>(
+    ws: &Workspace<'a>,
+    options: &CompileOptions,
+    bcx: &BuildContext<'a, 'a>,
+    exec: Arc<dyn Executor>,
+) -> CargoResult<Compilation<'a>> {
+    let mut compilation = compile_with_exec(ws, options, bcx, &exec)?;
+    compilation.tests.sort();
+
+    Ok(compilation)
+}
+
+fn compile_with_exec<'a>(
+    ws: &Workspace<'a>,
+    options: &CompileOptions,
+    bcx: &BuildContext<'a, 'a>,
+    exec: &Arc<dyn Executor>,
+) -> CargoResult<Compilation<'a>> {
+    ws.emit_warnings()?;
+    compile_ws(ws, options, bcx, exec)
+}
+
+fn compile_ws<'a>(
+    ws: &Workspace<'a>,
+    options: &CompileOptions,
+    bcx: &BuildContext<'a, 'a>,
+    exec: &Arc<dyn Executor>,
+) -> CargoResult<Compilation<'a>> {
+    if options.build_config.unit_graph {
+        unit_graph::emit_serialized_unit_graph(&bcx.roots, &bcx.unit_graph, ws.config())?;
+        return Compilation::new(bcx);
+    }
+    cargo::core::gc::auto_gc(bcx.config);
+    let _p = profile::start("compiling");
+    let cx = Context::new(bcx)?;
+    cx.compile(exec)
 }

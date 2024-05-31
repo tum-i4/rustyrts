@@ -8,35 +8,17 @@ fn cargo() -> Command {
 }
 
 fn main() {
-    if std::env::var("RUSTYRTS_SKIP_BUILD").is_err() {
-        build_library("rustyrts-dynamic-rlib");
-        build_library("rustyrts-dynamic-runner");
+    build_library("rustyrts-dynamic-rlib");
+    build_library("rustyrts-dynamic-runner");
 
-        install_rlib("rustyrts_dynamic_rlib", "rustyrts-dynamic-rlib");
-        install_staticlib("rustyrts_dynamic_runner", "rustyrts-dynamic-runner");
-    }
+    install_rlib("rustyrts_dynamic_rlib", "rustyrts-dynamic-rlib");
+    install_staticlib("rustyrts_dynamic_runner", "rustyrts-dynamic-runner");
 }
 
 fn build_library(dir_name: &str) {
     println!("cargo:warning=Building {}", dir_name);
 
     let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-
-    //let mut cmd = cargo();
-    //let mut path = PathBuf::new();
-    //path.push(dir);
-    //path.push(dir_name);
-    //cmd.current_dir(path);
-    //cmd.arg("clean");
-    //
-    //match cmd.status() {
-    //    Ok(exit) => {
-    //        if !exit.success() {
-    //            std::process::exit(exit.code().unwrap_or(42));
-    //        }
-    //    }
-    //    Err(ref e) => panic!("error while cleaning {}: {:?}", dir_name, e),
-    //}
 
     let mut cmd = cargo();
     let mut path = PathBuf::new();
@@ -68,40 +50,26 @@ fn install_rlib(name: &str, dir_name: &str) {
     path.push(dir_name);
     path.push("target");
     path.push("release");
-    //path.push("deps");
+    path.push("deps");
 
-    let files: Vec<DirEntry> = read_dir(path)
-        .unwrap()
-        .filter(|res| res.is_ok())
-        .map(|res| res.unwrap())
-        .collect();
+    let files: Vec<DirEntry> = read_dir(path).unwrap().filter_map(|res| res.ok()).collect();
 
     let rlib_file = find_file(&format!("lib{}", name), ".rlib", &files);
-    //let rmeta_file = find_file(&format!("lib{}", name), ".rmeta", &files);
-    let d_file = find_file(name, ".d", &files);
 
     let cargo_home = get_cargo_home();
 
-    if let Some(entry) = rlib_file {
-        let src = entry.path();
-        let mut dst = cargo_home.clone();
-        dst.push(format!("lib{}.rlib", name));
-        copy(src, dst).expect(&format!("Error while installing {}", name));
-    }
-
-    //if let Some(entry) = rmeta_file {
-    //    let src = entry.path();
-    //    let mut dst = cargo_home.clone();
-    //    dst.push(format!("lib{}.rmeta", name));
-    //    copy(src, dst).expect(&format!("Error while installing {}", name));
-    //}
-
-    if let Some(entry) = d_file {
-        let src = entry.path();
-        let mut dst = cargo_home.clone();
-        dst.push(format!("{}.d", name));
-        copy(src, dst).expect(&format!("Error while installing {}", name));
-    }
+    rlib_file
+        .ok_or(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "rlib file",
+        ))
+        .and_then(|entry| {
+            let src = entry.path();
+            let mut dst = cargo_home.clone();
+            dst.push(format!("lib{}.rlib", name));
+            copy(src, dst)
+        })
+        .unwrap();
 }
 
 fn install_staticlib(name: &str, dir_name: &str) {
@@ -111,32 +79,22 @@ fn install_staticlib(name: &str, dir_name: &str) {
     dir.push(dir_name);
     dir.push("target");
     dir.push("release");
-    //dir.push("deps");
 
-    let files: Vec<DirEntry> = read_dir(dir)
-        .unwrap()
-        .filter(|res| res.is_ok())
-        .map(|res| res.unwrap())
-        .collect();
+    let files: Vec<DirEntry> = read_dir(dir).unwrap().filter_map(|res| res.ok()).collect();
 
     let a_file = find_file(&format!("lib{}", name), ".a", &files);
-    let d_file = find_file(name, ".d", &files);
 
     let cargo_home = get_cargo_home();
 
-    if let Some(entry) = a_file {
-        let src = entry.path();
-        let mut dst = cargo_home.clone();
-        dst.push(format!("lib{}.a", name));
-        copy(src, dst).expect(&format!("Error while installing {}", name));
-    }
-
-    if let Some(entry) = d_file {
-        let src = entry.path();
-        let mut dst = cargo_home.clone();
-        dst.push(format!("{}.d", name));
-        copy(src, dst).expect(&format!("Error while installing {}", name));
-    }
+    a_file
+        .ok_or(std::io::Error::new(std::io::ErrorKind::NotFound, "a file"))
+        .and_then(|entry| {
+            let src = entry.path();
+            let mut dst = cargo_home.clone();
+            dst.push(format!("lib{}.a", name));
+            copy(src, dst)
+        })
+        .unwrap();
 }
 
 fn get_cargo_home() -> PathBuf {
@@ -159,9 +117,9 @@ fn get_cargo_home() -> PathBuf {
 fn find_file<'a>(
     starts_with: &str,
     ends_with: &str,
-    files: &'a Vec<DirEntry>,
+    files: &'a [DirEntry],
 ) -> Option<&'a DirEntry> {
-    files.into_iter().find(|file| {
+    files.iter().find(|file| {
         let file_name_os = file.file_name();
         let file_name = file_name_os.to_str().unwrap();
         if file_name.starts_with(starts_with) && file_name.ends_with(ends_with) {
