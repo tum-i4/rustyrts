@@ -424,6 +424,17 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
         CacheKind::Static
     }
 
+    fn note(&self, shell: &mut Shell, _test_args: &[&str]) {
+        let message = r#"Regression Test Selection using a dependency graph
+This might lead to unsafe behavior when tests spawn additional processes.
+"#;
+        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
+        shell
+            .status_with_color("Static RTS", message, &cargo::util::style::NOTE)
+            .unwrap();
+        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
+    }
+
     fn doctest_callback_analysis(
         &self,
     ) -> fn(&mut cargo_util::ProcessBuilder, &std::path::Path, &cargo::core::compiler::Unit) {

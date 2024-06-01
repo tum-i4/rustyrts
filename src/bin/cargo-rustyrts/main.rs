@@ -1,5 +1,6 @@
 #![allow(clippy::all)]
 #![feature(rustc_private)]
+#![feature(test)]
 
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
@@ -17,6 +18,8 @@ extern crate rustc_resolve;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
+
+extern crate test;
 
 use cargo::util::network::http::http_handle;
 use cargo::util::network::http::needs_custom_http_transport;

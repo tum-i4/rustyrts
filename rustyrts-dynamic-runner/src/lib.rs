@@ -19,11 +19,11 @@ pub fn rustyrts_runner(tests: &[&test::TestDescAndFn]) {
         None => return,
     };
 
-    if opts.test_threads.is_some_and(|t| t == 1) {
-        eprintln!("Running tests sequentially");
+    let is_multithreaded = opts.test_threads.map(|t| t > 1).unwrap_or(true);
+
+    if !is_multithreaded {
         test_main_static(tests);
     } else {
-        eprintln!("Running tests in parallel, isolating them in separate processes");
         std::panic::set_hook(Box::new(|info| {
             eprintln!("{}", info);
             let payload = info

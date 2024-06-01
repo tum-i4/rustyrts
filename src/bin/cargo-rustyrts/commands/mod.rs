@@ -124,6 +124,7 @@ pub trait Selector<'context> {
 
     fn cache_kind(&self) -> CacheKind;
 
+    fn note(&self, shell: &mut Shell, test_args: &[&str]);
     fn doctest_callback_analysis(&self) -> fn(&mut ProcessBuilder, &Path, &Unit);
     fn doctest_callback_execution(&self) -> fn(&mut ProcessBuilder, &Path, &Unit);
 }

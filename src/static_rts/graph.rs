@@ -329,8 +329,6 @@ impl<'arena> DependencyGraph<'arena, String> {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use internment::Arena;
 
     use crate::static_rts::graph::{DependencyGraph, EdgeType};

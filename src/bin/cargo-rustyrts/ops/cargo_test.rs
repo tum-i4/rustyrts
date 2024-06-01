@@ -32,7 +32,6 @@ use rustyrts::constants::ENV_TARGET_DIR;
 use std::path::{Path, PathBuf};
 use std::{ffi::OsString, sync::Arc};
 use std::{fmt::Write, time::Instant};
-use tracing::info;
 
 use crate::{
     commands::{SelectionMode, Selector, TestUnit},
@@ -102,21 +101,6 @@ pub fn run_tests(
     let bcx = create_bcx(ws, options, &interner)?;
     let unit_graph = &bcx.unit_graph;
 
-    for (k, v) in unit_graph.iter() {
-        info!(
-            "Unit Graph | {:?}(mode: {:?}, kind: {:?}, profile: {:?}, features: {:?}, artifact: {:?}, is_std: {:?}, dep_hash: {:?} ) -> {:?}",
-            k.target.crate_name(),
-            k.mode,
-            k.kind,
-            k.profile,
-            k.features,
-            k.artifact.is_true(),
-            k.is_std,
-            k.dep_hash,
-            v.iter().map(|u| u.unit.target.crate_name()).collect_vec()
-        );
-    }
-
     mode.prepare_cache(&target_dir, unit_graph);
     mode.prepare_cache(&target_dir, unit_graph);
 
@@ -166,6 +150,8 @@ fn run_unit_tests<'compilation, 'context, 'arena: 'context>(
     let config = ws.config();
     let cwd = config.cwd();
     let mut errors = Vec::new();
+
+    selector.note(&mut config.shell(), test_args);
 
     let mut test_args = Vec::from(test_args);
     if !test_args.iter().any(|s| s == &"--exact") {

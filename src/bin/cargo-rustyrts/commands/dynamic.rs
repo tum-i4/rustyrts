@@ -29,6 +29,7 @@ use rustyrts::{
     },
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
 };
+use test::{test::parse_opts, TestOpts};
 
 use crate::{
     commands::{convert_doctest_name, TestInfo},
@@ -474,6 +475,36 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
 
     fn cache_kind(&self) -> CacheKind {
         CacheKind::Dynamic
+    }
+
+    fn note(&self, shell: &mut Shell, test_args: &[&str]) {
+        let test_args: Vec<String> = test_args.into_iter().map(|s| s.to_string()).collect();
+        let opts: Option<TestOpts> = match parse_opts(&test_args) {
+            Some(Ok(o)) => Some(o),
+            _ => None,
+        };
+
+        let is_multithreaded = opts
+            .and_then(|o| o.test_threads)
+            .map(|t| t > 1)
+            .unwrap_or(true);
+
+        let message = if is_multithreaded {
+            r#"Regression Test Selection using runtime traces
+IMPORTANT: Tests are run in parallel, isolating them in separate processes
+This might not be feasible if tests rely on shared state.
+You may use "--test-threads 1" as test option to run test sequentially instead."#
+        } else {
+            r#"Regression Test Selection using runtime traces
+IMPORTANT: Tests are run sequentially (which does not require isolating them in separate processes)
+This might lead to incomplete traces in the initialization of shared state."#
+        };
+
+        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
+        shell
+            .status_with_color("Dynamic RTS", message, &cargo::util::style::NOTE)
+            .unwrap();
+        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
     }
 
     fn doctest_callback_analysis(
