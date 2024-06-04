@@ -2,12 +2,18 @@
 name = "rustyrts"
 version = "0.1.0"
 edition = "2021"
+description = "Static or Dynamic Regression Test Selection"
+license = "Apache 2.0"
+repository = "https://github.com/tum-i4/rustyrts"
+keywords = ["static analysis", "dynamic analysis", "regression test selection"]
+categories = ["command-line-utilities", "development-tools::cargo-plugins"]
 
 [package.metadata.rust-analyzer]
 rustc_private=true
 
 [profile.release]
 debug = true
+opt-level = 'z'     # Optimize for size
 
 [features]
 default = ["fs_lock_file_guard"]

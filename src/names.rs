@@ -22,9 +22,9 @@ lazy_static! {
     ];
 }
 
-/// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
-pub(crate) fn def_id_name<'tcx>(
-    tcx: TyCtxt<'tcx>,
+/// Custom naming scheme for MIR bodies, adapted from `def_path_debug_str()` in `TyCtxt`
+pub(crate) fn def_id_name(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
     add_crate_id: bool,
     trimmed: bool,
@@ -32,7 +32,7 @@ pub(crate) fn def_id_name<'tcx>(
     mono_def_id_name(tcx, def_id, List::empty(), add_crate_id, trimmed)
 }
 
-/// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
+/// Custom naming scheme for MIR bodies, adapted from `def_path_debug_str()` in `TyCtxt`
 pub(crate) fn mono_def_id_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -59,7 +59,7 @@ pub(crate) fn mono_def_id_name<'tcx>(
             )
         }
     } else {
-        "".to_string()
+        String::new()
     };
 
     let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs, trimmed);
@@ -69,11 +69,11 @@ pub(crate) fn mono_def_id_name<'tcx>(
         if def_id.is_local() || !suffix.starts_with(&name) {
             name
         } else {
-            "".to_string()
+            String::new()
         }
     };
 
-    let mut def_path_str = format!("{}{}{}", crate_id, crate_name, suffix);
+    let mut def_path_str = format!("{crate_id}{crate_name}{suffix}");
 
     for re in RE_LIFETIME.iter() {
         // Remove lifetime parameters if present
@@ -143,7 +143,7 @@ fn filter_generic_args<'tcx>(
 ) -> &'tcx GenericArgs<'tcx> {
     let mut new_args = Vec::new();
 
-    for arg in args.into_iter() {
+    for arg in args {
         let new_arg = if let Some(ty) = arg.as_type() {
             filter_ty(tcx, ty, depth).into()
         } else {
@@ -200,7 +200,7 @@ fn filter_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> Ty<'tcx> {
             TyKind::Ref(*region, filter_ty(tcx, *ty, depth + 1), *mutbl)
         }
         TyKind::FnDef(def_id, args) => {
-            TyKind::FnDef(*def_id, filter_generic_args(tcx, *args, depth + 1))
+            TyKind::FnDef(*def_id, filter_generic_args(tcx, args, depth + 1))
         }
         TyKind::FnPtr(poly_fn_sig) => {
             let bound = poly_fn_sig.bound_vars();
@@ -237,7 +237,7 @@ fn filter_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> Ty<'tcx> {
             return get_placeholder(tcx, &name);
         }
         TyKind::CoroutineWitness(def_id, args) => {
-            TyKind::CoroutineWitness(*def_id, filter_generic_args(tcx, *args, depth + 1))
+            TyKind::CoroutineWitness(*def_id, filter_generic_args(tcx, args, depth + 1))
         }
         TyKind::Never => {
             return ty;

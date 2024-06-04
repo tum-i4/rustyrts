@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
+    string::ToString,
     time::Instant,
     vec::Vec,
 };
@@ -103,7 +104,7 @@ impl SelectionMode for DynamicMode {
                 | CompileMode::Build
                 | CompileMode::Doctest
                 | CompileMode::RunCustomBuild => {}
-                mode => panic!("Found unexpected compile mode, {:?}", mode),
+                mode => panic!("Found unexpected compile mode, {mode:?}"),
             }
         }
     }
@@ -223,7 +224,7 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
         let compile_mode = format!("{:?}", unit.mode);
 
         let changes_path = {
-            let mut path = CacheKind::Dynamic.map(target_dir.clone());
+            let mut path = CacheKind::Dynamic.map(target_dir);
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
@@ -236,13 +237,12 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
 
         let mut changed_nodes: HashSet<ArenaIntern<'arena, String>> = read_to_string(changes_path)
             .ok()
-            .map(|s| {
+            .map_or_else(HashSet::new, |s| {
                 s.lines()
-                    .map(|l| l.to_string())
+                    .map(ToString::to_string)
                     .map(|l| Arena::<String>::intern(arena, l))
                     .collect()
-            })
-            .unwrap_or_else(HashSet::new);
+            });
 
         for other in unit_graph.get(unit).unwrap() {
             if other.unit.mode == CompileMode::Build // No point in including the graph of build scripts and proc_macros
@@ -300,16 +300,16 @@ impl<'arena, 'context> DynamicSelector<'arena, 'context> {
             shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("\nChanged: {:?}\n", changed_nodes).as_bytes())
+            shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Traces: {:?}\n", traced_tests).as_bytes())
+            shell.print_ansi_stderr(format!("Traces: {traced_tests:?}\n").as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Tests found: {:?}\n", tests_found).as_bytes())
+            shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Affected: {:?}\n", affected_tests).as_bytes())
+            shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
         })?;
 
         Ok(())
@@ -346,7 +346,7 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
 
                     let path = CacheKind::Dynamic.map(self.target_dir.to_path_buf());
 
-                    for test in tests_found.iter() {
+                    for test in &tests_found {
                         let descr =
                             CacheFileDescr::new(test.as_str(), None, None, CacheFileKind::Traces);
                         let mut path = path.clone();
@@ -354,13 +354,13 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
 
                         if let Some(traces) = read_to_string(path.clone()).ok().map(|s| {
                             s.lines()
-                                .map(|l| l.to_string())
+                                .map(ToString::to_string)
                                 .map(|l| Arena::<String>::intern(self.arena, l))
                                 .collect()
                         }) {
                             map.insert(*test, traces);
                         } else {
-                            affected_tests.push(test.to_string())
+                            affected_tests.push(test.to_string());
                         }
                     }
 
@@ -402,10 +402,14 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                 let mut tests_found = HashSet::new();
                 let tests = tests.into_iter().map(|s| convert_doctest_name(&s)).unique();
 
-                let traces: HashMap<ArenaIntern<'_, String>, HashSet<ArenaIntern<'_, String>>> = {
-                    let mut map = HashMap::new();
+                let (traces, no_traces) = {
+                    let mut map_traces: HashMap<
+                        ArenaIntern<'_, String>,
+                        HashSet<ArenaIntern<'_, String>>,
+                    > = HashMap::new();
+                    let mut map_no_traces = HashMap::new();
 
-                    for (trimmed, fn_name) in tests.into_iter() {
+                    for (trimmed, fn_name) in tests {
                         let dependency_unit = DependencyUnit::DoctestUnit(unit, fn_name.clone());
                         let changed = self.changed_nodes(dependency_unit).clone();
 
@@ -424,27 +428,22 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                         let mut path = path.clone();
                         descr.apply(&mut path);
 
-                        let traces = if let Some(traces) =
-                            read_to_string(path.clone()).ok().map(|s| {
-                                s.lines()
-                                    .map(|l| l.to_string())
-                                    .map(|l| Arena::<String>::intern(self.arena, l))
-                                    .collect()
-                            }) {
-                            traces
+                        if let Some(traces) = read_to_string(path.clone()).ok().map(|s| {
+                            s.lines()
+                                .map(ToString::to_string)
+                                .map(|l| Arena::<String>::intern(self.arena, l))
+                                .collect()
+                        }) {
+                            map_traces.insert(interned, traces);
                         } else {
-                            // If no traces are found, this test is compile_fail or no_run
-                            // To nevertheless select it, if it has just been added, we emulate traces containing only this function
                             let name = DOCTEST_PREFIX.to_string() + &fn_name;
-                            let mut traces = HashSet::new();
-                            traces.insert(Arena::<String>::intern(self.arena, name));
-                            traces
-                        };
-                        map.insert(interned, traces);
+                            map_no_traces
+                                .insert(interned, Arena::<String>::intern(self.arena, name));
+                        }
                         changed_nodes.extend(changed.clone());
                     }
 
-                    map
+                    (map_traces, map_no_traces)
                 };
 
                 affected_tests.extend(
@@ -454,6 +453,13 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                             traces.intersection(&changed_nodes).next().is_some()
                         })
                         .map(|(test, _traces)| test.to_string()),
+                );
+
+                affected_tests.extend(
+                    no_traces
+                        .iter()
+                        .filter(|(_test, name)| changed_nodes.contains(name))
+                        .map(|(test, _name)| test.to_string()),
                 );
 
                 traced_tests.extend(traces.into_keys());
@@ -478,16 +484,14 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
     }
 
     fn note(&self, shell: &mut Shell, test_args: &[&str]) {
-        let test_args: Vec<String> = test_args.into_iter().map(|s| s.to_string()).collect();
-        let opts: Option<TestOpts> = match parse_opts(&test_args) {
+        let mut args = vec!["--".to_string()];
+        args.extend(test_args.iter().map(ToString::to_string));
+        let opts: Option<TestOpts> = match parse_opts(&args) {
             Some(Ok(o)) => Some(o),
             _ => None,
         };
 
-        let is_multithreaded = opts
-            .and_then(|o| o.test_threads)
-            .map(|t| t > 1)
-            .unwrap_or(true);
+        let is_multithreaded = opts.and_then(|o| o.test_threads).map_or(true, |t| t > 1);
 
         let message = if is_multithreaded {
             r#"Regression Test Selection using runtime traces
@@ -495,16 +499,16 @@ IMPORTANT: Tests are run in parallel, isolating them in separate processes
 This might not be feasible if tests rely on shared state.
 You may use "--test-threads 1" as test option to run test sequentially instead."#
         } else {
-            r#"Regression Test Selection using runtime traces
+            r"Regression Test Selection using runtime traces
 IMPORTANT: Tests are run sequentially (which does not require isolating them in separate processes)
-This might lead to incomplete traces in the initialization of shared state."#
+This might lead to incomplete traces in the initialization of shared state."
         };
 
-        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
+        shell.print_ansi_stderr(b"\n").unwrap();
         shell
             .status_with_color("Dynamic RTS", message, &cargo::util::style::NOTE)
             .unwrap();
-        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
+        shell.print_ansi_stderr(b"\n").unwrap();
     }
 
     fn doctest_callback_analysis(

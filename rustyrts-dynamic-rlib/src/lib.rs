@@ -1,9 +1,9 @@
 use fs_utils::{get_cache_path, write_to_file, CacheFileDescr, CacheFileKind, CacheKind};
-use std::borrow::Cow;
-use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicPtr;
 use std::sync::atomic::Ordering;
+use std::{borrow::Cow, panic::PanicInfo};
+use std::{collections::HashSet, sync::OnceLock};
 
 #[cfg(unix)]
 use std::fs::read_to_string;
@@ -11,7 +11,9 @@ use std::fs::read_to_string;
 mod constants;
 mod fs_utils;
 
-static LIST: AtomicPtr<Traced> = AtomicPtr::new(std::ptr::null::<Traced>() as *mut Traced);
+static LIST: AtomicPtr<Traced> = AtomicPtr::new(std::ptr::null::<Traced>().cast_mut());
+
+static PANIC_HOOK: OnceLock<Box<dyn Fn(&PanicInfo<'_>) + 'static + Sync + Send>> = OnceLock::new();
 
 //######################################################################################################################
 // Tuple type for tracing
@@ -49,8 +51,17 @@ pub fn trace(input: &'static mut (&str, usize)) {
     }
 }
 
-pub fn pre_test() {
+pub fn pre_test(test_name: &'static str, append: bool) {
     reset_list();
+
+    let hook = std::panic::take_hook();
+    PANIC_HOOK.get_or_init(|| hook);
+
+    let new_hook = move |panic_info: &PanicInfo<'_>| {
+        post_test(test_name, append);
+        PANIC_HOOK.get().unwrap()(panic_info);
+    };
+    std::panic::set_hook(Box::new(new_hook));
 }
 
 #[no_mangle]
@@ -58,7 +69,7 @@ pub fn pre_test() {
 pub fn pre_main() {}
 
 #[no_mangle]
-pub fn post_test(test_name: &str, append: bool) {
+pub fn post_test(test_name: &'static str, append: bool) {
     let traces = reset_list();
 
     let file_descr = CacheFileDescr::new(test_name, None, None, CacheFileKind::Traces);

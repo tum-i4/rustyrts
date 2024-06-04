@@ -4,13 +4,10 @@ use crate::constants::{
     DIR_DYNAMIC, DIR_GENERAL, DIR_STATIC, ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_CONST,
     ENDING_CHECKSUM_VTBL, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, ENV_TARGET_DIR,
 };
-use std::collections::HashSet;
 use std::io::Write;
 use std::path::PathBuf;
-use std::{
-    fs::{read_to_string, DirEntry, OpenOptions},
-    path::Path,
-};
+
+use std::{fs::OpenOptions, path::Path};
 use std::{hash::Hash, str::FromStr};
 
 #[cfg(unix)]
@@ -204,44 +201,13 @@ impl<'data> TryFrom<&'data Path> for CacheFileDescr<'data> {
     }
 }
 
-pub fn read_lines(files: &[DirEntry], file_ending: &str) -> HashSet<String>
-where {
-    read_lines_filter_map(files, file_ending, |_x| true, |x| x)
-}
-
-pub fn read_lines_filter_map<F, M, O>(
-    files: &[DirEntry],
-    file_ending: &str,
-    filter: F,
-    mapper: M,
-) -> HashSet<O>
-where
-    F: Fn(&String) -> bool,
-    M: std::ops::FnMut(std::string::String) -> O,
-    O: Eq + Hash,
-{
-    let tokens: HashSet<O> = files
-        .iter()
-        .filter(|path| path.file_name().to_str().unwrap().ends_with(file_ending))
-        .flat_map(|path| {
-            let content = read_to_string(path.path()).unwrap();
-            let lines: Vec<String> = content.split('\n').map(|s| s.to_string()).collect();
-            lines
-        })
-        .filter(|line| !line.is_empty())
-        .filter(filter)
-        .map(mapper)
-        .collect();
-    tokens
-}
-
 /// Computes the location of a file from a closure
 /// and overwrites the content of this file
 ///
 /// ## Arguments
 /// * `content` - new content of the file
 /// * `path_buf` - `PathBuf` that points to the parent directory
-/// * `initializer` - function that modifies path_buf - candidates: `get_graph_path`, `get_test_path`, `get_changes_path`
+/// * `initializer` - function that modifies `path_buf`
 /// * 'append' - whether content should be appended
 ///
 pub fn write_to_file<F, C: AsRef<[u8]>>(content: C, path_buf: PathBuf, initializer: F, append: bool)
@@ -251,30 +217,25 @@ where
     let mut path_buf = path_buf;
     initializer(&mut path_buf);
 
-    let mut file = match OpenOptions::new()
+    let mut file = OpenOptions::new()
         .write(true)
         .append(append)
         .truncate(!append)
         .create(true)
         .open(path_buf.as_path())
-    {
-        Ok(file) => file,
-        Err(reason) => panic!("Failed to create file: {}", reason),
-    };
+        .expect("Failed to open file");
 
-    match file.write_all(content.as_ref()) {
-        Ok(_) => {}
-        Err(reason) => panic!("Failed to write to file: {}", reason),
-    };
+    file.write_all(content.as_ref())
+        .expect("Failed to write to file");
 }
 
 /// Computes the location of a file from a closure
-/// and overwrites the content of this file
+/// and appends to this file
 ///
 /// ## Arguments
 /// * `content` - new content of the file
 /// * `path_buf` - `PathBuf` that points to the parent directory
-/// * `initializer` - function that modifies path_buf - candidates: `get_graph_path`, `get_test_path`, `get_changes_path`
+/// * `initializer` - function that modifies `path_buf` - candidates: `get_graph_path`, `get_test_path`, `get_changes_path`
 ///
 #[cfg(feature = "fs_lock_file_guard")]
 pub fn append_to_file<F, C: AsRef<[u8]>>(content: C, path_buf: PathBuf, initializer: F)
@@ -284,23 +245,18 @@ where
     let mut path_buf = path_buf;
     initializer(&mut path_buf);
 
-    let mut file = match OpenOptions::new()
+    let mut file = OpenOptions::new()
         .append(true)
         .truncate(false)
         .create(true)
         .open(path_buf.as_path())
-    {
-        Ok(file) => file,
-        Err(reason) => panic!("Failed to create file: {}", reason),
-    };
+        .expect("Failed to open file");
 
     let mut lock = file_guard::lock(&mut file, file_guard::Lock::Exclusive, 0, 1)
-        .unwrap_or_else(|err| panic!("Failed to lock file: {}", err));
+        .expect("Failed to lock file");
 
-    match lock.write_all(content.as_ref()) {
-        Ok(_) => {}
-        Err(reason) => panic!("Failed to write to file: {}", reason),
-    };
+    lock.write_all(content.as_ref())
+        .expect("Failed to write to file");
 }
 
 /// Computes the location of a file from a closure
@@ -321,15 +277,12 @@ where
     let mut path_buf = path_buf;
     initializer(&mut path_buf);
 
-    let mut file = match OpenOptions::new()
+    let mut file = OpenOptions::new()
         .append(true)
         .truncate(false)
         .create(true)
         .open(path_buf.as_path())
-    {
-        Ok(file) => file,
-        Err(reason) => panic!("Failed to create file: {}", reason),
-    };
+        .expect("Failed to open file");
 
     unsafe {
         let syscall = 73; // __NR_flock
@@ -350,10 +303,8 @@ where
         }
     }
 
-    match file.write_all(content.as_ref()) {
-        Ok(_) => {}
-        Err(reason) => panic!("Failed to write to file: {}", reason),
-    };
+    file.write_all(content.as_ref())
+        .expect("Failed to write to file");
 
     unsafe {
         let syscall = 73; // __NR_flock

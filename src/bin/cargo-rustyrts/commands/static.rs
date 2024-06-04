@@ -5,6 +5,7 @@ use std::{
     fmt::Display,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
+    string::ToString,
     time::Instant,
 };
 
@@ -223,7 +224,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
             path
         };
         let changes_path = {
-            let mut path = CacheKind::Static.map(target_dir.clone());
+            let mut path = CacheKind::Static.map(target_dir);
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
@@ -236,13 +237,12 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
 
         let changed_nodes: HashSet<ArenaIntern<'arena, String>> = read_to_string(changes_path)
             .ok()
-            .map(|s| {
+            .map_or_else(HashSet::new, |s| {
                 s.lines()
-                    .map(|l| l.to_string())
+                    .map(ToString::to_string)
                     .map(|l| Arena::<String>::intern(arena, l))
                     .collect()
-            })
-            .unwrap_or_else(HashSet::new);
+            });
 
         let graph = read_to_string(graph_path.clone())
                         .ok()
@@ -317,20 +317,28 @@ impl<'arena, 'context> StaticSelector<'arena, 'context> {
             )
         })?;
 
+        let verbose_reachable = {
+            if reachable_nodes.len() < 200 {
+                format!("{reachable_nodes:?}")
+            } else {
+                format!("{}", reachable_nodes.len())
+            }
+        };
+
         shell.verbose(|shell| {
             shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("\nChanged: {:?}\n", changed_nodes).as_bytes())
+            shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Reachable: {:?}\n", reachable_nodes).as_bytes())
+            shell.print_ansi_stderr(format!("Reachable: {verbose_reachable}\n").as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Tests found: {:?}\n", tests_found).as_bytes())
+            shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
         })?;
         shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Affected: {:?}\n", affected_tests).as_bytes())
+            shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
         })?;
 
         Ok(())
@@ -361,11 +369,13 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
 
                 let dependency_unit = DependencyUnit::Unit(unit);
                 let (changed, reachable) = self.reachble_and_changed_nodes(dependency_unit);
-                let affected = reachable.intersection(&tests_found).map(|s| s.to_string());
+                let affected = reachable
+                    .intersection(&tests_found)
+                    .map(ToString::to_string);
 
                 changed_nodes.extend(changed.clone());
                 reachable_nodes.extend(reachable.clone());
-                affected_tests.extend(affected.map(move |s| s.to_string()));
+                affected_tests.extend(affected);
 
                 self.print_stats(
                     shell,
@@ -388,7 +398,7 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
 
                 let mut tests_found = HashSet::new();
 
-                for test in tests.iter() {
+                for test in &tests {
                     let (trimmed, test_fn) = convert_doctest_name(test);
                     let test = self.arena.intern(DOCTEST_PREFIX.to_string() + &test_fn);
 
@@ -425,14 +435,14 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
     }
 
     fn note(&self, shell: &mut Shell, _test_args: &[&str]) {
-        let message = r#"Regression Test Selection using a dependency graph
+        let message = r"Regression Test Selection using a dependency graph
 This might lead to unsafe behavior when tests spawn additional processes.
-"#;
-        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
+";
+        shell.print_ansi_stderr(b"\n").unwrap();
         shell
             .status_with_color("Static RTS", message, &cargo::util::style::NOTE)
             .unwrap();
-        shell.print_ansi_stderr("\n".as_bytes()).unwrap();
+        shell.print_ansi_stderr(b"\n").unwrap();
     }
 
     fn doctest_callback_analysis(

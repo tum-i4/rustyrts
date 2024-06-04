@@ -11,9 +11,9 @@ enum Mode {
     Static,
 }
 
-impl Into<&str> for &Mode {
-    fn into(self) -> &'static str {
-        match self {
+impl From<&Mode> for &str {
+    fn from(val: &Mode) -> Self {
+        match val {
             Mode::Dynamic => "dynamic",
             Mode::Static => "static",
         }
@@ -212,6 +212,18 @@ fn check_same_crate_id(mode: Mode) {
 )]
 #[test_case(Mode::Dynamic, "unused_lifetime", "", "changes_unused")]
 #[test_case(Mode::Static, "unused_lifetime", "", "changes_unused")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_no_run")]
+#[test_case(Mode::Static, "doctests", "", "changes_no_run")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_compile_fail")]
+#[test_case(Mode::Static, "doctests", "", "changes_compile_fail")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_run")]
+#[test_case(Mode::Static, "doctests", "", "changes_run")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_should_panic")]
+#[test_case(Mode::Static, "doctests", "", "changes_should_panic")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_indirect_run")]
+#[test_case(Mode::Static, "doctests", "", "changes_indirect_run")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_indirect_should_panic")]
+#[test_case(Mode::Static, "doctests", "", "changes_indirect_should_panic")]
 fn blackbox_test_affected(mode: Mode, name: &str, features_baseline: &str, features_changes: &str) {
     let mut dir = PATH.clone();
     dir.push(name);

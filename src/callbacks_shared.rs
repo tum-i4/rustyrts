@@ -3,7 +3,7 @@ use once_cell::sync::OnceCell;
 
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_hir::def_id::LOCAL_CRATE;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_middle::{
     mir::mono::MonoItem,
     ty::{PolyTraitRef, VtblEntry},
@@ -11,6 +11,7 @@ use rustc_middle::{
 use std::{
     collections::HashSet,
     fs::read,
+    string::ToString,
     sync::{atomic::AtomicUsize, Mutex},
 };
 use std::{env, fs::remove_file};
@@ -148,7 +149,7 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
                         trace!("Searching for doctest function - Checking {:?}", name);
                         name.strip_prefix(DOCTEST_PREFIX)
                             .filter(|suffix| !suffix.contains("::"))
-                            .map(|s| s.to_string())
+                            .map(ToString::to_string)
                     })
                     .unique()
                     .exactly_one()
@@ -190,14 +191,11 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
         let bodies = code_gen_units
             .iter()
             .flat_map(|c| c.items().keys())
-            .filter(|m| matches!(m, MonoItem::Fn(_)))
-            .map(|m| {
-                let MonoItem::Fn(instance) = m else {
-                    unreachable!()
-                };
-                instance
+            .filter_map(|m| match m {
+                MonoItem::Fn(instance) => Some(instance),
+                _ => None,
             })
-            .map(|i| i.def_id())
+            .map(Instance::def_id)
             //.filter(|d| d.is_local()) // It is not feasible to only analyze local MIR
             .filter(|d| tcx.is_mir_available(d))
             .unique()
@@ -255,7 +253,7 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
                     None,
                     CacheFileKind::Tests,
                 )
-                .apply(buf)
+                .apply(buf);
             },
             false,
         );
@@ -393,9 +391,9 @@ pub trait ChecksumsCallback {
                         doctest_name.as_deref(),
                         CacheFileKind::Changes,
                     )
-                    .apply(buf)
+                    .apply(buf);
                 },
-                false,
+                true, // IMPORTANT: append changes to handle changing files in between compiling
             );
         }
     }
@@ -420,7 +418,7 @@ pub trait ChecksumsCallback {
 
         if append {
             append_to_file(Into::<Vec<u8>>::into(checksums), path.clone(), |path_buf| {
-                descr.apply(path_buf)
+                descr.apply(path_buf);
             });
         } else {
             write_to_file(
@@ -488,7 +486,7 @@ fn calculate_changes(
             let maybe_secondary = secondary_vtbl_checksums.get(name);
 
             match (maybe_primary, maybe_secondary) {
-                    (None, _) => panic!("Did not find checksum for vtable entry {}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again.", name),
+                    (None, _) => panic!("Did not find checksum for vtable entry {name}. This may happen when RustyRTS is interrupted and later invoked again. Just do `cargo clean` and invoke it again."),
                     (Some(_), None) => {
                         // We consider functions that are not in the secondary set
                         // In case of dynamic: functions that do no longer have an entry pointing to them

@@ -65,13 +65,13 @@ pub(crate) trait SelectionMode {
     ) -> Box<dyn SelectionContext<'context> + 'context>;
 }
 
-pub(crate) trait SelectionContext<'context> {
+pub trait SelectionContext<'context> {
     fn selector(&mut self) -> &mut dyn Selector<'context>;
 }
 
-pub(crate) struct TestUnit<'unit, 'arena>(&'unit Unit, TestInfo<'arena>);
+pub struct TestUnit<'unit, 'arena>(&'unit Unit, TestInfo<'arena>);
 
-pub(crate) enum TestInfo<'arena> {
+pub enum TestInfo<'arena> {
     Test(HashSet<ArenaIntern<'arena, String>>),
     Doctest(HashSet<String>),
 }
@@ -84,7 +84,7 @@ impl<'unit, 'arena> TestUnit<'unit, 'arena> {
         let compile_mode = format!("{:?}", unit.mode);
 
         let tests_path = {
-            let mut path = path_buf.clone();
+            let mut path = path_buf;
             CacheFileDescr::new(&crate_name, Some(&compile_mode), None, CacheFileKind::Tests)
                 .apply(&mut path);
             path
@@ -92,18 +92,14 @@ impl<'unit, 'arena> TestUnit<'unit, 'arena> {
 
         let tests_found = read_to_string(&tests_path)
             .ok()
-            .map(|s| {
+            .map_or_else(|| panic!(
+                    "Did not find information on tests found for crate {crate_name:?}\nTried looking at {tests_path:?}"
+                ),|s| {
                 s.lines()
                     .filter(|l| !l.is_empty())
-                    .map(|l| l.to_string())
+                    .map(std::string::ToString::to_string)
                     .map(|l| Arena::<String>::intern(arena, l))
                     .collect()
-            })
-            .unwrap_or_else(|| {
-                panic!(
-                    "Did not find information on tests found for crate {:?}\nTried looking at {:?}",
-                    crate_name, tests_path
-                )
             });
 
         Self(unit, TestInfo::Test(tests_found))
@@ -129,7 +125,7 @@ pub trait Selector<'context> {
     fn doctest_callback_execution(&self) -> fn(&mut ProcessBuilder, &Path, &Unit);
 }
 
-pub fn exec(config: &mut Config, args: &ArgMatches, mode: &dyn SelectionMode) -> CliResult {
+pub fn exec(config: &Config, args: &ArgMatches, mode: &dyn SelectionMode) -> CliResult {
     let ws = {
         let mut ws = args.workspace(config)?;
 
@@ -157,7 +153,7 @@ pub fn exec(config: &mut Config, args: &ArgMatches, mode: &dyn SelectionMode) ->
     crate::ops::run_tests(&ws, &compile_opts, &test_args, mode)
 }
 
-pub(crate) fn convert_doctest_name(test_name: &str) -> (String, String) {
+pub fn convert_doctest_name(test_name: &str) -> (String, String) {
     let (trimmed, _) = test_name.split_once(" - ").unwrap();
     let fn_name = trimmed
         .chars()

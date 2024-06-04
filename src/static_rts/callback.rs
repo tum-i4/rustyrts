@@ -87,7 +87,7 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticRTSCallbacks {
                     doctest_name.as_deref(),
                     CacheFileKind::Graph,
                 )
-                .apply(buf)
+                .apply(buf);
             },
             false,
         );
@@ -101,7 +101,7 @@ impl Drop for StaticRTSCallbacks {
             let old_checksums_vtbl = self.import_checksums(ChecksumKind::VtblChecksum, false);
             let old_checksums_const = self.import_checksums(ChecksumKind::ConstChecksum, false);
 
-            let context = &mut self.context.get_mut().unwrap();
+            let context = self.context.get_mut().unwrap();
 
             context.old_checksums.get_or_init(|| old_checksums);
             context
@@ -147,7 +147,7 @@ impl Drop for StaticRTSCallbacks {
 impl Callbacks for StaticRTSCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         // The only possibility to intercept vtable entries, which I found, is in their local crate
-        config.override_queries = Some(|_session, providers| {
+        config.override_queries = Some(|session, providers| {
             debug!("Modifying providers");
 
             if std::env::var(ENV_SKIP_ANALYSIS).is_err() {
@@ -155,7 +155,7 @@ impl Callbacks for StaticRTSCallbacks {
                 providers.vtable_entries =
                     |tcx, binder| Self::custom_vtable_entries(tcx, binder, SUFFIX_DYN);
             } else {
-                trace!("Not analyzing crate {:?}", _session.opts.crate_name);
+                trace!("Not analyzing crate {:?}", session.opts.crate_name);
             }
         });
     }

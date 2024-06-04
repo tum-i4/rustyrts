@@ -29,9 +29,13 @@ use cargo_util::{ProcessBuilder, ProcessError};
 use internment::Arena;
 use itertools::Itertools;
 use rustyrts::constants::ENV_TARGET_DIR;
-use std::path::{Path, PathBuf};
 use std::{ffi::OsString, sync::Arc};
 use std::{fmt::Write, time::Instant};
+use std::{
+    path::{Path, PathBuf},
+    string::String,
+};
+use tracing::trace;
 
 use crate::{
     commands::{SelectionMode, Selector, TestUnit},
@@ -154,23 +158,24 @@ fn run_unit_tests<'compilation, 'context, 'arena: 'context>(
     selector.note(&mut config.shell(), test_args);
 
     let mut test_args = Vec::from(test_args);
-    if !test_args.iter().any(|s| s == &"--exact") {
-        test_args.push("--exact");
-    } else {
+    if test_args.iter().any(|s| s == &"--exact") {
         panic!("Regression Test Selection is incompatible to using --exact");
+    } else {
+        test_args.push("--exact");
     }
 
     for UnitOutput {
         unit,
         path,
         script_meta,
-    } in compilation.tests.iter()
+    } in &compilation.tests
     {
         let start_time = Instant::now();
         let test_unit = TestUnit::test(unit, arena, target_dir);
         let affected_tests = selector.select_tests(test_unit, &mut config.shell(), start_time);
 
-        let prefix = unit.target.name().to_string() + "::";
+        let prefix = unit.target.crate_name().to_string() + "::";
+        trace!("Stripping crate name {:?}", prefix);
         let mut affected_tests = affected_tests
             .iter()
             .filter_map(|s| s.strip_prefix(&prefix))
@@ -272,20 +277,8 @@ fn run_doc_tests<'compilation, 'context, 'arena: 'context>(
         let test_unit = TestUnit::doctest(unit, tests);
         let affected_tests = selector.select_tests(test_unit, &mut config.shell(), start);
 
-        let prefix = {
-            let target_name = unit.target.name();
-            if target_name != "doctests" {
-                target_name.to_string() + "/"
-            } else {
-                "src/".to_string()
-            }
-        };
-
         let mut test_args = Vec::from(test_args);
-        let mut affected_tests = affected_tests
-            .iter()
-            .filter_map(|s| s.strip_prefix(&prefix))
-            .collect_vec();
+        let mut affected_tests = affected_tests.iter().map(String::as_str).collect_vec();
 
         if affected_tests.is_empty() {
             test_args.push("?"); // This excludes all tests
@@ -319,7 +312,7 @@ fn run_doc_tests<'compilation, 'context, 'arena: 'context>(
             p.arg("-L").arg(arg);
         }
 
-        for native_dep in compilation.native_dirs.iter() {
+        for native_dep in &compilation.native_dirs {
             p.arg("-L").arg(native_dep);
         }
 
@@ -465,7 +458,7 @@ fn report_test_error(
 
 //#####################################################################################################################
 // Source: https://github.com/rust-lang/cargo/blob/d0390c22b16ea6c800754fb7620ab8ee31debcc7/src/cargo/ops/cargo_compile/mod.rs
-// Adapted to use custom executor
+// Adapted to use custom executor and re-use existing context
 //#####################################################################################################################
 
 fn compile_tests<'a>(

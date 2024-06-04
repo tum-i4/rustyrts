@@ -72,7 +72,7 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
                     doctest_name.as_deref(),
                     CacheFileKind::Graph,
                 )
-                .apply(buf)
+                .apply(buf);
             },
         );
     }
@@ -113,7 +113,7 @@ impl Drop for StaticDoctestRTSCallbacks {
 impl Callbacks for StaticDoctestRTSCallbacks {
     fn config(&mut self, config: &mut Config) {
         // The only possibility to intercept vtable entries, which I found, is in their local crate
-        config.override_queries = Some(|_session, providers| {
+        config.override_queries = Some(|session, providers| {
             debug!("Modifying providers");
 
             if std::env::var(ENV_SKIP_ANALYSIS).is_err() {
@@ -121,7 +121,7 @@ impl Callbacks for StaticDoctestRTSCallbacks {
                 providers.vtable_entries =
                     |tcx, binder| Self::custom_vtable_entries(tcx, binder, SUFFIX_DYN);
             } else {
-                trace!("Not analyzing crate {:?}", _session.opts.crate_name);
+                trace!("Not analyzing crate {:?}", session.opts.crate_name);
             }
         });
     }

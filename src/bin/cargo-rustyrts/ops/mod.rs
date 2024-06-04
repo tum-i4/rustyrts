@@ -49,7 +49,7 @@ impl Executor for TestExecutor {
             cmd.program(&self.cmd);
 
             cmd.env(ENV_TARGET_DIR, &self.target_dir);
-            cmd.env(ENV_COMPILE_MODE, format!("{:?}", mode));
+            cmd.env(ENV_COMPILE_MODE, format!("{mode:?}"));
             if target.doctested() {
                 cmd.env(ENV_DOCTESTED, "true");
             }

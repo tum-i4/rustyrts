@@ -1,9 +1,12 @@
 use itertools::Itertools;
 use queues::{IsQueue, Queue};
-
-use std::collections::{HashMap, HashSet};
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::str::FromStr;
+use std::{
+    collections::{HashMap, HashSet},
+    string::ToString,
+};
 
 use internment::Arena;
 use internment::ArenaIntern;
@@ -78,7 +81,23 @@ pub struct DependencyGraph<'arena, T: Eq + Hash> {
         HashMap<ArenaIntern<'arena, T>, HashMap<ArenaIntern<'arena, T>, HashSet<EdgeType>>>,
 }
 
-impl<'arena, 'a, T: Eq + Hash> DependencyGraph<'arena, T> {
+impl<'arena, T: Eq + Hash> PartialEq for DependencyGraph<'arena, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.nodes == other.nodes && self.backwards_edges == other.backwards_edges
+    }
+}
+
+impl<'arena, T: Eq + Hash + Debug> Debug for DependencyGraph<'arena, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Graph { ")?;
+        f.write_fmt(format_args!("Nodes: {:?}", self.nodes))?;
+        f.write_fmt(format_args!("Edges: {:?}", self.backwards_edges))?;
+        f.write_str(" }")?;
+        Ok(())
+    }
+}
+
+impl<'arena, T: Eq + Hash> DependencyGraph<'arena, T> {
     pub fn new(arena: &'arena Arena<T>) -> Self {
         Self {
             arena,
@@ -103,60 +122,13 @@ impl<'arena, 'a, T: Eq + Hash> DependencyGraph<'arena, T> {
 
         let ingoing = self.backwards_edges.get_mut(&end).unwrap();
 
-        if let None = ingoing.get(&start) {
-            ingoing.insert(start.clone(), HashSet::new());
+        if ingoing.get(&start).is_none() {
+            ingoing.insert(start, HashSet::new());
         }
 
         let types = ingoing.get_mut(&start).unwrap();
         types.insert(edge_type);
     }
-
-    // #[allow(unused)]
-    // pub fn affected_tests<'b: 'c, 'c, S>(
-    //     &'b self,
-    //     starting_points: S,
-    //     tests: HashSet<&T>,
-    // ) -> (HashSet<&'b T>, HashMap<&'c T, Vec<&'b T>>)
-    // where
-    //     S: IntoIterator<Item = &'b T>,
-    // {
-    //     let mut reached = HashSet::new();
-    //     let mut affected = HashMap::new();
-    //     let mut acc = Vec::new();
-
-    //     for ele in starting_points {
-    //         if reached.insert(ele) {
-    //             self.affected_tests_helper(ele, &tests, &mut reached, &mut affected, &mut acc);
-    //         }
-    //     }
-
-    //     (reached, affected)
-    // }
-
-    // fn affected_tests_helper<'b: 'c, 'c>(
-    //     &'b self,
-    //     node: &'b T,
-    //     tests: &HashSet<&T>,
-    //     reached: &mut HashSet<&'b T>,
-    //     affected: &mut HashMap<&'c T, Vec<&'b T>>,
-    //     acc: &mut Vec<&'b T>,
-    // ) {
-    //     acc.push(node);
-
-    //     if tests.contains(node) && !affected.keys().contains(&node) {
-    //         affected.insert(node, acc.clone());
-    //     }
-
-    //     if let Some(edges) = self.backwards_edges.get(node) {
-    //         for (start, _types) in edges {
-    //             if reached.insert(start) {
-    //                 self.affected_tests_helper(start, tests, reached, affected, acc);
-    //             }
-    //         }
-    //     }
-
-    //     acc.pop();
-    // }
 
     #[allow(unused)]
     pub fn reachable_nodes(
@@ -177,7 +149,7 @@ impl<'arena, 'a, T: Eq + Hash> DependencyGraph<'arena, T> {
             }
 
             if let Some(edges) = self.backwards_edges.get(&node) {
-                for (start, _types) in edges {
+                for start in edges.keys() {
                     if !reached.contains(start) {
                         queue.add(*start).unwrap();
                     }
@@ -190,40 +162,52 @@ impl<'arena, 'a, T: Eq + Hash> DependencyGraph<'arena, T> {
 }
 
 impl<'arena> DependencyGraph<'arena, String> {
-    pub fn import_nodes(&mut self, lines: impl IntoIterator<Item = String>) {
+    fn import_nodes(&mut self, lines: impl IntoIterator<Item = String>) {
         // Parse nodes
         // TODO: improve error handling
         for line in lines {
-            let message_fn = || format!("Found malformed node line: {})", line);
+            let message_fn = || format!("Found malformed node line: {line})");
 
-            let node = line.strip_prefix("\"").expect(&message_fn());
-            let node = node.strip_suffix("\"").expect(&message_fn());
+            let node = line
+                .strip_prefix('\"')
+                .unwrap_or_else(|| panic!("{}", message_fn()));
+            let node = node
+                .strip_suffix('\"')
+                .unwrap_or_else(|| panic!("{}", message_fn()));
 
             self.add_node(node.to_string());
         }
     }
 
-    pub fn import_edges(&mut self, lines: impl IntoIterator<Item = String>) {
+    fn import_edges(&mut self, lines: impl IntoIterator<Item = String>) {
         // Parse edges
         for line in lines {
-            let message_fn = || format!("Found malformed edge line: {})", line);
+            let message_fn = || format!("Found malformed edge line: {line})");
 
-            let (edge_str, edge_types_str) = line.split_once(" //").expect(&message_fn());
+            let (edge_str, edge_types_str) = line
+                .split_once(" //")
+                .unwrap_or_else(|| panic!("{}", message_fn()));
 
             if let Some(edge_types) = edge_types_str
                 .strip_prefix(" {")
-                .and_then(|s| s.strip_suffix("}"))
-                .and_then(|s| Some(s.split(", ")))
+                .and_then(|s| s.strip_suffix('}'))
+                .map(|s| s.split(", "))
             {
                 let (start_str, end_str) = edge_str.split_once("\" -> \"").unwrap();
-                let start = start_str.strip_prefix("\"").expect(&message_fn());
-                let end = end_str.strip_suffix("\"").expect(&message_fn());
+                let start = start_str
+                    .strip_prefix('\"')
+                    .unwrap_or_else(|| panic!("{}", message_fn()));
+                let end = end_str
+                    .strip_suffix('\"')
+                    .unwrap_or_else(|| panic!("{}", message_fn()));
 
                 for edge_type in edge_types {
                     self.add_edge(
                         start.to_string(),
                         end.to_string(),
-                        edge_type.parse().expect(&message_fn()),
+                        edge_type
+                            .parse()
+                            .unwrap_or_else(|()| panic!("{}", message_fn())),
                     );
                 }
             }
@@ -241,13 +225,13 @@ impl<'arena> DependencyGraph<'arena, String> {
             } else {
                 ""
             };
-            result.push_str(format!("\"{}\"{}\n", node, format).as_str())
+            result.push_str(format!("\"{node}\"{format}\n").as_str());
         }
 
         let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
 
-        for (end, edge) in self.backwards_edges.iter() {
-            for (start, types) in edge.iter() {
+        for (end, edge) in &self.backwards_edges {
+            for (start, types) in edge {
                 unsorted.push((start, end, types));
             }
         }
@@ -266,7 +250,7 @@ impl<'arena> DependencyGraph<'arena, String> {
                         typ
                     )
                     .as_str(),
-                )
+                );
             }
         }
 
@@ -283,13 +267,13 @@ impl<'arena> ToString for DependencyGraph<'arena, String> {
         result.push_str("digraph {\n");
 
         for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&***b, &***a)) {
-            result.push_str(format!("\"{}\"\n", node).as_str())
+            result.push_str(format!("\"{node}\"\n").as_str());
         }
 
         let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
 
-        for (end, edge) in self.backwards_edges.iter() {
-            for (start, types) in edge.iter() {
+        for (end, edge) in &self.backwards_edges {
+            for (start, types) in edge {
                 unsorted.push((start, end, types));
             }
         }
@@ -298,7 +282,7 @@ impl<'arena> ToString for DependencyGraph<'arena, String> {
             .iter()
             .sorted_by(|a, b| Ord::cmp(&b.0, &a.0).then(Ord::cmp(&b.1, &a.1)))
         {
-            result.push_str(format!("\"{}\" -> \"{}\" // {:?}\n", start, end, types).as_str())
+            result.push_str(format!("\"{start}\" -> \"{end}\" // {types:?}\n").as_str());
         }
 
         result.push_str("}\n");
@@ -311,11 +295,11 @@ impl<'arena> DependencyGraph<'arena, String> {
     pub fn from_str(arena: &'arena Arena<String>, s: &str) -> Result<Self, ()> {
         let content = s.trim();
         let (edges, nodes): (Vec<_>, Vec<_>) = content
-            .split("\n")
-            .filter(|l| !l.trim_start().starts_with("\\")) // Remove Comments
+            .split('\n')
+            .filter(|l| !l.trim_start().starts_with('\\')) // Remove Comments
             .filter(|l| l != &"digraph {")
             .filter(|l| l != &"}")
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .partition(|l| l.contains("\" -> \""));
 
         let mut result = Self::new(arena);
@@ -323,7 +307,7 @@ impl<'arena> DependencyGraph<'arena, String> {
         result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
         result.import_edges(edges);
 
-        return Ok(result);
+        Ok(result)
     }
 }
 
@@ -343,9 +327,9 @@ mod test {
         graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Unsize);
         graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Drop);
 
-        // let serialized = graph.to_string();
-        // let deserialized = DependencyGraph::from_str(&serialized).unwrap();
+        let serialized = graph.to_string();
+        let deserialized = DependencyGraph::from_str(&arena, &serialized).unwrap();
 
-        // assert_eq!(graph, deserialized);
+        assert_eq!(graph, deserialized);
     }
 }

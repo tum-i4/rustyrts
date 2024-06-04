@@ -21,7 +21,7 @@ impl FileLoader for TestRunnerFileLoaderProxy {
             TEST_RUNNER_INSERTED.store(true, SeqCst);
 
             let extended_content = format!(
-                "{}
+                "{content}
 
                 #[allow(unused_extern_crates)]
                 extern crate test as rustyrts_test;
@@ -32,13 +32,13 @@ impl FileLoader for TestRunnerFileLoaderProxy {
                 extern {{
                     fn rustyrts_runner(tests: &[&rustyrts_test::TestDescAndFn]);
                 }}
-                
+
+                #[allow(unsafe_code)]
                 #[allow(dead_code)]
                 fn rustyrts_runner_wrapper(tests: &[&rustyrts_test::TestDescAndFn]) 
                 {{ 
                     unsafe {{ rustyrts_runner(tests); }}
-                }}",
-                content
+                }}"
             )
             .to_string();
 
@@ -68,11 +68,10 @@ impl FileLoader for InstrumentationFileLoaderProxy {
             EXTERN_CRATE_INSERTED.store(true, SeqCst);
 
             let extended_content = format!(
-                "{}
+                "{content}
 
                 #[allow(unused_extern_crates)]
-                extern crate rustyrts_dynamic_rlib;",
-                content
+                extern crate rustyrts_dynamic_rlib;"
             )
             .to_string();
 

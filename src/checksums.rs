@@ -13,7 +13,7 @@ use std::{
     hash::Hasher,
 };
 
-/// Wrapper of HashMap to provide serialization and deserialization of checksums
+/// Wrapper of `HashMap` to provide serialization and deserialization of checksums
 /// (Newtype Pattern)
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct Checksums {
@@ -124,7 +124,7 @@ pub(crate) fn get_checksum_body(tcx: TyCtxt<'_>, body: &Body) -> (u64, u64) {
                 }
                 body.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -147,7 +147,7 @@ pub(crate) fn get_checksum_vtbl_entry<'tcx>(
                 let mut hasher = StableHasher::new();
                 entry.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -170,7 +170,7 @@ pub(crate) fn get_checksum_const_allocation<'tcx>(
                 let mut hasher = StableHasher::new();
                 alloc.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -190,7 +190,7 @@ pub(crate) fn get_checksum_scalar_int(tcx: TyCtxt<'_>, scalar_int: &ScalarInt) -
                 let mut hasher = StableHasher::new();
                 scalar_int.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -218,10 +218,26 @@ mod test {
     pub fn test_checksum_deserialization() {
         let mut checksums = Checksums::new();
 
-        insert_hashmap(&mut checksums, &"node1".to_string(), (100000000000006, 0));
-        insert_hashmap(&mut checksums, &"node2".to_string(), (2, 100000000000005));
-        insert_hashmap(&mut checksums, &"node3".to_string(), (3, 100000000000004));
-        insert_hashmap(&mut checksums, &"node4".to_string(), (4, 100000000000003));
+        insert_hashmap(
+            &mut checksums,
+            &"node1".to_string(),
+            (100_000_000_000_006, 0),
+        );
+        insert_hashmap(
+            &mut checksums,
+            &"node2".to_string(),
+            (2, 100_000_000_000_005),
+        );
+        insert_hashmap(
+            &mut checksums,
+            &"node3".to_string(),
+            (3, 100_000_000_000_004),
+        );
+        insert_hashmap(
+            &mut checksums,
+            &"node4".to_string(),
+            (4, 100_000_000_000_003),
+        );
         insert_hashmap(&mut checksums, &"node5".to_string(), (5, u64::MAX - 1));
         insert_hashmap(&mut checksums, &"node6".to_string(), (6, u64::MAX));
 

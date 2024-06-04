@@ -8,15 +8,17 @@ fn cargo() -> Command {
 }
 
 fn main() {
-    build_library("rustyrts-dynamic-rlib");
-    build_library("rustyrts-dynamic-runner");
+    if std::env::var("SKIP_BUILD").is_err() {
+        build_library("rustyrts-dynamic-rlib");
+        build_library("rustyrts-dynamic-runner");
 
-    install_rlib("rustyrts_dynamic_rlib", "rustyrts-dynamic-rlib");
-    install_staticlib("rustyrts_dynamic_runner", "rustyrts-dynamic-runner");
+        install_rlib("rustyrts_dynamic_rlib", "rustyrts-dynamic-rlib");
+        install_staticlib("rustyrts_dynamic_runner", "rustyrts-dynamic-runner");
+    }
 }
 
 fn build_library(dir_name: &str) {
-    println!("cargo:warning=Building {}", dir_name);
+    println!("cargo:warning=Building {dir_name}");
 
     let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -34,14 +36,14 @@ fn build_library(dir_name: &str) {
                 std::process::exit(exit.code().unwrap_or(42));
             }
         }
-        Err(ref e) => panic!("error while building {}: {:?}", dir_name, e),
+        Err(ref e) => panic!("error while building {dir_name}: {e:?}"),
     }
 
-    println!("cargo:rerun-if-changed={}", dir_name);
+    println!("cargo:rerun-if-changed={dir_name}");
 }
 
 fn install_rlib(name: &str, dir_name: &str) {
-    println!("cargo:warning=Installing {}", name);
+    println!("cargo:warning=Installing {name}");
 
     let dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -52,9 +54,12 @@ fn install_rlib(name: &str, dir_name: &str) {
     path.push("release");
     path.push("deps");
 
-    let files: Vec<DirEntry> = read_dir(path).unwrap().filter_map(|res| res.ok()).collect();
+    let files: Vec<DirEntry> = read_dir(path)
+        .unwrap()
+        .filter_map(std::result::Result::ok)
+        .collect();
 
-    let rlib_file = find_file(&format!("lib{}", name), ".rlib", &files);
+    let rlib_file = find_file(&format!("lib{name}"), ".rlib", &files);
 
     let cargo_home = get_cargo_home();
 
@@ -66,23 +71,26 @@ fn install_rlib(name: &str, dir_name: &str) {
         .and_then(|entry| {
             let src = entry.path();
             let mut dst = cargo_home.clone();
-            dst.push(format!("lib{}.rlib", name));
+            dst.push(format!("lib{name}.rlib"));
             copy(src, dst)
         })
         .unwrap();
 }
 
 fn install_staticlib(name: &str, dir_name: &str) {
-    println!("cargo:warning=Installing {}", name);
+    println!("cargo:warning=Installing {name}");
 
     let mut dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     dir.push(dir_name);
     dir.push("target");
     dir.push("release");
 
-    let files: Vec<DirEntry> = read_dir(dir).unwrap().filter_map(|res| res.ok()).collect();
+    let files: Vec<DirEntry> = read_dir(dir)
+        .unwrap()
+        .filter_map(std::result::Result::ok)
+        .collect();
 
-    let a_file = find_file(&format!("lib{}", name), ".a", &files);
+    let a_file = find_file(&format!("lib{name}"), ".a", &files);
 
     let cargo_home = get_cargo_home();
 
@@ -91,7 +99,7 @@ fn install_staticlib(name: &str, dir_name: &str) {
         .and_then(|entry| {
             let src = entry.path();
             let mut dst = cargo_home.clone();
-            dst.push(format!("lib{}.a", name));
+            dst.push(format!("lib{name}.a"));
             copy(src, dst)
         })
         .unwrap();

@@ -196,7 +196,13 @@ fn create_call<'tcx>(
 pub trait Traceable<'tcx> {
     fn insert_trace(&mut self, tcx: TyCtxt<'tcx>, name: &str, cache_ret: &mut Option<Local>);
 
-    fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
+    fn insert_pre_test(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        name: &str,
+        cache_ret: &mut Option<Local>,
+        append: bool,
+    );
 
     #[cfg(unix)]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
@@ -206,7 +212,6 @@ pub trait Traceable<'tcx> {
         tcx: TyCtxt<'tcx>,
         name: &str,
         cache_ret: &mut Option<Local>,
-        cache_call: &mut Option<BasicBlock>,
         append: bool,
     );
 
@@ -269,7 +274,13 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         }
     }
 
-    fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
+    fn insert_pre_test(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        name: &str,
+        cache_ret: &mut Option<Local>,
+        append: bool,
+    ) {
         trace!("Inserting pre_test() into {:?}", self.source.def_id());
 
         let Some(def_id_pre_fn) = get_def_id_pre_test_fn(tcx) else {
@@ -277,7 +288,11 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
             return;
         };
 
-        let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+        cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+
+        let local_ret = cache_ret.unwrap();
+        let ty_ref_str = ty_str(tcx);
+        let ty_bool = ty_bool(tcx);
 
         let span = self.span;
 
@@ -288,7 +303,10 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
         let basic_blocks = self.basic_blocks.as_mut();
 
-        let args_vec = Vec::with_capacity(0);
+        let operand_str = operand_str(tcx, name, ty_ref_str, span);
+        let operand_bool = operand_bool(append, ty_bool, span);
+
+        let args_vec = vec![operand_str, operand_bool];
         let terminator = create_call(
             tcx,
             def_id_pre_fn,
@@ -354,7 +372,6 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         tcx: TyCtxt<'tcx>,
         name: &str,
         cache_ret: &mut Option<Local>,
-        cache_call: &mut Option<BasicBlock>,
         append: bool,
     ) {
         trace!("Inserting post_test() into {:?}", self.source.def_id());
@@ -410,79 +427,6 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
                     // Swap bb_i and the new basic block
                     basic_blocks.swap(BasicBlock::from_usize(i), index);
-                }
-                TerminatorKind::Call { unwind, .. }
-                | TerminatorKind::Assert { unwind, .. }
-                | TerminatorKind::InlineAsm { unwind, .. }
-                    if *unwind == UnwindAction::Continue
-                        && !self
-                            .basic_blocks
-                            .get(BasicBlock::from_usize(i))
-                            .unwrap()
-                            .is_cleanup =>
-                {
-                    if let Some(call_bb) = cache_call {
-                        *unwind = UnwindAction::Cleanup(*call_bb);
-                    } else {
-                        cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
-
-                        let place_elem_list = tcx.mk_place_elems(&[]);
-                        let span = self.span;
-
-                        let local_ret = cache_ret.unwrap();
-                        let ty_ref_str = ty_str(tcx);
-                        let ty_bool = ty_bool(tcx);
-
-                        let basic_blocks = self.basic_blocks.as_mut();
-
-                        // At this index, we will insert the call to rustyrts_post_test()
-                        *unwind = UnwindAction::Cleanup(basic_blocks.next_index());
-
-                        //*******************************************************
-                        // Insert new bb to resume unwinding
-
-                        let resume_bb = {
-                            let terminator = Terminator {
-                                source_info: SourceInfo::outermost(span),
-                                kind: TerminatorKind::UnwindResume,
-                            };
-
-                            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-                            new_basic_block_data.is_cleanup = true;
-
-                            basic_blocks.push(new_basic_block_data)
-                        };
-
-                        //*******************************************************
-                        // Create assign statements
-
-                        //*******************************************************
-                        // Create new basic block
-
-                        let operand_str = operand_str(tcx, name, ty_ref_str, span);
-                        let operand_bool = operand_bool(append, ty_bool, span);
-
-                        let args_vec = vec![operand_str, operand_bool];
-                        let terminator = create_call(
-                            tcx,
-                            def_id_post_fn,
-                            span,
-                            args_vec,
-                            local_ret,
-                            place_elem_list,
-                            Some(basic_blocks.next_index()), // After swapping bbs, this will point to resume
-                        );
-
-                        let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-                        new_basic_block_data.is_cleanup = true;
-
-                        let index = basic_blocks.push(new_basic_block_data);
-
-                        // Swap bbs to order nicely (first call, then resume)
-                        basic_blocks.swap(index, resume_bb);
-
-                        cache_call.replace(resume_bb); // At this index we now find the bb containing the call
-                    }
                 }
                 _ => (),
             }

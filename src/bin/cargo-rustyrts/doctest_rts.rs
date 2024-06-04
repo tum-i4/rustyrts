@@ -4,6 +4,7 @@ use std::{
     hash::DefaultHasher,
     hash::Hasher,
     path::{Path, PathBuf},
+    string::ToString,
 };
 
 use cargo::{
@@ -104,7 +105,7 @@ pub(crate) fn run_analysis_doctests(
             p.arg("-L").arg(arg);
         }
 
-        for native_dep in compilation.native_dirs.iter() {
+        for native_dep in &compilation.native_dirs {
             p.arg("-L").arg(native_dep);
         }
 
@@ -175,7 +176,7 @@ pub(crate) fn run_analysis_doctests(
                 .get_or_init(|| old_checksums_const);
         }
 
-        tests.push((analysis, count))
+        tests.push((analysis, count));
     }
 
     {
@@ -238,6 +239,6 @@ fn parse_tests(input: &str) -> Vec<String> {
     input
         .lines()
         .filter_map(|l| l.strip_suffix(": test"))
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
         .collect_vec()
 }

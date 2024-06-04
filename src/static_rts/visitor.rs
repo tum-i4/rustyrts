@@ -56,8 +56,6 @@ use crate::{
 
 use super::graph::DependencyGraph;
 
-// pub static debug: AtomicBool = AtomicBool::new(false);
-
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
     Eager,
@@ -111,7 +109,7 @@ impl<'tcx> CustomUsageMap<'tcx> {
     ) where
         'tcx: 'a,
     {
-        for (used_item, context) in used_items.iter() {
+        for (used_item, context) in used_items {
             let used_item = used_item.node;
 
             if self.dependencies.get(&used_item).is_none() {
@@ -136,7 +134,7 @@ impl<'tcx> CustomUsageMap<'tcx> {
             if let Some((new_to, new_to_trimmed)) = Self::mono_item_name(self.tcx, to) {
                 graph.add_edge(new_to.clone(), new_to_trimmed.clone(), EdgeType::Trimmed);
 
-                from.into_iter().for_each(|(node, types)| {
+                for (node, types) in from {
                     for ty in types {
                         if let Some((new_from, new_from_trimmed)) =
                             Self::mono_item_name(self.tcx, node)
@@ -152,7 +150,7 @@ impl<'tcx> CustomUsageMap<'tcx> {
                             graph.add_edge(new_from, new_to.clone(), ty);
                         }
                     }
-                });
+                }
             }
         });
 
@@ -297,7 +295,7 @@ pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
                             if let TyKind::FnDef(def_id, substs) = ty.kind() {
                                 let instance = Instance::new(*def_id, substs);
                                 let mono_item = MonoItem::Fn(instance);
-                                roots.push(dummy_spanned(mono_item))
+                                roots.push(dummy_spanned(mono_item));
                             }
                         }
                     }
@@ -728,9 +726,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     true,
                     source,
                     self.output,
-                    // 1. function -> callee function (static dispatch)
+                    // 1. function → callee function (static dispatch)
                     EdgeType::Call,
-                )
+                );
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -978,13 +976,12 @@ fn maybe_codegen_context<'tcx>(
         return edge_type.map(MonomorphizationContext::Local);
     }
 
-    if !tcx.is_mir_available(def_id) {
-        panic!(
-            "Unable to find optimized MIR {:?} {}",
-            tcx.def_span(def_id),
-            tcx.crate_name(def_id.krate),
-        );
-    }
+    assert!(
+        tcx.is_mir_available(def_id),
+        "Unable to find optimized MIR {:?} {}",
+        tcx.def_span(def_id),
+        tcx.crate_name(def_id.krate),
+    );
 
     edge_type.map(MonomorphizationContext::Local)
 }
@@ -1185,7 +1182,7 @@ fn collect_const_value<'tcx>(
 ) {
     match value {
         mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
-            collect_alloc(tcx, ptr.provenance.alloc_id(), output)
+            collect_alloc(tcx, ptr.provenance.alloc_id(), output);
         }
         mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
         mir::ConstValue::Slice { data, meta: _ } => {
@@ -1483,7 +1480,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         }
         GlobalAlloc::VTable(ty, trait_ref) => {
             let alloc_id = tcx.vtable_allocation((ty, trait_ref));
-            collect_alloc(tcx, alloc_id, output)
+            collect_alloc(tcx, alloc_id, output);
         }
     }
 }

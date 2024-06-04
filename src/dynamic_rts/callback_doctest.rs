@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, string::ToString};
 
 use crate::{
     callbacks_shared::{
@@ -58,15 +58,15 @@ impl InstrumentingCallback for InstrumentingDoctestRTSCallbacks {
                             trace!("Searching for doctest function - Checking {:?}", name);
                             name.strip_prefix(DOCTEST_PREFIX)
                                 .filter(|suffix| !suffix.contains("::"))
-                                .map(|s| s.to_string())
+                                .map(ToString::to_string)
                         })
                         .unique()
                         .exactly_one()
                         .expect("Did not find exactly one suitable doctest name")
                 };
 
-                body.insert_post_test(tcx, &doctest_name, &mut cache_ret, &mut None, true);
-                body.insert_pre_test(tcx, &mut cache_ret);
+                body.insert_post_test(tcx, &doctest_name, &mut cache_ret, true);
+                body.insert_pre_test(tcx, &doctest_name, &mut cache_ret, true);
                 return;
             }
         }
@@ -171,7 +171,7 @@ impl Drop for AnalyzingRTSCallbacks {
 impl Callbacks for AnalyzingRTSCallbacks {
     fn config(&mut self, config: &mut Config) {
         // The only possibility to intercept vtable entries, which I found, is in their local crate
-        config.override_queries = Some(|_session, providers| {
+        config.override_queries = Some(|session, providers| {
             debug!("Modifying providers");
 
             if std::env::var(ENV_SKIP_ANALYSIS).is_err() {
@@ -179,7 +179,7 @@ impl Callbacks for AnalyzingRTSCallbacks {
                 providers.vtable_entries =
                     |tcx, binder| Self::custom_vtable_entries(tcx, binder, SUFFIX_DYN);
             } else {
-                trace!("Not analyzing crate {:?}", _session.opts.crate_name);
+                trace!("Not analyzing crate {:?}", session.opts.crate_name);
             }
         });
     }

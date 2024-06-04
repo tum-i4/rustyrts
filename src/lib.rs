@@ -61,9 +61,7 @@ pub fn main_rustyrts(mut callbacks: impl Callbacks + Send, fail_fast: bool) {
 
     let result = rustc_driver::catch_fatal_errors(move || {
         let mut rustc_args = std::env::args()
-            .enumerate()
-            .filter(|(i, arg)| !(*i == 1 && arg.ends_with("rustc")))
-            .map(|(_i, arg)| {
+            .map(|arg| {
                 // when running blackbox tests, this ensures that stable crate ids do not change if features are enabled
                 if std::env::var(ENV_BLACKBOX_TEST).is_ok() && arg.starts_with("metadata=") {
                     return "metadata=".to_string();
@@ -80,9 +78,6 @@ pub fn main_rustyrts(mut callbacks: impl Callbacks + Send, fail_fast: bool) {
         rustc_args.push("-L".to_string());
         rustc_args.push(rlib_source.display().to_string());
 
-        rustc_args.push("--cap-lints".to_string());
-        rustc_args.push("warn".to_string());
-
         let run_compiler = rustc_driver::RunCompiler::new(&rustc_args, &mut callbacks);
         run_compiler.run()
     });
@@ -94,7 +89,7 @@ pub fn main_rustyrts(mut callbacks: impl Callbacks + Send, fail_fast: bool) {
     }
 
     let exit_code = match result {
-        Ok(_) => EXIT_SUCCESS,
+        Ok(()) => EXIT_SUCCESS,
         Err(_) => EXIT_FAILURE,
     };
 

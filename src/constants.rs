@@ -11,7 +11,7 @@ pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 /// Is set by cargo
 pub const ENV_COMPILE_MODE: &str = "RUSTYRTS_COMPILE_MODE";
 
-/// May be used to instruct RustyRTS to only emit checksums and changed nodes
+/// May be used to instruct `RustyRTS` to only emit checksums and changed nodes
 pub const ENV_ONLY_INSTRUMENTATION: &str = "RUSTYRTS_ONLY_INSTRUMENTATION";
 
 /// May be used to skip the analysis
@@ -45,7 +45,7 @@ pub const ENDING_TEST: &str = "test";
 pub const ENDING_GRAPH: &str = "dot";
 
 #[cfg(unix)]
-pub const ENDING_PROCESS_TRACE: &str = ".process_trace";
+pub const ENDING_PROCESS_TRACE: &str = "process_trace";
 
 //######################################################################################################################
 // Edge cases that need special treatment

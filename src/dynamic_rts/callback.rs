@@ -23,6 +23,7 @@ use rustc_interface::{interface, Config, Queries};
 use rustc_middle::mir::Body;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{
+    def_id::LOCAL_CRATE,
     source_map::{FileLoader, RealFileLoader},
     sym::{self},
     symbol::Ident,
@@ -68,8 +69,8 @@ impl InstrumentingCallback for InstrumentingRTSCallbacks {
                     // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
                     // 1. insert_post 2. insert_pre
 
-                    body.insert_post_test(tcx, def_path_test, &mut cache_ret, &mut None, false);
-                    body.insert_pre_test(tcx, &mut cache_ret);
+                    body.insert_post_test(tcx, def_path_test, &mut cache_ret, false);
+                    body.insert_pre_test(tcx, def_path_test, &mut cache_ret, false);
                     return;
                 }
             }
@@ -78,7 +79,8 @@ impl InstrumentingCallback for InstrumentingRTSCallbacks {
         #[cfg(unix)]
         if let Some(entry_def) = ENTRY_FN.get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id))
         {
-            if def_id == *entry_def {
+            if def_id == *entry_def && tcx.crate_name(LOCAL_CRATE).as_str() != "build_script_build"
+            {
                 // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
                 // 1. insert_post, 2. trace, 3. insert_pre
 
@@ -93,7 +95,8 @@ impl InstrumentingCallback for InstrumentingRTSCallbacks {
 
         #[cfg(unix)]
         if let Some(entry_def) = ENTRY_FN.get().unwrap() {
-            if def_id == *entry_def {
+            if def_id == *entry_def && tcx.crate_name(LOCAL_CRATE).as_str() != "build_script_build"
+            {
                 body.insert_pre_main(tcx, &mut cache_ret);
             }
         }
@@ -142,64 +145,6 @@ impl DynamicRTSCallbacks {
     }
 }
 
-// impl InstrumentingCallback for DynamicRTSCallbacks {
-//     fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-//         let def_id = body.source.instance.def_id();
-//         let outer = def_id_name(tcx, def_id, false, true);
-
-//         trace!("Visiting {}", outer);
-
-//         let mut cache_ret = None;
-
-//         let attrs = &tcx.hir_crate(()).owners[tcx
-//             .local_def_id_to_hir_id(def_id.expect_local())
-//             .owner
-//             .def_id]
-//             .as_owner()
-//             .map_or(AttributeMap::EMPTY, |o| &o.attrs)
-//             .map;
-
-//         for (_, list) in attrs.iter() {
-//             for attr in *list {
-//                 if attr.name_or_empty().to_ident_string() == TEST_MARKER {
-//                     let def_path = def_id_name(tcx, def_id, false, false);
-//                     let def_path_test = &def_path[0..def_path.len() - 13];
-
-//                     // IMPORTANT: The order in which insert_post, insert_pre are called is critical here
-//                     // 1. insert_post 2. insert_pre
-
-//                     body.insert_post_test(tcx, def_path_test, &mut cache_ret, &mut None, false);
-//                     body.insert_pre_test(tcx, &mut cache_ret);
-//                     return;
-//                 }
-//             }
-//         }
-
-//         #[cfg(unix)]
-//         if let Some(entry_def) = ENTRY_FN.get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id))
-//         {
-//             if def_id == *entry_def {
-//                 // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
-//                 // 1. insert_post, 2. trace, 3. insert_pre
-
-//                 body.insert_post_main(tcx, &mut cache_ret, &mut None);
-//             }
-//         }
-
-//         body.insert_trace(tcx, &outer, &mut cache_ret);
-
-//         #[cfg(unix)]
-//         body.check_calls_to_exit(tcx, &mut cache_ret);
-
-//         #[cfg(unix)]
-//         if let Some(entry_def) = ENTRY_FN.get().unwrap() {
-//             if def_id == *entry_def {
-//                 body.insert_pre_main(tcx, &mut cache_ret);
-//             }
-//         }
-//     }
-// }
-
 impl<'tcx> AnalysisCallback<'tcx> for DynamicRTSCallbacks {}
 
 impl ChecksumsCallback for DynamicRTSCallbacks {
@@ -223,7 +168,7 @@ impl Drop for DynamicRTSCallbacks {
             let old_checksums_vtbl = self.import_checksums(ChecksumKind::VtblChecksum, false);
             let old_checksums_const = self.import_checksums(ChecksumKind::ConstChecksum, false);
 
-            let context = &mut self.context.get_mut().unwrap();
+            let context = self.context.get_mut().unwrap();
 
             context.old_checksums.get_or_init(|| old_checksums);
             context
@@ -389,7 +334,7 @@ impl Callbacks for DynamicRTSCallbacks {
 pub trait InstrumentingCallback {
     fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 
-    /// This function is executed instead of optimized_mir() in the compiler
+    /// This function is executed instead of `optimized_mir()` in the compiler
     fn custom_optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, key: LocalDefId) -> &'tcx Body<'tcx> {
         let content = OLD_OPTIMIZED_MIR.load(SeqCst);
 
