@@ -42,7 +42,8 @@ pub const ENDING_CHECKSUM_VTBL_OLD: &str = "checksum_vtbl_old";
 pub const ENDING_CHECKSUM_CONST: &str = "checksum_const";
 pub const ENDING_CHECKSUM_CONST_OLD: &str = "checksum_const_old";
 pub const ENDING_TEST: &str = "test";
-pub const ENDING_GRAPH: &str = "dot";
+pub const ENDING_GRAPH: &str = "graph";
+pub const ENDING_PRETTY_GRAPH: &str = "dot";
 
 #[cfg(unix)]
 pub const ENDING_PROCESS_TRACE: &str = "process_trace";

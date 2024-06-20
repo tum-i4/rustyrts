@@ -1,4 +1,4 @@
-use super::graph::DependencyGraph;
+use super::graph::{serialize::ArenaSerializable, DependencyGraph};
 use crate::fs_utils::write_to_file;
 use crate::names::def_id_name;
 use crate::{
@@ -78,7 +78,7 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticRTSCallbacks {
 
         let path = CacheKind::Static.map(self.path.clone());
         write_to_file(
-            graph.to_string(),
+            graph.serialize(),
             path.clone(),
             |buf| {
                 CacheFileDescr::new(

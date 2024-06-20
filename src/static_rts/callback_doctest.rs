@@ -15,7 +15,7 @@ use rustc_middle::ty::TyCtxt;
 use std::path::PathBuf;
 use tracing::{debug, trace};
 
-use super::graph::DependencyGraph;
+use super::graph::{serialize::ArenaSerializable, DependencyGraph};
 
 pub struct StaticDoctestRTSCallbacks {
     path: PathBuf,
@@ -63,7 +63,7 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
         let path = CacheKind::Static.map(self.path.clone());
         append_to_file(
             // IMPORTANT: requires filesystem locking, since multiple threads write to this file in parallel
-            graph.to_string(),
+            graph.serialize(),
             path.clone(),
             |buf| {
                 CacheFileDescr::new(

@@ -2,7 +2,8 @@
 
 use crate::constants::{
     DIR_DYNAMIC, DIR_GENERAL, DIR_STATIC, ENDING_CHANGES, ENDING_CHECKSUM, ENDING_CHECKSUM_CONST,
-    ENDING_CHECKSUM_VTBL, ENDING_GRAPH, ENDING_TEST, ENDING_TRACE, ENV_TARGET_DIR,
+    ENDING_CHECKSUM_VTBL, ENDING_GRAPH, ENDING_PRETTY_GRAPH, ENDING_TEST, ENDING_TRACE,
+    ENV_TARGET_DIR,
 };
 use std::io::Write;
 use std::path::PathBuf;
@@ -50,6 +51,7 @@ pub enum CacheFileKind {
     Changes,
     Checksums(ChecksumKind),
     Graph,
+    PrettyGraph,
     Traces,
 
     #[cfg(unix)]
@@ -93,6 +95,7 @@ impl AsRef<str> for CacheFileKind {
             Self::Changes => ENDING_CHANGES,
             Self::Checksums(kind) => kind.as_ref(),
             Self::Graph => ENDING_GRAPH,
+            Self::PrettyGraph => ENDING_PRETTY_GRAPH,
             Self::Traces => ENDING_TRACE,
 
             #[cfg(unix)]

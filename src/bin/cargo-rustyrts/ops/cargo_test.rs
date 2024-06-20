@@ -112,7 +112,7 @@ pub fn run_tests(
     let compilation = compile_tests(ws, options, &bcx, exec)?;
 
     let arena = Arena::new();
-    let mut selection_context = mode.selection_context(&target_dir, &arena, unit_graph);
+    let mut selection_context = mode.selection_context(ws, &target_dir, &arena, unit_graph);
     let selector = selection_context.selector();
 
     let mut errors: Vec<UnitTestError> = run_unit_tests(

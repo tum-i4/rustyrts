@@ -5,7 +5,7 @@ use cargo::{
             unit_graph::{UnitDep, UnitGraph},
             Unit,
         },
-        Shell,
+        Shell, Workspace,
     },
     util::Filesystem,
 };
@@ -59,6 +59,7 @@ pub(crate) trait SelectionMode {
 
     fn selection_context<'context, 'arena: 'context>(
         &self,
+        ws: &Workspace<'_>,
         target_dir: &'context Path,
         arena: &'arena Arena<String>,
         units: &'context HashMap<Unit, Vec<UnitDep>>,

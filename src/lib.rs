@@ -1,5 +1,6 @@
 #![feature(rustc_private)]
 #![allow(mutable_transmutes)]
+#![feature(slice_split_once)]
 
 // required for calling the compiler and providing callbacks
 extern crate rustc_driver;

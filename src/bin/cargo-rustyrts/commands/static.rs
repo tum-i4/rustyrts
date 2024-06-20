@@ -3,7 +3,7 @@ use std::{
     boxed::Box,
     collections::{HashMap, HashSet},
     fmt::Display,
-    fs::{read_dir, read_to_string},
+    fs::{read, read_dir, read_to_string, File},
     path::{Path, PathBuf},
     string::ToString,
     time::Instant,
@@ -15,7 +15,7 @@ use cargo::{
             unit_graph::{UnitDep, UnitGraph},
             Unit,
         },
-        Shell,
+        Shell, Workspace,
     },
     util::command_prelude::*,
     CargoResult,
@@ -27,7 +27,7 @@ use rustyrts::{
     callbacks_shared::DOCTEST_PREFIX,
     constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET_DIR},
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
-    static_rts::graph::DependencyGraph,
+    static_rts::graph::{serialize::ArenaDeserializable, DependencyGraph},
 };
 use tracing::trace;
 
@@ -121,11 +121,15 @@ impl SelectionMode for StaticMode {
 
     fn selection_context<'context, 'arena: 'context>(
         &self,
+        ws: &Workspace<'_>,
         target_dir: &'context Path,
         arena: &'arena Arena<String>,
         units: &'context HashMap<Unit, Vec<UnitDep>>,
     ) -> Box<dyn SelectionContext<'context> + 'context> {
-        Box::new(StaticSelectionContext::new(target_dir, arena, units))
+        let verbose = ws.config().extra_verbose();
+        Box::new(StaticSelectionContext::new(
+            target_dir, arena, units, verbose,
+        ))
     }
 }
 
@@ -142,9 +146,10 @@ impl<'arena: 'context, 'context> StaticSelectionContext<'arena, 'context> {
         target_dir: &'context Path,
         arena: &'arena Arena<String>,
         unit_graph: &'context HashMap<Unit, Vec<UnitDep>>,
+        pretty_print_graph: bool,
     ) -> Self {
         Self {
-            selector: StaticSelector::new(target_dir, arena, unit_graph),
+            selector: StaticSelector::new(target_dir, arena, unit_graph, pretty_print_graph),
         }
     }
 }
@@ -170,11 +175,19 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
         target_dir: &'context Path,
         arena: &'arena Arena<String>,
         unit_graph: &'context HashMap<Unit, Vec<UnitDep>>,
+        pretty_print_graph: bool,
     ) -> Self {
         Self {
             cache: HashCache::recursive(
                 move |cache: &mut HashCache<'context, _, _>, unit: &DependencyUnit<'context>| {
-                    Self::import_graph(target_dir.to_path_buf(), arena, unit_graph, cache, unit)
+                    Self::import_graph(
+                        target_dir.to_path_buf(),
+                        arena,
+                        unit_graph,
+                        cache,
+                        unit,
+                        pretty_print_graph,
+                    )
                 },
             ),
             arena,
@@ -187,6 +200,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
         unit_graph: &'context HashMap<Unit, Vec<UnitDep>>,
         cache: &mut HashCache<'context, DependencyUnit<'context>, DependencyNode<'arena>>,
         unit: &DependencyUnit<'context>,
+        pretty_print_graph: bool,
     ) -> DependencyNode<'arena> {
         let (unit, maybe_doctest_name) = match unit {
             DependencyUnit::Unit(u) => {
@@ -224,7 +238,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
             path
         };
         let changes_path = {
-            let mut path = CacheKind::Static.map(target_dir);
+            let mut path = CacheKind::Static.map(target_dir.clone());
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
@@ -244,16 +258,34 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                     .collect()
             });
 
-        let graph = read_to_string(graph_path.clone())
+        let graph = read(graph_path.clone())
                         .ok()
-                        .and_then(|s| DependencyGraph::from_str(arena, &s).ok())
-                        .unwrap_or_else(|| {
+                        .map_or_else(
+                       || {
                             trace!(
                                 "Did not find dependency graph for crate {:?} in mode {:?}\nTried reading from {:?}",
                                 crate_name, compile_mode, graph_path
                             );
                             DependencyGraph::new(arena)
-                        });
+                        }, |s| DependencyGraph::deserialize(arena, &s).unwrap());
+
+        if pretty_print_graph {
+            let pretty_path = {
+                let mut path = CacheKind::Static.map(target_dir.clone());
+                CacheFileDescr::new(
+                    &crate_name,
+                    Some(&compile_mode),
+                    maybe_doctest_name,
+                    CacheFileKind::PrettyGraph,
+                )
+                .apply(&mut path);
+                path
+            };
+
+            let mut f =
+                File::create(pretty_path).expect("Failed to create file for pretty-printing graph");
+            graph.render_to(&mut f);
+        }
 
         let mut starting_points = changed_nodes.clone();
         let mut changed_nodes = changed_nodes;

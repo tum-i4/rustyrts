@@ -1,84 +1,106 @@
-use itertools::Itertools;
-use queues::{IsQueue, Queue};
-use std::fmt::Debug;
-use std::hash::Hash;
-use std::str::FromStr;
-use std::{
-    collections::{HashMap, HashSet},
-    string::ToString,
-};
-
+use dot::RenderOption;
 use internment::Arena;
 use internment::ArenaIntern;
+use itertools::Itertools;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
+use queues::{IsQueue, Queue};
+use std::{
+    collections::{HashMap, HashSet},
+    io::Write,
+};
+use std::{fmt::Debug, ops::Deref};
+use std::{fmt::Display, iter::IntoIterator, vec::Vec};
+use std::{hash::Hash, ops::AddAssign};
 
-#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
+#[repr(u16)]
 pub enum EdgeType {
-    Call,
-    Unsize,
-    Contained,
-    Drop,
-    Static,
-    ReifyPtr,
-    FnPtr,
+    Call = 1 << 0,
+    Unsize = 1 << 1,
+    Contained = 1 << 2,
+    Drop = 1 << 3,
+    Static = 1 << 4,
+    ReifyPtr = 1 << 5,
+    FnPtr = 1 << 6,
 
-    Asm,
-    ClosurePtr,
-    Intrinsic,
-    LangItem,
+    Asm = 1 << 7,
+    ClosurePtr = 1 << 8,
+    Intrinsic = 1 << 9,
+    LangItem = 1 << 10,
 
-    Trimmed,
+    Trimmed = 1 << 11,
 }
 
-impl AsRef<str> for EdgeType {
-    fn as_ref(&self) -> &str {
-        match self {
-            EdgeType::Call => "[color = black]",
-            EdgeType::Unsize => "[color = blue]",
-            EdgeType::Contained => "[color = orange]",
-            EdgeType::Drop => "[color = yellow]",
-            EdgeType::Static => "[color = green]",
-            EdgeType::ReifyPtr => "[color = magenta]",
-            EdgeType::FnPtr => "[color = cyan]",
-
-            EdgeType::Asm => "[color = grey]",
-            EdgeType::ClosurePtr => "[color = grey]",
-            EdgeType::Intrinsic => "[color = grey]",
-            EdgeType::LangItem => "[color = grey]",
-
-            EdgeType::Trimmed => "[color = red]",
-        }
+impl Display for EdgeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{self:?}"))
     }
 }
 
-impl FromStr for EdgeType {
-    type Err = ();
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub struct EdgeTypes {
+    bitmap: u16,
+}
 
-    fn from_str(input: &str) -> Result<Self, Self::Err> {
-        match input {
-            "Call" => Ok(Self::Call),
-            "Unsize" => Ok(Self::Unsize),
-            "Contained" => Ok(Self::Contained),
-            "Drop" => Ok(Self::Drop),
-            "Static" => Ok(Self::Static),
-            "ReifyPtr" => Ok(Self::ReifyPtr),
-            "FnPtr" => Ok(Self::FnPtr),
+impl EdgeTypes {
+    fn empty() -> Self {
+        Self { bitmap: 0 }
+    }
 
-            "ClosurePtr" => Ok(Self::ClosurePtr),
-            "Asm" => Ok(Self::Asm),
-            "Intrinsic" => Ok(Self::Intrinsic),
-            "LangItem" => Ok(Self::LangItem),
-
-            "Trimmed" => Ok(Self::Trimmed),
-            _ => Err(()),
-        }
+    fn from_raw(raw: u16) -> Self {
+        Self { bitmap: raw }
     }
 }
 
+impl Deref for EdgeTypes {
+    type Target = u16;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bitmap
+    }
+}
+
+impl AddAssign<EdgeType> for EdgeTypes {
+    #[allow(clippy::suspicious_op_assign_impl)]
+    fn add_assign(&mut self, rhs: EdgeType) {
+        self.bitmap |= u16::from(rhs);
+    }
+}
+
+impl IntoIterator for EdgeTypes {
+    type Item = EdgeType;
+
+    type IntoIter = <Vec<EdgeType> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let mut vec = Vec::new();
+        let mut i: u16 = 1;
+        while i != 0 {
+            let d = self.bitmap & i;
+
+            if d != 0 {
+                let ty = EdgeType::try_from(i).expect("Found malformed edge_types");
+                vec.push(ty);
+            }
+            i <<= 1;
+        }
+
+        vec.into_iter()
+    }
+}
+
+impl Display for EdgeTypes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut types = self.into_iter();
+        f.write_fmt(format_args!("{}", types.join(", ")))
+    }
+}
+
+#[derive(Clone)]
 pub struct DependencyGraph<'arena, T: Eq + Hash> {
     arena: &'arena Arena<T>,
     nodes: HashSet<ArenaIntern<'arena, T>>,
-    backwards_edges:
-        HashMap<ArenaIntern<'arena, T>, HashMap<ArenaIntern<'arena, T>, HashSet<EdgeType>>>,
+    backwards_edges: HashMap<ArenaIntern<'arena, T>, HashMap<ArenaIntern<'arena, T>, EdgeTypes>>,
 }
 
 impl<'arena, T: Eq + Hash> PartialEq for DependencyGraph<'arena, T> {
@@ -123,11 +145,11 @@ impl<'arena, T: Eq + Hash> DependencyGraph<'arena, T> {
         let ingoing = self.backwards_edges.get_mut(&end).unwrap();
 
         if ingoing.get(&start).is_none() {
-            ingoing.insert(start, HashSet::new());
+            ingoing.insert(start, EdgeTypes::empty());
         }
 
         let types = ingoing.get_mut(&start).unwrap();
-        types.insert(edge_type);
+        *types += edge_type;
     }
 
     #[allow(unused)]
@@ -162,152 +184,294 @@ impl<'arena, T: Eq + Hash> DependencyGraph<'arena, T> {
 }
 
 impl<'arena> DependencyGraph<'arena, String> {
-    fn import_nodes(&mut self, lines: impl IntoIterator<Item = String>) {
-        // Parse nodes
-        // TODO: improve error handling
-        for line in lines {
-            let message_fn = || format!("Found malformed node line: {line})");
+    pub fn render_to<W: Write>(&self, output: &mut W) {
+        dot::render_opts(
+            self,
+            output,
+            &[RenderOption::NoEdgeLabels, RenderOption::NoNodeLabels],
+        )
+        .unwrap();
+    }
+}
 
-            let node = line
-                .strip_prefix('\"')
-                .unwrap_or_else(|| panic!("{}", message_fn()));
-            let node = node
-                .strip_suffix('\"')
-                .unwrap_or_else(|| panic!("{}", message_fn()));
+pub mod serialize {
+    use std::{
+        collections::{HashMap, HashSet},
+        str::Utf8Error,
+    };
 
-            self.add_node(node.to_string());
-        }
+    use internment::Arena;
+    use itertools::Itertools;
+
+    use crate::static_rts::graph::EdgeTypes;
+
+    use super::DependencyGraph;
+
+    #[derive(Debug)]
+    pub enum DeserializationError {
+        SplitError,
+        ConversionError(Utf8Error),
+        IndexOutOfBounds(usize),
     }
 
-    fn import_edges(&mut self, lines: impl IntoIterator<Item = String>) {
-        // Parse edges
-        for line in lines {
-            let message_fn = || format!("Found malformed edge line: {line})");
+    pub trait ArenaSerializable<'arena, I> {
+        fn serialize(self) -> Vec<u8>;
+    }
 
-            let (edge_str, edge_types_str) = line
-                .split_once(" //")
-                .unwrap_or_else(|| panic!("{}", message_fn()));
+    pub trait ArenaDeserializable<'arena, I> {
+        type Error;
 
-            if let Some(edge_types) = edge_types_str
-                .strip_prefix(" {")
-                .and_then(|s| s.strip_suffix('}'))
-                .map(|s| s.split(", "))
-            {
-                let (start_str, end_str) = edge_str.split_once("\" -> \"").unwrap();
-                let start = start_str
-                    .strip_prefix('\"')
-                    .unwrap_or_else(|| panic!("{}", message_fn()));
-                let end = end_str
-                    .strip_suffix('\"')
-                    .unwrap_or_else(|| panic!("{}", message_fn()));
+        fn deserialize(
+            arena: &'arena Arena<I>,
+            input: &[u8],
+        ) -> Result<DependencyGraph<'arena, String>, Self::Error>;
+    }
 
-                for edge_type in edge_types {
-                    self.add_edge(
-                        start.to_string(),
-                        end.to_string(),
-                        edge_type
-                            .parse()
-                            .unwrap_or_else(|()| panic!("{}", message_fn())),
-                    );
+    impl<'arena> ArenaSerializable<'arena, String> for DependencyGraph<'arena, String> {
+        fn serialize(self) -> Vec<u8> {
+            let mut out: Vec<u8> = Vec::new();
+
+            let mut nodes_map = HashMap::new();
+
+            // 1. Nodes
+            let nodes = self
+                .nodes
+                .into_iter()
+                .enumerate()
+                .inspect(|(i, s)| {
+                    nodes_map.insert(*s, *i);
+                })
+                .map(|(_i, s)| s)
+                .join("|");
+            out.extend_from_slice(nodes.as_bytes());
+
+            out.push(b'~');
+
+            // 2. Edges
+            out.extend_from_slice(&self.backwards_edges.len().to_ne_bytes());
+            for (end, edges) in self.backwards_edges {
+                let i_end = *nodes_map.get(&end).unwrap();
+                let num = edges.len();
+
+                out.extend_from_slice(&i_end.to_ne_bytes());
+                out.extend_from_slice(&num.to_ne_bytes());
+
+                for (start, types) in edges {
+                    let i_start = nodes_map.get(&start).unwrap();
+
+                    out.extend_from_slice(&i_start.to_ne_bytes());
+                    out.extend_from_slice(&(*types).to_ne_bytes());
                 }
             }
+
+            out
         }
     }
 
-    pub fn pretty(&self, checksum_nodes: HashSet<String>) -> String {
-        let mut result = String::new();
+    impl<'arena> ArenaDeserializable<'arena, String> for DependencyGraph<'arena, String> {
+        type Error = DeserializationError;
 
-        result.push_str("digraph {\n");
+        fn deserialize(arena: &'arena Arena<String>, input: &[u8]) -> Result<Self, Self::Error> {
+            let mut input = input;
 
-        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&***b, &***a)) {
-            let format = if checksum_nodes.contains(&***node) {
-                " [penwidth = 2.5]"
-            } else {
-                ""
+            let mut nodes = HashSet::new();
+            let mut backwards_edges = HashMap::new();
+
+            while !input.is_empty() {
+                let (nodes_raw, rest) = input
+                    .split_once(|c| *c == b'~')
+                    .ok_or(DeserializationError::SplitError)?;
+                input = rest;
+
+                // 1. Read nodes
+                let mut nodes_map = HashMap::new();
+                for (i, n) in nodes_raw.split(|c| *c == b'|').enumerate() {
+                    let node =
+                        std::str::from_utf8(n).map_err(DeserializationError::ConversionError)?;
+                    let interned = arena.intern(node.to_string());
+                    nodes_map.insert(i, interned);
+                    nodes.insert(interned);
+                }
+
+                // 2. Read edges
+                let num_edges = {
+                    let (num_raw, r) = input.split_at(std::mem::size_of::<usize>());
+                    input = r;
+
+                    usize::from_ne_bytes(num_raw.try_into().unwrap())
+                };
+
+                for _ in 0..num_edges {
+                    let (end_raw, r) = input.split_at(std::mem::size_of::<usize>());
+                    input = r;
+                    let (num_raw, r) = input.split_at(std::mem::size_of::<usize>());
+                    input = r;
+
+                    let end_index = usize::from_ne_bytes(end_raw.try_into().unwrap());
+                    let end = *nodes_map
+                        .get(&end_index)
+                        .ok_or(DeserializationError::IndexOutOfBounds(end_index))?;
+
+                    let num = usize::from_ne_bytes(num_raw.try_into().unwrap());
+
+                    backwards_edges.insert(end, HashMap::new());
+                    let inner = backwards_edges.get_mut(&end).unwrap();
+
+                    for _ in 0..num {
+                        let (start_raw, r) = input.split_at(std::mem::size_of::<usize>());
+                        input = r;
+                        let (types_raw, r) = input.split_at(std::mem::size_of::<EdgeTypes>());
+                        input = r;
+
+                        let start_index = usize::from_ne_bytes(start_raw.try_into().unwrap());
+                        let start = *nodes_map
+                            .get(&start_index)
+                            .ok_or(DeserializationError::IndexOutOfBounds(start_index))?;
+
+                        let bitmap = u16::from_ne_bytes(types_raw.try_into().unwrap());
+                        let types = EdgeTypes::from_raw(bitmap);
+
+                        inner.insert(start, types);
+                    }
+                }
+            }
+
+            Ok(Self {
+                arena,
+                nodes,
+                backwards_edges,
+            })
+        }
+    }
+}
+
+pub mod pretty {
+    use std::borrow::Cow;
+
+    use dot::{GraphWalk, Id, Labeller};
+    use internment::ArenaIntern;
+    use itertools::Itertools;
+
+    use super::{DependencyGraph, EdgeType};
+
+    #[derive(Clone)]
+    pub(crate) struct Edge<'arena> {
+        start: ArenaIntern<'arena, String>,
+        end: ArenaIntern<'arena, String>,
+        ty: EdgeType,
+    }
+
+    impl<'arena, 'a> GraphWalk<'a, ArenaIntern<'arena, String>, Edge<'arena>>
+        for DependencyGraph<'arena, String>
+    {
+        fn nodes(&'a self) -> dot::Nodes<'a, ArenaIntern<'arena, String>> {
+            self.nodes
+                .iter()
+                .copied()
+                .sorted_by(|n1, n2| Ord::cmp(n1.as_str(), n2.as_str()))
+                .collect_vec()
+                .into()
+        }
+
+        fn edges(&'a self) -> dot::Edges<'a, Edge<'arena>> {
+            let mut vec = Vec::new();
+
+            for (end, edges) in self
+                .backwards_edges
+                .iter()
+                .sorted_by(|(s1, _), (s2, _)| Ord::cmp(s1.as_str(), s2.as_str()))
+            {
+                for (start, types) in edges
+                    .iter()
+                    .sorted_by(|(e1, _), (e2, _)| Ord::cmp(e1.as_str(), e2.as_str()))
+                {
+                    for ty in types.into_iter() {
+                        if ty != EdgeType::Trimmed {
+                            vec.push(Edge {
+                                start: *start,
+                                end: *end,
+                                ty,
+                            });
+                        }
+                    }
+                }
+            }
+
+            std::borrow::Cow::Owned(vec)
+        }
+
+        fn source(&'a self, edge: &Edge<'arena>) -> ArenaIntern<'arena, String> {
+            let Edge {
+                start,
+                end: _end,
+                ty: _types,
+            } = edge;
+            *start
+        }
+
+        fn target(&'a self, edge: &Edge<'arena>) -> ArenaIntern<'arena, String> {
+            let Edge {
+                start: _start,
+                end,
+                ty: _types,
+            } = edge;
+            *end
+        }
+    }
+
+    impl<'a, 'arena> Labeller<'a, ArenaIntern<'arena, String>, Edge<'arena>>
+        for DependencyGraph<'arena, String>
+    {
+        fn graph_id(&'a self) -> dot::Id<'a> {
+            Id::new("DependencyGraph").unwrap()
+        }
+
+        fn node_id(&'a self, n: &ArenaIntern<'arena, String>) -> dot::Id<'a> {
+            unsafe { unchecked_id(n) }
+        }
+
+        fn edge_color(&'a self, e: &Edge<'arena>) -> Option<dot::LabelText<'a>> {
+            let color = match e.ty {
+                EdgeType::Call => "black",
+                EdgeType::Unsize => "blue",
+                EdgeType::Contained => "orange",
+                EdgeType::Drop => "yellow",
+                EdgeType::Static => "green",
+                EdgeType::ReifyPtr => "magenta",
+                EdgeType::FnPtr => "cyan",
+                EdgeType::Asm => "grey",
+                EdgeType::ClosurePtr => "grey",
+                EdgeType::Intrinsic => "grey",
+                EdgeType::LangItem => "grey",
+                EdgeType::Trimmed => "red",
             };
-            result.push_str(format!("\"{node}\"{format}\n").as_str());
+
+            Some(dot::LabelText::LabelStr(Cow::Borrowed(color)))
         }
 
-        let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
+        fn edge_label(&'a self, e: &Edge<'arena>) -> dot::LabelText<'a> {
+            let label = match e.ty {
+                EdgeType::Call => "call",
+                EdgeType::Unsize => "unsize",
+                EdgeType::Contained => "contained",
+                EdgeType::Drop => "drop",
+                EdgeType::Static => "static",
+                EdgeType::ReifyPtr => "reify_ptr",
+                EdgeType::FnPtr => "fn_ptr",
+                EdgeType::Asm => "asm",
+                EdgeType::ClosurePtr => "closure_ptr",
+                EdgeType::Intrinsic => "intrinsic",
+                EdgeType::LangItem => "lang_item",
+                EdgeType::Trimmed => "",
+            };
 
-        for (end, edge) in &self.backwards_edges {
-            for (start, types) in edge {
-                unsorted.push((start, end, types));
-            }
+            dot::LabelText::LabelStr(Cow::Borrowed(label))
         }
-
-        for (start, end, types) in unsorted
-            .iter()
-            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0).then(Ord::cmp(&b.1, &a.1)))
-        {
-            for typ in *types {
-                result.push_str(
-                    format!(
-                        "\"{}\" -> \"{}\" {} // {:?}\n",
-                        start,
-                        end,
-                        typ.as_ref(),
-                        typ
-                    )
-                    .as_str(),
-                );
-            }
-        }
-
-        result.push_str("}\n");
-
-        result
     }
-}
 
-impl<'arena> ToString for DependencyGraph<'arena, String> {
-    fn to_string(&self) -> String {
-        let mut result = String::new();
-
-        result.push_str("digraph {\n");
-
-        for node in self.nodes.iter().sorted_by(|a, b| Ord::cmp(&***b, &***a)) {
-            result.push_str(format!("\"{node}\"\n").as_str());
-        }
-
-        let mut unsorted: Vec<(&String, &String, &HashSet<EdgeType>)> = Vec::new();
-
-        for (end, edge) in &self.backwards_edges {
-            for (start, types) in edge {
-                unsorted.push((start, end, types));
-            }
-        }
-
-        for (start, end, types) in unsorted
-            .iter()
-            .sorted_by(|a, b| Ord::cmp(&b.0, &a.0).then(Ord::cmp(&b.1, &a.1)))
-        {
-            result.push_str(format!("\"{start}\" -> \"{end}\" // {types:?}\n").as_str());
-        }
-
-        result.push_str("}\n");
-
-        result
-    }
-}
-
-impl<'arena> DependencyGraph<'arena, String> {
-    pub fn from_str(arena: &'arena Arena<String>, s: &str) -> Result<Self, ()> {
-        let content = s.trim();
-        let (edges, nodes): (Vec<_>, Vec<_>) = content
-            .split('\n')
-            .filter(|l| !l.trim_start().starts_with('\\')) // Remove Comments
-            .filter(|l| l != &"digraph {")
-            .filter(|l| l != &"}")
-            .map(ToString::to_string)
-            .partition(|l| l.contains("\" -> \""));
-
-        let mut result = Self::new(arena);
-
-        result.import_nodes(nodes.into_iter().filter(|l| !l.is_empty()));
-        result.import_edges(edges);
-
-        Ok(result)
+    unsafe fn unchecked_id<'a, 'arena>(n: &ArenaIntern<'arena, String>) -> dot::Id<'a> {
+        let cow: Cow<'a, str> = Cow::Owned(format!("\"{n}\""));
+        std::mem::transmute::<Cow<_>, Id>(cow)
     }
 }
 
@@ -316,6 +480,8 @@ mod test {
     use internment::Arena;
 
     use crate::static_rts::graph::{DependencyGraph, EdgeType};
+
+    use super::serialize::{ArenaDeserializable, ArenaSerializable};
 
     #[test]
     pub fn test_graph_deserialization() {
@@ -327,8 +493,10 @@ mod test {
         graph.add_edge("start1".to_string(), "end2".to_string(), EdgeType::Unsize);
         graph.add_edge("start2".to_string(), "end2".to_string(), EdgeType::Drop);
 
-        let serialized = graph.to_string();
-        let deserialized = DependencyGraph::from_str(&arena, &serialized).unwrap();
+        let serialized = graph.clone().serialize();
+        println!("Serialized {serialized:?}");
+        let deserialized = DependencyGraph::deserialize(&arena, &serialized).unwrap();
+        println!("Deserialized {deserialized:?}");
 
         assert_eq!(graph, deserialized);
     }

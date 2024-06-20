@@ -7,7 +7,7 @@ use std::{
     vec::Vec,
 };
 
-use cargo::util::command_prelude::*;
+use cargo::{core::Workspace, util::command_prelude::*};
 use cargo::{
     core::{
         compiler::{
@@ -129,6 +129,7 @@ impl SelectionMode for DynamicMode {
 
     fn selection_context<'context, 'arena: 'context>(
         &self,
+        _ws: &Workspace<'_>,
         target_dir: &'context Path,
         arena: &'arena Arena<String>,
         units: &'context HashMap<Unit, Vec<UnitDep>>,
