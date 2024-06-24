@@ -32,9 +32,6 @@ extern crate rustc_incremental;
 // required by code from librustdoc
 extern crate rustc_resolve;
 
-// TODO: maybe this could be moved to the commands module?
-extern crate cargo;
-
 pub mod dynamic_rts;
 pub mod static_rts;
 

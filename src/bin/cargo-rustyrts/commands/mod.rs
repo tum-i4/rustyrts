@@ -1,3 +1,5 @@
+extern crate cargo;
+
 use crate::{command_prelude::*, ops::TestExecutor};
 use cargo::{
     core::{
