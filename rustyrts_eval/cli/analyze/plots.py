@@ -80,7 +80,7 @@ def mutants_cmd(ctx):
         plotter.plot_mutants_duration_relative()
         plotter.plot_mutants_target_count_absolute(partition=partition)
         plotter.plot_mutants_target_count_relative()
-        plotter.plot_mutants_testcases_contains_relation(partition=partition)
+        plotter.plot_mutants_testcases_contains_relation()  # (partition=partition)
         plotter.plot_mutants_testcases_count_absolute(partition=partition)
         plotter.plot_mutants_testcases_count_relative()
         plotter.plot_mutants_testcases_failed_absolute(partition=partition)
@@ -95,9 +95,7 @@ def mutants_cmd(ctx):
 
 
 @plot.command(name="history")
-@click.argument(
-    "strategy", type=click.Choice(["sequential", "parallel"]), required=True
-)
+@click.argument("strategy", type=click.Choice(["sequential", "parallel"]), required=True)
 @click.pass_obj
 def history_cmd(ctx, strategy):
     conn: DBConnection = ctx["connection"]

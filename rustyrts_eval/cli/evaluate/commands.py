@@ -827,11 +827,11 @@ TESTING_PROJECTS = [
 
 SMALL_HISTORY_PROJECTS = [
     (
-        "projects/small/budget",
+        "projects/small/anyhow",
         "master",
         [
-            ("2db4b033e5fc9ba05010def0f6988ba9b822ae8e", None, None, None),
-            ("701986ccc213eae976fa8f1bd4118132a5a3f005", None, None, None),
+            ("cbd91b854f9ccdcf6db1faaaa81fbe353feaa4d0", None, None, None),
+            ("47a4fbfa365050b293d9e3898aadb42a47a571e6", None, None, None),
         ],
     )
 ]
@@ -896,9 +896,7 @@ def mutants(ctx, mode):
         for path, branch, commits in projects:
             spinner.info("Evaluating project in " + path)
 
-            mutants_walk.walk(
-                conn, os.path.abspath(path), branch=branch, commits=commits
-            )
+            mutants_walk.walk(conn, os.path.abspath(path), branch=branch, commits=commits)
 
         spinner.stop()
         click_echo_success(SUCCESS_MUTANTS_MSG)
@@ -909,12 +907,8 @@ def mutants(ctx, mode):
 
 
 @evaluate.command(name="history")
-@click.argument(
-    "mode", type=click.Choice(["random", "hardcoded", "small"]), required=True
-)
-@click.argument(
-    "strategy", type=click.Choice(["sequential", "parallel"]), required=True
-)
+@click.argument("mode", type=click.Choice(["random", "hardcoded", "small"]), required=True)
+@click.argument("strategy", type=click.Choice(["sequential", "parallel"]), required=True)
 @click.pass_obj
 def history(ctx, mode, strategy):
     conn: DBConnection = ctx["connection"]
@@ -932,9 +926,7 @@ def history(ctx, mode, strategy):
             spinner.info("Evaluating project in " + path)
 
             if mode == "random":
-                history_walk.walk(
-                    conn, path, branch=branch, commits=None, sequentially=sequentially
-                )
+                history_walk.walk(conn, path, branch=branch, commits=None, sequentially=sequentially)
             else:
                 history_walk.walk(
                     conn,

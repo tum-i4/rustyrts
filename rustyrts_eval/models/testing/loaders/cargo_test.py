@@ -12,12 +12,7 @@ IGNORE_TEST_EVENTS = ["started", "timeout"]
 
 
 class CargoTestTestReportLoader(TestReportLoader):
-
-    def __init__(
-            self,
-            input: str,
-            load_ignored: bool = True
-    ):
+    def __init__(self, input: str, load_ignored: bool = True):
         """
         Constructor.
 
@@ -29,7 +24,7 @@ class CargoTestTestReportLoader(TestReportLoader):
 
     @classmethod
     def parse_build_time(cls, log):
-        build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log[:log.find("\n     Running ")], re.MULTILINE)
+        build_times = re.finditer(r"^ {4}Finished .* in ((.*)m )?((.*)s)?", log[: log.find("\n     Running ")], re.MULTILINE)
 
         count = 0
         build_time = 0
@@ -46,14 +41,10 @@ class CargoTestTestReportLoader(TestReportLoader):
         return round(build_time, 2)
 
     def load(self) -> list[TestSuite]:
-
-        names = re.findall(r"^ {5}Running (.*) ", self.input, re.MULTILINE)
+        names = re.findall(r"^ +((Running|Doc-tests) (unittests )?([^ \n]*))", self.input, re.MULTILINE)
 
         all_test_events = extract_json_data(self.input)
-        all_test_events = [event for event in all_test_events if
-                           ("type" in event and "event" in event)
-                           and (event["type"] == "suite" or (event["type"] == "test" and not any(
-                               event["event"] == ignored for ignored in IGNORE_TEST_EVENTS)))]
+        all_test_events = [event for event in all_test_events if ("type" in event and "event" in event) and (event["type"] == "suite" or (event["type"] == "test" and not any(event["event"] == ignored for ignored in IGNORE_TEST_EVENTS)))]
         if not self.load_ignored:
             all_test_events = [event for event in all_test_events if event["event"] != "ignored"]
 
@@ -95,16 +86,30 @@ class CargoTestTestReportLoader(TestReportLoader):
                 if "stdout" in suite_event:
                     suite_event["stdout"] = suite_event["stdout"].replace("\x00", "")
 
-            name = names_iter.__next__()
-            is_unittest = name.startswith("unittests ")
-            name = name.removeprefix("unittests ")
+            name = names_iter.__next__()[0]
 
-            if is_unittest:
-                for case in suite_events:
-                    case["target"] = "UNIT"
+            print("Got: " + name)
+
+            is_doctest = name.startswith("Doc-tests ")
+            if is_doctest:
+                name = name.removeprefix("Doc-tests ")
             else:
+                name = name.removeprefix("Running ")
+
+            is_unittest = name.startswith("unittests ")
+            if is_unittest:
+                name = name.removeprefix("unittests ")
+
+            if is_doctest:
                 for case in suite_events:
-                    case["target"] = "INTEGRATION"
+                    case["target"] = "DOCTEST"
+            else:
+                if is_unittest:
+                    for case in suite_events:
+                        case["target"] = "UNIT"
+                else:
+                    for case in suite_events:
+                        case["target"] = "INTEGRATION"
 
             suite_dict["name"] = name
             suite_dict["cases"] = suite_events
@@ -125,7 +130,7 @@ def extract_json_data(input: str, decoder=JSONDecoder()):
         try:
             if "{" not in input:
                 break
-            input = input[input.find("{"):]
+            input = input[input.find("{") :]
             result, index = decoder.raw_decode(input)
             yield result
             input = input[index:]

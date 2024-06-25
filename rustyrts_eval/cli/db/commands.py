@@ -31,6 +31,7 @@ FAILED_MIGRATE_MSG = "Failed to migrate database schema."
 SUCCESS_DROP_MSG = "Successfully dropped database schema."
 FAILED_DROP_MSG = "Failed to drop database schema."
 
+
 @click.group(name="db")
 @click.argument("url", type=str)
 @click.pass_context
@@ -70,16 +71,12 @@ def ping(ctx):
     """
     conn: DBConnection = ctx["connection"]
     co = conn.engine.connect()
-    click_echo_info(
-        "Connection is currently {}.".format(
-            ("busy" if co.in_transaction() else "idle")
-        )
-    )
+    click_echo_info("Connection is currently {}.".format(("busy" if co.in_transaction() else "idle")))
     co.close()
 
 
 @db.command(name="migrate")
-@click.argument("schema", type=click.Choice(['mutants', 'history_sequential', 'history_parallel']), required = True)
+@click.argument("schema", type=click.Choice(["mutants", "history_sequential", "history_parallel"]), required=True)
 @click.pass_obj
 def migrate(ctx, schema: str):
     """
@@ -178,9 +175,7 @@ def _dump(conn, debug, output):
 
 @db.command(name="restore")
 @click.argument("backup", type=click.Path(exists=True))
-@click.option(
-    "--clean", is_flag=True, default=False, help="Clean database before restoring."
-)
+@click.option("--clean", is_flag=True, default=False, help="Clean database before restoring.")
 @click.pass_obj
 def restore(ctx, backup, clean):
     """

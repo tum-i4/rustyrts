@@ -47,11 +47,7 @@ def walk(
     # If a commit is added to the repositories, the seed responsible for making the evaluation reproducible
     # does not work correctly anymore
     # that is why we fixed the commits that are analyzed
-    (strategy, num_commits) = (
-        (GivenWalkerStrategy(commits), len(commits))
-        if commits
-        else (RandomWalkerStrategy(repository, branch=branch), 30)
-    )
+    (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (RandomWalkerStrategy(repository, branch=branch), 30)
 
     build_options = build_options if build_options else []
 
@@ -59,9 +55,7 @@ def walk(
     test_options += ["-Z unstable-options", "--report-time", "--format", "json"]
 
     env_vars = env_vars if env_vars else {}
-    env_vars |= {
-        "RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])
-    }
+    env_vars |= {"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])}
 
     name_postfix = ""
     if sequentially:
@@ -122,6 +116,4 @@ def walk(
         shutil.rmtree(tmp_path)
 
     # backup
-    _dump(
-        connection, False, "post_" + repository.path[repository.path.rfind("/") + 1 :]
-    )
+    _dump(connection, False, "post_" + repository.path[repository.path.rfind("/") + 1 :])

@@ -22,76 +22,46 @@ class CargoRustyRTSHook(CargoHook):
         git_client: GitClient,
         mode: RustyRTSMode,
         connection: DBConnection,
-        env_vars: Optional[Dict] = None,
+        env_vars: Optional[dict[str, str]] = None,
         build_options=None,
         rustc_options=None,
         test_options=None,
         report_name: Optional[str] = None,
         output_path: Optional[str] = None,
     ):
-        super().__init__(repository, git_client, connection, report_name, output_path)
+        super().__init__(
+            repository,
+            git_client,
+            connection,
+            env_vars,
+            build_options,
+            test_options,
+            report_name,
+            output_path,
+        )
 
-        self.target_dir = abspath(repository.path + "/target")
         self.mode = mode
-        self.env_vars = env_vars
-        self.build_options = build_options if build_options else []
-        self.rustc_options = rustc_options if rustc_options else []
-        self.test_options = test_options if test_options else []
-
-    def env(self, rustflags):
-        rustflags = (
-            self.env_vars["RUSTFLAGS"] + " "
-            if self.env_vars and "RUSTFLAGS" in self.env_vars
-            else ""
-        ) + (rustflags if rustflags else "")
-        return os.environ | self.env_vars | {"RUSTFLAGS": rustflags}
 
     def build_env(self, rustflags):
-        os.makedirs(self.target_dir + "/.rts_dynamic", exist_ok=True)
-
-        rustflags = (
-            self.env_vars["RUSTFLAGS"] + " "
-            if self.env_vars and "RUSTFLAGS" in self.env_vars
-            else ""
-        ) + (rustflags if rustflags else "")
-        env = {}
+        env = super().build_env(rustflags)
         if self.mode is RustyRTSMode.DYNAMIC:
-            env["RUSTC_WRAPPER"] = abspath(expanduser("~/.cargo/bin/cargo-rustyrts"))
-            env["RUSTYRTS_MODE"] = "dynamic"
-            env["CARGO_TARGET_DIR"] = self.target_dir
-            env["RUSTYRTS_ARGS"] = "[]"
-        return os.environ | self.env_vars | env | {"RUSTFLAGS": rustflags}
+            env["RUSTC"] = abspath(expanduser("~/.cargo/bin/rustyrts-dynamic"))
+            env["RUSTYRTS_ONLY_INSTRUMENTATION"] = "true"
+            env["CARGO_TARGET_DIR"] = "target"
+        return env
 
-    def clean_command(self):
-        return "cargo clean"
-
-    def update_command(self):
-        return "cargo update"
-
-    def build_command(self, features):
-        build_options = " ".join(self.build_options) + (
-            " --features {0}".format(features) if features else ""
-        )
-        return "cargo build --all-targets {0}".format(build_options)
-
-    def test_command_parent(self, features):
-        build_options = " ".join(self.build_options) + (
-            " --features {0}".format(features) if features else ""
-        )
-        return "cargo rustyrts {0} -- {1} -- {2} -- {1} -- {3}".format(
+    def test_command_parent(self, features) -> str:
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+        return "cargo rustyrts {0} {1} -- {2}".format(
             self.mode,
             build_options,
-            " ".join(self.rustc_options),
             " ".join(self.test_options),
         )
 
-    def test_command(self, features):
-        build_options = " ".join(self.build_options) + (
-            " --features {0}".format(features) if features else ""
-        )
-        return "cargo rustyrts {0} -v -- -Z no-index-update {1} -- {2} -- {1} -- {3}".format(
+    def test_command(self, features) -> str:
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+        return "cargo rustyrts {0} -Z no-index-update {1} -- {2}".format(
             self.mode,
             build_options,
-            " ".join(self.rustc_options),
             " ".join(self.test_options),
         )

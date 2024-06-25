@@ -55,30 +55,19 @@ class CargoMutantsTestReportLoader:
                 diff = elements[1] if len(elements) > 1 else None
 
             if len(elements) > (2 + offset):
-                check_result = re.search(
-                    r"^result: (.*) in ", elements[2 + offset], flags=re.MULTILINE
-                ).group(1)
-                check_duration = re.search(
-                    r"^result: .* in (.*)s", elements[2 + offset], flags=re.MULTILINE
-                ).group(1)
+                check_result = re.search(r"^result: (.*) in ", elements[2 + offset], flags=re.MULTILINE).group(1)
+                check_duration = re.search(r"^result: .* in (.*)s", elements[2 + offset], flags=re.MULTILINE).group(1)
                 check_log = elements[1 + offset].replace("\x00", "")
 
             if len(elements) > (4 + offset):
-                test_result = re.search(
-                    r"^result: (.*) in ", elements[4 + offset], flags=re.MULTILINE
-                ).group(1)
-                test_duration = re.search(
-                    r"^result: .* in (.*)s", elements[4 + offset], flags=re.MULTILINE
-                ).group(1)
+                test_result = re.search(r"^result: (.*) in ", elements[4 + offset], flags=re.MULTILINE).group(1)
+                test_duration = re.search(r"^result: .* in (.*)s", elements[4 + offset], flags=re.MULTILINE).group(1)
                 test_log = elements[3 + offset].replace("\x00", "")
 
             if test_log:
                 test_loader = CargoTestTestReportLoader(test_log)
                 try:
-                    suites = [
-                        MutantsTestSuite.from_test_suite(suite)
-                        for suite in test_loader.load()
-                    ]
+                    suites = [MutantsTestSuite.from_test_suite(suite) for suite in test_loader.load()]
                 except:
                     test_log = "Failed to parse testsuites\n" + test_log
                     _LOGGER.warning("Failed to parse testsuites in file " + file)
@@ -91,9 +80,7 @@ class CargoMutantsTestReportLoader:
                 check_log=check_log,
                 test_result=test_result,
                 test_duration=test_duration,
-                build_duration=CargoTestTestReportLoader.parse_build_time(test_log)
-                if test_log
-                else None,
+                build_duration=CargoTestTestReportLoader.parse_build_time(test_log) if test_log else None,
                 test_log=test_log,
                 suites=suites,
             )

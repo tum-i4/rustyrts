@@ -18,16 +18,13 @@ from ..models.scm.base import (
 #
 
 
-class DBRepositoryMeta(Base.__class__, Repository.__class__):
-    ...
+class DBRepositoryMeta(Base.__class__, Repository.__class__): ...
 
 
-class DBCommitMeta(Base.__class__, Commit.__class__):
-    ...
+class DBCommitMeta(Base.__class__, Commit.__class__): ...
 
 
-class DBChangelistItemMeta(Base.__class__, ChangelistItem.__class__):
-    ...
+class DBChangelistItemMeta(Base.__class__, ChangelistItem.__class__): ...
 
 
 ########################################################################################################################
@@ -53,9 +50,7 @@ class DBRepository(Base, Repository, metaclass=DBRepositoryMeta):
     @classmethod
     def create_or_get(cls, repo: Repository, session: Session) -> "DBRepository":
         # get repo from DB
-        db_repo: DBRepository | None = (
-            session.query(DBRepository).filter_by(path=repo.path).first()
-        )
+        db_repo: DBRepository | None = session.query(DBRepository).filter_by(path=repo.path).first()
         if not db_repo:
             db_repo = cls.create(repo=repo, session=session)
 
@@ -64,9 +59,7 @@ class DBRepository(Base, Repository, metaclass=DBRepositoryMeta):
     @classmethod
     def create_or_update(cls, repo: Repository, session: Session) -> "DBRepository":
         # get repo from DB
-        db_repo: DBRepository | None = (
-            session.query(DBRepository).filter_by(path=repo.path).first()
-        )
+        db_repo: DBRepository | None = session.query(DBRepository).filter_by(path=repo.path).first()
         if not db_repo:
             return cls.create(repo=repo, session=session)
 
@@ -90,16 +83,12 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
     author = Column(String)
     message = Column(String)
     timestamp = Column(DateTime)
-    changelist: Mapped[List["DBChangelistItem"]] = relationship(
-        "DBChangelistItem", back_populates="commit"
-    )
+    changelist: Mapped[List["DBChangelistItem"]] = relationship("DBChangelistItem", back_populates="commit")
     repo_id = Column(
         Integer,
         ForeignKey("{}.id".format(DBRepository.__tablename__), ondelete="CASCADE"),
     )
-    repo: Mapped[Optional[DBRepository]] = relationship(
-        "DBRepository", back_populates="commits"
-    )
+    repo: Mapped[Optional[DBRepository]] = relationship("DBRepository", back_populates="commits")
     reports = relationship("DBTestReport", back_populates="commit")
     mutants_reports = relationship("DBMutantsReport", back_populates="commit")
     nr_lines = Column(Integer, nullable=True)
@@ -122,9 +111,7 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
     @classmethod
     def create_or_get(cls, commit: Commit, session: Session) -> "DBCommit":
         # get commit from DB
-        db_commit: DBCommit | None = (
-            session.query(DBCommit).filter_by(commit_str=commit.commit_str).first()
-        )
+        db_commit: DBCommit | None = session.query(DBCommit).filter_by(commit_str=commit.commit_str).first()
         # create DB commit object if not in DB yet
         if not db_commit:
             db_commit = cls.create(commit=commit, session=session)
@@ -133,17 +120,13 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
     @classmethod
     def create_or_update(cls, commit: Commit, session: Session) -> "DBCommit":
         # get commit from DB
-        db_commit: DBCommit | None = (
-            session.query(DBCommit).filter_by(commit_str=commit.commit_str).first()
-        )
+        db_commit: DBCommit | None = session.query(DBCommit).filter_by(commit_str=commit.commit_str).first()
         # create DB commit object if not in DB yet
         if not db_commit:
             return cls.create(commit=commit, session=session)
 
         if db_commit.repo != commit.repo:
-            db_commit.repo = DBRepository.create_or_update(
-                repo=commit.repo, session=session
-            )
+            db_commit.repo = DBRepository.create_or_update(repo=commit.repo, session=session)
 
         db_commit.author = commit.author
         db_commit.message = commit.message
@@ -165,9 +148,7 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
             author=commit.author,
             message=commit.message,
             timestamp=commit.timestamp,
-            changelist=[
-                DBChangelistItem.from_domain(item) for item in commit.changelist
-            ],
+            changelist=[DBChangelistItem.from_domain(item) for item in commit.changelist],
             repo=DBRepository.from_domain(commit.repo),
             nr_lines=commit.nr_lines,
             nr_files=commit.nr_files,
@@ -191,9 +172,7 @@ class DBChangelistItem(Base, ChangelistItem, metaclass=DBChangelistItemMeta):
     action = Column(Enum(ChangelistItemAction))
     kind = Column(Enum(ChangelistItemKind))
     content = Column(String)
-    commit_id = Column(
-        Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE")
-    )
+    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
     commit = relationship("DBCommit", back_populates="changelist")
 
     @classmethod

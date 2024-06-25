@@ -8,10 +8,10 @@ JSON_INDENT: int = 2
 
 class LogEvent:
     def __init__(
-            self,
-            name: str,
-            value: Optional[str] = None,
-            timestamp: datetime = datetime.now().isoformat(),
+        self,
+        name: str,
+        value: Optional[str] = None,
+        timestamp: datetime = datetime.now().isoformat(),
     ):
         self.name = name
         self.value = value
@@ -30,6 +30,7 @@ class LogEvent:
         log_events: List["LogEvent"] = []
         with open(log_file, "r") as file:
             for line in file:
+
                 def _deserialization_object_hook(data: Dict):
                     return cls(
                         data["name"],
@@ -37,8 +38,6 @@ class LogEvent:
                         datetime.fromisoformat(data["timestamp"]),
                     )
 
-                log_event: LogEvent = json.loads(
-                    line.strip(), object_hook=_deserialization_object_hook
-                )
+                log_event: LogEvent = json.loads(line.strip(), object_hook=_deserialization_object_hook)
                 log_events.append(log_event)
         return log_events

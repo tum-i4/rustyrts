@@ -41,20 +41,16 @@ from ..models.testing.mutants import (
 #
 
 
-class DBMutantsReportMeta(Base.__class__, MutantsReport.__class__):
-    ...
+class DBMutantsReportMeta(Base.__class__, MutantsReport.__class__): ...
 
 
-class DBMutantMeta(Base.__class__, Mutant.__class__):
-    ...
+class DBMutantMeta(Base.__class__, Mutant.__class__): ...
 
 
-class DBMutantsTestSuiteMeta(Base.__class__, MutantsTestSuite.__class__):
-    ...
+class DBMutantsTestSuiteMeta(Base.__class__, MutantsTestSuite.__class__): ...
 
 
-class DBMutantsTestCaseMeta(Base.__class__, MutantsTestCase.__class__):
-    ...
+class DBMutantsTestCaseMeta(Base.__class__, MutantsTestCase.__class__): ...
 
 
 ########################################################################################################################
@@ -71,16 +67,10 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
 
     name = Column(String, nullable=False)
     duration = Column(Float)
-    mutants: Mapped[List["DBMutant"]] = relationship(
-        "DBMutant", back_populates="report"
-    )
+    mutants: Mapped[List["DBMutant"]] = relationship("DBMutant", back_populates="report")
     commit_str = Column(String, nullable=False)
-    commit_id = Column(
-        Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE")
-    )
-    commit: Mapped[DBCommit] = relationship(
-        "DBCommit", back_populates="mutants_reports"
-    )
+    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
+    commit: Mapped[DBCommit] = relationship("DBCommit", back_populates="mutants_reports")
     log = Column(Text)
     has_failed = Column(Boolean)
     missed = Column(Integer)
@@ -90,24 +80,14 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
     failed = Column(Integer)
 
     @classmethod
-    def get_single(
-        cls, name: str, commit_str: str, session: Session
-    ) -> Optional["DBMutantsReport"]:
-        db_report: Optional[DBMutantsReport] = (
-            session.query(DBMutantsReport)
-            .filter_by(name=name, commit_str=commit_str)
-            .first()
-        )
+    def get_single(cls, name: str, commit_str: str, session: Session) -> Optional["DBMutantsReport"]:
+        db_report: Optional[DBMutantsReport] = session.query(DBMutantsReport).filter_by(name=name, commit_str=commit_str).first()
         return db_report
 
     @classmethod
-    def create_or_update(
-        cls, report: MutantsReport, session: Session
-    ) -> "DBMutantsReport":
+    def create_or_update(cls, report: MutantsReport, session: Session) -> "DBMutantsReport":
         # get report from DB
-        db_report: Optional[DBMutantsReport] = cls.get_single(
-            name=report.name, commit_str=report.commit_str, session=session
-        )
+        db_report: Optional[DBMutantsReport] = cls.get_single(name=report.name, commit_str=report.commit_str, session=session)
 
         # create DB report object if not in DB yet
         if not db_report:
@@ -119,27 +99,15 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
             session.add(db_report)
         else:
             # if already existing, update all fields
-            db_report.duration = (
-                report.duration if report.duration else db_report.duration
-            )
+            db_report.duration = report.duration if report.duration else db_report.duration
 
-            db_report.commit_str = (
-                report.commit_str if report.commit_str else db_report.commit_str
-            )
+            db_report.commit_str = report.commit_str if report.commit_str else db_report.commit_str
             # get from db if it exists
             db_report.commit = DBCommit.create_or_get(report.commit, session)
             print("Report mutants: " + str(report.mutants))
-            db_report.mutants = (
-                [DBMutant.from_domain(s) for s in report.mutants]
-                if report.mutants is not None
-                else db_report.mutants
-            )
+            db_report.mutants = [DBMutant.from_domain(s) for s in report.mutants] if report.mutants is not None else db_report.mutants
             db_report.log = report.log if report.log else db_report.log
-            db_report.has_failed = (
-                report.has_failed
-                if report.has_failed is not None
-                else db_report.has_failed
-            )
+            db_report.has_failed = report.has_failed if report.has_failed is not None else db_report.has_failed
             db_report.missed = report.missed
             db_report.caught = report.caught
             db_report.unviable = report.unviable
@@ -154,9 +122,7 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
         return cls(
             name=report.name,
             duration=report.duration,
-            mutants=[]
-            if report.mutants is None
-            else [DBMutant.from_domain(mutant) for mutant in report.mutants],
+            mutants=[] if report.mutants is None else [DBMutant.from_domain(mutant) for mutant in report.mutants],
             commit_str=report.commit_str,
             commit=DBCommit.from_domain(report.commit),
             log=report.log,
@@ -205,9 +171,7 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
         ForeignKey("{}.id".format(DBMutantsReport.__tablename__), ondelete="CASCADE"),
     )
     report = relationship("DBMutantsReport", back_populates="mutants")
-    suites: Mapped[List["DBMutantsTestSuite"]] = relationship(
-        "DBMutantsTestSuite", back_populates="mutant"
-    )
+    suites: Mapped[List["DBMutantsTestSuite"]] = relationship("DBMutantsTestSuite", back_populates="mutant")
 
     @classmethod
     def from_domain(cls, mutant: Mutant):
@@ -257,13 +221,9 @@ class DBMutantsTestSuite(Base, MutantsTestSuite, metaclass=DBMutantsTestSuiteMet
     ignored_count = Column(Integer)
     measured_count = Column(Integer)
     filtered_out_count = Column(Integer)
-    mutant_id = Column(
-        Integer, ForeignKey("{}.id".format(DBMutant.__tablename__), ondelete="CASCADE")
-    )
+    mutant_id = Column(Integer, ForeignKey("{}.id".format(DBMutant.__tablename__), ondelete="CASCADE"))
     mutant = relationship("DBMutant", back_populates="suites")
-    cases: Mapped[List["DBMutantsTestCase"]] = relationship(
-        "DBMutantsTestCase", back_populates="suite", cascade="all, delete-orphan"
-    )
+    cases: Mapped[List["DBMutantsTestCase"]] = relationship("DBMutantsTestCase", back_populates="suite", cascade="all, delete-orphan")
 
     @classmethod
     def from_domain(cls, suite: MutantsTestSuite) -> "DBMutantsTestSuite":
@@ -310,9 +270,7 @@ class DBMutantsTestCase(Base, MutantsTestCase, metaclass=DBMutantsTestCaseMeta):
     duration = Column(Float)
     suite_id = Column(
         Integer,
-        ForeignKey(
-            "{}.id".format(DBMutantsTestSuite.__tablename__), ondelete="CASCADE"
-        ),
+        ForeignKey("{}.id".format(DBMutantsTestSuite.__tablename__), ondelete="CASCADE"),
     )
     suite = relationship("DBMutantsTestSuite", back_populates="cases")
     stdout = Column(String)
@@ -371,13 +329,7 @@ class MutantsViewInformation:
         labels_mutants = (
             select(
                 repository.c.id,
-                repository.c.path.concat(
-                    literal_column("'\n('").concat(
-                        count(distinct(overview.c.descr))
-                        .label("number_mutants")
-                        .concat(literal_column("')'"))
-                    )
-                ).label("path"),
+                repository.c.path.concat(literal_column("'\n('").concat(count(distinct(overview.c.descr)).label("number_mutants").concat(literal_column("')'")))).label("path"),
             )
             .select_from(repository, commit, overview)
             .where(repository.c.id == commit.c.repo_id)
@@ -403,26 +355,16 @@ def register_views() -> MutantsViewInformation:
         select(
             suite,
             count(case.c.id).label("count_cases"),
-            (
-                suite.c.passed_count
-                + suite.c.failed_count
-                + suite.c.measured_count
-                - count(case.c.id)
-            ).label("discrepancy"),
+            (suite.c.passed_count + suite.c.failed_count + suite.c.measured_count - count(case.c.id)).label("discrepancy"),
         )
         .select_from(suite, case)
         .where(suite.c.id == case.c.suite_id)
         .where(case.c.status != "IGNORED")
         .group_by(suite)
-        .having(
-            count(case.c.id)
-            != (suite.c.passed_count + suite.c.failed_count + suite.c.measured_count)
-        )
+        .having(count(case.c.id) != (suite.c.passed_count + suite.c.failed_count + suite.c.measured_count))
     )
 
-    check_parsed_tests = create_view(
-        "CheckParsedTests", check_parsed_tests, replace=True, metadata=Base.metadata
-    )
+    check_parsed_tests = create_view("CheckParsedTests", check_parsed_tests, replace=True, metadata=Base.metadata)
 
     statistics = (
         select(
@@ -432,29 +374,9 @@ def register_views() -> MutantsViewInformation:
             commit.c.nr_lines.label("lines"),
             commit.c.nr_files.label("files"),
             count(distinct(suite.c.id)).label("suites"),
-            sum(
-                select(count(distinct(case.c.id)))
-                .select_from(case)
-                .where(case.c.suite_id == suite.c.id)
-                .where(case.c.status != "IGNORED")
-                .scalar_subquery()
-            ).label("cases"),
-            sum(
-                select(count(distinct(case.c.id)))
-                .select_from(case)
-                .where(case.c.suite_id == suite.c.id)
-                .where(case.c.target == "UNIT")
-                .where(case.c.status != "IGNORED")
-                .scalar_subquery()
-            ).label("unit"),
-            sum(
-                select(count(distinct(case.c.id)))
-                .select_from(case)
-                .where(case.c.suite_id == suite.c.id)
-                .where(case.c.target == "INTEGRATION")
-                .where(case.c.status != "IGNORED")
-                .scalar_subquery()
-            ).label("integration"),
+            sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.status != "IGNORED").scalar_subquery()).label("cases"),
+            sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "UNIT").where(case.c.status != "IGNORED").scalar_subquery()).label("unit"),
+            sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "INTEGRATION").where(case.c.status != "IGNORED").scalar_subquery()).label("integration"),
         )
         .select_from(commit, report, mutant, suite)
         .where(commit.c.id == report.c.commit_id)
@@ -590,32 +512,15 @@ def register_views() -> MutantsViewInformation:
         )
         .outerjoin(
             dynamic_testcases,
-            (mutant.c.dynamic_id == dynamic_testcases.c.mutant_id)
-            & (retest_all_testcases.c.name == dynamic_testcases.c.name)
-            & (
-                retest_all_testcases.c.testsuite_name
-                == dynamic_testcases.c.testsuite_name
-            ),
+            (mutant.c.dynamic_id == dynamic_testcases.c.mutant_id) & (retest_all_testcases.c.name == dynamic_testcases.c.name) & (retest_all_testcases.c.testsuite_name == dynamic_testcases.c.testsuite_name),
         )
         .outerjoin(
             static_testcases,
-            (mutant.c.static_id == static_testcases.c.mutant_id)
-            & (retest_all_testcases.c.name == static_testcases.c.name)
-            & (
-                retest_all_testcases.c.testsuite_name
-                == static_testcases.c.testsuite_name
-            ),
+            (mutant.c.static_id == static_testcases.c.mutant_id) & (retest_all_testcases.c.name == static_testcases.c.name) & (retest_all_testcases.c.testsuite_name == static_testcases.c.testsuite_name),
         )
-        .where(
-            retest_all_testcases.c.crashed == False
-        )  # filter suites that are not comparable
-        .where(
-            (dynamic_testcases.c.crashed == None)
-            | (dynamic_testcases.c.crashed == False)
-        )
-        .where(
-            (static_testcases.c.crashed == None) | (static_testcases.c.crashed == False)
-        )
+        .where(retest_all_testcases.c.crashed == False)  # filter suites that are not comparable
+        .where((dynamic_testcases.c.crashed == None) | (dynamic_testcases.c.crashed == False))
+        .where((static_testcases.c.crashed == None) | (static_testcases.c.crashed == False))
         .where(retest_all_testcases.c.status != "IGNORED")
     )
 
@@ -633,38 +538,12 @@ def register_views() -> MutantsViewInformation:
             overview.c.commit,
             overview.c.retest_all_mutant_id,
             overview.c.descr,
-            count(distinct(overview.c.retest_all_testcase_id)).label(
-                "retest_all_count"
-            ),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.retest_all_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("retest_all_count_failed"),
+            count(distinct(overview.c.retest_all_testcase_id)).label("retest_all_count"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.retest_all_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("retest_all_count_failed"),
             count(distinct(overview.c.dynamic_testcase_id)).label("dynamic_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.dynamic_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("dynamic_count_failed"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.dynamic_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("dynamic_count_failed"),
             count(distinct(overview.c.static_testcase_id)).label("static_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.static_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("static_count_failed"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.static_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("static_count_failed"),
         )
         .select_from(overview)
         .group_by(
@@ -688,38 +567,12 @@ def register_views() -> MutantsViewInformation:
             overview.c.target,
             overview.c.retest_all_mutant_id,
             overview.c.descr,
-            count(distinct(overview.c.retest_all_testcase_id)).label(
-                "retest_all_count"
-            ),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.retest_all_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("retest_all_count_failed"),
+            count(distinct(overview.c.retest_all_testcase_id)).label("retest_all_count"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.retest_all_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("retest_all_count_failed"),
             count(distinct(overview.c.dynamic_testcase_id)).label("dynamic_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.dynamic_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("dynamic_count_failed"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.dynamic_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("dynamic_count_failed"),
             count(distinct(overview.c.static_testcase_id)).label("static_count"),
-            count(
-                distinct(
-                    select(testcase.c.id)
-                    .select_from(testcase)
-                    .where(testcase.c.id == overview.c.static_testcase_id)
-                    .where(testcase.c.status == "FAILED")
-                    .scalar_subquery()
-                )
-            ).label("static_count_failed"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.static_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("static_count_failed"),
         )
         .select_from(overview)
         .group_by(
@@ -825,18 +678,15 @@ def register_views() -> MutantsViewInformation:
         .select_from(overview)
         .outerjoin(
             retest_all_selected,
-            (overview.c.retest_all_testcase_id == retest_all_selected.c.id)
-            & (retest_all_selected.c.status == "FAILED"),
+            (overview.c.retest_all_testcase_id == retest_all_selected.c.id) & (retest_all_selected.c.status == "FAILED"),
         )
         .outerjoin(
             dynamic_selected,
-            (overview.c.dynamic_testcase_id == dynamic_selected.c.id)
-            & (dynamic_selected.c.status == "FAILED"),
+            (overview.c.dynamic_testcase_id == dynamic_selected.c.id) & (dynamic_selected.c.status == "FAILED"),
         )
         .outerjoin(
             static_selected,
-            (overview.c.static_testcase_id == static_selected.c.id)
-            & (static_selected.c.status == "FAILED"),
+            (overview.c.static_testcase_id == static_selected.c.id) & (static_selected.c.status == "FAILED"),
         )
         .group_by(
             overview.c.commit,
@@ -902,9 +752,7 @@ def register_views() -> MutantsViewInformation:
         literal_column("'MutantsRelativeDynamic'"),
         func.round(
             func.cast(
-                func.sum(testcases_count.c.dynamic_count)
-                / func.sum(testcases_count.c.retest_all_count)
-                * 100.0,
+                func.sum(testcases_count.c.dynamic_count) / func.sum(testcases_count.c.retest_all_count) * 100.0,
                 NUMERIC,
             ),
             2,
@@ -915,9 +763,7 @@ def register_views() -> MutantsViewInformation:
         literal_column("'MutantsRelativeStatic'"),
         func.round(
             func.cast(
-                func.sum(testcases_count.c.static_count)
-                / func.sum(testcases_count.c.retest_all_count)
-                * 100.0,
+                func.sum(testcases_count.c.static_count) / func.sum(testcases_count.c.retest_all_count) * 100.0,
                 NUMERIC,
             ),
             2,
@@ -958,9 +804,7 @@ def register_views() -> MutantsViewInformation:
             literal_column("'MutantsUnitRelativeDynamic'"),
             func.round(
                 func.cast(
-                    func.sum(target_count.c.dynamic_count)
-                    / func.sum(target_count.c.retest_all_count)
-                    * 100.0,
+                    func.sum(target_count.c.dynamic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
                     NUMERIC,
                 ),
                 2,
@@ -975,9 +819,7 @@ def register_views() -> MutantsViewInformation:
             literal_column("'MutantsUnitRelativeStatic'"),
             func.round(
                 func.cast(
-                    func.sum(target_count.c.static_count)
-                    / func.sum(target_count.c.retest_all_count)
-                    * 100.0,
+                    func.sum(target_count.c.static_count) / func.sum(target_count.c.retest_all_count) * 100.0,
                     NUMERIC,
                 ),
                 2,
@@ -1021,9 +863,7 @@ def register_views() -> MutantsViewInformation:
             literal_column("'MutantsIntegrationRelativeDynamic'"),
             func.round(
                 func.cast(
-                    func.sum(target_count.c.dynamic_count)
-                    / func.sum(target_count.c.retest_all_count)
-                    * 100.0,
+                    func.sum(target_count.c.dynamic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
                     NUMERIC,
                 ),
                 2,
@@ -1038,9 +878,7 @@ def register_views() -> MutantsViewInformation:
             literal_column("'MutantsIntegrationRelativeStatic'"),
             func.round(
                 func.cast(
-                    func.sum(target_count.c.static_count)
-                    / func.sum(target_count.c.retest_all_count)
-                    * 100.0,
+                    func.sum(target_count.c.static_count) / func.sum(target_count.c.retest_all_count) * 100.0,
                     NUMERIC,
                 ),
                 2,
@@ -1056,11 +894,7 @@ def register_views() -> MutantsViewInformation:
             literal_column("'MutantsPercentageFailedRetestall'"),
             func.round(
                 func.cast(
-                    func.avg(
-                        testcases_count.c.retest_all_count_failed
-                        / testcases_count.c.retest_all_count
-                    )
-                    * 100.0,
+                    func.avg(testcases_count.c.retest_all_count_failed / testcases_count.c.retest_all_count) * 100.0,
                     NUMERIC,
                 ),
                 2,
@@ -1075,11 +909,7 @@ def register_views() -> MutantsViewInformation:
             literal_column("'MutantsPercentageFailedDynamic'"),
             func.round(
                 func.cast(
-                    func.avg(
-                        testcases_count.c.dynamic_count_failed
-                        / testcases_count.c.dynamic_count
-                    )
-                    * 100.0,
+                    func.avg(testcases_count.c.dynamic_count_failed / testcases_count.c.dynamic_count) * 100.0,
                     NUMERIC,
                 ),
                 2,
@@ -1094,11 +924,7 @@ def register_views() -> MutantsViewInformation:
             literal_column("'MutantsPercentageFailedStatic'"),
             func.round(
                 func.cast(
-                    func.avg(
-                        testcases_count.c.static_count_failed
-                        / testcases_count.c.static_count
-                    )
-                    * 100.0,
+                    func.avg(testcases_count.c.static_count_failed / testcases_count.c.static_count) * 100.0,
                     NUMERIC,
                 ),
                 2,

@@ -12,9 +12,7 @@ def click_echo_success(message: str) -> None:
     :param message:
     :return:
     """
-    click.echo(
-        "{} {}".format(LogSymbols.SUCCESS.value, click.style(message, fg="green"))
-    )
+    click.echo("{} {}".format(LogSymbols.SUCCESS.value, click.style(message, fg="green")))
 
 
 def click_echo_failure(message: str) -> None:
@@ -44,9 +42,7 @@ def click_echo_warning(message: str) -> None:
     :param message:
     :return:
     """
-    click.echo(
-        "{} {}".format(LogSymbols.WARNING.value, click.style(message, fg="orange"))
-    )
+    click.echo("{} {}".format(LogSymbols.WARNING.value, click.style(message, fg="orange")))
 
 
 def start_spinner(text: str, spinner: str = "dots"):

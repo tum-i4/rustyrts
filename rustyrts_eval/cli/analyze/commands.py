@@ -77,9 +77,7 @@ def mutants_cmd(ctx):
             Base.metadata.tables["MutantsTestsNotSelected"],
         ]
 
-        _LOGGER.debug(
-            "Creating schema with tables: {}".format(Base.metadata.tables.keys())
-        )
+        _LOGGER.debug("Creating schema with tables: {}".format(Base.metadata.tables.keys()))
         Base.metadata.create_all(conn.engine, tables=tables)
 
         info = mutants.register_views()
@@ -106,9 +104,7 @@ def history_cmd(ctx):
             Base.metadata.tables["HistoryTestsDifferentSelected"],
         ]
 
-        _LOGGER.debug(
-            "Creating schema with tables: {}".format(Base.metadata.tables.keys())
-        )
+        _LOGGER.debug("Creating schema with tables: {}".format(Base.metadata.tables.keys()))
         Base.metadata.create_all(conn.engine, tables=tables)
 
         info = history.register_views()

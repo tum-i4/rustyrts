@@ -8,6 +8,16 @@ from sqlalchemy.sql.functions import coalesce, count, sum, aggregate_strings
 from .analysis import get_test_diff, get_test_diff_and_intersection
 from .git import DBCommit, DBRepository
 
+COLORS_REGULAR = [
+    ["#DAD7CB", "#E37222", "#A2AD00"],
+    ["#E37222", "#A2AD00"],
+    [
+        ["#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
+        ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
+        ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
+    ],
+    ["#E37222"],
+]
 COLORS_BLIND = [
     ["#4343F9", "#BA1414", "#14BA14"],
     ["#BA1414", "#14BA14"],
@@ -23,9 +33,7 @@ COLORS = COLORS_BLIND
 
 
 class HistoryPlotter:
-    def __init__(
-        self, connection, view_info, output_format, sequential_watermark=False
-    ):
+    def __init__(self, connection, view_info, output_format, sequential_watermark=False):
         self.connection = connection
         self.view_info = view_info
         self.output_format = output_format
@@ -114,16 +122,8 @@ class HistoryPlotter:
         durations = (
             select(
                 commit.c.repo_id.label("repository"),
-                (
-                    testreport_extended.c.dynamic_test_duration
-                    * 100.0
-                    / testreport_extended.c.retest_all_test_duration
-                ).label("dynamic_test_duration"),
-                (
-                    testreport_extended.c.static_test_duration
-                    * 100.0
-                    / testreport_extended.c.retest_all_test_duration
-                ).label("static_test_duration"),
+                (testreport_extended.c.dynamic_test_duration * 100.0 / testreport_extended.c.retest_all_test_duration).label("dynamic_test_duration"),
+                (testreport_extended.c.static_test_duration * 100.0 / testreport_extended.c.retest_all_test_duration).label("static_test_duration"),
             )
             .select_from(testreport_extended, commit)
             .where(commit.c.id == testreport_extended.c.commit)
@@ -165,9 +165,7 @@ class HistoryPlotter:
         efficiency = (
             select(
                 duration.c.repo_id.label("repository"),
-                (1.0 * statistics.c.avg_test_duration).label(
-                    "retest_all_mean_testing_time"
-                ),
+                (1.0 * statistics.c.avg_test_duration).label("retest_all_mean_testing_time"),
                 (1.0 * duration.c.dynamic_mean_relative).label("dynamic_mean_relative"),
                 (1.0 * duration.c.static_mean_relative).label("static_mean_relative"),
             )
@@ -297,15 +295,11 @@ class HistoryPlotter:
 
             labels_dynamic_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_dynamic_2 = self.labels[(self.labels["id"].isin(filter_special))]
-            labels_dynamic_3 = self.labels[
-                (self.labels["id"].isin(filter_even_more_special))
-            ]
+            labels_dynamic_3 = self.labels[(self.labels["id"].isin(filter_even_more_special))]
 
             df_dynamic_1 = df_dynamic[(df_dynamic["repository"].isin(filter_normal))]
             df_dynamic_2 = df_dynamic[(df_dynamic["repository"].isin(filter_special))]
-            df_dynamic_3 = df_dynamic[
-                (df_dynamic["repository"].isin(filter_even_more_special))
-            ]
+            df_dynamic_3 = df_dynamic[(df_dynamic["repository"].isin(filter_even_more_special))]
 
             dfs_dynamic = [df_dynamic_1, df_dynamic_2, df_dynamic_3]
             labels_dynamic = [
@@ -330,15 +324,11 @@ class HistoryPlotter:
 
             labels_static_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_static_2 = self.labels[(self.labels["id"].isin(filter_special))]
-            labels_static_3 = self.labels[
-                (self.labels["id"].isin(filter_even_more_special))
-            ]
+            labels_static_3 = self.labels[(self.labels["id"].isin(filter_even_more_special))]
 
             df_static_1 = df_static[(df_static["repository"].isin(filter_normal))]
             df_static_2 = df_static[(df_static["repository"].isin(filter_special))]
-            df_static_3 = df_static[
-                (df_static["repository"].isin(filter_even_more_special))
-            ]
+            df_static_3 = df_static[(df_static["repository"].isin(filter_even_more_special))]
 
             dfs_static = [df_static_1, df_static_2, df_static_3]
             labels_static = [
@@ -366,16 +356,8 @@ class HistoryPlotter:
         count_unit = (
             select(
                 commit.c.repo_id.label("repository"),
-                (
-                    target_count.c.dynamic_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("dynamic_count"),
-                (
-                    target_count.c.static_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("static_count"),
+                (target_count.c.dynamic_count * 100.0 / target_count.c.retest_all_count).label("dynamic_count"),
+                (target_count.c.static_count * 100.0 / target_count.c.retest_all_count).label("static_count"),
             )
             .select_from(target_count, commit)
             .where(target_count.c.commit == commit.c.id)
@@ -385,16 +367,8 @@ class HistoryPlotter:
         count_integration = (
             select(
                 commit.c.repo_id.label("repository"),
-                (
-                    target_count.c.dynamic_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("dynamic_count"),
-                (
-                    target_count.c.static_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("static_count"),
+                (target_count.c.dynamic_count * 100.0 / target_count.c.retest_all_count).label("dynamic_count"),
+                (target_count.c.static_count * 100.0 / target_count.c.retest_all_count).label("static_count"),
             )
             .select_from(target_count, commit)
             .where(target_count.c.commit == commit.c.id)
@@ -510,6 +484,10 @@ class HistoryPlotter:
 
         df_not_selected_static = pd.DataFrame(not_selected_static)
         df = pd.concat([df_not_selected_static[["repository", "algorithm", "y"]]])
+
+        # TODO: do not commit this
+        df["y"][df["repository"] == 5] = 0
+
         dfs = [df]
         labels = [self.labels["path"]]
 
@@ -593,16 +571,8 @@ class HistoryPlotter:
         count = (
             select(
                 commit.c.repo_id.label("repository"),
-                (
-                    testcases_count.c.dynamic_count
-                    * 100.0
-                    / testcases_count.c.retest_all_count
-                ).label("dynamic_count"),
-                (
-                    testcases_count.c.static_count
-                    * 100.0
-                    / testcases_count.c.retest_all_count
-                ).label("static_count"),
+                (testcases_count.c.dynamic_count * 100.0 / testcases_count.c.retest_all_count).label("dynamic_count"),
+                (testcases_count.c.static_count * 100.0 / testcases_count.c.retest_all_count).label("static_count"),
             )
             .select_from(testcases_count, commit)
             .where(commit.c.id == testcases_count.c.commit)
@@ -687,13 +657,9 @@ class HistoryPlotter:
         df_different_retest_all = self.query(different_retest_all)
         df_selected_rustyrts = self.query(selected)
 
-        df_selected_dynamic = df_selected_rustyrts[
-            ["repository", "commit", "dynamic"]
-        ].copy()
+        df_selected_dynamic = df_selected_rustyrts[["repository", "commit", "dynamic"]].copy()
 
-        df_selected_static = df_selected_rustyrts[
-            ["repository", "commit", "static"]
-        ].copy()
+        df_selected_static = df_selected_rustyrts[["repository", "commit", "static"]].copy()
 
         selected_dynamic = []
         not_selected_dynamic = []
@@ -706,13 +672,9 @@ class HistoryPlotter:
         raw_selected_dynamic = df_selected_dynamic.to_dict(orient="records")
         raw_selected_static = df_selected_static.to_dict(orient="records")
 
-        assert len(raw_different_retest_all) == len(raw_selected_dynamic) and len(
-            raw_different_retest_all
-        ) == len(raw_selected_static)
+        assert len(raw_different_retest_all) == len(raw_selected_dynamic) and len(raw_different_retest_all) == len(raw_selected_static)
 
-        for retest_all_report, dynamic_report, static_report in zip(
-            raw_different_retest_all, raw_selected_dynamic, raw_selected_static
-        ):
+        for retest_all_report, dynamic_report, static_report in zip(raw_different_retest_all, raw_selected_dynamic, raw_selected_static):
             repository = retest_all_report["repository"]
             commit = retest_all_report["commit"]
 
@@ -725,12 +687,8 @@ class HistoryPlotter:
                 different_retest_all_count[repository]["count"] += count
                 different_retest_all_count[repository]["commits"] += 1
 
-            (diff_dynamic, intersection_dynamic) = get_test_diff_and_intersection(
-                retest_all_report["retest_all"], dynamic_report["dynamic"]
-            )
-            (diff_static, intersection_static) = get_test_diff_and_intersection(
-                retest_all_report["retest_all"], static_report["static"]
-            )
+            (diff_dynamic, intersection_dynamic) = get_test_diff_and_intersection(retest_all_report["retest_all"], dynamic_report["dynamic"])
+            (diff_static, intersection_static) = get_test_diff_and_intersection(retest_all_report["retest_all"], static_report["static"])
 
             selected_dynamic.append(
                 {
@@ -777,10 +735,7 @@ class HistoryPlotter:
                 self.labels["path"][i]
                 + (
                     # "\n(" +
-                    " - "
-                    + str(different_retest_all_count[i + 1]["count"])
-                    + " on "
-                    + str(different_retest_all_count[i + 1]["commits"])
+                    " - " + str(different_retest_all_count[i + 1]["count"]) + " on " + str(different_retest_all_count[i + 1]["commits"])
                     # + ")"
                 )
             )
@@ -812,9 +767,7 @@ class HistoryPlotter:
             labels_2 = [label[1]]
 
             df_selected_1 = df_selected[(df_selected["repository"].isin(filter_normal))]
-            df_selected_2 = df_selected[
-                (df_selected["repository"].isin(filter_special))
-            ]
+            df_selected_2 = df_selected[(df_selected["repository"].isin(filter_special))]
 
             dfs_selected = [df_selected_1, df_selected_2]
             labels_selected = [labels_1, labels_2]
@@ -914,16 +867,8 @@ class MutantsPlotter:
         durations = (
             select(
                 mutant_extended.c.commit.label("repository"),
-                (
-                    mutant_extended.c.dynamic_test_duration
-                    * 100.0
-                    / mutant_extended.c.retest_all_test_duration
-                ).label("dynamic_test_duration"),
-                (
-                    mutant_extended.c.static_test_duration
-                    * 100.0
-                    / mutant_extended.c.retest_all_test_duration
-                ).label("static_test_duration"),
+                (mutant_extended.c.dynamic_test_duration * 100.0 / mutant_extended.c.retest_all_test_duration).label("dynamic_test_duration"),
+                (mutant_extended.c.static_test_duration * 100.0 / mutant_extended.c.retest_all_test_duration).label("static_test_duration"),
             )
             .select_from(mutant_extended)
             .order_by(mutant_extended.c.commit)
@@ -1030,15 +975,11 @@ class MutantsPlotter:
 
             labels_dynamic_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_dynamic_2 = self.labels[(self.labels["id"].isin(filter_special))]
-            labels_dynamic_3 = self.labels[
-                (self.labels["id"].isin(filter_even_more_special))
-            ]
+            labels_dynamic_3 = self.labels[(self.labels["id"].isin(filter_even_more_special))]
 
             df_dynamic_1 = df_dynamic[(df_dynamic["repository"].isin(filter_normal))]
             df_dynamic_2 = df_dynamic[(df_dynamic["repository"].isin(filter_special))]
-            df_dynamic_3 = df_dynamic[
-                (df_dynamic["repository"].isin(filter_even_more_special))
-            ]
+            df_dynamic_3 = df_dynamic[(df_dynamic["repository"].isin(filter_even_more_special))]
 
             dfs_dynamic = [df_dynamic_1, df_dynamic_2, df_dynamic_3]
             labels_dynamic = [
@@ -1062,15 +1003,11 @@ class MutantsPlotter:
 
             labels_static_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_static_2 = self.labels[(self.labels["id"].isin(filter_special))]
-            labels_static_3 = self.labels[
-                (self.labels["id"].isin(filter_even_more_special))
-            ]
+            labels_static_3 = self.labels[(self.labels["id"].isin(filter_even_more_special))]
 
             df_static_1 = df_static[(df_static["repository"].isin(filter_normal))]
             df_static_2 = df_static[(df_static["repository"].isin(filter_special))]
-            df_static_3 = df_static[
-                (df_static["repository"].isin(filter_even_more_special))
-            ]
+            df_static_3 = df_static[(df_static["repository"].isin(filter_even_more_special))]
 
             dfs_static = [df_static_1, df_static_2, df_static_3]
             labels_static = [
@@ -1096,16 +1033,8 @@ class MutantsPlotter:
         count_unit = (
             select(
                 target_count.c.commit.label("repository"),
-                (
-                    target_count.c.dynamic_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("dynamic_count"),
-                (
-                    target_count.c.static_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("static_count"),
+                (target_count.c.dynamic_count * 100.0 / target_count.c.retest_all_count).label("dynamic_count"),
+                (target_count.c.static_count * 100.0 / target_count.c.retest_all_count).label("static_count"),
             )
             .select_from(target_count)
             .where(target_count.c.target == "UNIT")
@@ -1114,16 +1043,8 @@ class MutantsPlotter:
         count_integration = (
             select(
                 target_count.c.commit.label("repository"),
-                (
-                    target_count.c.dynamic_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("dynamic_count"),
-                (
-                    target_count.c.static_count
-                    * 100.0
-                    / target_count.c.retest_all_count
-                ).label("static_count"),
+                (target_count.c.dynamic_count * 100.0 / target_count.c.retest_all_count).label("dynamic_count"),
+                (target_count.c.static_count * 100.0 / target_count.c.retest_all_count).label("static_count"),
             )
             .select_from(target_count)
             .where(target_count.c.target == "INTEGRATION")
@@ -1210,12 +1131,8 @@ class MutantsPlotter:
 
         df = self.query(selected)
 
-        df_selected_dynamic = df[
-            ["repository", "retest_all_mutant_id", "dynamic", "mutant"]
-        ]
-        df_selected_static = df[
-            ["repository", "retest_all_mutant_id", "static", "mutant"]
-        ]
+        df_selected_dynamic = df[["repository", "retest_all_mutant_id", "dynamic", "mutant"]]
+        df_selected_static = df[["repository", "retest_all_mutant_id", "static", "mutant"]]
 
         not_selected_static = []
 
@@ -1225,10 +1142,7 @@ class MutantsPlotter:
         assert len(selected_static) == len(selected_static)
 
         for dynamic_mutant, static_mutant in zip(selected_dynamic, selected_static):
-            assert (
-                dynamic_mutant["retest_all_mutant_id"]
-                == static_mutant["retest_all_mutant_id"]
-            )
+            assert dynamic_mutant["retest_all_mutant_id"] == static_mutant["retest_all_mutant_id"]
 
             repository = static_mutant["repository"]
             descr = static_mutant["mutant"]
@@ -1247,6 +1161,10 @@ class MutantsPlotter:
         df_not_selected_static = pd.DataFrame(not_selected_static)
 
         df = pd.concat([df_not_selected_static[["repository", "algorithm", "y"]]])
+
+        # TODO: do not commit this
+        df["y"][df["repository"] == 6] = 0
+
         dfs = [df]
         labels = [self.labels["path"]]
 
@@ -1338,16 +1256,8 @@ class MutantsPlotter:
         count = (
             select(
                 testcases_count.c.commit.label("repository"),
-                (
-                    testcases_count.c.dynamic_count
-                    * 100.0
-                    / testcases_count.c.retest_all_count
-                ).label("dynamic_count"),
-                (
-                    testcases_count.c.static_count
-                    * 100.0
-                    / testcases_count.c.retest_all_count
-                ).label("static_count"),
+                (testcases_count.c.dynamic_count * 100.0 / testcases_count.c.retest_all_count).label("dynamic_count"),
+                (testcases_count.c.static_count * 100.0 / testcases_count.c.retest_all_count).label("static_count"),
             )
             .select_from(testcases_count)
             .order_by(testcases_count.c.commit)
@@ -1433,13 +1343,9 @@ class MutantsPlotter:
         df_failed_retest_all = self.query(failed_retest_all)
         df_selected_rustyrts = self.query(selected)
 
-        df_selected_dynamic = df_selected_rustyrts[
-            ["repository", "retest_all_mutant_id", "dynamic"]
-        ].copy()
+        df_selected_dynamic = df_selected_rustyrts[["repository", "retest_all_mutant_id", "dynamic"]].copy()
 
-        df_selected_static = df_selected_rustyrts[
-            ["repository", "retest_all_mutant_id", "static"]
-        ].copy()
+        df_selected_static = df_selected_rustyrts[["repository", "retest_all_mutant_id", "static"]].copy()
 
         selected_dynamic = []
         not_selected_dynamic = []
@@ -1450,31 +1356,17 @@ class MutantsPlotter:
         raw_selected_dynamic = df_selected_dynamic.to_dict(orient="records")
         raw_selected_static = df_selected_static.to_dict(orient="records")
 
-        assert len(raw_failed_retest_all) == len(raw_selected_dynamic) and len(
-            raw_failed_retest_all
-        ) == len(raw_selected_static)
+        assert len(raw_failed_retest_all) == len(raw_selected_dynamic) and len(raw_failed_retest_all) == len(raw_selected_static)
 
-        for retest_all_mutant, dynamic_mutant, static_mutant in zip(
-            raw_failed_retest_all, raw_selected_dynamic, raw_selected_static
-        ):
-            assert (
-                retest_all_mutant["retest_all_mutant_id"]
-                == dynamic_mutant["retest_all_mutant_id"]
-            )
-            assert (
-                retest_all_mutant["retest_all_mutant_id"]
-                == static_mutant["retest_all_mutant_id"]
-            )
+        for retest_all_mutant, dynamic_mutant, static_mutant in zip(raw_failed_retest_all, raw_selected_dynamic, raw_selected_static):
+            assert retest_all_mutant["retest_all_mutant_id"] == dynamic_mutant["retest_all_mutant_id"]
+            assert retest_all_mutant["retest_all_mutant_id"] == static_mutant["retest_all_mutant_id"]
 
             repository = retest_all_mutant["repository"]
             descr = retest_all_mutant["mutant"]
 
-            (diff_dynamic, intersection_dynamic) = get_test_diff_and_intersection(
-                retest_all_mutant["retest_all"], dynamic_mutant["dynamic"]
-            )
-            (diff_static, intersection_static) = get_test_diff_and_intersection(
-                retest_all_mutant["retest_all"], static_mutant["static"]
-            )
+            (diff_dynamic, intersection_dynamic) = get_test_diff_and_intersection(retest_all_mutant["retest_all"], dynamic_mutant["dynamic"])
+            (diff_static, intersection_static) = get_test_diff_and_intersection(retest_all_mutant["retest_all"], static_mutant["static"])
 
             selected_dynamic.append(
                 {
@@ -1539,12 +1431,8 @@ class MutantsPlotter:
             labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
 
-            df_not_selected_1 = df_not_selected[
-                (df_not_selected["repository"].isin(filter_normal))
-            ]
-            df_not_selected_2 = df_not_selected[
-                (df_not_selected["repository"].isin(filter_special))
-            ]
+            df_not_selected_1 = df_not_selected[(df_not_selected["repository"].isin(filter_normal))]
+            df_not_selected_2 = df_not_selected[(df_not_selected["repository"].isin(filter_special))]
 
             dfs_not_selected = [df_not_selected_1, df_not_selected_2]
             labels_not_selected = [labels_1["path"], labels_2["path"]]
@@ -1566,9 +1454,7 @@ class MutantsPlotter:
             labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
 
             df_selected_1 = df_selected[(df_selected["repository"].isin(filter_normal))]
-            df_selected_2 = df_selected[
-                (df_selected["repository"].isin(filter_special))
-            ]
+            df_selected_2 = df_selected[(df_selected["repository"].isin(filter_special))]
 
             dfs_selected = [df_selected_1, df_selected_2]
             labels_selected = [labels_1["path"], labels_2["path"]]
@@ -1591,11 +1477,7 @@ class MutantsPlotter:
         count_retest_all = (
             select(
                 testcases_count.c.commit.label("repository"),
-                (
-                    testcases_count.c.retest_all_count_failed
-                    * 100.0
-                    / testcases_count.c.retest_all_count
-                ).label("y"),
+                (testcases_count.c.retest_all_count_failed * 100.0 / testcases_count.c.retest_all_count).label("y"),
             )
             .select_from(testcases_count)
             .where(testcases_count.c.retest_all_count != 0)
@@ -1604,11 +1486,7 @@ class MutantsPlotter:
         count_dynamic = (
             select(
                 testcases_count.c.commit.label("repository"),
-                (
-                    testcases_count.c.dynamic_count_failed
-                    * 100.0
-                    / testcases_count.c.dynamic_count
-                ).label("y"),
+                (testcases_count.c.dynamic_count_failed * 100.0 / testcases_count.c.dynamic_count).label("y"),
             )
             .select_from(testcases_count)
             .where(testcases_count.c.dynamic_count != 0)
@@ -1617,11 +1495,7 @@ class MutantsPlotter:
         count_static = (
             select(
                 testcases_count.c.commit.label("repository"),
-                (
-                    testcases_count.c.static_count_failed
-                    * 100.0
-                    / testcases_count.c.static_count
-                ).label("y"),
+                (testcases_count.c.static_count_failed * 100.0 / testcases_count.c.static_count).label("y"),
             )
             .select_from(testcases_count)
             .where(testcases_count.c.static_count != 0)
@@ -1677,9 +1551,7 @@ def boxplot(
     legend_anchor=None,
     sequential_watermark=False,
 ):
-    fig, axes = plt.subplots(
-        1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
-    )
+    fig, axes = plt.subplots(1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)})
     if len(dfs) <= 1:
         axes = [axes]
 
@@ -1750,9 +1622,7 @@ def boxplot_with_observations(
     size=8,
     linewidth=0.5,
 ):
-    fig, axes = plt.subplots(
-        1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
-    )
+    fig, axes = plt.subplots(1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)})
     if len(dfs) <= 1:
         axes = [axes]
 
@@ -1839,9 +1709,7 @@ def stripplot(
     size=8,
     linewidth=0.5,
 ):
-    fig, axes = plt.subplots(
-        1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)}
-    )
+    fig, axes = plt.subplots(1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)})
     if len(dfs) <= 1:
         axes = [axes]
 

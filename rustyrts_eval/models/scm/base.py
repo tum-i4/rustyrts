@@ -1,6 +1,7 @@
 """
 Module containing base interfaces for SCM systems.
 """
+
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -39,13 +40,7 @@ class Repository:
 
 
 class ChangelistItem:
-    def __init__(
-            self,
-            filepath: str,
-            action: ChangelistItemAction,
-            kind: ChangelistItemKind,
-            content: Optional[str] = None
-    ):
+    def __init__(self, filepath: str, action: ChangelistItemAction, kind: ChangelistItemKind, content: Optional[str] = None):
         """
         A constructor for a ChangelistItem.
 
@@ -69,34 +64,24 @@ class ChangelistItem:
         return f"{self.action} {self.kind} {self.filepath}"
 
     def to_json(self) -> Dict:
-        return {
-            "filepath": self.filepath,
-            "action": self.action.value,
-            "kind": self.kind.value,
-            "content": self.content
-        }
+        return {"filepath": self.filepath, "action": self.action.value, "kind": self.kind.value, "content": self.content}
 
     @classmethod
     def from_json(cls, json: Dict) -> "ChangelistItem":
-        return cls(
-            filepath=json["filepath"],
-            action=ChangelistItemAction(json["action"]),
-            kind=ChangelistItemKind(json["kind"]),
-            content=json["content"]
-        )
+        return cls(filepath=json["filepath"], action=ChangelistItemAction(json["action"]), kind=ChangelistItemKind(json["kind"]), content=json["content"])
 
 
 class Commit:
     def __init__(
-            self,
-            commit_str: str,
-            author: str,
-            message: str,
-            timestamp: datetime,
-            changelist: List[ChangelistItem],
-            repo: Optional[Repository] = None,
-            nr_lines=None,
-            nr_files=None,
+        self,
+        commit_str: str,
+        author: str,
+        message: str,
+        timestamp: datetime,
+        changelist: List[ChangelistItem],
+        repo: Optional[Repository] = None,
+        nr_lines=None,
+        nr_files=None,
     ):
         self.author = author
         self.commit_str = commit_str
@@ -108,9 +93,7 @@ class Commit:
         self.nr_files = nr_files
 
     @classmethod
-    def create_virtual_commit(
-            cls, changelist: List[ChangelistItem], repo: Optional[Repository] = None
-    ) -> "Commit":
+    def create_virtual_commit(cls, changelist: List[ChangelistItem], repo: Optional[Repository] = None) -> "Commit":
         now: datetime = datetime.now()
         return cls(
             commit_str="vc-{}".format(uuid.uuid4()),
@@ -179,9 +162,9 @@ class SCMClient(ABC):
 
     @abstractmethod
     def get_diff(
-            self,
-            from_revision: Union[int, str],
-            to_revision: Optional[Union[int, str]] = None,
+        self,
+        from_revision: Union[int, str],
+        to_revision: Optional[Union[int, str]] = None,
     ) -> List[ChangelistItem]:
         """
         Get a combined changelist depicting the diff between two revisions.
@@ -192,9 +175,7 @@ class SCMClient(ABC):
         pass
 
     @abstractmethod
-    def get_file_content_at_commit(
-            self, revision: Union[int, str], file_path: Path
-    ) -> str:
+    def get_file_content_at_commit(self, revision: Union[int, str], file_path: Path) -> str:
         """
         Get the content of a file at a certain revision.
 
@@ -206,7 +187,7 @@ class SCMClient(ABC):
 
     @abstractmethod
     def get_status(
-            self,
+        self,
     ) -> List[ChangelistItem]:
         """
         Get a changelist that contains all currently changed/added/deleted files.

@@ -44,20 +44,14 @@ def walk(
     # If a commit is added to the repositories, the seed responsible for making the evaluation reproducible
     # does not work correctly anymore
     # that is why we fixed the commits that are analyzed
-    (strategy, num_commits) = (
-        (GivenWalkerStrategy(commits), len(commits))
-        if commits
-        else (RandomWalkerStrategy(repository, branch=branch), 20)
-    )
+    (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (RandomWalkerStrategy(repository, branch=branch), 20)
 
     options = options if options else []
     options.append("--json")
     options.append("--gitignore=false")
 
     env_vars = env_vars if env_vars else {}
-    env_vars.update(
-        {"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])}
-    )
+    env_vars.update({"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])})
 
     walker = GitWalker(
         repository=repository,

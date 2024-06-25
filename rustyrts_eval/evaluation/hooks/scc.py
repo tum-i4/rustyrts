@@ -46,16 +46,12 @@ class SccHook(Hook):
             os.makedirs(self.cache_dir, exist_ok=True)
 
             # prepare cache dir/file
-            cache_file = "run_{}.log".format(
-                int(time() * 1000)
-            )  # run identified by timestamp
+            cache_file = "run_{}.log".format(int(time() * 1000))  # run identified by timestamp
             cache_file_path = os.path.join(self.cache_dir, cache_file)
 
             command = "scc " + self.repository.path + " -f json"
 
-            proc: SubprocessContainer = SubprocessContainer(
-                command=command, output_filepath=cache_file_path
-            )
+            proc: SubprocessContainer = SubprocessContainer(command=command, output_filepath=cache_file_path)
             proc.execute(capture_output=True, shell=True, timeout=1000.0)
 
             result = json.loads(proc.output)

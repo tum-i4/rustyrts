@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from rustyrts_eval.models.scm.git import GitClient
+
 from ...models.scm.base import Repository, Commit
 
 
@@ -12,9 +14,10 @@ class Hook(ABC):
     def __init__(
         self,
         repository: Repository,
-        output_path: Optional[str] = None,
-        git_client=None,
+        output_path: Optional[str],
+        git_client: GitClient,
     ):
+        super().__init__()
         self.repository = repository
         self.output_path = output_path
         self.git_client = git_client
@@ -50,6 +53,7 @@ class Walker(ABC):
         :param num_commits:
         :param hooks:
         """
+        super().__init__()
         self.repository = repository
         self.strategy = strategy
         self.num_commits = num_commits

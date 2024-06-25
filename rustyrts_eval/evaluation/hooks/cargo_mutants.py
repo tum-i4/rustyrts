@@ -74,12 +74,7 @@ class CargoMutantsHook(Hook):
         :return:
         """
 
-        _LOGGER.info(
-            "About to start mutation testing using '"
-            + self.mutants_command()
-            + "' on "
-            + self.repository.path
-        )
+        _LOGGER.info("About to start mutation testing using '" + self.mutants_command() + "' on " + self.repository.path)
         global ask_for_skip
         if ask_for_skip and input(" Skip? ") == "y":
             return True
@@ -108,9 +103,7 @@ class CargoMutantsHook(Hook):
             self.pre_hook()
 
         # prepare cache dir/file
-        cache_file = "run_{}.log".format(
-            int(time() * 1000)
-        )  # run identified by timestamp
+        cache_file = "run_{}.log".format(int(time() * 1000))  # run identified by timestamp
         cache_file_path = os.path.join(self.cache_dir, cache_file)
 
         # Run test command on actual commit
@@ -120,9 +113,7 @@ class CargoMutantsHook(Hook):
             env=self.env(),
         )
         proc.execute(capture_output=True, shell=True)
-        has_failed |= not (
-            proc.exit_code == 0 or proc.exit_code == 2 or proc.exit_code == 3
-        )
+        has_failed |= not (proc.exit_code == 0 or proc.exit_code == 2 or proc.exit_code == 3)
 
         # ******************************************************************************************************
         # Parse result
@@ -163,17 +154,13 @@ class CargoMutantsHook(Hook):
         # create test report object
 
         with self.connection.create_session_ctx() as session:
-            test_report = DBMutantsReport.create_or_update(
-                report=test_report, session=session
-            )
+            test_report = DBMutantsReport.create_or_update(report=test_report, session=session)
             _LOGGER.warning("Mutants " + str(test_report.mutants))
             session.commit()
 
         if not has_failed:
             # parse mutants
-            loader = CargoMutantsTestReportLoader(
-                self.repository.path + os.path.sep + "mutants.out"
-            )
+            loader = CargoMutantsTestReportLoader(self.repository.path + os.path.sep + "mutants.out")
             loader.load_mutants(test_report.id, self.connection)
 
         ############################################################################################################

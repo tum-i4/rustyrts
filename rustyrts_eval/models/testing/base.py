@@ -24,6 +24,7 @@ class TestTarget(str, Enum):
     UNDEFINED = "UNDEFINED"
     UNIT = "UNIT"
     INTEGRATION = "INTEGRATION"
+    DOCTEST = "DOCTEST"
 
 
 class TestSuite:
@@ -32,20 +33,7 @@ class TestSuite:
     often a class with multiple test methods.
     """
 
-    def __init__(
-            self,
-            name: str,
-            duration: float,
-            cases: List["TestCase"],
-            crashed: bool = False,
-            total_count: Optional[int] = None,
-            passed_count: Optional[int] = None,
-            failed_count: Optional[int] = None,
-            ignored_count: Optional[int] = None,
-            measured_count: Optional[int] = None,
-            filtered_out_count: Optional[int] = None,
-            meta_data: Optional[str] = None
-    ):
+    def __init__(self, name: str, duration: float, cases: List["TestCase"], crashed: bool = False, total_count: Optional[int] = None, passed_count: Optional[int] = None, failed_count: Optional[int] = None, ignored_count: Optional[int] = None, measured_count: Optional[int] = None, filtered_out_count: Optional[int] = None, meta_data: Optional[str] = None):
         """
         Constructor for test suites
 
@@ -139,40 +127,14 @@ class TestSuite:
         return cls(
             name=test_suite["testId" if "testId" in test_suite else "name"],
             duration=test_suite["exec_time"],
-            cases=(
-                list(map(lambda tc: TestCase.from_dict(tc), test_suite["cases"]))
-                if "cases" in test_suite
-                else []
-            ),
+            cases=(list(map(lambda tc: TestCase.from_dict(tc), test_suite["cases"])) if "cases" in test_suite else []),
             crashed=test_suite["crashed"] if "crashed" in test_suite else False,
-            total_count=(
-                test_suite["test_count"] if "_total_count" in test_suite else len([case for case in test_suite["cases"] if case["event"] != 'ignored'])
-            ),
-            passed_count=(
-                test_suite["passed"]
-                if "passed" in test_suite
-                else test_suite["_passed_count"]
-            ),
-            failed_count=(
-                test_suite["failed"]
-                if "failed" in test_suite
-                else test_suite["_failed_count"]
-            ),
-            ignored_count=(
-                test_suite["ignored"]
-                if "ignored" in test_suite
-                else test_suite["_ignored_count"]
-            ),
-            measured_count=(
-                test_suite["measured"]
-                if "measured" in test_suite
-                else test_suite["_measured_count"]
-            ),
-            filtered_out_count=(
-                test_suite["filtered_out"]
-                if "filtered_out" in test_suite
-                else test_suite["_filtered_out_count"]
-            ),
+            total_count=(test_suite["test_count"] if "_total_count" in test_suite else len([case for case in test_suite["cases"] if case["event"] != "ignored"])),
+            passed_count=(test_suite["passed"] if "passed" in test_suite else test_suite["_passed_count"]),
+            failed_count=(test_suite["failed"] if "failed" in test_suite else test_suite["_failed_count"]),
+            ignored_count=(test_suite["ignored"] if "ignored" in test_suite else test_suite["_ignored_count"]),
+            measured_count=(test_suite["measured"] if "measured" in test_suite else test_suite["_measured_count"]),
+            filtered_out_count=(test_suite["filtered_out"] if "filtered_out" in test_suite else test_suite["_filtered_out_count"]),
         )
 
 
@@ -183,12 +145,12 @@ class TestCase:
     """
 
     def __init__(
-            self,
-            name: str,
-            target: TestTarget,
-            status: TestStatus = TestStatus.UNDEFINED,
-            duration: float = 0.0,
-            stdout: Optional[str] = None,
+        self,
+        name: str,
+        target: TestTarget,
+        status: TestStatus = TestStatus.UNDEFINED,
+        duration: float = 0.0,
+        stdout: Optional[str] = None,
     ):
         """
         Constructor for test cases
@@ -248,16 +210,16 @@ class TestReport:
     """
 
     def __init__(
-            self,
-            name: str,
-            duration: float,
-            build_duration: Optional[float],
-            suites: List[TestSuite] = None,
-            commit_str: Union[Optional[str], Optional[int]] = None,
-            commit: Commit = None,
-            log: Optional[str] = None,
-            has_failed: Optional[bool] = None,
-            has_errored: Optional[bool] = None,
+        self,
+        name: str,
+        duration: float,
+        build_duration: Optional[float],
+        suites: List[TestSuite] = None,
+        commit_str: Union[Optional[str], Optional[int]] = None,
+        commit: Commit = None,
+        log: Optional[str] = None,
+        has_failed: Optional[bool] = None,
+        has_errored: Optional[bool] = None,
     ):
         """
         Constructor for test reports

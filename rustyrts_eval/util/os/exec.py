@@ -77,19 +77,26 @@ class SubprocessContainer:
         self.exit_code: int = -1
         self.end_to_end_time: float = -1
 
-    def execute(self, capture_output: bool = False, timeout: Optional[float] = None, *args, **kwargs, ):
+    def execute(
+        self,
+        capture_output: bool = False,
+        timeout: Optional[float] = None,
+        *args,
+        **kwargs,
+    ):
         # use `w+` to be able to read and write
         with open(self.output_filepath, "w+") as log_file:
             # pipe stdout/stderr into log file
-            proc: Popen = Popen(
-                self.command, stdout=log_file, stderr=STDOUT, env=self.env, *args, **kwargs
-            )
+            proc: Popen = Popen(self.command, stdout=log_file, stderr=STDOUT, env=self.env, *args, **kwargs)
 
             # run process and obtain exit code
-            _LOGGER.debug(
-                "Executing: {}".format( self.command))
+            _LOGGER.debug("Executing: {}".format(self.command))
             if self.env:
-                _LOGGER.debug("Env: {}".format(" ".join(key + '="' + val + '"' for (key, val) in self.env.items()),))
+                _LOGGER.debug(
+                    "Env: {}".format(
+                        " ".join(key + '="' + val + '"' for (key, val) in self.env.items()),
+                    )
+                )
 
             start_time = time()
             if timeout is not None:

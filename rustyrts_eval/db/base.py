@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from typing import List
 import pandas as pd
 
-from sqlalchemy import create_engine, Integer, Column, DateTime, func, text
+from sqlalchemy import create_engine, Integer, Column
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declared_attr, as_declarative
 from sqlalchemy.orm import sessionmaker, Session
@@ -15,8 +15,8 @@ _LOGGER = get_logger(__name__)
 @as_declarative()
 class Base:
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime(timezone=False), server_default=func.now())
-    updated_at = Column(DateTime(timezone=False), onupdate=func.now())
+    # created_at = Column(DateTime(timezone=False), server_default=func.now())
+    # updated_at = Column(DateTime(timezone=False), onupdate=func.now())
     __name__: str
 
     @classmethod
@@ -25,8 +25,7 @@ class Base:
         return cls.__name__.removeprefix("DB")
 
 
-# noinspection PyUnresolvedReferences
-from . import git, history, mutants  # necessary to create schema
+from . import history, mutants  # necessary to create schema
 
 
 class DBConnection:
@@ -34,9 +33,7 @@ class DBConnection:
         super().__init__()
         self.url: str = url
         self.engine: Engine = create_engine(url, *args, **kwargs)
-        self.Session: sessionmaker = sessionmaker(
-            bind=self.engine, expire_on_commit=False
-        )
+        self.Session: sessionmaker = sessionmaker(bind=self.engine, expire_on_commit=False)
 
     def create_session(self) -> Session:
         return self.Session()
@@ -81,16 +78,12 @@ class DBConnection:
                 Base.metadata.tables["TestCase"],
             ]
 
-        _LOGGER.debug(
-            "Creating schema with tables: {}".format(Base.metadata.tables.keys())
-        )
+        _LOGGER.debug("Creating schema with tables: {}".format(Base.metadata.tables.keys()))
         Base.metadata.create_all(self.engine, tables=tables)
 
     def delete_schema(self) -> None:
         self.terminate_all_sessions()
-        _LOGGER.debug(
-            "Dropping schema with tables: {}".format(Base.metadata.tables.keys())
-        )
+        _LOGGER.debug("Dropping schema with tables: {}".format(Base.metadata.tables.keys()))
         mutants.register_views()
         history.register_views(sequential=False)
         Base.metadata.drop_all(self.engine)

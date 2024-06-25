@@ -20,9 +20,7 @@ class SequentialWalkerStrategy(WalkerStrategy):
         self.branch = branch
 
     def commits(self) -> list[(str, Optional[str], Optional[str])]:
-        start_commit = self.git_repo.git.rev_list(
-            self.branch, max_parents=0
-        ).splitlines()[0]
+        start_commit = self.git_repo.git.rev_list(self.branch, max_parents=0).splitlines()[0]
 
         return [
             (commit.hexsha, None, None)

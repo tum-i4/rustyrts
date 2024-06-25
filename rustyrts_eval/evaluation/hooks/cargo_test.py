@@ -24,57 +24,27 @@ class CargoTestHook(CargoHook):
         report_name: Optional[str] = None,
         output_path: Optional[str] = None,
     ):
-        super().__init__(repository, git_client, connection, report_name, output_path)
-
-        self.env_vars = env_vars
-        self.target_dir = abspath(repository.path + "/target_test")
-        self.build_options = build_options if build_options else []
-        self.test_options = test_options if test_options else []
-
-    def env(self, rustflags):
-        os.makedirs(self.target_dir, exist_ok=True)
-        rustflags = (
-            self.env_vars["RUSTFLAGS"] + " "
-            if self.env_vars and "RUSTFLAGS" in self.env_vars
-            else ""
-        ) + (rustflags if rustflags else "")
-        env = {"CARGO_TARGET_DIR": self.target_dir}
-        return os.environ | self.env_vars | env | {"RUSTFLAGS": rustflags}
-
-    def build_env(self, rustflags):
-        rustflags = (
-            self.env_vars["RUSTFLAGS"] + " "
-            if self.env_vars and "RUSTFLAGS" in self.env_vars
-            else ""
-        ) + (rustflags if rustflags else "")
-        return os.environ | self.env_vars | {"RUSTFLAGS": rustflags}
-
-    def clean_command(self):
-        return "cargo clean"
-
-    def update_command(self):
-        return "cargo update"
-
-    def build_command(self, features):
-        build_options = " ".join(self.build_options) + (
-            " --features {0}".format(features) if features else ""
+        super().__init__(
+            repository,
+            git_client,
+            connection,
+            env_vars,
+            build_options,
+            test_options,
+            report_name,
+            output_path,
         )
-        return "cargo build --all-targets {0}".format(build_options)
 
     def test_command_parent(self, features):
-        build_options = " ".join(self.build_options) + (
-            " --features {0}".format(features) if features else ""
-        )
-        return "cargo test --tests --examples {0} --no-fail-fast -- {1}".format(
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+        return "cargo test {0} --no-fail-fast -- {1}".format(
             build_options,
             " ".join(self.test_options),
         )
 
     def test_command(self, features):
-        build_options = " ".join(self.build_options) + (
-            " --features {0}".format(features) if features else ""
-        )
-        return "cargo test --tests --examples {0} -Z no-index-update --no-fail-fast -- {1}".format(
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+        return "cargo test {0} -Z no-index-update --no-fail-fast -- {1}".format(
             build_options,
             " ".join(self.test_options),
         )

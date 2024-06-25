@@ -14,9 +14,7 @@ _LOGGER = get_logger(__name__)
 def get_test_diff_and_intersection(retest_all, other):
     retest_all_tests = set(retest_all.splitlines()) if retest_all else set()
     other_tests = set(other.splitlines()) if other else set()
-    return list(retest_all_tests.difference(other_tests)), list(
-        retest_all_tests.intersection(other_tests)
-    )
+    return list(retest_all_tests.difference(other_tests)), list(retest_all_tests.intersection(other_tests))
 
 
 def get_test_diff(retest_all, other):
@@ -86,12 +84,8 @@ def mutants_testcases_contained(connection, view_info):
 
     df_selected = connection.query(selected)
 
-    df_selected_dynamic = df_selected[
-        ["repository", "retest_all_mutant_id", "mutant", "dynamic"]
-    ]
-    df_selected_static = df_selected[
-        ["repository", "retest_all_mutant_id", "mutant", "static"]
-    ]
+    df_selected_dynamic = df_selected[["repository", "retest_all_mutant_id", "mutant", "dynamic"]]
+    df_selected_static = df_selected[["repository", "retest_all_mutant_id", "mutant", "static"]]
 
     not_selected_static = {}
 
@@ -104,10 +98,7 @@ def mutants_testcases_contained(connection, view_info):
     assert len(selected_static) == len(selected_static)
 
     for dynamic_mutant, static_mutant in zip(selected_dynamic, selected_static):
-        assert (
-            dynamic_mutant["retest_all_mutant_id"]
-            == static_mutant["retest_all_mutant_id"]
-        )
+        assert dynamic_mutant["retest_all_mutant_id"] == static_mutant["retest_all_mutant_id"]
 
         repository = static_mutant["repository"]
         descr = static_mutant["mutant"]
@@ -161,13 +152,9 @@ def mutants_failed_not_selected(connection, view_info):
     df_failed_retest_all = connection.query(failed_retest_all)
     df_selected_rustyrts = connection.query(selected)
 
-    df_selected_dynamic = df_selected_rustyrts[
-        ["repository", "retest_all_mutant_id", "dynamic"]
-    ].copy()
+    df_selected_dynamic = df_selected_rustyrts[["repository", "retest_all_mutant_id", "dynamic"]].copy()
 
-    df_selected_static = df_selected_rustyrts[
-        ["repository", "retest_all_mutant_id", "static"]
-    ].copy()
+    df_selected_static = df_selected_rustyrts[["repository", "retest_all_mutant_id", "static"]].copy()
 
     not_selected_dynamic = {}
     not_selected_static = {}
@@ -180,31 +167,17 @@ def mutants_failed_not_selected(connection, view_info):
     selected_dynamic = df_selected_dynamic.to_dict(orient="records")
     selected_static = df_selected_static.to_dict(orient="records")
 
-    assert len(failed_retest_all) == len(selected_dynamic) and len(
-        failed_retest_all
-    ) == len(selected_static)
+    assert len(failed_retest_all) == len(selected_dynamic) and len(failed_retest_all) == len(selected_static)
 
-    for retest_all_mutant, dynamic_mutant, static_mutant in zip(
-        failed_retest_all, selected_dynamic, selected_static
-    ):
-        assert (
-            retest_all_mutant["retest_all_mutant_id"]
-            == dynamic_mutant["retest_all_mutant_id"]
-        )
-        assert (
-            retest_all_mutant["retest_all_mutant_id"]
-            == static_mutant["retest_all_mutant_id"]
-        )
+    for retest_all_mutant, dynamic_mutant, static_mutant in zip(failed_retest_all, selected_dynamic, selected_static):
+        assert retest_all_mutant["retest_all_mutant_id"] == dynamic_mutant["retest_all_mutant_id"]
+        assert retest_all_mutant["retest_all_mutant_id"] == static_mutant["retest_all_mutant_id"]
 
         repository = retest_all_mutant["repository"]
         descr = retest_all_mutant["mutant"]
 
-        diff_dynamic = get_test_diff(
-            retest_all_mutant["retest_all"], dynamic_mutant["dynamic"]
-        )
-        diff_static = get_test_diff(
-            retest_all_mutant["retest_all"], static_mutant["static"]
-        )
+        diff_dynamic = get_test_diff(retest_all_mutant["retest_all"], dynamic_mutant["dynamic"])
+        diff_static = get_test_diff(retest_all_mutant["retest_all"], static_mutant["static"])
 
         for test in diff_dynamic:
             if test not in not_selected_dynamic[repository]:
@@ -365,9 +338,7 @@ def history_testcases_different(connection, view_info):
     df_different_retest_all = connection.query(different_retest_all)
     df_selected_rustyrts = connection.query(selected)
 
-    df_selected_dynamic = df_selected_rustyrts[
-        ["repository", "commit", "dynamic"]
-    ].copy()
+    df_selected_dynamic = df_selected_rustyrts[["repository", "commit", "dynamic"]].copy()
 
     df_selected_static = df_selected_rustyrts[["repository", "commit", "static"]].copy()
 
@@ -386,25 +357,17 @@ def history_testcases_different(connection, view_info):
     selected_dynamic = df_selected_dynamic.to_dict(orient="records")
     selected_static = df_selected_static.to_dict(orient="records")
 
-    assert len(different_retest_all) == len(selected_dynamic) and len(
-        different_retest_all
-    ) == len(selected_static)
+    assert len(different_retest_all) == len(selected_dynamic) and len(different_retest_all) == len(selected_static)
 
-    for retest_all_report, dynamic_report, static_report in zip(
-        different_retest_all, selected_dynamic, selected_static
-    ):
+    for retest_all_report, dynamic_report, static_report in zip(different_retest_all, selected_dynamic, selected_static):
         assert retest_all_report["commit"] == dynamic_report["commit"]
         assert retest_all_report["commit"] == static_report["commit"]
 
         repository = retest_all_report["repository"]
         commit = retest_all_report["commit"]
 
-        diff_dynamic, intersection_dynamic = get_test_diff_and_intersection(
-            retest_all_report["retest_all"], dynamic_report["dynamic"]
-        )
-        diff_static, intersection_static = get_test_diff_and_intersection(
-            retest_all_report["retest_all"], static_report["static"]
-        )
+        diff_dynamic, intersection_dynamic = get_test_diff_and_intersection(retest_all_report["retest_all"], dynamic_report["dynamic"])
+        diff_static, intersection_static = get_test_diff_and_intersection(retest_all_report["retest_all"], static_report["static"])
 
         if commit not in not_selected_dynamic[repository]:
             not_selected_dynamic[repository][commit] = []

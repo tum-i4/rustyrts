@@ -17,6 +17,7 @@ from ...models.testing.base import TestReport
 from ...models.testing.loaders.cargo_test import CargoTestTestReportLoader
 from ...util.os.exec import SubprocessContainer
 from ...util.logging.logger import get_logger
+from os.path import abspath
 
 _LOGGER = get_logger(__name__)
 
@@ -31,10 +32,11 @@ class CargoHook(Hook, ABC):
         repository: Repository,
         git_client: GitClient,
         connection: DBConnection,
+        env_vars: Optional[dict[str, str]] = None,
+        build_options=None,
+        test_options=None,
         report_name: Optional[str] = None,
         output_path: Optional[str] = None,
-        build_debug=False,
-        build_release=False,
     ):
         super().__init__(repository, output_path, git_client)
         if self.output_path:
@@ -43,35 +45,48 @@ class CargoHook(Hook, ABC):
             self.cache_dir = os.path.join(tempfile.gettempdir(), ".cargo-hook")
         self.report_name = report_name
         self.connection = connection
-        self.build_debug = build_debug
-        self.build_release = build_release
+        self.env_vars = env_vars if env_vars else {}
+        self.target_dir = abspath(repository.path + "/target_test")
+        self.build_options = build_options if build_options else []
+        self.test_options = test_options if test_options else []
 
-    @abstractmethod
-    def env(self, rustflags):
-        pass
+        # Check if we need to build before testing
+        self.build_debug = False
+        self.build_release = False
+        for file in glob.glob("**/*.rs", recursive=True):
+            if os.path.isfile(file):
+                content = open(file, "r").read()
+                if "target/debug" in content:
+                    self.build_debug = True
+                if "target/debug" in content:
+                    self.build_release = True
 
-    @abstractmethod
-    def build_env(self, rustflags):
-        pass
+    def env(self, rustflags) -> dict[str, str]:
+        os.makedirs(self.target_dir, exist_ok=True)
+        rustflags = (self.env_vars["RUSTFLAGS"] + " " if self.env_vars and "RUSTFLAGS" in self.env_vars else "") + (rustflags if rustflags else "")
+        env = {"CARGO_TARGET_DIR": self.target_dir}
+        return os.environ | self.env_vars | env | {"RUSTFLAGS": rustflags}
 
-    @abstractmethod
-    def update_command(self):
-        pass
+    def build_env(self, rustflags) -> dict[str, str]:
+        rustflags = (self.env_vars["RUSTFLAGS"] + " " if self.env_vars and "RUSTFLAGS" in self.env_vars else "") + (rustflags if rustflags else "")
+        return os.environ | self.env_vars | {"RUSTFLAGS": rustflags}
 
-    @abstractmethod
     def clean_command(self):
+        return "cargo clean"
+
+    def update_command(self):
+        return "cargo update"
+
+    def build_command(self, features) -> str:
+        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+        return "cargo build {0}".format(build_options)
+
+    @abstractmethod
+    def test_command_parent(self, features) -> str:
         pass
 
     @abstractmethod
-    def build_command(self, features):
-        pass
-
-    @abstractmethod
-    def test_command_parent(self, features):
-        pass
-
-    @abstractmethod
-    def test_command(self, features):
+    def test_command(self, features) -> str:
         pass
 
     def run(
@@ -100,9 +115,7 @@ class CargoHook(Hook, ABC):
             # Prepare on parent commit
 
             # checkout parent commit
-            parent_commit = self.git_client.get_parent_commit(
-                commit_sha=commit.commit_str
-            )
+            parent_commit = self.git_client.get_parent_commit(commit_sha=commit.commit_str)
             self.git_client.git_repo.git.checkout(parent_commit, force=True)
             self.git_client.git_repo.git.reset(parent_commit, hard=True)
 
@@ -114,21 +127,14 @@ class CargoHook(Hook, ABC):
 
             # clean
             proc: SubprocessContainer = SubprocessContainer(
-                command=self.clean_command(), output_filepath=self.prepare_cache_file()
+                command=self.clean_command(),
+                output_filepath=self.prepare_cache_file(),
+                env=self.env(rustflags),
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
             # update dependencies
             self.update_dependencies(parent_commit)
-
-            # Check if we need to build before testing
-            for file in glob.glob("**/*.rs", recursive=True):
-                if os.path.isfile(file):
-                    content = open(file, "r").read()
-                    if "target/debug" in content:
-                        self.build_debug = True
-                    if "target/debug" in content:
-                        self.build_release = True
 
             if self.build_debug:
                 ########################################################################################################
@@ -157,9 +163,7 @@ class CargoHook(Hook, ABC):
                     test_report: TestReport = TestReport(
                         name=self.report_name + " - parent build debug",
                         duration=proc.end_to_end_time,
-                        build_duration=CargoTestTestReportLoader.parse_build_time(log)
-                        if not has_errored
-                        else None,
+                        build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
                         suites=[],
                         commit=commit,
                         commit_str=commit.commit_str,
@@ -197,9 +201,7 @@ class CargoHook(Hook, ABC):
                     test_report: TestReport = TestReport(
                         name=self.report_name + " - parent build release",
                         duration=proc.end_to_end_time,
-                        build_duration=CargoTestTestReportLoader.parse_build_time(log)
-                        if not has_errored
-                        else None,
+                        build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
                         suites=[],
                         commit=commit,
                         commit_str=commit.commit_str,
@@ -220,19 +222,7 @@ class CargoHook(Hook, ABC):
                     env=self.env(rustflags) | env_tmp_override(),
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_errored |= (
-                    proc.exit_code == -1
-                    or "thread caused non-unwinding panic. aborting." in proc.output
-                    or (
-                        not (
-                            proc.exit_code == 0
-                            or any(
-                                line.startswith("{") and line.endswith("}")
-                                for line in proc.output.splitlines()
-                            )
-                        )
-                    )
-                )
+                has_errored |= proc.exit_code == -1 or "thread caused non-unwinding panic. aborting." in proc.output or (not (proc.exit_code == 0 or any(line.startswith("{") and line.endswith("}") for line in proc.output.splitlines())))
 
                 # ******************************************************************************************************
                 # Parse result
@@ -252,9 +242,7 @@ class CargoHook(Hook, ABC):
                 test_report: TestReport = TestReport(
                     name=self.report_name + " - parent",
                     duration=proc.end_to_end_time,
-                    build_duration=CargoTestTestReportLoader.parse_build_time(log)
-                    if not has_errored
-                    else None,
+                    build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
                     suites=test_suites,
                     commit=commit,
                     commit_str=commit.commit_str,
@@ -308,9 +296,7 @@ class CargoHook(Hook, ABC):
                     test_report: TestReport = TestReport(
                         name=self.report_name + " - build debug",
                         duration=proc.end_to_end_time,
-                        build_duration=CargoTestTestReportLoader.parse_build_time(log)
-                        if not has_errored
-                        else None,
+                        build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
                         suites=[],
                         commit=commit,
                         commit_str=commit.commit_str,
@@ -348,9 +334,7 @@ class CargoHook(Hook, ABC):
                     test_report: TestReport = TestReport(
                         name=self.report_name + " - build release",
                         duration=proc.end_to_end_time,
-                        build_duration=CargoTestTestReportLoader.parse_build_time(log)
-                        if not has_errored
-                        else None,
+                        build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
                         suites=[],
                         commit=commit,
                         commit_str=commit.commit_str,
@@ -370,24 +354,13 @@ class CargoHook(Hook, ABC):
                     command=self.test_command(features),
                     output_filepath=self.prepare_cache_file(),
                     env=self.env(rustflags)
-                    | env_tmp_override()  # | {"RUSTYRTS_LOG": "debug"}
+                    # | {"CARGO_LOG": "debug"}
                     # e.g. changes trybuild files will be overridden by git reset, so we just use it here as well
                     # this effectively prevents those tests from failing, but there is just no other way
+                    | env_tmp_override(),
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
-                has_errored |= (
-                    proc.exit_code == -1
-                    or "thread caused non-unwinding panic. aborting." in proc.output
-                    or (
-                        not (
-                            proc.exit_code == 0
-                            or any(
-                                line.startswith("{") and line.endswith("}")
-                                for line in proc.output.splitlines()
-                            )
-                        )
-                    )
-                )
+                has_errored |= proc.exit_code == -1 or "thread caused non-unwinding panic. aborting." in proc.output or (not (proc.exit_code == 0 or any(line.startswith("{") and line.endswith("}") for line in proc.output.splitlines())))
 
                 # ******************************************************************************************************
                 # Parse result
@@ -407,9 +380,7 @@ class CargoHook(Hook, ABC):
                 test_report: TestReport = TestReport(
                     name=self.report_name,
                     duration=proc.end_to_end_time,
-                    build_duration=CargoTestTestReportLoader.parse_build_time(log)
-                    if not has_errored
-                    else None,
+                    build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
                     suites=test_suites,
                     commit=commit,
                     commit_str=commit.commit_str,
@@ -435,47 +406,33 @@ class CargoHook(Hook, ABC):
         return not has_errored
 
     def update_dependencies(self, commit):
-        if not self.git_client.get_file_is_tracked(
-            commit, "Cargo.lock"
-        ):  # if Cargo.lock is versioned using git, we do not want to update all packages
+        if not self.git_client.get_file_is_tracked(commit, "Cargo.lock"):  # if Cargo.lock is versioned using git, we do not want to update all packages
             update_command = self.update_command()
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
+            proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
             proc.execute(capture_output=True, shell=True, timeout=100.0)
         else:
-            _LOGGER.debug(
-                "Found versioned Carg.lock, skipping update of all dependencies"
-            )
+            _LOGGER.debug("Found versioned Carg.lock, skipping update of all dependencies")
 
         ## The following commands will just silently fail if not applicable
 
         # additionally update actix_derive which has shown to be problematic
         update_command = self.update_command() + " actix_derive --precise 0.6.0"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update chrono which has shown to be problematic
         update_command = self.update_command() + " chrono --precise 0.4.29"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update regex which has shown to be problematic
         update_command = self.update_command() + " regex --precise 1.4.3"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update proc-macro2@1 which has shown to be problematic in several projects
         update_command = self.update_command() + " proc-macro2@1"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update reedline which has shown to be problematic in meilisearch
@@ -487,45 +444,33 @@ class CargoHook(Hook, ABC):
 
         # additionally update value-bag which has shown to be problematic in feroxbuster
         update_command = self.update_command() + " value-bag"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update log which has shown to be problematic in feroxbuster
         update_command = self.update_command() + " log"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update rustc-serialize which has shown to be problematic in zenoh
         update_command = self.update_command() + " rustc-serialize"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update log@0.4.14 which have shown to be problematic in zenoh
         versions = ["0.4.14"]
         for v in versions:
             update_command = self.update_command() + " log@" + v
-            proc: SubprocessContainer = SubprocessContainer(
-                command=update_command, output_filepath=self.prepare_cache_file()
-            )
+            proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
         # additionally update tokio which have shown to be problematic in penumbra
         update_command = self.update_command() + " tokio"
-        proc: SubprocessContainer = SubprocessContainer(
-            command=update_command, output_filepath=self.prepare_cache_file()
-        )
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
     def prepare_cache_file(self) -> str:
         # prepare cache dir/file
-        cache_file = "run_{}.log".format(
-            int(time() * 1000)
-        )  # run identified by timestamp
+        cache_file = "run_{}.log".format(int(time() * 1000))  # run identified by timestamp
         cache_file_path = os.path.join(self.cache_dir, cache_file)
         return cache_file_path

@@ -20,20 +20,7 @@ class MutantsTestSuite:
     often a class with multiple test methods.
     """
 
-    def __init__(
-            self,
-            name: str,
-            duration: float,
-            cases: List["MutantsTestCase"],
-            crashed: bool = False,
-            total_count: Optional[int] = None,
-            passed_count: Optional[int] = None,
-            failed_count: Optional[int] = None,
-            ignored_count: Optional[int] = None,
-            measured_count: Optional[int] = None,
-            filtered_out_count: Optional[int] = None,
-            meta_data: Optional[str] = None
-    ):
+    def __init__(self, name: str, duration: float, cases: List["MutantsTestCase"], crashed: bool = False, total_count: Optional[int] = None, passed_count: Optional[int] = None, failed_count: Optional[int] = None, ignored_count: Optional[int] = None, measured_count: Optional[int] = None, filtered_out_count: Optional[int] = None, meta_data: Optional[str] = None):
         """
         Constructor for test suites
 
@@ -127,55 +114,30 @@ class MutantsTestSuite:
         return cls(
             name=test_suite["testId" if "testId" in test_suite else "name"],
             duration=test_suite["exec_time"],
-            cases=(
-                list(map(lambda tc: TestCase.from_dict(tc), test_suite["cases"]))
-                if "cases" in test_suite
-                else []
-            ),
+            cases=(list(map(lambda tc: TestCase.from_dict(tc), test_suite["cases"])) if "cases" in test_suite else []),
             crashed=test_suite["crashed"] if "crashed" in test_suite else False,
-            total_count=(
-                test_suite["test_count"] if "_total_count" in test_suite else len(test_suite["cases"])
-            ),
-            passed_count=(
-                test_suite["passed"]
-                if "passed" in test_suite
-                else test_suite["_passed_count"]
-            ),
-            failed_count=(
-                test_suite["failed"]
-                if "failed" in test_suite
-                else test_suite["_failed_count"]
-            ),
-            ignored_count=(
-                test_suite["ignored"]
-                if "ignored" in test_suite
-                else test_suite["_ignored_count"]
-            ),
-            measured_count=(
-                test_suite["measured"]
-                if "measured" in test_suite
-                else test_suite["_measured_count"]
-            ),
-            filtered_out_count=(
-                test_suite["filtered_out"]
-                if "filtered_out" in test_suite
-                else test_suite["_filtered_out_count"]
-            ),
+            total_count=(test_suite["test_count"] if "_total_count" in test_suite else len(test_suite["cases"])),
+            passed_count=(test_suite["passed"] if "passed" in test_suite else test_suite["_passed_count"]),
+            failed_count=(test_suite["failed"] if "failed" in test_suite else test_suite["_failed_count"]),
+            ignored_count=(test_suite["ignored"] if "ignored" in test_suite else test_suite["_ignored_count"]),
+            measured_count=(test_suite["measured"] if "measured" in test_suite else test_suite["_measured_count"]),
+            filtered_out_count=(test_suite["filtered_out"] if "filtered_out" in test_suite else test_suite["_filtered_out_count"]),
         )
 
     @classmethod
     def from_test_suite(cls, o: TestSuite):
-        return cls(name=o.name,
-                   duration=o.duration,
-                   cases=[MutantsTestCase.from_test_case(case) for case in o.cases],
-                   crashed=o.crashed,
-                   total_count=o.total_count,
-                   passed_count=o.passed_count,
-                   failed_count=o.failed_count,
-                   ignored_count=o.ignored_count,
-                   measured_count=o.measured_count,
-                   filtered_out_count=o.filtered_out_count,
-                   )
+        return cls(
+            name=o.name,
+            duration=o.duration,
+            cases=[MutantsTestCase.from_test_case(case) for case in o.cases],
+            crashed=o.crashed,
+            total_count=o.total_count,
+            passed_count=o.passed_count,
+            failed_count=o.failed_count,
+            ignored_count=o.ignored_count,
+            measured_count=o.measured_count,
+            filtered_out_count=o.filtered_out_count,
+        )
 
 
 class MutantsTestCase:
@@ -187,12 +149,12 @@ class MutantsTestCase:
     """
 
     def __init__(
-            self,
-            name: str,
-            target: TestTarget,
-            status: TestStatus = TestStatus.UNDEFINED,
-            duration: float = 0.0,
-            stdout: Optional[str] = None,
+        self,
+        name: str,
+        target: TestTarget,
+        status: TestStatus = TestStatus.UNDEFINED,
+        duration: float = 0.0,
+        stdout: Optional[str] = None,
     ):
         """
         Constructor for mutant test cases
@@ -236,27 +198,29 @@ class MutantsTestCase:
 
     @classmethod
     def from_test_case(cls, o: TestCase):
-        return cls(name=o.name,
-                   target=o.target,
-                   status=o.status,
-                   duration=o.duration,
-                   stdout=o.stdout,
-                   )
+        return cls(
+            name=o.name,
+            target=o.target,
+            status=o.status,
+            duration=o.duration,
+            stdout=o.stdout,
+        )
 
 
 class Mutant:
-    def __init__(self,
-                 descr: str,
-                 diff: str,
-                 check_result: Optional[MutantsResult],
-                 check_duration: Optional[float],
-                 check_log: Optional[str],
-                 test_result: Optional[MutantsResult],
-                 test_duration: Optional[float],
-                 build_duration: Optional[float],
-                 test_log: Optional[str],
-                 suites: List[MutantsTestSuite] = None,
-                 ):
+    def __init__(
+        self,
+        descr: str,
+        diff: str,
+        check_result: Optional[MutantsResult],
+        check_duration: Optional[float],
+        check_log: Optional[str],
+        test_result: Optional[MutantsResult],
+        test_duration: Optional[float],
+        build_duration: Optional[float],
+        test_log: Optional[str],
+        suites: List[MutantsTestSuite] = None,
+    ):
         """
         Constructor for mutants
 
@@ -300,19 +264,19 @@ class MutantsReport:
     """
 
     def __init__(
-            self,
-            name: str,
-            duration: float,
-            mutants: List[Mutant],
-            commit_str: Union[Optional[str], Optional[int]] = None,
-            commit: Commit = None,
-            log: Optional[str] = None,
-            has_failed: Optional[bool] = None,
-            missed: Optional[int] = None,
-            caught: Optional[int] = None,
-            unviable: Optional[int] = None,
-            timeout: Optional[int] = None,
-            failed: Optional[int] = None,
+        self,
+        name: str,
+        duration: float,
+        mutants: List[Mutant],
+        commit_str: Union[Optional[str], Optional[int]] = None,
+        commit: Commit = None,
+        log: Optional[str] = None,
+        has_failed: Optional[bool] = None,
+        missed: Optional[int] = None,
+        caught: Optional[int] = None,
+        unviable: Optional[int] = None,
+        timeout: Optional[int] = None,
+        failed: Optional[int] = None,
     ):
         """
         Constructor for test reports
