@@ -24,7 +24,6 @@ use cargo::{
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
 use rustyrts::{
-    callbacks_shared::DOCTEST_PREFIX,
     constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET_DIR},
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
     static_rts::graph::{serialize::ArenaDeserializable, DependencyGraph},
@@ -59,6 +58,22 @@ pub fn cli() -> Command {
             "Package to run tests for",
             "Test all packages in the workspace",
             "Exclude packages from the test",
+        )
+        .arg_targets_all(
+            "Test only this package's library",
+            "Test only the specified binary",
+            "Test all binaries",
+            "Test only the specified example",
+            "Test all examples",
+            "Test only the specified test target",
+            "Test all test targets",
+            "Test only the specified bench target",
+            "Test all bench targets",
+            "Test all targets (does not include doctests)",
+        )
+        .arg(
+            flag("doc", "Test only this library's documentation")
+                .help_heading(heading::TARGET_SELECTION),
         )
         .arg_features()
         .arg_jobs()
@@ -431,10 +446,10 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                 let mut tests_found = HashSet::new();
 
                 for test in &tests {
-                    let (trimmed, test_fn) = convert_doctest_name(test);
-                    let test = self.arena.intern(DOCTEST_PREFIX.to_string() + &test_fn);
+                    let (trimmed, test_path) = convert_doctest_name(test);
+                    let test = self.arena.intern(test_path.clone());
 
-                    let dependency_unit = DependencyUnit::DoctestUnit(unit, test_fn);
+                    let dependency_unit = DependencyUnit::DoctestUnit(unit, test_path);
                     let (changed, reachable) = self.reachble_and_changed_nodes(dependency_unit);
 
                     changed_nodes.extend(changed.clone());

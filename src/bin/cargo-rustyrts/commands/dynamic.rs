@@ -64,6 +64,22 @@ pub fn cli() -> Command {
             "Test all packages in the workspace",
             "Exclude packages from the test",
         )
+        .arg_targets_all(
+            "Test only this package's library",
+            "Test only the specified binary",
+            "Test all binaries",
+            "Test only the specified example",
+            "Test all examples",
+            "Test only the specified test target",
+            "Test all test targets",
+            "Test only the specified bench target",
+            "Test all bench targets",
+            "Test all targets (does not include doctests)",
+        )
+.arg(
+            flag("doc", "Test only this library's documentation")
+                .help_heading(heading::TARGET_SELECTION),
+        )
         .arg_features()
         .arg_jobs()
         .arg_unsupported_keep_going()

@@ -8,6 +8,7 @@ use rustc_middle::{
     mir::mono::MonoItem,
     ty::{PolyTraitRef, VtblEntry},
 };
+use rustc_span::def_id::DefId;
 use std::{
     collections::HashSet,
     fs::read,
@@ -44,6 +45,8 @@ pub const DOCTEST_PREFIX: &str = "rust_out::_doctest_main_";
 
 pub(crate) static EXCLUDED: OnceCell<bool> = OnceCell::new();
 static NO_INSTRUMENTATION: OnceCell<bool> = OnceCell::new();
+
+pub(crate) static ENTRY_FN: OnceCell<Option<DefId>> = OnceCell::new();
 
 pub(crate) fn excluded(crate_name: &str) -> bool {
     *EXCLUDED.get_or_init(|| {
@@ -141,20 +144,12 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
             .expect("Failed to find compile mode");
 
         let (crate_name, doctest_name) = if compile_mode == CompileMode::Doctest {
-            let doctest_name = {
-                tcx.mir_keys(())
-                    .into_iter()
-                    .filter_map(|def_id| {
-                        let name = def_id_name(tcx, def_id.to_def_id(), false, true);
-                        trace!("Searching for doctest function - Checking {:?}", name);
-                        name.strip_prefix(DOCTEST_PREFIX)
-                            .filter(|suffix| !suffix.contains("::"))
-                            .map(ToString::to_string)
-                    })
-                    .unique()
-                    .exactly_one()
-                    .expect("Did not find exactly one suitable doctest name")
-            };
+            let doctest_name = std::env::var("UNSTABLE_RUSTDOC_TEST_PATH")
+                .expect("Did not find doctest name")
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                .collect::<String>();
+
             let crate_name = std::env::var(ENV_DOCTESTED).unwrap();
 
             (crate_name, Some(doctest_name))

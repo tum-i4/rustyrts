@@ -1,8 +1,8 @@
-use std::{path::PathBuf, string::ToString};
+use std::path::PathBuf;
 
 use crate::{
     callbacks_shared::{
-        AnalysisCallback, ChecksumsCallback, RTSContext, DOCTEST_PREFIX, NEW_CHECKSUMS_VTBL,
+        AnalysisCallback, ChecksumsCallback, RTSContext, ENTRY_FN, NEW_CHECKSUMS_VTBL,
         OLD_VTABLE_ENTRIES,
     },
     constants::{ENV_SKIP_ANALYSIS, ENV_SKIP_INSTRUMENTATION, SUFFIX_DYN},
@@ -13,15 +13,11 @@ use crate::{
     fs_utils::ChecksumKind,
     names::{def_id_name, IS_COMPILING_DOCTESTS},
 };
-use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use rustc_data_structures::sync::Ordering::SeqCst;
 use rustc_driver_impl::{Callbacks, Compilation};
-use rustc_hir::def_id::DefId;
 use rustc_interface::{interface::Compiler, Config, Queries};
 use tracing::{debug, trace};
-
-static ENTRY_FN: OnceCell<Option<DefId>> = OnceCell::new();
 
 pub struct InstrumentingDoctestRTSCallbacks {}
 
@@ -50,20 +46,11 @@ impl InstrumentingCallback for InstrumentingDoctestRTSCallbacks {
                 // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
                 // 1. insert_post, 2. trace, 3. insert_pre
 
-                let doctest_name = {
-                    tcx.mir_keys(())
-                        .into_iter()
-                        .filter_map(|def_id| {
-                            let name = def_id_name(tcx, def_id.to_def_id(), false, true);
-                            trace!("Searching for doctest function - Checking {:?}", name);
-                            name.strip_prefix(DOCTEST_PREFIX)
-                                .filter(|suffix| !suffix.contains("::"))
-                                .map(ToString::to_string)
-                        })
-                        .unique()
-                        .exactly_one()
-                        .expect("Did not find exactly one suitable doctest name")
-                };
+                let doctest_name = std::env::var("UNSTABLE_RUSTDOC_TEST_PATH")
+                    .expect("Did not find doctest name")
+                    .chars()
+                    .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                    .collect::<String>();
 
                 body.insert_post_test(tcx, &doctest_name, &mut cache_ret, true);
                 body.insert_pre_test(tcx, &doctest_name, &mut cache_ret, true);

@@ -1,10 +1,11 @@
 use crate::{
     callbacks_shared::{
-        AnalysisCallback, ChecksumsCallback, RTSContext, NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
+        AnalysisCallback, ChecksumsCallback, RTSContext, ENTRY_FN, NEW_CHECKSUMS_VTBL,
+        OLD_VTABLE_ENTRIES,
     },
     constants::{ENV_SKIP_ANALYSIS, SUFFIX_DYN},
     fs_utils::{append_to_file, CacheFileDescr, CacheFileKind, CacheKind, ChecksumKind},
-    names::IS_COMPILING_DOCTESTS,
+    names::{def_id_name, IS_COMPILING_DOCTESTS},
     static_rts::callback::GraphAnalysisCallback,
 };
 use once_cell::sync::OnceCell;
@@ -15,7 +16,7 @@ use rustc_middle::ty::TyCtxt;
 use std::path::PathBuf;
 use tracing::{debug, trace};
 
-use super::graph::{serialize::ArenaSerializable, DependencyGraph};
+use super::graph::{serialize::ArenaSerializable, DependencyGraph, EdgeType};
 
 pub struct StaticDoctestRTSCallbacks {
     path: PathBuf,
@@ -58,7 +59,18 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
         } = self.context();
 
         let arena = internment::Arena::new();
-        let graph: DependencyGraph<'_, String> = self.create_graph(&arena, tcx);
+        let mut graph: DependencyGraph<'_, String> = self.create_graph(&arena, tcx);
+
+        let entry_def = ENTRY_FN
+            .get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id))
+            .unwrap();
+        let entry_name = def_id_name(tcx, entry_def, false, true);
+
+        graph.add_edge(
+            doctest_name.as_ref().unwrap().to_string(),
+            entry_name,
+            EdgeType::Trimmed,
+        );
 
         let path = CacheKind::Static.map(self.path.clone());
         append_to_file(
