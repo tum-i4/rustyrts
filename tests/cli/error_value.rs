@@ -4,9 +4,9 @@
 
 use std::env;
 
-use assert_cmd::assert::IntoOutputPredicate;
+
 use indoc::indoc;
-use predicates::{function::FnPredicate, prelude::*};
+use predicates::{prelude::*};
 
 use super::{copy_of_testdata, run};
 

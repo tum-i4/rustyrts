@@ -248,7 +248,7 @@ fn test_scenario(
                 create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
 
                 Some(vec![
-                    ("RUSTC_WRAPPER", rustyrts_bin),
+                    ("RUSTC", rustyrts_bin),
                     ("CARGO_TARGET_DIR", target_dir),
                     ("RUSTYRTS_ONLY_INSTRUMENTATION", "true".to_string()),
                 ])
@@ -307,7 +307,7 @@ fn test_scenario(
             create_dir_all(Path::new(&(target_dir.clone() + "/.rts_dynamic"))).unwrap();
 
             Some(vec![
-                ("RUSTC_WRAPPER", rustyrts_bin),
+                ("RUSTC", rustyrts_bin),
                 ("CARGO_TARGET_DIR", target_dir),
                 ("RUSTYRTS_ONLY_INSTRUMENTATION", "true".to_string()),
             ])

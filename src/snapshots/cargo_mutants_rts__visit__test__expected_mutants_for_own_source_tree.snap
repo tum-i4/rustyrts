@@ -2,703 +2,703 @@
 source: src/visit.rs
 expression: list_output
 ---
-src/main.rs: replace [38;5;13mmain[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/main.rs: replace [38;5;13mmain[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/build_dir.rs: replace [38;5;13mBuildDir::copy_from[0m [35m-> Result<BuildDir>[0m with [33mOk(Default::default())[0m
-src/build_dir.rs: replace [38;5;13mBuildDir::copy_from[0m [35m-> Result<BuildDir>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/build_dir.rs: replace [38;5;13mBuildDir::in_place[0m [35m-> Result<BuildDir>[0m with [33mOk(Default::default())[0m
-src/build_dir.rs: replace [38;5;13mBuildDir::in_place[0m [35m-> Result<BuildDir>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/build_dir.rs: replace [38;5;13mBuildDir::path[0m [35m-> &Utf8Path[0m with [33m&Default::default()[0m
-src/cargo.rs: replace [38;5;13mrun_cargo[0m [35m-> Result<PhaseResult>[0m with [33mOk(Default::default())[0m
-src/cargo.rs: replace [38;5;13mrun_cargo[0m [35m-> Result<PhaseResult>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/cargo.rs: replace [38;5;13mcargo_bin[0m [35m-> String[0m with [33mString::new()[0m
-src/cargo.rs: replace [38;5;13mcargo_bin[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/cargo.rs: replace [38;5;13mcargo_argv[0m [35m-> Vec<String>[0m with [33mvec![][0m
-src/cargo.rs: replace [38;5;13mcargo_argv[0m [35m-> Vec<String>[0m with [33mvec![String::new()][0m
-src/cargo.rs: replace [38;5;13mcargo_argv[0m [35m-> Vec<String>[0m with [33mvec!["xyzzy".into()][0m
-src/cargo.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mcargo_argv[0m
-src/cargo.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mcargo_argv[0m
-src/cargo.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mcargo_argv[0m
-src/cargo.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mcargo_argv[0m
-src/cargo.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mcargo_argv[0m
-src/cargo.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mcargo_argv[0m
-src/cargo.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mcargo_argv[0m
-src/cargo.rs: replace [38;5;13mappend_packages[0m with [33m()[0m
-src/cargo.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mappend_packages[0m
-src/cargo.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mappend_packages[0m
-src/cargo.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mappend_packages[0m
-src/cargo.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mappend_packages[0m
-src/cargo.rs: replace [38;5;13mrustflags[0m [35m-> String[0m with [33mString::new()[0m
-src/cargo.rs: replace [38;5;13mrustflags[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/cargo.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mrustflags[0m
-src/config.rs: replace [38;5;13mConfig::read_file[0m [35m-> Result<Config>[0m with [33mOk(Default::default())[0m
-src/config.rs: replace [38;5;13mConfig::read_file[0m [35m-> Result<Config>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/config.rs: replace [38;5;13mConfig::read_tree_config[0m [35m-> Result<Config>[0m with [33mOk(Default::default())[0m
-src/config.rs: replace [38;5;13mConfig::read_tree_config[0m [35m-> Result<Config>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/console.rs: replace [38;5;13mConsole::set_colors_enabled[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::walk_tree_start[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::walk_tree_update[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::walk_tree_done[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::scenario_started[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/console.rs: replace [38;5;13mConsole::scenario_started[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/console.rs: replace [38;5;13mConsole::scenario_finished[0m with [33m()[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mConsole::scenario_finished[0m
-src/console.rs: replace [38;5;13mConsole::start_copy[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::finish_copy[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::copy_progress[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::discovered_mutants[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::start_testing_mutants[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::scenario_phase_started[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::scenario_phase_finished[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::lab_finished[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::clear[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::message[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::tick[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::make_terminal_writer[0m [35m-> TerminalWriter[0m with [33mDefault::default()[0m
-src/console.rs: replace [38;5;13mConsole::make_debug_log_writer[0m [35m-> DebugLogWriter[0m with [33mDefault::default()[0m
-src/console.rs: replace [38;5;13mConsole::set_debug_log[0m with [33m()[0m
-src/console.rs: replace [38;5;13mConsole::setup_global_trace[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/console.rs: replace [38;5;13mConsole::setup_global_trace[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/console.rs: replace [38;5;13m<impl MakeWriter for TerminalWriter>::make_writer[0m [35m-> Self::Writer[0m with [33mDefault::default()[0m
-src/console.rs: replace [38;5;13m<impl Write for TerminalWriter>::write[0m [35m-> std::io::Result<usize>[0m with [33mOk(0)[0m
-src/console.rs: replace [38;5;13m<impl Write for TerminalWriter>::write[0m [35m-> std::io::Result<usize>[0m with [33mOk(1)[0m
-src/console.rs: replace [38;5;13m<impl Write for TerminalWriter>::write[0m [35m-> std::io::Result<usize>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/console.rs: replace [38;5;13m<impl Write for TerminalWriter>::flush[0m [35m-> std::io::Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/console.rs: replace [38;5;13m<impl MakeWriter for DebugLogWriter>::make_writer[0m [35m-> Self::Writer[0m with [33mDefault::default()[0m
-src/console.rs: replace [38;5;13m<impl Write for DebugLogWriter>::write[0m [35m-> io::Result<usize>[0m with [33mOk(0)[0m
-src/console.rs: replace [38;5;13m<impl Write for DebugLogWriter>::write[0m [35m-> io::Result<usize>[0m with [33mOk(1)[0m
-src/console.rs: replace [38;5;13m<impl Write for DebugLogWriter>::write[0m [35m-> io::Result<usize>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/console.rs: replace [38;5;13m<impl Write for DebugLogWriter>::flush[0m [35m-> io::Result<()>[0m with [33mOk(())[0m
-src/console.rs: replace [38;5;13m<impl Write for DebugLogWriter>::flush[0m [35m-> io::Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/console.rs: replace [38;5;13m<impl Model for LabModel>::render[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13m<impl Model for LabModel>::render[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m-[0m with [38;5;11m+[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m-[0m with [38;5;11m/[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m/[0m with [38;5;11m%[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m/[0m with [38;5;11m*[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m*[0m with [38;5;11m+[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m*[0m with [38;5;11m/[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m*[0m with [38;5;11m+[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m*[0m with [38;5;11m/[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m/[0m with [38;5;11m%[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m/[0m with [38;5;11m*[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13m<impl Model for LabModel>::render[0m
-src/console.rs: replace [38;5;13mLabModel::find_scenario_mut[0m [35m-> &mut ScenarioModel[0m with [33mBox::leak(Box::new(Default::default()))[0m
-src/console.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mLabModel::find_scenario_mut[0m
-src/console.rs: replace [38;5;13mLabModel::remove_scenario[0m with [33m()[0m
-src/console.rs: replace [33m!=[0m with [38;5;11m==[0m in [38;5;13mLabModel::remove_scenario[0m
-src/console.rs: replace [38;5;13m<impl Model for WalkModel>::render[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13m<impl Model for WalkModel>::render[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl Model for WalkModel>::render[0m
-src/console.rs: replace [38;5;13mScenarioModel::phase_started[0m with [33m()[0m
-src/console.rs: replace [38;5;13mScenarioModel::phase_finished[0m with [33m()[0m
-src/console.rs: replace [38;5;13m<impl Model for ScenarioModel>::render[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13m<impl Model for ScenarioModel>::render[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [38;5;13mCopyModel::bytes_copied[0m with [33m()[0m
-src/console.rs: replace [38;5;13m<impl Model for CopyModel>::render[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13m<impl Model for CopyModel>::render[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [38;5;13mnutmeg_options[0m [35m-> nutmeg::Options[0m with [33mDefault::default()[0m
-src/console.rs: replace [38;5;13mstyle_outcome[0m [35m-> StyledObject<&'static str>[0m with [33mStyledObject::new()[0m
-src/console.rs: replace [38;5;13mstyle_outcome[0m [35m-> StyledObject<&'static str>[0m with [33mStyledObject::from_iter([""])[0m
-src/console.rs: replace [38;5;13mstyle_outcome[0m [35m-> StyledObject<&'static str>[0m with [33mStyledObject::new("")[0m
-src/console.rs: replace [38;5;13mstyle_outcome[0m [35m-> StyledObject<&'static str>[0m with [33mStyledObject::from("")[0m
-src/console.rs: replace [38;5;13mstyle_outcome[0m [35m-> StyledObject<&'static str>[0m with [33mStyledObject::from_iter(["xyzzy"])[0m
-src/console.rs: replace [38;5;13mstyle_outcome[0m [35m-> StyledObject<&'static str>[0m with [33mStyledObject::new("xyzzy")[0m
-src/console.rs: replace [38;5;13mstyle_outcome[0m [35m-> StyledObject<&'static str>[0m with [33mStyledObject::from("xyzzy")[0m
-src/console.rs: replace [38;5;13mstyle_secs[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13mstyle_secs[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [38;5;13mstyle_duration[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13mstyle_duration[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [38;5;13mformat_mb[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13mformat_mb[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [38;5;13mstyle_mb[0m [35m-> StyledObject<String>[0m with [33mStyledObject::new()[0m
-src/console.rs: replace [38;5;13mstyle_mb[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from_iter([String::new()])[0m
-src/console.rs: replace [38;5;13mstyle_mb[0m [35m-> StyledObject<String>[0m with [33mStyledObject::new(String::new())[0m
-src/console.rs: replace [38;5;13mstyle_mb[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from(String::new())[0m
-src/console.rs: replace [38;5;13mstyle_mb[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from_iter(["xyzzy".into()])[0m
-src/console.rs: replace [38;5;13mstyle_mb[0m [35m-> StyledObject<String>[0m with [33mStyledObject::new("xyzzy".into())[0m
-src/console.rs: replace [38;5;13mstyle_mb[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from("xyzzy".into())[0m
-src/console.rs: replace [38;5;13mstyle_scenario[0m [35m-> Cow<'static, str>[0m with [33mCow::Borrowed("")[0m
-src/console.rs: replace [38;5;13mstyle_scenario[0m [35m-> Cow<'static, str>[0m with [33mCow::Owned("".to_owned())[0m
-src/console.rs: replace [38;5;13mstyle_scenario[0m [35m-> Cow<'static, str>[0m with [33mCow::Borrowed("xyzzy")[0m
-src/console.rs: replace [38;5;13mstyle_scenario[0m [35m-> Cow<'static, str>[0m with [33mCow::Owned("xyzzy".to_owned())[0m
-src/console.rs: replace [38;5;13mplural[0m [35m-> String[0m with [33mString::new()[0m
-src/console.rs: replace [38;5;13mplural[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/console.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mplural[0m
-src/copy_tree.rs: replace [38;5;13mcopy_tree[0m [35m-> Result<TempDir>[0m with [33mOk(Default::default())[0m
-src/copy_tree.rs: replace [38;5;13mcopy_tree[0m [35m-> Result<TempDir>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/copy_tree.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mcopy_tree[0m
-src/copy_tree.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mcopy_tree[0m
-src/copy_tree.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mcopy_tree[0m
-src/copy_tree.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mcopy_tree[0m
-src/copy_tree.rs: replace [38;5;13mcopy_symlink[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/copy_tree.rs: replace [38;5;13mcopy_symlink[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/fnvalue.rs: replace [38;5;13mreturn_type_replacements[0m [35m-> Vec<TokenStream>[0m with [33mvec![][0m
-src/fnvalue.rs: replace [38;5;13mreturn_type_replacements[0m [35m-> Vec<TokenStream>[0m with [33mvec![Default::default()][0m
-src/fnvalue.rs: replace [38;5;13mtype_replacements[0m [35m-> impl Iterator<Item = TokenStream>[0m with [33m::std::iter::empty()[0m
-src/fnvalue.rs: replace [38;5;13mtype_replacements[0m [35m-> impl Iterator<Item = TokenStream>[0m with [33m::std::iter::once(Default::default())[0m
-src/fnvalue.rs: replace [38;5;13mpath_ends_with[0m [35m-> bool[0m with [33mtrue[0m
-src/fnvalue.rs: replace [38;5;13mpath_ends_with[0m [35m-> bool[0m with [33mfalse[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mpath_ends_with[0m
-src/fnvalue.rs: replace [38;5;13mmatch_impl_iterator[0m [35m-> Option<&Type>[0m with [33mNone[0m
-src/fnvalue.rs: replace [38;5;13mmatch_impl_iterator[0m [35m-> Option<&Type>[0m with [33mSome(&Default::default())[0m
-src/fnvalue.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mmatch_impl_iterator[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mmatch_impl_iterator[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mmatch_impl_iterator[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mmatch_impl_iterator[0m
-src/fnvalue.rs: replace [38;5;13mknown_container[0m [35m-> Option<(&Ident, &Type)>[0m with [33mNone[0m
-src/fnvalue.rs: replace [38;5;13mknown_container[0m [35m-> Option<(&Ident, &Type)>[0m with [33mSome((&Default::default(), &Default::default()))[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mknown_container[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mknown_container[0m
-src/fnvalue.rs: replace [38;5;13mknown_collection[0m [35m-> Option<(&Ident, &Type)>[0m with [33mNone[0m
-src/fnvalue.rs: replace [38;5;13mknown_collection[0m [35m-> Option<(&Ident, &Type)>[0m with [33mSome((&Default::default(), &Default::default()))[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mknown_collection[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mknown_collection[0m
-src/fnvalue.rs: replace [38;5;13mknown_map[0m [35m-> Option<(&Ident, &Type, &Type)>[0m with [33mNone[0m
-src/fnvalue.rs: replace [38;5;13mknown_map[0m [35m-> Option<(&Ident, &Type, &Type)>[0m with [33mSome((&Default::default(), &Default::default(), &Default::default()))[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mknown_map[0m
-src/fnvalue.rs: replace [38;5;13mmaybe_collection_or_container[0m [35m-> Option<(&Ident, &Type)>[0m with [33mNone[0m
-src/fnvalue.rs: replace [38;5;13mmaybe_collection_or_container[0m [35m-> Option<(&Ident, &Type)>[0m with [33mSome((&Default::default(), &Default::default()))[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mmaybe_collection_or_container[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_float[0m [35m-> bool[0m with [33mtrue[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_float[0m [35m-> bool[0m with [33mfalse[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_unsigned[0m [35m-> bool[0m with [33mtrue[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_unsigned[0m [35m-> bool[0m with [33mfalse[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_signed[0m [35m-> bool[0m with [33mtrue[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_signed[0m [35m-> bool[0m with [33mfalse[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_nonzero_signed[0m [35m-> bool[0m with [33mtrue[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_nonzero_signed[0m [35m-> bool[0m with [33mfalse[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_nonzero_unsigned[0m [35m-> bool[0m with [33mtrue[0m
-src/fnvalue.rs: replace [38;5;13mpath_is_nonzero_unsigned[0m [35m-> bool[0m with [33mfalse[0m
-src/fnvalue.rs: replace [38;5;13mmatch_first_type_arg[0m [35m-> Option<&'p Type>[0m with [33mNone[0m
-src/fnvalue.rs: replace [38;5;13mmatch_first_type_arg[0m [35m-> Option<&'p Type>[0m with [33mSome(&Default::default())[0m
-src/fnvalue.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mmatch_first_type_arg[0m
-src/in_diff.rs: replace [38;5;13mdiff_filter[0m [35m-> Result<Vec<Mutant>>[0m with [33mOk(vec![])[0m
-src/in_diff.rs: replace [38;5;13mdiff_filter[0m [35m-> Result<Vec<Mutant>>[0m with [33mOk(vec![Default::default()])[0m
-src/in_diff.rs: replace [38;5;13mdiff_filter[0m [35m-> Result<Vec<Mutant>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/in_diff.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mdiff_filter[0m
-src/in_diff.rs: replace [38;5;13mcheck_diff_new_text_matches[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/in_diff.rs: replace [38;5;13mcheck_diff_new_text_matches[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/in_diff.rs: replace [33m-[0m with [38;5;11m+[0m in [38;5;13mcheck_diff_new_text_matches[0m
-src/in_diff.rs: replace [33m-[0m with [38;5;11m/[0m in [38;5;13mcheck_diff_new_text_matches[0m
-src/in_diff.rs: replace [33m!=[0m with [38;5;11m==[0m in [38;5;13mcheck_diff_new_text_matches[0m
-src/in_diff.rs: replace [38;5;13mstrip_patch_path[0m [35m-> &Utf8Path[0m with [33m&Default::default()[0m
-src/in_diff.rs: replace [38;5;13maffected_lines[0m [35m-> Vec<usize>[0m with [33mvec![][0m
-src/in_diff.rs: replace [38;5;13maffected_lines[0m [35m-> Vec<usize>[0m with [33mvec![0][0m
-src/in_diff.rs: replace [38;5;13maffected_lines[0m [35m-> Vec<usize>[0m with [33mvec![1][0m
-src/in_diff.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m<[0m with [38;5;11m==[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m<[0m with [38;5;11m>[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m<[0m with [38;5;11m==[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m<[0m with [38;5;11m>[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m-[0m with [38;5;11m+[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m-[0m with [38;5;11m/[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m-[0m with [38;5;11m+[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [33m-[0m with [38;5;11m/[0m in [38;5;13maffected_lines[0m
-src/in_diff.rs: replace [38;5;13mpartial_new_file[0m [35m-> Vec<(usize, &'d str)>[0m with [33mvec![][0m
-src/in_diff.rs: replace [38;5;13mpartial_new_file[0m [35m-> Vec<(usize, &'d str)>[0m with [33mvec![(0, "")][0m
-src/in_diff.rs: replace [38;5;13mpartial_new_file[0m [35m-> Vec<(usize, &'d str)>[0m with [33mvec![(0, "xyzzy")][0m
-src/in_diff.rs: replace [38;5;13mpartial_new_file[0m [35m-> Vec<(usize, &'d str)>[0m with [33mvec![(1, "")][0m
-src/in_diff.rs: replace [38;5;13mpartial_new_file[0m [35m-> Vec<(usize, &'d str)>[0m with [33mvec![(1, "xyzzy")][0m
-src/in_diff.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mpartial_new_file[0m
-src/in_diff.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mpartial_new_file[0m
-src/interrupt.rs: replace [38;5;13minstall_handler[0m with [33m()[0m
-src/lab.rs: replace [38;5;13mtest_mutants[0m [35m-> Result<LabOutcome>[0m with [33mOk(Default::default())[0m
-src/lab.rs: replace [38;5;13mtest_mutants[0m [35m-> Result<LabOutcome>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/lab.rs: replace [33m-[0m with [38;5;11m+[0m in [38;5;13mtest_mutants[0m
-src/lab.rs: replace [33m-[0m with [38;5;11m/[0m in [38;5;13mtest_mutants[0m
-src/lab.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mtest_mutants[0m
-src/lab.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mtest_mutants[0m
-src/lab.rs: replace [38;5;13mtest_timeout[0m [35m-> Duration[0m with [33mDefault::default()[0m
-src/lab.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mtest_timeout[0m
-src/lab.rs: replace [33m*[0m with [38;5;11m+[0m in [38;5;13mtest_timeout[0m
-src/lab.rs: replace [33m*[0m with [38;5;11m/[0m in [38;5;13mtest_timeout[0m
-src/lab.rs: replace [38;5;13mtest_scenario[0m [35m-> Result<ScenarioOutcome>[0m with [33mOk(Default::default())[0m
-src/lab.rs: replace [38;5;13mtest_scenario[0m [35m-> Result<ScenarioOutcome>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mtest_scenario[0m
-src/lab.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mtest_scenario[0m
-src/list.rs: replace [38;5;13m<impl Write for FmtToIoWrite<W>>::write_str[0m [35m-> Result<(), fmt::Error>[0m with [33mOk(())[0m
-src/list.rs: replace [38;5;13m<impl Write for FmtToIoWrite<W>>::write_str[0m [35m-> Result<(), fmt::Error>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/list.rs: replace [38;5;13mlist_mutants[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/list.rs: replace [38;5;13mlist_mutants[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/list.rs: replace [38;5;13mlist_files[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/list.rs: replace [38;5;13mlist_files[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/log_file.rs: replace [38;5;13mLogFile::create_in[0m [35m-> Result<LogFile>[0m with [33mOk(Default::default())[0m
-src/log_file.rs: replace [38;5;13mLogFile::create_in[0m [35m-> Result<LogFile>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/log_file.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mLogFile::create_in[0m
-src/log_file.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mLogFile::create_in[0m
-src/log_file.rs: replace [38;5;13mLogFile::open_append[0m [35m-> Result<File>[0m with [33mOk(Default::default())[0m
-src/log_file.rs: replace [38;5;13mLogFile::open_append[0m [35m-> Result<File>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/log_file.rs: replace [38;5;13mLogFile::truncate[0m with [33m()[0m
-src/log_file.rs: replace [38;5;13mLogFile::message[0m with [33m()[0m
-src/log_file.rs: replace [38;5;13mLogFile::path[0m [35m-> &Utf8Path[0m with [33m&Default::default()[0m
-src/log_file.rs: replace [38;5;13mclean_filename[0m [35m-> String[0m with [33mString::new()[0m
-src/log_file.rs: replace [38;5;13mclean_filename[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/manifest.rs: replace [38;5;13mfix_manifest[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/manifest.rs: replace [38;5;13mfix_manifest[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/manifest.rs: replace [38;5;13mfix_manifest_toml[0m [35m-> Result<Option<toml::Value>>[0m with [33mOk(None)[0m
-src/manifest.rs: replace [38;5;13mfix_manifest_toml[0m [35m-> Result<Option<toml::Value>>[0m with [33mOk(Some(Default::default()))[0m
-src/manifest.rs: replace [38;5;13mfix_manifest_toml[0m [35m-> Result<Option<toml::Value>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/manifest.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mfix_manifest_toml[0m
-src/manifest.rs: replace [38;5;13mfix_dependency_table[0m with [33m()[0m
-src/manifest.rs: replace [38;5;13mfix_cargo_config[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/manifest.rs: replace [38;5;13mfix_cargo_config[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/manifest.rs: replace [38;5;13mfix_cargo_config_toml[0m [35m-> Result<Option<String>>[0m with [33mOk(None)[0m
-src/manifest.rs: replace [38;5;13mfix_cargo_config_toml[0m [35m-> Result<Option<String>>[0m with [33mOk(Some(String::new()))[0m
-src/manifest.rs: replace [38;5;13mfix_cargo_config_toml[0m [35m-> Result<Option<String>>[0m with [33mOk(Some("xyzzy".into()))[0m
-src/manifest.rs: replace [38;5;13mfix_cargo_config_toml[0m [35m-> Result<Option<String>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/manifest.rs: replace [38;5;13mfix_path[0m [35m-> Option<String>[0m with [33mNone[0m
-src/manifest.rs: replace [38;5;13mfix_path[0m [35m-> Option<String>[0m with [33mSome(String::new())[0m
-src/manifest.rs: replace [38;5;13mfix_path[0m [35m-> Option<String>[0m with [33mSome("xyzzy".into())[0m
-src/manifest.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mfix_path[0m
-src/manifest.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mfix_path[0m
-src/mutate.rs: replace [38;5;13mMutant::mutated_code[0m [35m-> String[0m with [33mString::new()[0m
-src/mutate.rs: replace [38;5;13mMutant::mutated_code[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/mutate.rs: replace [38;5;13mMutant::describe_change[0m [35m-> String[0m with [33mString::new()[0m
-src/mutate.rs: replace [38;5;13mMutant::describe_change[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/mutate.rs: replace [38;5;13mMutant::name[0m [35m-> String[0m with [33mString::new()[0m
-src/mutate.rs: replace [38;5;13mMutant::name[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![StyledObject::new()][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![StyledObject::from_iter([String::new()])][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![StyledObject::new(String::new())][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![StyledObject::from(String::new())][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![StyledObject::from_iter(["xyzzy".into()])][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![StyledObject::new("xyzzy".into())][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts[0m [35m-> Vec<StyledObject<String>>[0m with [33mvec![StyledObject::from("xyzzy".into())][0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts::s[0m [35m-> StyledObject<String>[0m with [33mStyledObject::new()[0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts::s[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from_iter([String::new()])[0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts::s[0m [35m-> StyledObject<String>[0m with [33mStyledObject::new(String::new())[0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts::s[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from(String::new())[0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts::s[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from_iter(["xyzzy".into()])[0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts::s[0m [35m-> StyledObject<String>[0m with [33mStyledObject::new("xyzzy".into())[0m
-src/mutate.rs: replace [38;5;13mMutant::styled_parts::s[0m [35m-> StyledObject<String>[0m with [33mStyledObject::from("xyzzy".into())[0m
-src/mutate.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mMutant::styled_parts[0m
-src/mutate.rs: replace [38;5;13mMutant::original_text[0m [35m-> String[0m with [33mString::new()[0m
-src/mutate.rs: replace [38;5;13mMutant::original_text[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/mutate.rs: replace [38;5;13mMutant::replacement_text[0m [35m-> &str[0m with [33m""[0m
-src/mutate.rs: replace [38;5;13mMutant::replacement_text[0m [35m-> &str[0m with [33m"xyzzy"[0m
-src/mutate.rs: replace [38;5;13mMutant::package_name[0m [35m-> &str[0m with [33m""[0m
-src/mutate.rs: replace [38;5;13mMutant::package_name[0m [35m-> &str[0m with [33m"xyzzy"[0m
-src/mutate.rs: replace [38;5;13mMutant::package[0m [35m-> &Package[0m with [33m&Default::default()[0m
-src/mutate.rs: replace [38;5;13mMutant::diff[0m [35m-> String[0m with [33mString::new()[0m
-src/mutate.rs: replace [38;5;13mMutant::diff[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/mutate.rs: replace [38;5;13mMutant::apply[0m [35m-> Result<AppliedMutant>[0m with [33mOk(Default::default())[0m
-src/mutate.rs: replace [38;5;13mMutant::apply[0m [35m-> Result<AppliedMutant>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/mutate.rs: replace [38;5;13mMutant::unapply[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/mutate.rs: replace [38;5;13mMutant::unapply[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/mutate.rs: replace [38;5;13mMutant::write_in_dir[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/mutate.rs: replace [38;5;13mMutant::write_in_dir[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/mutate.rs: replace [38;5;13mMutant::log_file_name_base[0m [35m-> String[0m with [33mString::new()[0m
-src/mutate.rs: replace [38;5;13mMutant::log_file_name_base[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/mutate.rs: replace [38;5;13m<impl Debug for Mutant>::fmt[0m [35m-> fmt::Result[0m with [33mOk(Default::default())[0m
-src/mutate.rs: replace [38;5;13m<impl Debug for Mutant>::fmt[0m [35m-> fmt::Result[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/mutate.rs: replace [38;5;13m<impl Serialize for Mutant>::serialize[0m [35m-> Result<S::Ok, S::Error>[0m with [33mOk(Default::default())[0m
-src/mutate.rs: replace [38;5;13m<impl Serialize for Mutant>::serialize[0m [35m-> Result<S::Ok, S::Error>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/mutate.rs: replace [38;5;13m<impl Drop for AppliedMutant<'_>>::drop[0m with [33m()[0m
-src/options.rs: replace [38;5;13mjoin_slices[0m [35m-> Vec<String>[0m with [33mvec![][0m
-src/options.rs: replace [38;5;13mjoin_slices[0m [35m-> Vec<String>[0m with [33mvec![String::new()][0m
-src/options.rs: replace [38;5;13mjoin_slices[0m [35m-> Vec<String>[0m with [33mvec!["xyzzy".into()][0m
-src/options.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mjoin_slices[0m
-src/options.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mjoin_slices[0m
-src/options.rs: replace [38;5;13mColors::forced_value[0m [35m-> Option<bool>[0m with [33mNone[0m
-src/options.rs: replace [38;5;13mColors::forced_value[0m [35m-> Option<bool>[0m with [33mSome(true)[0m
-src/options.rs: replace [38;5;13mColors::forced_value[0m [35m-> Option<bool>[0m with [33mSome(false)[0m
-src/options.rs: replace [33m!=[0m with [38;5;11m==[0m in [38;5;13mColors::forced_value[0m
-src/options.rs: replace [33m!=[0m with [38;5;11m==[0m in [38;5;13mColors::forced_value[0m
-src/options.rs: replace [38;5;13mColors::active_stdout[0m [35m-> bool[0m with [33mtrue[0m
-src/options.rs: replace [38;5;13mColors::active_stdout[0m [35m-> bool[0m with [33mfalse[0m
-src/options.rs: replace [38;5;13mor_slices[0m [35m-> &'c[T][0m with [33mVec::leak(Vec::new())[0m
-src/options.rs: replace [38;5;13mor_slices[0m [35m-> &'c[T][0m with [33mVec::leak(vec![Default::default()])[0m
-src/options.rs: replace [38;5;13mbuild_glob_set[0m [35m-> Result<Option<GlobSet>>[0m with [33mOk(None)[0m
-src/options.rs: replace [38;5;13mbuild_glob_set[0m [35m-> Result<Option<GlobSet>>[0m with [33mOk(Some(Default::default()))[0m
-src/options.rs: replace [38;5;13mbuild_glob_set[0m [35m-> Result<Option<GlobSet>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/options.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mbuild_glob_set[0m
-src/outcome.rs: replace [38;5;13mPhase::name[0m [35m-> Vec<&'static str>[0m with [33mvec![][0m
-src/outcome.rs: replace [38;5;13mPhase::name[0m [35m-> Vec<&'static str>[0m with [33mvec![""][0m
-src/outcome.rs: replace [38;5;13mPhase::name[0m [35m-> Vec<&'static str>[0m with [33mvec!["xyzzy"][0m
-src/outcome.rs: replace [38;5;13mPhase::is_test_phase[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mPhase::is_test_phase[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mPhase::is_test_phase[0m
-src/outcome.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mPhase::is_test_phase[0m
-src/outcome.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mPhase::is_test_phase[0m
-src/outcome.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mPhase::is_test_phase[0m
-src/outcome.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mPhase::is_test_phase[0m
-src/outcome.rs: replace [38;5;13m<impl Display for Phase>::fmt[0m [35m-> fmt::Result[0m with [33mOk(Default::default())[0m
-src/outcome.rs: replace [38;5;13m<impl Display for Phase>::fmt[0m [35m-> fmt::Result[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/outcome.rs: replace [38;5;13mLabOutcome::add[0m with [33m()[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mLabOutcome::add[0m
-src/outcome.rs: replace [38;5;13mLabOutcome::exit_code[0m [35m-> i32[0m with [33m0[0m
-src/outcome.rs: replace [38;5;13mLabOutcome::exit_code[0m [35m-> i32[0m with [33m1[0m
-src/outcome.rs: replace [38;5;13mLabOutcome::exit_code[0m [35m-> i32[0m with [33m-1[0m
-src/outcome.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mLabOutcome::exit_code[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::exit_code[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::exit_code[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::exit_code[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::exit_code[0m
-src/outcome.rs: replace [38;5;13mLabOutcome::summary_string[0m [35m-> String[0m with [33mString::new()[0m
-src/outcome.rs: replace [38;5;13mLabOutcome::summary_string[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mLabOutcome::summary_string[0m
-src/outcome.rs: replace [38;5;13m<impl Serialize for ScenarioOutcome>::serialize[0m [35m-> Result<S::Ok, S::Error>[0m with [33mOk(Default::default())[0m
-src/outcome.rs: replace [38;5;13m<impl Serialize for ScenarioOutcome>::serialize[0m [35m-> Result<S::Ok, S::Error>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::add_phase_result[0m with [33m()[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::get_log_content[0m [35m-> Result<String>[0m with [33mOk(String::new())[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::get_log_content[0m [35m-> Result<String>[0m with [33mOk("xyzzy".into())[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::get_log_content[0m [35m-> Result<String>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::last_phase[0m [35m-> Phase[0m with [33mDefault::default()[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::last_phase_result[0m [35m-> ProcessStatus[0m with [33mDefault::default()[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::phase_results[0m [35m-> &[PhaseResult][0m with [33mVec::leak(Vec::new())[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::phase_results[0m [35m-> &[PhaseResult][0m with [33mVec::leak(vec![Default::default()])[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::test_phase_duration[0m [35m-> Duration[0m with [33mDefault::default()[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::should_show_logs[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::should_show_logs[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mScenarioOutcome::should_show_logs[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::success[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::success[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::has_timeout[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::has_timeout[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::check_or_build_failed[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::check_or_build_failed[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mScenarioOutcome::check_or_build_failed[0m
-src/outcome.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mScenarioOutcome::check_or_build_failed[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::mutant_caught[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::mutant_caught[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mScenarioOutcome::mutant_caught[0m
-src/outcome.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mScenarioOutcome::mutant_caught[0m
-src/outcome.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mScenarioOutcome::mutant_caught[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::mutant_missed[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::mutant_missed[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mScenarioOutcome::mutant_missed[0m
-src/outcome.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mScenarioOutcome::mutant_missed[0m
-src/outcome.rs: replace [38;5;13mScenarioOutcome::summary[0m [35m-> SummaryOutcome[0m with [33mDefault::default()[0m
-src/outcome.rs: replace [38;5;13mPhaseResult::is_success[0m [35m-> bool[0m with [33mtrue[0m
-src/outcome.rs: replace [38;5;13mPhaseResult::is_success[0m [35m-> bool[0m with [33mfalse[0m
-src/outcome.rs: replace [38;5;13m<impl Serialize for PhaseResult>::serialize[0m [35m-> Result<S::Ok, S::Error>[0m with [33mOk(Default::default())[0m
-src/outcome.rs: replace [38;5;13m<impl Serialize for PhaseResult>::serialize[0m [35m-> Result<S::Ok, S::Error>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/output.rs: replace [38;5;13mLockFile::acquire_lock[0m [35m-> Result<File>[0m with [33mOk(Default::default())[0m
-src/output.rs: replace [38;5;13mLockFile::acquire_lock[0m [35m-> Result<File>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/output.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mLockFile::acquire_lock[0m
-src/output.rs: replace [38;5;13mOutputDir::create_log[0m [35m-> Result<LogFile>[0m with [33mOk(Default::default())[0m
-src/output.rs: replace [38;5;13mOutputDir::create_log[0m [35m-> Result<LogFile>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/output.rs: replace [38;5;13mOutputDir::path[0m [35m-> &Utf8Path[0m with [33m&Default::default()[0m
-src/output.rs: replace [38;5;13mOutputDir::write_lab_outcome[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/output.rs: replace [38;5;13mOutputDir::write_lab_outcome[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/output.rs: replace [38;5;13mOutputDir::add_scenario_outcome[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/output.rs: replace [38;5;13mOutputDir::add_scenario_outcome[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/output.rs: replace [38;5;13mOutputDir::open_debug_log[0m [35m-> Result<File>[0m with [33mOk(Default::default())[0m
-src/output.rs: replace [38;5;13mOutputDir::open_debug_log[0m [35m-> Result<File>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/output.rs: replace [38;5;13mOutputDir::write_mutants_list[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/output.rs: replace [38;5;13mOutputDir::write_mutants_list[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/output.rs: replace [38;5;13mOutputDir::take_lab_outcome[0m [35m-> LabOutcome[0m with [33mDefault::default()[0m
-src/path.rs: replace [38;5;13mascent[0m [35m-> isize[0m with [33m0[0m
-src/path.rs: replace [38;5;13mascent[0m [35m-> isize[0m with [33m1[0m
-src/path.rs: replace [38;5;13mascent[0m [35m-> isize[0m with [33m-1[0m
-src/path.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mascent[0m
-src/path.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mascent[0m
-src/path.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mascent[0m
-src/path.rs: replace [33m!=[0m with [38;5;11m==[0m in [38;5;13mascent[0m
-src/path.rs: replace [33m-=[0m with [38;5;11m+=[0m in [38;5;13mascent[0m
-src/path.rs: replace [33m-=[0m with [38;5;11m/=[0m in [38;5;13mascent[0m
-src/path.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mascent[0m
-src/path.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mascent[0m
-src/path.rs: replace [38;5;13m<impl Utf8PathSlashes for Utf8Path>::to_slash_path[0m [35m-> String[0m with [33mString::new()[0m
-src/path.rs: replace [38;5;13m<impl Utf8PathSlashes for Utf8Path>::to_slash_path[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/path.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Utf8PathSlashes for Utf8Path>::to_slash_path[0m
-src/path.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl Utf8PathSlashes for Utf8Path>::to_slash_path[0m
-src/path.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl Utf8PathSlashes for Utf8Path>::to_slash_path[0m
-src/pretty.rs: replace [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m [35m-> String[0m with [33mString::new()[0m
-src/pretty.rs: replace [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/pretty.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/pretty.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/pretty.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/pretty.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/pretty.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/pretty.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/pretty.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/pretty.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13m<impl ToPrettyString for T>::to_pretty_string[0m
-src/process.rs: replace [38;5;13mProcess::run[0m [35m-> Result<ProcessStatus>[0m with [33mOk(Default::default())[0m
-src/process.rs: replace [38;5;13mProcess::run[0m [35m-> Result<ProcessStatus>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/process.rs: replace [38;5;13mProcess::start[0m [35m-> Result<Process>[0m with [33mOk(Default::default())[0m
-src/process.rs: replace [38;5;13mProcess::start[0m [35m-> Result<Process>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/process.rs: replace [38;5;13mProcess::terminate[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/process.rs: replace [38;5;13mProcess::terminate[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/process.rs: replace [38;5;13mterminate_child_impl[0m [35m-> Result<()>[0m with [33mOk(())[0m
-src/process.rs: replace [38;5;13mterminate_child_impl[0m [35m-> Result<()>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/process.rs: replace [33m!=[0m with [38;5;11m==[0m in [38;5;13mterminate_child_impl[0m
-src/process.rs: replace [38;5;13mProcessStatus::success[0m [35m-> bool[0m with [33mtrue[0m
-src/process.rs: replace [38;5;13mProcessStatus::success[0m [35m-> bool[0m with [33mfalse[0m
-src/process.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mProcessStatus::success[0m
-src/process.rs: replace [38;5;13mProcessStatus::timeout[0m [35m-> bool[0m with [33mtrue[0m
-src/process.rs: replace [38;5;13mProcessStatus::timeout[0m [35m-> bool[0m with [33mfalse[0m
-src/process.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mProcessStatus::timeout[0m
-src/process.rs: replace [38;5;13msetpgid_on_unix[0m [35m-> PopenConfig[0m with [33mDefault::default()[0m
-src/process.rs: replace [38;5;13mget_command_output[0m [35m-> Result<String>[0m with [33mOk(String::new())[0m
-src/process.rs: replace [38;5;13mget_command_output[0m [35m-> Result<String>[0m with [33mOk("xyzzy".into())[0m
-src/process.rs: replace [38;5;13mget_command_output[0m [35m-> Result<String>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/process.rs: replace [38;5;13mcheap_shell_quote[0m [35m-> String[0m with [33mString::new()[0m
-src/process.rs: replace [38;5;13mcheap_shell_quote[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/scenario.rs: replace [38;5;13m<impl Display for Scenario>::fmt[0m [35m-> fmt::Result[0m with [33mOk(Default::default())[0m
-src/scenario.rs: replace [38;5;13m<impl Display for Scenario>::fmt[0m [35m-> fmt::Result[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/scenario.rs: replace [38;5;13mScenario::is_mutant[0m [35m-> bool[0m with [33mtrue[0m
-src/scenario.rs: replace [38;5;13mScenario::is_mutant[0m [35m-> bool[0m with [33mfalse[0m
-src/scenario.rs: replace [38;5;13mScenario::mutant[0m [35m-> Option<&Mutant>[0m with [33mNone[0m
-src/scenario.rs: replace [38;5;13mScenario::mutant[0m [35m-> Option<&Mutant>[0m with [33mSome(&Default::default())[0m
-src/scenario.rs: replace [38;5;13mScenario::log_file_name_base[0m [35m-> String[0m with [33mString::new()[0m
-src/scenario.rs: replace [38;5;13mScenario::log_file_name_base[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/shard.rs: replace [38;5;13mShard::select[0m [35m-> Vec<M>[0m with [33mvec![][0m
-src/shard.rs: replace [38;5;13mShard::select[0m [35m-> Vec<M>[0m with [33mvec![Default::default()][0m
-src/shard.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mShard::select[0m
-src/shard.rs: replace [33m%[0m with [38;5;11m/[0m in [38;5;13mShard::select[0m
-src/shard.rs: replace [33m%[0m with [38;5;11m+[0m in [38;5;13mShard::select[0m
-src/shard.rs: replace [38;5;13m<impl FromStr for Shard>::from_str[0m [35m-> Result<Self, Self::Err>[0m with [33mOk(Default::default())[0m
-src/shard.rs: replace [38;5;13m<impl FromStr for Shard>::from_str[0m [35m-> Result<Self, Self::Err>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/source.rs: replace [38;5;13mSourceFile::tree_relative_slashes[0m [35m-> String[0m with [33mString::new()[0m
-src/source.rs: replace [38;5;13mSourceFile::tree_relative_slashes[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/source.rs: replace [38;5;13mSourceFile::path[0m [35m-> &Utf8Path[0m with [33m&Default::default()[0m
-src/source.rs: replace [38;5;13mSourceFile::code[0m [35m-> &str[0m with [33m""[0m
-src/source.rs: replace [38;5;13mSourceFile::code[0m [35m-> &str[0m with [33m"xyzzy"[0m
-src/span.rs: replace [38;5;13m<impl From for LineColumn>::from[0m [35m-> Self[0m with [33mDefault::default()[0m
-src/span.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13m<impl From for LineColumn>::from[0m
-src/span.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13m<impl From for LineColumn>::from[0m
-src/span.rs: replace [38;5;13m<impl Debug for LineColumn>::fmt[0m [35m-> fmt::Result[0m with [33mOk(Default::default())[0m
-src/span.rs: replace [38;5;13m<impl Debug for LineColumn>::fmt[0m [35m-> fmt::Result[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/span.rs: replace [38;5;13mSpan::quad[0m [35m-> Self[0m with [33mDefault::default()[0m
-src/span.rs: replace [38;5;13mSpan::extract[0m [35m-> String[0m with [33mString::new()[0m
-src/span.rs: replace [38;5;13mSpan::extract[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m>=[0m with [38;5;11m<[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m<[0m with [38;5;11m==[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m<[0m with [38;5;11m>[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m<[0m with [38;5;11m==[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m<[0m with [38;5;11m>[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [33m>=[0m with [38;5;11m<[0m in [38;5;13mSpan::extract[0m
-src/span.rs: replace [38;5;13mSpan::replace[0m [35m-> String[0m with [33mString::new()[0m
-src/span.rs: replace [38;5;13mSpan::replace[0m [35m-> String[0m with [33m"xyzzy".into()[0m
-src/span.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m<[0m with [38;5;11m==[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m<[0m with [38;5;11m>[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m<[0m with [38;5;11m==[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m<[0m with [38;5;11m>[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m>=[0m with [38;5;11m<[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m-=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m+=[0m with [38;5;11m*=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mSpan::replace[0m
-src/span.rs: replace [38;5;13m<impl From for Span>::from[0m [35m-> Self[0m with [33mDefault::default()[0m
-src/span.rs: replace [38;5;13m<impl From for Span>::from[0m [35m-> Self[0m with [33mDefault::default()[0m
-src/span.rs: replace [38;5;13m<impl From for Span>::from[0m [35m-> Self[0m with [33mDefault::default()[0m
-src/span.rs: replace [38;5;13m<impl Debug for Span>::fmt[0m [35m-> fmt::Result[0m with [33mOk(Default::default())[0m
-src/span.rs: replace [38;5;13m<impl Debug for Span>::fmt[0m [35m-> fmt::Result[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/tail_file.rs: replace [38;5;13mTailFile::last_line[0m [35m-> Result<&str>[0m with [33mOk("")[0m
-src/tail_file.rs: replace [38;5;13mTailFile::last_line[0m [35m-> Result<&str>[0m with [33mOk("xyzzy")[0m
-src/tail_file.rs: replace [38;5;13mTailFile::last_line[0m [35m-> Result<&str>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/tail_file.rs: replace [33m>[0m with [38;5;11m==[0m in [38;5;13mTailFile::last_line[0m
-src/tail_file.rs: replace [33m>[0m with [38;5;11m<[0m in [38;5;13mTailFile::last_line[0m
-src/visit.rs: replace [38;5;13mwalk_tree[0m [35m-> Result<Discovered>[0m with [33mOk(Default::default())[0m
-src/visit.rs: replace [38;5;13mwalk_tree[0m [35m-> Result<Discovered>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/visit.rs: replace [33m&&[0m with [38;5;11m||[0m in [38;5;13mwalk_tree[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mwalk_tree[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mwalk_tree[0m
-src/visit.rs: replace [38;5;13mwalk_file[0m [35m-> Result<(Vec<Mutant>, Vec<String>)>[0m with [33mOk((vec![], vec![]))[0m
-src/visit.rs: replace [38;5;13mwalk_file[0m [35m-> Result<(Vec<Mutant>, Vec<String>)>[0m with [33mOk((vec![], vec![String::new()]))[0m
-src/visit.rs: replace [38;5;13mwalk_file[0m [35m-> Result<(Vec<Mutant>, Vec<String>)>[0m with [33mOk((vec![], vec!["xyzzy".into()]))[0m
-src/visit.rs: replace [38;5;13mwalk_file[0m [35m-> Result<(Vec<Mutant>, Vec<String>)>[0m with [33mOk((vec![Default::default()], vec![]))[0m
-src/visit.rs: replace [38;5;13mwalk_file[0m [35m-> Result<(Vec<Mutant>, Vec<String>)>[0m with [33mOk((vec![Default::default()], vec![String::new()]))[0m
-src/visit.rs: replace [38;5;13mwalk_file[0m [35m-> Result<(Vec<Mutant>, Vec<String>)>[0m with [33mOk((vec![Default::default()], vec!["xyzzy".into()]))[0m
-src/visit.rs: replace [38;5;13mwalk_file[0m [35m-> Result<(Vec<Mutant>, Vec<String>)>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/visit.rs: replace [38;5;13mDiscoveryVisitor<'o>::enter_function[0m [35m-> Arc<Function>[0m with [33mArc::new(Default::default())[0m
-src/visit.rs: replace [38;5;13mDiscoveryVisitor<'o>::leave_function[0m with [33m()[0m
-src/visit.rs: replace [38;5;13mDiscoveryVisitor<'o>::collect_mutant[0m with [33m()[0m
-src/visit.rs: replace [38;5;13mDiscoveryVisitor<'o>::collect_fn_mutants[0m with [33m()[0m
-src/visit.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mDiscoveryVisitor<'o>::collect_fn_mutants[0m
-src/visit.rs: replace [38;5;13mDiscoveryVisitor<'o>::in_namespace[0m [35m-> T[0m with [33mDefault::default()[0m
-src/visit.rs: replace [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_item_fn[0m with [33m()[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_item_fn[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_item_fn[0m
-src/visit.rs: replace [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn[0m with [33m()[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn[0m
-src/visit.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn[0m
-src/visit.rs: replace [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn[0m with [33m()[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn[0m
-src/visit.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn[0m
-src/visit.rs: replace [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_item_impl[0m with [33m()[0m
-src/visit.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_item_impl[0m
-src/visit.rs: replace [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_item_trait[0m with [33m()[0m
-src/visit.rs: replace [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_item_mod[0m with [33m()[0m
-src/visit.rs: replace [38;5;13m<impl Visit for DiscoveryVisitor<'_>>::visit_expr_binary[0m with [33m()[0m
-src/visit.rs: replace [38;5;13mfunction_body_span[0m [35m-> Option<Span>[0m with [33mNone[0m
-src/visit.rs: replace [38;5;13mfunction_body_span[0m [35m-> Option<Span>[0m with [33mSome(Default::default())[0m
-src/visit.rs: replace [38;5;13mfind_mod_source[0m [35m-> Result<Option<Utf8PathBuf>>[0m with [33mOk(None)[0m
-src/visit.rs: replace [38;5;13mfind_mod_source[0m [35m-> Result<Option<Utf8PathBuf>>[0m with [33mOk(Some(Default::default()))[0m
-src/visit.rs: replace [38;5;13mfind_mod_source[0m [35m-> Result<Option<Utf8PathBuf>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mfind_mod_source[0m
-src/visit.rs: replace [33m+[0m with [38;5;11m-[0m in [38;5;13mfind_mod_source[0m
-src/visit.rs: replace [33m+[0m with [38;5;11m*[0m in [38;5;13mfind_mod_source[0m
-src/visit.rs: replace [38;5;13mfn_sig_excluded[0m [35m-> bool[0m with [33mtrue[0m
-src/visit.rs: replace [38;5;13mfn_sig_excluded[0m [35m-> bool[0m with [33mfalse[0m
-src/visit.rs: replace [38;5;13mattrs_excluded[0m [35m-> bool[0m with [33mtrue[0m
-src/visit.rs: replace [38;5;13mattrs_excluded[0m [35m-> bool[0m with [33mfalse[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mattrs_excluded[0m
-src/visit.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mattrs_excluded[0m
-src/visit.rs: replace [38;5;13mblock_is_empty[0m [35m-> bool[0m with [33mtrue[0m
-src/visit.rs: replace [38;5;13mblock_is_empty[0m [35m-> bool[0m with [33mfalse[0m
-src/visit.rs: replace [38;5;13mattr_is_cfg_test[0m [35m-> bool[0m with [33mtrue[0m
-src/visit.rs: replace [38;5;13mattr_is_cfg_test[0m [35m-> bool[0m with [33mfalse[0m
-src/visit.rs: replace [38;5;13mattr_is_test[0m [35m-> bool[0m with [33mtrue[0m
-src/visit.rs: replace [38;5;13mattr_is_test[0m [35m-> bool[0m with [33mfalse[0m
-src/visit.rs: replace [38;5;13mpath_is[0m [35m-> bool[0m with [33mtrue[0m
-src/visit.rs: replace [38;5;13mpath_is[0m [35m-> bool[0m with [33mfalse[0m
-src/visit.rs: replace [38;5;13mattr_is_mutants_skip[0m [35m-> bool[0m with [33mtrue[0m
-src/visit.rs: replace [38;5;13mattr_is_mutants_skip[0m [35m-> bool[0m with [33mfalse[0m
-src/workspace.rs: replace [38;5;13mPackageFilter::explicit[0m [35m-> PackageFilter[0m with [33mDefault::default()[0m
-src/workspace.rs: replace [38;5;13mPackageFilter::resolve_auto[0m [35m-> Result<PackageFilter>[0m with [33mOk(Default::default())[0m
-src/workspace.rs: replace [38;5;13mPackageFilter::resolve_auto[0m [35m-> Result<PackageFilter>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mPackageFilter::resolve_auto[0m
-src/workspace.rs: replace [38;5;13mWorkspace::open[0m [35m-> Result<Self>[0m with [33mOk(Default::default())[0m
-src/workspace.rs: replace [38;5;13mWorkspace::open[0m [35m-> Result<Self>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [38;5;13mWorkspace::packages[0m [35m-> Result<Vec<Arc<Package>>>[0m with [33mOk(vec![])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::packages[0m [35m-> Result<Vec<Arc<Package>>>[0m with [33mOk(vec![Arc::new(Default::default())])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::packages[0m [35m-> Result<Vec<Arc<Package>>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [38;5;13mWorkspace::package_tops[0m [35m-> Result<Vec<PackageTop>>[0m with [33mOk(vec![])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::package_tops[0m [35m-> Result<Vec<PackageTop>>[0m with [33mOk(vec![Default::default()])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::package_tops[0m [35m-> Result<Vec<PackageTop>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mWorkspace::package_tops[0m
-src/workspace.rs: replace [38;5;13mWorkspace::top_sources[0m [35m-> Result<Vec<SourceFile>>[0m with [33mOk(vec![])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::top_sources[0m [35m-> Result<Vec<SourceFile>>[0m with [33mOk(vec![Default::default()])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::top_sources[0m [35m-> Result<Vec<SourceFile>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [38;5;13mWorkspace::discover[0m [35m-> Result<Discovered>[0m with [33mOk(Default::default())[0m
-src/workspace.rs: replace [38;5;13mWorkspace::discover[0m [35m-> Result<Discovered>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [38;5;13mWorkspace::mutants[0m [35m-> Result<Vec<Mutant>>[0m with [33mOk(vec![])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::mutants[0m [35m-> Result<Vec<Mutant>>[0m with [33mOk(vec![Default::default()])[0m
-src/workspace.rs: replace [38;5;13mWorkspace::mutants[0m [35m-> Result<Vec<Mutant>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [38;5;13mdirect_package_sources[0m [35m-> Result<Vec<Utf8PathBuf>>[0m with [33mOk(vec![])[0m
-src/workspace.rs: replace [38;5;13mdirect_package_sources[0m [35m-> Result<Vec<Utf8PathBuf>>[0m with [33mOk(vec![Default::default()])[0m
-src/workspace.rs: replace [38;5;13mdirect_package_sources[0m [35m-> Result<Vec<Utf8PathBuf>>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
-src/workspace.rs: replace [38;5;13mshould_mutate_target[0m [35m-> bool[0m with [33mtrue[0m
-src/workspace.rs: replace [38;5;13mshould_mutate_target[0m [35m-> bool[0m with [33mfalse[0m
-src/workspace.rs: replace [33m||[0m with [38;5;11m&&[0m in [38;5;13mshould_mutate_target[0m
-src/workspace.rs: replace [33m==[0m with [38;5;11m!=[0m in [38;5;13mshould_mutate_target[0m
-src/workspace.rs: replace [38;5;13mlocate_project[0m [35m-> Result<Utf8PathBuf>[0m with [33mOk(Default::default())[0m
-src/workspace.rs: replace [38;5;13mlocate_project[0m [35m-> Result<Utf8PathBuf>[0m with [33mErr(::anyhow::anyhow!("mutated!"))[0m
+src/main.rs: replace main -> Result<()> with Ok(())
+src/main.rs: replace main -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/build_dir.rs: replace BuildDir::copy_from -> Result<BuildDir> with Ok(Default::default())
+src/build_dir.rs: replace BuildDir::copy_from -> Result<BuildDir> with Err(::anyhow::anyhow!("mutated!"))
+src/build_dir.rs: replace BuildDir::in_place -> Result<BuildDir> with Ok(Default::default())
+src/build_dir.rs: replace BuildDir::in_place -> Result<BuildDir> with Err(::anyhow::anyhow!("mutated!"))
+src/build_dir.rs: replace BuildDir::path -> &Utf8Path with &Default::default()
+src/cargo.rs: replace run_cargo -> Result<PhaseResult> with Ok(Default::default())
+src/cargo.rs: replace run_cargo -> Result<PhaseResult> with Err(::anyhow::anyhow!("mutated!"))
+src/cargo.rs: replace cargo_bin -> String with String::new()
+src/cargo.rs: replace cargo_bin -> String with "xyzzy".into()
+src/cargo.rs: replace cargo_argv -> Vec<String> with vec![]
+src/cargo.rs: replace cargo_argv -> Vec<String> with vec![String::new()]
+src/cargo.rs: replace cargo_argv -> Vec<String> with vec!["xyzzy".into()]
+src/cargo.rs: replace || with && in cargo_argv
+src/cargo.rs: replace || with && in cargo_argv
+src/cargo.rs: replace == with != in cargo_argv
+src/cargo.rs: replace == with != in cargo_argv
+src/cargo.rs: replace == with != in cargo_argv
+src/cargo.rs: replace == with != in cargo_argv
+src/cargo.rs: replace && with || in cargo_argv
+src/cargo.rs: replace append_packages with ()
+src/cargo.rs: replace + with - in append_packages
+src/cargo.rs: replace + with * in append_packages
+src/cargo.rs: replace + with - in append_packages
+src/cargo.rs: replace + with * in append_packages
+src/cargo.rs: replace rustflags -> String with String::new()
+src/cargo.rs: replace rustflags -> String with "xyzzy".into()
+src/cargo.rs: replace == with != in rustflags
+src/config.rs: replace Config::read_file -> Result<Config> with Ok(Default::default())
+src/config.rs: replace Config::read_file -> Result<Config> with Err(::anyhow::anyhow!("mutated!"))
+src/config.rs: replace Config::read_tree_config -> Result<Config> with Ok(Default::default())
+src/config.rs: replace Config::read_tree_config -> Result<Config> with Err(::anyhow::anyhow!("mutated!"))
+src/console.rs: replace Console::set_colors_enabled with ()
+src/console.rs: replace Console::walk_tree_start with ()
+src/console.rs: replace Console::walk_tree_update with ()
+src/console.rs: replace Console::walk_tree_done with ()
+src/console.rs: replace Console::scenario_started -> Result<()> with Ok(())
+src/console.rs: replace Console::scenario_started -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/console.rs: replace Console::scenario_finished with ()
+src/console.rs: replace += with -= in Console::scenario_finished
+src/console.rs: replace += with *= in Console::scenario_finished
+src/console.rs: replace += with -= in Console::scenario_finished
+src/console.rs: replace += with *= in Console::scenario_finished
+src/console.rs: replace += with -= in Console::scenario_finished
+src/console.rs: replace += with *= in Console::scenario_finished
+src/console.rs: replace += with -= in Console::scenario_finished
+src/console.rs: replace += with *= in Console::scenario_finished
+src/console.rs: replace += with -= in Console::scenario_finished
+src/console.rs: replace += with *= in Console::scenario_finished
+src/console.rs: replace += with -= in Console::scenario_finished
+src/console.rs: replace += with *= in Console::scenario_finished
+src/console.rs: replace += with -= in Console::scenario_finished
+src/console.rs: replace += with *= in Console::scenario_finished
+src/console.rs: replace || with && in Console::scenario_finished
+src/console.rs: replace && with || in Console::scenario_finished
+src/console.rs: replace && with || in Console::scenario_finished
+src/console.rs: replace && with || in Console::scenario_finished
+src/console.rs: replace || with && in Console::scenario_finished
+src/console.rs: replace Console::start_copy with ()
+src/console.rs: replace Console::finish_copy with ()
+src/console.rs: replace Console::copy_progress with ()
+src/console.rs: replace Console::discovered_mutants with ()
+src/console.rs: replace Console::start_testing_mutants with ()
+src/console.rs: replace Console::scenario_phase_started with ()
+src/console.rs: replace Console::scenario_phase_finished with ()
+src/console.rs: replace Console::lab_finished with ()
+src/console.rs: replace Console::clear with ()
+src/console.rs: replace Console::message with ()
+src/console.rs: replace Console::tick with ()
+src/console.rs: replace Console::make_terminal_writer -> TerminalWriter with Default::default()
+src/console.rs: replace Console::make_debug_log_writer -> DebugLogWriter with Default::default()
+src/console.rs: replace Console::set_debug_log with ()
+src/console.rs: replace Console::setup_global_trace -> Result<()> with Ok(())
+src/console.rs: replace Console::setup_global_trace -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/console.rs: replace <impl MakeWriter for TerminalWriter>::make_writer -> Self::Writer with Default::default()
+src/console.rs: replace <impl Write for TerminalWriter>::write -> std::io::Result<usize> with Ok(0)
+src/console.rs: replace <impl Write for TerminalWriter>::write -> std::io::Result<usize> with Ok(1)
+src/console.rs: replace <impl Write for TerminalWriter>::write -> std::io::Result<usize> with Err(::anyhow::anyhow!("mutated!"))
+src/console.rs: replace <impl Write for TerminalWriter>::flush -> std::io::Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/console.rs: replace <impl MakeWriter for DebugLogWriter>::make_writer -> Self::Writer with Default::default()
+src/console.rs: replace <impl Write for DebugLogWriter>::write -> io::Result<usize> with Ok(0)
+src/console.rs: replace <impl Write for DebugLogWriter>::write -> io::Result<usize> with Ok(1)
+src/console.rs: replace <impl Write for DebugLogWriter>::write -> io::Result<usize> with Err(::anyhow::anyhow!("mutated!"))
+src/console.rs: replace <impl Write for DebugLogWriter>::flush -> io::Result<()> with Ok(())
+src/console.rs: replace <impl Write for DebugLogWriter>::flush -> io::Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/console.rs: replace <impl Model for LabModel>::render -> String with String::new()
+src/console.rs: replace <impl Model for LabModel>::render -> String with "xyzzy".into()
+src/console.rs: replace += with -= in <impl Model for LabModel>::render
+src/console.rs: replace += with *= in <impl Model for LabModel>::render
+src/console.rs: replace > with == in <impl Model for LabModel>::render
+src/console.rs: replace > with < in <impl Model for LabModel>::render
+src/console.rs: replace > with == in <impl Model for LabModel>::render
+src/console.rs: replace > with < in <impl Model for LabModel>::render
+src/console.rs: replace > with == in <impl Model for LabModel>::render
+src/console.rs: replace > with < in <impl Model for LabModel>::render
+src/console.rs: replace > with == in <impl Model for LabModel>::render
+src/console.rs: replace > with < in <impl Model for LabModel>::render
+src/console.rs: replace > with == in <impl Model for LabModel>::render
+src/console.rs: replace > with < in <impl Model for LabModel>::render
+src/console.rs: replace - with + in <impl Model for LabModel>::render
+src/console.rs: replace - with / in <impl Model for LabModel>::render
+src/console.rs: replace / with % in <impl Model for LabModel>::render
+src/console.rs: replace / with * in <impl Model for LabModel>::render
+src/console.rs: replace * with + in <impl Model for LabModel>::render
+src/console.rs: replace * with / in <impl Model for LabModel>::render
+src/console.rs: replace > with == in <impl Model for LabModel>::render
+src/console.rs: replace > with < in <impl Model for LabModel>::render
+src/console.rs: replace * with + in <impl Model for LabModel>::render
+src/console.rs: replace * with / in <impl Model for LabModel>::render
+src/console.rs: replace / with % in <impl Model for LabModel>::render
+src/console.rs: replace / with * in <impl Model for LabModel>::render
+src/console.rs: replace + with - in <impl Model for LabModel>::render
+src/console.rs: replace + with * in <impl Model for LabModel>::render
+src/console.rs: replace LabModel::find_scenario_mut -> &mut ScenarioModel with Box::leak(Box::new(Default::default()))
+src/console.rs: replace == with != in LabModel::find_scenario_mut
+src/console.rs: replace LabModel::remove_scenario with ()
+src/console.rs: replace != with == in LabModel::remove_scenario
+src/console.rs: replace <impl Model for WalkModel>::render -> String with String::new()
+src/console.rs: replace <impl Model for WalkModel>::render -> String with "xyzzy".into()
+src/console.rs: replace == with != in <impl Model for WalkModel>::render
+src/console.rs: replace ScenarioModel::phase_started with ()
+src/console.rs: replace ScenarioModel::phase_finished with ()
+src/console.rs: replace <impl Model for ScenarioModel>::render -> String with String::new()
+src/console.rs: replace <impl Model for ScenarioModel>::render -> String with "xyzzy".into()
+src/console.rs: replace CopyModel::bytes_copied with ()
+src/console.rs: replace <impl Model for CopyModel>::render -> String with String::new()
+src/console.rs: replace <impl Model for CopyModel>::render -> String with "xyzzy".into()
+src/console.rs: replace nutmeg_options -> nutmeg::Options with Default::default()
+src/console.rs: replace style_outcome -> StyledObject<&'static str> with StyledObject::new()
+src/console.rs: replace style_outcome -> StyledObject<&'static str> with StyledObject::from_iter([""])
+src/console.rs: replace style_outcome -> StyledObject<&'static str> with StyledObject::new("")
+src/console.rs: replace style_outcome -> StyledObject<&'static str> with StyledObject::from("")
+src/console.rs: replace style_outcome -> StyledObject<&'static str> with StyledObject::from_iter(["xyzzy"])
+src/console.rs: replace style_outcome -> StyledObject<&'static str> with StyledObject::new("xyzzy")
+src/console.rs: replace style_outcome -> StyledObject<&'static str> with StyledObject::from("xyzzy")
+src/console.rs: replace style_secs -> String with String::new()
+src/console.rs: replace style_secs -> String with "xyzzy".into()
+src/console.rs: replace style_duration -> String with String::new()
+src/console.rs: replace style_duration -> String with "xyzzy".into()
+src/console.rs: replace format_mb -> String with String::new()
+src/console.rs: replace format_mb -> String with "xyzzy".into()
+src/console.rs: replace style_mb -> StyledObject<String> with StyledObject::new()
+src/console.rs: replace style_mb -> StyledObject<String> with StyledObject::from_iter([String::new()])
+src/console.rs: replace style_mb -> StyledObject<String> with StyledObject::new(String::new())
+src/console.rs: replace style_mb -> StyledObject<String> with StyledObject::from(String::new())
+src/console.rs: replace style_mb -> StyledObject<String> with StyledObject::from_iter(["xyzzy".into()])
+src/console.rs: replace style_mb -> StyledObject<String> with StyledObject::new("xyzzy".into())
+src/console.rs: replace style_mb -> StyledObject<String> with StyledObject::from("xyzzy".into())
+src/console.rs: replace style_scenario -> Cow<'static, str> with Cow::Borrowed("")
+src/console.rs: replace style_scenario -> Cow<'static, str> with Cow::Owned("".to_owned())
+src/console.rs: replace style_scenario -> Cow<'static, str> with Cow::Borrowed("xyzzy")
+src/console.rs: replace style_scenario -> Cow<'static, str> with Cow::Owned("xyzzy".to_owned())
+src/console.rs: replace plural -> String with String::new()
+src/console.rs: replace plural -> String with "xyzzy".into()
+src/console.rs: replace == with != in plural
+src/copy_tree.rs: replace copy_tree -> Result<TempDir> with Ok(Default::default())
+src/copy_tree.rs: replace copy_tree -> Result<TempDir> with Err(::anyhow::anyhow!("mutated!"))
+src/copy_tree.rs: replace += with -= in copy_tree
+src/copy_tree.rs: replace += with *= in copy_tree
+src/copy_tree.rs: replace += with -= in copy_tree
+src/copy_tree.rs: replace += with *= in copy_tree
+src/copy_tree.rs: replace copy_symlink -> Result<()> with Ok(())
+src/copy_tree.rs: replace copy_symlink -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/fnvalue.rs: replace return_type_replacements -> Vec<TokenStream> with vec![]
+src/fnvalue.rs: replace return_type_replacements -> Vec<TokenStream> with vec![Default::default()]
+src/fnvalue.rs: replace type_replacements -> impl Iterator<Item = TokenStream> with ::std::iter::empty()
+src/fnvalue.rs: replace type_replacements -> impl Iterator<Item = TokenStream> with ::std::iter::once(Default::default())
+src/fnvalue.rs: replace path_ends_with -> bool with true
+src/fnvalue.rs: replace path_ends_with -> bool with false
+src/fnvalue.rs: replace == with != in path_ends_with
+src/fnvalue.rs: replace match_impl_iterator -> Option<&Type> with None
+src/fnvalue.rs: replace match_impl_iterator -> Option<&Type> with Some(&Default::default())
+src/fnvalue.rs: replace && with || in match_impl_iterator
+src/fnvalue.rs: replace == with != in match_impl_iterator
+src/fnvalue.rs: replace == with != in match_impl_iterator
+src/fnvalue.rs: replace == with != in match_impl_iterator
+src/fnvalue.rs: replace known_container -> Option<(&Ident, &Type)> with None
+src/fnvalue.rs: replace known_container -> Option<(&Ident, &Type)> with Some((&Default::default(), &Default::default()))
+src/fnvalue.rs: replace == with != in known_container
+src/fnvalue.rs: replace == with != in known_container
+src/fnvalue.rs: replace known_collection -> Option<(&Ident, &Type)> with None
+src/fnvalue.rs: replace known_collection -> Option<(&Ident, &Type)> with Some((&Default::default(), &Default::default()))
+src/fnvalue.rs: replace == with != in known_collection
+src/fnvalue.rs: replace == with != in known_collection
+src/fnvalue.rs: replace known_map -> Option<(&Ident, &Type, &Type)> with None
+src/fnvalue.rs: replace known_map -> Option<(&Ident, &Type, &Type)> with Some((&Default::default(), &Default::default(), &Default::default()))
+src/fnvalue.rs: replace == with != in known_map
+src/fnvalue.rs: replace maybe_collection_or_container -> Option<(&Ident, &Type)> with None
+src/fnvalue.rs: replace maybe_collection_or_container -> Option<(&Ident, &Type)> with Some((&Default::default(), &Default::default()))
+src/fnvalue.rs: replace == with != in maybe_collection_or_container
+src/fnvalue.rs: replace path_is_float -> bool with true
+src/fnvalue.rs: replace path_is_float -> bool with false
+src/fnvalue.rs: replace path_is_unsigned -> bool with true
+src/fnvalue.rs: replace path_is_unsigned -> bool with false
+src/fnvalue.rs: replace path_is_signed -> bool with true
+src/fnvalue.rs: replace path_is_signed -> bool with false
+src/fnvalue.rs: replace path_is_nonzero_signed -> bool with true
+src/fnvalue.rs: replace path_is_nonzero_signed -> bool with false
+src/fnvalue.rs: replace path_is_nonzero_unsigned -> bool with true
+src/fnvalue.rs: replace path_is_nonzero_unsigned -> bool with false
+src/fnvalue.rs: replace match_first_type_arg -> Option<&'p Type> with None
+src/fnvalue.rs: replace match_first_type_arg -> Option<&'p Type> with Some(&Default::default())
+src/fnvalue.rs: replace == with != in match_first_type_arg
+src/in_diff.rs: replace diff_filter -> Result<Vec<Mutant>> with Ok(vec![])
+src/in_diff.rs: replace diff_filter -> Result<Vec<Mutant>> with Ok(vec![Default::default()])
+src/in_diff.rs: replace diff_filter -> Result<Vec<Mutant>> with Err(::anyhow::anyhow!("mutated!"))
+src/in_diff.rs: replace == with != in diff_filter
+src/in_diff.rs: replace check_diff_new_text_matches -> Result<()> with Ok(())
+src/in_diff.rs: replace check_diff_new_text_matches -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/in_diff.rs: replace - with + in check_diff_new_text_matches
+src/in_diff.rs: replace - with / in check_diff_new_text_matches
+src/in_diff.rs: replace != with == in check_diff_new_text_matches
+src/in_diff.rs: replace strip_patch_path -> &Utf8Path with &Default::default()
+src/in_diff.rs: replace affected_lines -> Vec<usize> with vec![]
+src/in_diff.rs: replace affected_lines -> Vec<usize> with vec![0]
+src/in_diff.rs: replace affected_lines -> Vec<usize> with vec![1]
+src/in_diff.rs: replace += with -= in affected_lines
+src/in_diff.rs: replace += with *= in affected_lines
+src/in_diff.rs: replace < with == in affected_lines
+src/in_diff.rs: replace < with > in affected_lines
+src/in_diff.rs: replace += with -= in affected_lines
+src/in_diff.rs: replace += with *= in affected_lines
+src/in_diff.rs: replace && with || in affected_lines
+src/in_diff.rs: replace > with == in affected_lines
+src/in_diff.rs: replace > with < in affected_lines
+src/in_diff.rs: replace < with == in affected_lines
+src/in_diff.rs: replace < with > in affected_lines
+src/in_diff.rs: replace - with + in affected_lines
+src/in_diff.rs: replace - with / in affected_lines
+src/in_diff.rs: replace - with + in affected_lines
+src/in_diff.rs: replace - with / in affected_lines
+src/in_diff.rs: replace partial_new_file -> Vec<(usize, &'d str)> with vec![]
+src/in_diff.rs: replace partial_new_file -> Vec<(usize, &'d str)> with vec![(0, "")]
+src/in_diff.rs: replace partial_new_file -> Vec<(usize, &'d str)> with vec![(0, "xyzzy")]
+src/in_diff.rs: replace partial_new_file -> Vec<(usize, &'d str)> with vec![(1, "")]
+src/in_diff.rs: replace partial_new_file -> Vec<(usize, &'d str)> with vec![(1, "xyzzy")]
+src/in_diff.rs: replace += with -= in partial_new_file
+src/in_diff.rs: replace += with *= in partial_new_file
+src/interrupt.rs: replace install_handler with ()
+src/lab.rs: replace test_mutants -> Result<LabOutcome> with Ok(Default::default())
+src/lab.rs: replace test_mutants -> Result<LabOutcome> with Err(::anyhow::anyhow!("mutated!"))
+src/lab.rs: replace - with + in test_mutants
+src/lab.rs: replace - with / in test_mutants
+src/lab.rs: replace == with != in test_mutants
+src/lab.rs: replace == with != in test_mutants
+src/lab.rs: replace test_timeout -> Duration with Default::default()
+src/lab.rs: replace == with != in test_timeout
+src/lab.rs: replace * with + in test_timeout
+src/lab.rs: replace * with / in test_timeout
+src/lab.rs: replace test_scenario -> Result<ScenarioOutcome> with Ok(Default::default())
+src/lab.rs: replace test_scenario -> Result<ScenarioOutcome> with Err(::anyhow::anyhow!("mutated!"))
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace || with && in test_scenario
+src/lab.rs: replace && with || in test_scenario
+src/lab.rs: replace == with != in test_scenario
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace + with - in test_scenario
+src/lab.rs: replace + with * in test_scenario
+src/lab.rs: replace || with && in test_scenario
+src/lab.rs: replace && with || in test_scenario
+src/lab.rs: replace == with != in test_scenario
+src/list.rs: replace <impl Write for FmtToIoWrite<W>>::write_str -> Result<(), fmt::Error> with Ok(())
+src/list.rs: replace <impl Write for FmtToIoWrite<W>>::write_str -> Result<(), fmt::Error> with Err(::anyhow::anyhow!("mutated!"))
+src/list.rs: replace list_mutants -> Result<()> with Ok(())
+src/list.rs: replace list_mutants -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/list.rs: replace list_files -> Result<()> with Ok(())
+src/list.rs: replace list_files -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/log_file.rs: replace LogFile::create_in -> Result<LogFile> with Ok(Default::default())
+src/log_file.rs: replace LogFile::create_in -> Result<LogFile> with Err(::anyhow::anyhow!("mutated!"))
+src/log_file.rs: replace == with != in LogFile::create_in
+src/log_file.rs: replace == with != in LogFile::create_in
+src/log_file.rs: replace LogFile::open_append -> Result<File> with Ok(Default::default())
+src/log_file.rs: replace LogFile::open_append -> Result<File> with Err(::anyhow::anyhow!("mutated!"))
+src/log_file.rs: replace LogFile::truncate with ()
+src/log_file.rs: replace LogFile::message with ()
+src/log_file.rs: replace LogFile::path -> &Utf8Path with &Default::default()
+src/log_file.rs: replace clean_filename -> String with String::new()
+src/log_file.rs: replace clean_filename -> String with "xyzzy".into()
+src/manifest.rs: replace fix_manifest -> Result<()> with Ok(())
+src/manifest.rs: replace fix_manifest -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/manifest.rs: replace fix_manifest_toml -> Result<Option<toml::Value>> with Ok(None)
+src/manifest.rs: replace fix_manifest_toml -> Result<Option<toml::Value>> with Ok(Some(Default::default()))
+src/manifest.rs: replace fix_manifest_toml -> Result<Option<toml::Value>> with Err(::anyhow::anyhow!("mutated!"))
+src/manifest.rs: replace == with != in fix_manifest_toml
+src/manifest.rs: replace fix_dependency_table with ()
+src/manifest.rs: replace fix_cargo_config -> Result<()> with Ok(())
+src/manifest.rs: replace fix_cargo_config -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/manifest.rs: replace fix_cargo_config_toml -> Result<Option<String>> with Ok(None)
+src/manifest.rs: replace fix_cargo_config_toml -> Result<Option<String>> with Ok(Some(String::new()))
+src/manifest.rs: replace fix_cargo_config_toml -> Result<Option<String>> with Ok(Some("xyzzy".into()))
+src/manifest.rs: replace fix_cargo_config_toml -> Result<Option<String>> with Err(::anyhow::anyhow!("mutated!"))
+src/manifest.rs: replace fix_path -> Option<String> with None
+src/manifest.rs: replace fix_path -> Option<String> with Some(String::new())
+src/manifest.rs: replace fix_path -> Option<String> with Some("xyzzy".into())
+src/manifest.rs: replace || with && in fix_path
+src/manifest.rs: replace == with != in fix_path
+src/mutate.rs: replace Mutant::mutated_code -> String with String::new()
+src/mutate.rs: replace Mutant::mutated_code -> String with "xyzzy".into()
+src/mutate.rs: replace Mutant::describe_change -> String with String::new()
+src/mutate.rs: replace Mutant::describe_change -> String with "xyzzy".into()
+src/mutate.rs: replace Mutant::name -> String with String::new()
+src/mutate.rs: replace Mutant::name -> String with "xyzzy".into()
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![]
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![StyledObject::new()]
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![StyledObject::from_iter([String::new()])]
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![StyledObject::new(String::new())]
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![StyledObject::from(String::new())]
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![StyledObject::from_iter(["xyzzy".into()])]
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![StyledObject::new("xyzzy".into())]
+src/mutate.rs: replace Mutant::styled_parts -> Vec<StyledObject<String>> with vec![StyledObject::from("xyzzy".into())]
+src/mutate.rs: replace Mutant::styled_parts::s -> StyledObject<String> with StyledObject::new()
+src/mutate.rs: replace Mutant::styled_parts::s -> StyledObject<String> with StyledObject::from_iter([String::new()])
+src/mutate.rs: replace Mutant::styled_parts::s -> StyledObject<String> with StyledObject::new(String::new())
+src/mutate.rs: replace Mutant::styled_parts::s -> StyledObject<String> with StyledObject::from(String::new())
+src/mutate.rs: replace Mutant::styled_parts::s -> StyledObject<String> with StyledObject::from_iter(["xyzzy".into()])
+src/mutate.rs: replace Mutant::styled_parts::s -> StyledObject<String> with StyledObject::new("xyzzy".into())
+src/mutate.rs: replace Mutant::styled_parts::s -> StyledObject<String> with StyledObject::from("xyzzy".into())
+src/mutate.rs: replace == with != in Mutant::styled_parts
+src/mutate.rs: replace Mutant::original_text -> String with String::new()
+src/mutate.rs: replace Mutant::original_text -> String with "xyzzy".into()
+src/mutate.rs: replace Mutant::replacement_text -> &str with ""
+src/mutate.rs: replace Mutant::replacement_text -> &str with "xyzzy"
+src/mutate.rs: replace Mutant::package_name -> &str with ""
+src/mutate.rs: replace Mutant::package_name -> &str with "xyzzy"
+src/mutate.rs: replace Mutant::package -> &Package with &Default::default()
+src/mutate.rs: replace Mutant::diff -> String with String::new()
+src/mutate.rs: replace Mutant::diff -> String with "xyzzy".into()
+src/mutate.rs: replace Mutant::apply -> Result<AppliedMutant> with Ok(Default::default())
+src/mutate.rs: replace Mutant::apply -> Result<AppliedMutant> with Err(::anyhow::anyhow!("mutated!"))
+src/mutate.rs: replace Mutant::unapply -> Result<()> with Ok(())
+src/mutate.rs: replace Mutant::unapply -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/mutate.rs: replace Mutant::write_in_dir -> Result<()> with Ok(())
+src/mutate.rs: replace Mutant::write_in_dir -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/mutate.rs: replace Mutant::log_file_name_base -> String with String::new()
+src/mutate.rs: replace Mutant::log_file_name_base -> String with "xyzzy".into()
+src/mutate.rs: replace <impl Debug for Mutant>::fmt -> fmt::Result with Ok(Default::default())
+src/mutate.rs: replace <impl Debug for Mutant>::fmt -> fmt::Result with Err(::anyhow::anyhow!("mutated!"))
+src/mutate.rs: replace <impl Serialize for Mutant>::serialize -> Result<S::Ok, S::Error> with Ok(Default::default())
+src/mutate.rs: replace <impl Serialize for Mutant>::serialize -> Result<S::Ok, S::Error> with Err(::anyhow::anyhow!("mutated!"))
+src/mutate.rs: replace <impl Drop for AppliedMutant<'_>>::drop with ()
+src/options.rs: replace join_slices -> Vec<String> with vec![]
+src/options.rs: replace join_slices -> Vec<String> with vec![String::new()]
+src/options.rs: replace join_slices -> Vec<String> with vec!["xyzzy".into()]
+src/options.rs: replace + with - in join_slices
+src/options.rs: replace + with * in join_slices
+src/options.rs: replace Colors::forced_value -> Option<bool> with None
+src/options.rs: replace Colors::forced_value -> Option<bool> with Some(true)
+src/options.rs: replace Colors::forced_value -> Option<bool> with Some(false)
+src/options.rs: replace != with == in Colors::forced_value
+src/options.rs: replace != with == in Colors::forced_value
+src/options.rs: replace Colors::active_stdout -> bool with true
+src/options.rs: replace Colors::active_stdout -> bool with false
+src/options.rs: replace or_slices -> &'c[T] with Vec::leak(Vec::new())
+src/options.rs: replace or_slices -> &'c[T] with Vec::leak(vec![Default::default()])
+src/options.rs: replace build_glob_set -> Result<Option<GlobSet>> with Ok(None)
+src/options.rs: replace build_glob_set -> Result<Option<GlobSet>> with Ok(Some(Default::default()))
+src/options.rs: replace build_glob_set -> Result<Option<GlobSet>> with Err(::anyhow::anyhow!("mutated!"))
+src/options.rs: replace || with && in build_glob_set
+src/outcome.rs: replace Phase::name -> Vec<&'static str> with vec![]
+src/outcome.rs: replace Phase::name -> Vec<&'static str> with vec![""]
+src/outcome.rs: replace Phase::name -> Vec<&'static str> with vec!["xyzzy"]
+src/outcome.rs: replace Phase::is_test_phase -> bool with true
+src/outcome.rs: replace Phase::is_test_phase -> bool with false
+src/outcome.rs: replace || with && in Phase::is_test_phase
+src/outcome.rs: replace || with && in Phase::is_test_phase
+src/outcome.rs: replace == with != in Phase::is_test_phase
+src/outcome.rs: replace == with != in Phase::is_test_phase
+src/outcome.rs: replace == with != in Phase::is_test_phase
+src/outcome.rs: replace <impl Display for Phase>::fmt -> fmt::Result with Ok(Default::default())
+src/outcome.rs: replace <impl Display for Phase>::fmt -> fmt::Result with Err(::anyhow::anyhow!("mutated!"))
+src/outcome.rs: replace LabOutcome::add with ()
+src/outcome.rs: replace += with -= in LabOutcome::add
+src/outcome.rs: replace += with *= in LabOutcome::add
+src/outcome.rs: replace += with -= in LabOutcome::add
+src/outcome.rs: replace += with *= in LabOutcome::add
+src/outcome.rs: replace += with -= in LabOutcome::add
+src/outcome.rs: replace += with *= in LabOutcome::add
+src/outcome.rs: replace += with -= in LabOutcome::add
+src/outcome.rs: replace += with *= in LabOutcome::add
+src/outcome.rs: replace += with -= in LabOutcome::add
+src/outcome.rs: replace += with *= in LabOutcome::add
+src/outcome.rs: replace += with -= in LabOutcome::add
+src/outcome.rs: replace += with *= in LabOutcome::add
+src/outcome.rs: replace += with -= in LabOutcome::add
+src/outcome.rs: replace += with *= in LabOutcome::add
+src/outcome.rs: replace LabOutcome::exit_code -> i32 with 0
+src/outcome.rs: replace LabOutcome::exit_code -> i32 with 1
+src/outcome.rs: replace LabOutcome::exit_code -> i32 with -1
+src/outcome.rs: replace && with || in LabOutcome::exit_code
+src/outcome.rs: replace > with == in LabOutcome::exit_code
+src/outcome.rs: replace > with < in LabOutcome::exit_code
+src/outcome.rs: replace > with == in LabOutcome::exit_code
+src/outcome.rs: replace > with < in LabOutcome::exit_code
+src/outcome.rs: replace LabOutcome::summary_string -> String with String::new()
+src/outcome.rs: replace LabOutcome::summary_string -> String with "xyzzy".into()
+src/outcome.rs: replace > with == in LabOutcome::summary_string
+src/outcome.rs: replace > with < in LabOutcome::summary_string
+src/outcome.rs: replace > with == in LabOutcome::summary_string
+src/outcome.rs: replace > with < in LabOutcome::summary_string
+src/outcome.rs: replace > with == in LabOutcome::summary_string
+src/outcome.rs: replace > with < in LabOutcome::summary_string
+src/outcome.rs: replace > with == in LabOutcome::summary_string
+src/outcome.rs: replace > with < in LabOutcome::summary_string
+src/outcome.rs: replace > with == in LabOutcome::summary_string
+src/outcome.rs: replace > with < in LabOutcome::summary_string
+src/outcome.rs: replace > with == in LabOutcome::summary_string
+src/outcome.rs: replace > with < in LabOutcome::summary_string
+src/outcome.rs: replace <impl Serialize for ScenarioOutcome>::serialize -> Result<S::Ok, S::Error> with Ok(Default::default())
+src/outcome.rs: replace <impl Serialize for ScenarioOutcome>::serialize -> Result<S::Ok, S::Error> with Err(::anyhow::anyhow!("mutated!"))
+src/outcome.rs: replace ScenarioOutcome::add_phase_result with ()
+src/outcome.rs: replace ScenarioOutcome::get_log_content -> Result<String> with Ok(String::new())
+src/outcome.rs: replace ScenarioOutcome::get_log_content -> Result<String> with Ok("xyzzy".into())
+src/outcome.rs: replace ScenarioOutcome::get_log_content -> Result<String> with Err(::anyhow::anyhow!("mutated!"))
+src/outcome.rs: replace ScenarioOutcome::last_phase -> Phase with Default::default()
+src/outcome.rs: replace ScenarioOutcome::last_phase_result -> ProcessStatus with Default::default()
+src/outcome.rs: replace ScenarioOutcome::phase_results -> &[PhaseResult] with Vec::leak(Vec::new())
+src/outcome.rs: replace ScenarioOutcome::phase_results -> &[PhaseResult] with Vec::leak(vec![Default::default()])
+src/outcome.rs: replace ScenarioOutcome::test_phase_duration -> Duration with Default::default()
+src/outcome.rs: replace ScenarioOutcome::should_show_logs -> bool with true
+src/outcome.rs: replace ScenarioOutcome::should_show_logs -> bool with false
+src/outcome.rs: replace && with || in ScenarioOutcome::should_show_logs
+src/outcome.rs: replace ScenarioOutcome::success -> bool with true
+src/outcome.rs: replace ScenarioOutcome::success -> bool with false
+src/outcome.rs: replace ScenarioOutcome::has_timeout -> bool with true
+src/outcome.rs: replace ScenarioOutcome::has_timeout -> bool with false
+src/outcome.rs: replace ScenarioOutcome::check_or_build_failed -> bool with true
+src/outcome.rs: replace ScenarioOutcome::check_or_build_failed -> bool with false
+src/outcome.rs: replace && with || in ScenarioOutcome::check_or_build_failed
+src/outcome.rs: replace == with != in ScenarioOutcome::check_or_build_failed
+src/outcome.rs: replace ScenarioOutcome::mutant_caught -> bool with true
+src/outcome.rs: replace ScenarioOutcome::mutant_caught -> bool with false
+src/outcome.rs: replace && with || in ScenarioOutcome::mutant_caught
+src/outcome.rs: replace && with || in ScenarioOutcome::mutant_caught
+src/outcome.rs: replace == with != in ScenarioOutcome::mutant_caught
+src/outcome.rs: replace ScenarioOutcome::mutant_missed -> bool with true
+src/outcome.rs: replace ScenarioOutcome::mutant_missed -> bool with false
+src/outcome.rs: replace && with || in ScenarioOutcome::mutant_missed
+src/outcome.rs: replace && with || in ScenarioOutcome::mutant_missed
+src/outcome.rs: replace ScenarioOutcome::summary -> SummaryOutcome with Default::default()
+src/outcome.rs: replace PhaseResult::is_success -> bool with true
+src/outcome.rs: replace PhaseResult::is_success -> bool with false
+src/outcome.rs: replace <impl Serialize for PhaseResult>::serialize -> Result<S::Ok, S::Error> with Ok(Default::default())
+src/outcome.rs: replace <impl Serialize for PhaseResult>::serialize -> Result<S::Ok, S::Error> with Err(::anyhow::anyhow!("mutated!"))
+src/output.rs: replace LockFile::acquire_lock -> Result<File> with Ok(Default::default())
+src/output.rs: replace LockFile::acquire_lock -> Result<File> with Err(::anyhow::anyhow!("mutated!"))
+src/output.rs: replace == with != in LockFile::acquire_lock
+src/output.rs: replace OutputDir::create_log -> Result<LogFile> with Ok(Default::default())
+src/output.rs: replace OutputDir::create_log -> Result<LogFile> with Err(::anyhow::anyhow!("mutated!"))
+src/output.rs: replace OutputDir::path -> &Utf8Path with &Default::default()
+src/output.rs: replace OutputDir::write_lab_outcome -> Result<()> with Ok(())
+src/output.rs: replace OutputDir::write_lab_outcome -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/output.rs: replace OutputDir::add_scenario_outcome -> Result<()> with Ok(())
+src/output.rs: replace OutputDir::add_scenario_outcome -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/output.rs: replace OutputDir::open_debug_log -> Result<File> with Ok(Default::default())
+src/output.rs: replace OutputDir::open_debug_log -> Result<File> with Err(::anyhow::anyhow!("mutated!"))
+src/output.rs: replace OutputDir::write_mutants_list -> Result<()> with Ok(())
+src/output.rs: replace OutputDir::write_mutants_list -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/output.rs: replace OutputDir::take_lab_outcome -> LabOutcome with Default::default()
+src/path.rs: replace ascent -> isize with 0
+src/path.rs: replace ascent -> isize with 1
+src/path.rs: replace ascent -> isize with -1
+src/path.rs: replace == with != in ascent
+src/path.rs: replace += with -= in ascent
+src/path.rs: replace += with *= in ascent
+src/path.rs: replace != with == in ascent
+src/path.rs: replace -= with += in ascent
+src/path.rs: replace -= with /= in ascent
+src/path.rs: replace > with == in ascent
+src/path.rs: replace > with < in ascent
+src/path.rs: replace <impl Utf8PathSlashes for Utf8Path>::to_slash_path -> String with String::new()
+src/path.rs: replace <impl Utf8PathSlashes for Utf8Path>::to_slash_path -> String with "xyzzy".into()
+src/path.rs: replace || with && in <impl Utf8PathSlashes for Utf8Path>::to_slash_path
+src/path.rs: replace == with != in <impl Utf8PathSlashes for Utf8Path>::to_slash_path
+src/path.rs: replace == with != in <impl Utf8PathSlashes for Utf8Path>::to_slash_path
+src/pretty.rs: replace <impl ToPrettyString for T>::to_pretty_string -> String with String::new()
+src/pretty.rs: replace <impl ToPrettyString for T>::to_pretty_string -> String with "xyzzy".into()
+src/pretty.rs: replace && with || in <impl ToPrettyString for T>::to_pretty_string
+src/pretty.rs: replace || with && in <impl ToPrettyString for T>::to_pretty_string
+src/pretty.rs: replace || with && in <impl ToPrettyString for T>::to_pretty_string
+src/pretty.rs: replace == with != in <impl ToPrettyString for T>::to_pretty_string
+src/pretty.rs: replace == with != in <impl ToPrettyString for T>::to_pretty_string
+src/pretty.rs: replace || with && in <impl ToPrettyString for T>::to_pretty_string
+src/pretty.rs: replace += with -= in <impl ToPrettyString for T>::to_pretty_string
+src/pretty.rs: replace += with *= in <impl ToPrettyString for T>::to_pretty_string
+src/process.rs: replace Process::run -> Result<ProcessStatus> with Ok(Default::default())
+src/process.rs: replace Process::run -> Result<ProcessStatus> with Err(::anyhow::anyhow!("mutated!"))
+src/process.rs: replace Process::start -> Result<Process> with Ok(Default::default())
+src/process.rs: replace Process::start -> Result<Process> with Err(::anyhow::anyhow!("mutated!"))
+src/process.rs: replace Process::terminate -> Result<()> with Ok(())
+src/process.rs: replace Process::terminate -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/process.rs: replace terminate_child_impl -> Result<()> with Ok(())
+src/process.rs: replace terminate_child_impl -> Result<()> with Err(::anyhow::anyhow!("mutated!"))
+src/process.rs: replace != with == in terminate_child_impl
+src/process.rs: replace ProcessStatus::success -> bool with true
+src/process.rs: replace ProcessStatus::success -> bool with false
+src/process.rs: replace == with != in ProcessStatus::success
+src/process.rs: replace ProcessStatus::timeout -> bool with true
+src/process.rs: replace ProcessStatus::timeout -> bool with false
+src/process.rs: replace == with != in ProcessStatus::timeout
+src/process.rs: replace setpgid_on_unix -> PopenConfig with Default::default()
+src/process.rs: replace get_command_output -> Result<String> with Ok(String::new())
+src/process.rs: replace get_command_output -> Result<String> with Ok("xyzzy".into())
+src/process.rs: replace get_command_output -> Result<String> with Err(::anyhow::anyhow!("mutated!"))
+src/process.rs: replace cheap_shell_quote -> String with String::new()
+src/process.rs: replace cheap_shell_quote -> String with "xyzzy".into()
+src/scenario.rs: replace <impl Display for Scenario>::fmt -> fmt::Result with Ok(Default::default())
+src/scenario.rs: replace <impl Display for Scenario>::fmt -> fmt::Result with Err(::anyhow::anyhow!("mutated!"))
+src/scenario.rs: replace Scenario::is_mutant -> bool with true
+src/scenario.rs: replace Scenario::is_mutant -> bool with false
+src/scenario.rs: replace Scenario::mutant -> Option<&Mutant> with None
+src/scenario.rs: replace Scenario::mutant -> Option<&Mutant> with Some(&Default::default())
+src/scenario.rs: replace Scenario::log_file_name_base -> String with String::new()
+src/scenario.rs: replace Scenario::log_file_name_base -> String with "xyzzy".into()
+src/shard.rs: replace Shard::select -> Vec<M> with vec![]
+src/shard.rs: replace Shard::select -> Vec<M> with vec![Default::default()]
+src/shard.rs: replace == with != in Shard::select
+src/shard.rs: replace % with / in Shard::select
+src/shard.rs: replace % with + in Shard::select
+src/shard.rs: replace <impl FromStr for Shard>::from_str -> Result<Self, Self::Err> with Ok(Default::default())
+src/shard.rs: replace <impl FromStr for Shard>::from_str -> Result<Self, Self::Err> with Err(::anyhow::anyhow!("mutated!"))
+src/source.rs: replace SourceFile::tree_relative_slashes -> String with String::new()
+src/source.rs: replace SourceFile::tree_relative_slashes -> String with "xyzzy".into()
+src/source.rs: replace SourceFile::path -> &Utf8Path with &Default::default()
+src/source.rs: replace SourceFile::code -> &str with ""
+src/source.rs: replace SourceFile::code -> &str with "xyzzy"
+src/span.rs: replace <impl From for LineColumn>::from -> Self with Default::default()
+src/span.rs: replace + with - in <impl From for LineColumn>::from
+src/span.rs: replace + with * in <impl From for LineColumn>::from
+src/span.rs: replace <impl Debug for LineColumn>::fmt -> fmt::Result with Ok(Default::default())
+src/span.rs: replace <impl Debug for LineColumn>::fmt -> fmt::Result with Err(::anyhow::anyhow!("mutated!"))
+src/span.rs: replace Span::quad -> Self with Default::default()
+src/span.rs: replace Span::extract -> String with String::new()
+src/span.rs: replace Span::extract -> String with "xyzzy".into()
+src/span.rs: replace && with || in Span::extract
+src/span.rs: replace || with && in Span::extract
+src/span.rs: replace && with || in Span::extract
+src/span.rs: replace == with != in Span::extract
+src/span.rs: replace >= with < in Span::extract
+src/span.rs: replace > with == in Span::extract
+src/span.rs: replace > with < in Span::extract
+src/span.rs: replace || with && in Span::extract
+src/span.rs: replace < with == in Span::extract
+src/span.rs: replace < with > in Span::extract
+src/span.rs: replace && with || in Span::extract
+src/span.rs: replace == with != in Span::extract
+src/span.rs: replace < with == in Span::extract
+src/span.rs: replace < with > in Span::extract
+src/span.rs: replace == with != in Span::extract
+src/span.rs: replace += with -= in Span::extract
+src/span.rs: replace += with *= in Span::extract
+src/span.rs: replace > with == in Span::extract
+src/span.rs: replace > with < in Span::extract
+src/span.rs: replace == with != in Span::extract
+src/span.rs: replace += with -= in Span::extract
+src/span.rs: replace += with *= in Span::extract
+src/span.rs: replace && with || in Span::extract
+src/span.rs: replace == with != in Span::extract
+src/span.rs: replace >= with < in Span::extract
+src/span.rs: replace Span::replace -> String with String::new()
+src/span.rs: replace Span::replace -> String with "xyzzy".into()
+src/span.rs: replace + with - in Span::replace
+src/span.rs: replace + with * in Span::replace
+src/span.rs: replace && with || in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace || with && in Span::replace
+src/span.rs: replace || with && in Span::replace
+src/span.rs: replace || with && in Span::replace
+src/span.rs: replace < with == in Span::replace
+src/span.rs: replace < with > in Span::replace
+src/span.rs: replace > with == in Span::replace
+src/span.rs: replace > with < in Span::replace
+src/span.rs: replace && with || in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace < with == in Span::replace
+src/span.rs: replace < with > in Span::replace
+src/span.rs: replace && with || in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace >= with < in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace += with -= in Span::replace
+src/span.rs: replace += with *= in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace += with -= in Span::replace
+src/span.rs: replace += with *= in Span::replace
+src/span.rs: replace && with || in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace == with != in Span::replace
+src/span.rs: replace <impl From for Span>::from -> Self with Default::default()
+src/span.rs: replace <impl From for Span>::from -> Self with Default::default()
+src/span.rs: replace <impl From for Span>::from -> Self with Default::default()
+src/span.rs: replace <impl Debug for Span>::fmt -> fmt::Result with Ok(Default::default())
+src/span.rs: replace <impl Debug for Span>::fmt -> fmt::Result with Err(::anyhow::anyhow!("mutated!"))
+src/tail_file.rs: replace TailFile::last_line -> Result<&str> with Ok("")
+src/tail_file.rs: replace TailFile::last_line -> Result<&str> with Ok("xyzzy")
+src/tail_file.rs: replace TailFile::last_line -> Result<&str> with Err(::anyhow::anyhow!("mutated!"))
+src/tail_file.rs: replace > with == in TailFile::last_line
+src/tail_file.rs: replace > with < in TailFile::last_line
+src/visit.rs: replace walk_tree -> Result<Discovered> with Ok(Default::default())
+src/visit.rs: replace walk_tree -> Result<Discovered> with Err(::anyhow::anyhow!("mutated!"))
+src/visit.rs: replace && with || in walk_tree
+src/visit.rs: replace || with && in walk_tree
+src/visit.rs: replace || with && in walk_tree
+src/visit.rs: replace walk_file -> Result<(Vec<Mutant>, Vec<String>)> with Ok((vec![], vec![]))
+src/visit.rs: replace walk_file -> Result<(Vec<Mutant>, Vec<String>)> with Ok((vec![], vec![String::new()]))
+src/visit.rs: replace walk_file -> Result<(Vec<Mutant>, Vec<String>)> with Ok((vec![], vec!["xyzzy".into()]))
+src/visit.rs: replace walk_file -> Result<(Vec<Mutant>, Vec<String>)> with Ok((vec![Default::default()], vec![]))
+src/visit.rs: replace walk_file -> Result<(Vec<Mutant>, Vec<String>)> with Ok((vec![Default::default()], vec![String::new()]))
+src/visit.rs: replace walk_file -> Result<(Vec<Mutant>, Vec<String>)> with Ok((vec![Default::default()], vec!["xyzzy".into()]))
+src/visit.rs: replace walk_file -> Result<(Vec<Mutant>, Vec<String>)> with Err(::anyhow::anyhow!("mutated!"))
+src/visit.rs: replace DiscoveryVisitor<'o>::enter_function -> Arc<Function> with Arc::new(Default::default())
+src/visit.rs: replace DiscoveryVisitor<'o>::leave_function with ()
+src/visit.rs: replace DiscoveryVisitor<'o>::collect_mutant with ()
+src/visit.rs: replace DiscoveryVisitor<'o>::collect_fn_mutants with ()
+src/visit.rs: replace == with != in DiscoveryVisitor<'o>::collect_fn_mutants
+src/visit.rs: replace DiscoveryVisitor<'o>::in_namespace -> T with Default::default()
+src/visit.rs: replace <impl Visit for DiscoveryVisitor<'_>>::visit_item_fn with ()
+src/visit.rs: replace || with && in <impl Visit for DiscoveryVisitor<'_>>::visit_item_fn
+src/visit.rs: replace || with && in <impl Visit for DiscoveryVisitor<'_>>::visit_item_fn
+src/visit.rs: replace <impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn with ()
+src/visit.rs: replace || with && in <impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn
+src/visit.rs: replace || with && in <impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn
+src/visit.rs: replace || with && in <impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn
+src/visit.rs: replace == with != in <impl Visit for DiscoveryVisitor<'_>>::visit_impl_item_fn
+src/visit.rs: replace <impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn with ()
+src/visit.rs: replace || with && in <impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn
+src/visit.rs: replace || with && in <impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn
+src/visit.rs: replace == with != in <impl Visit for DiscoveryVisitor<'_>>::visit_trait_item_fn
+src/visit.rs: replace <impl Visit for DiscoveryVisitor<'_>>::visit_item_impl with ()
+src/visit.rs: replace == with != in <impl Visit for DiscoveryVisitor<'_>>::visit_item_impl
+src/visit.rs: replace <impl Visit for DiscoveryVisitor<'_>>::visit_item_trait with ()
+src/visit.rs: replace <impl Visit for DiscoveryVisitor<'_>>::visit_item_mod with ()
+src/visit.rs: replace <impl Visit for DiscoveryVisitor<'_>>::visit_expr_binary with ()
+src/visit.rs: replace function_body_span -> Option<Span> with None
+src/visit.rs: replace function_body_span -> Option<Span> with Some(Default::default())
+src/visit.rs: replace find_mod_source -> Result<Option<Utf8PathBuf>> with Ok(None)
+src/visit.rs: replace find_mod_source -> Result<Option<Utf8PathBuf>> with Ok(Some(Default::default()))
+src/visit.rs: replace find_mod_source -> Result<Option<Utf8PathBuf>> with Err(::anyhow::anyhow!("mutated!"))
+src/visit.rs: replace || with && in find_mod_source
+src/visit.rs: replace + with - in find_mod_source
+src/visit.rs: replace + with * in find_mod_source
+src/visit.rs: replace fn_sig_excluded -> bool with true
+src/visit.rs: replace fn_sig_excluded -> bool with false
+src/visit.rs: replace attrs_excluded -> bool with true
+src/visit.rs: replace attrs_excluded -> bool with false
+src/visit.rs: replace || with && in attrs_excluded
+src/visit.rs: replace || with && in attrs_excluded
+src/visit.rs: replace block_is_empty -> bool with true
+src/visit.rs: replace block_is_empty -> bool with false
+src/visit.rs: replace attr_is_cfg_test -> bool with true
+src/visit.rs: replace attr_is_cfg_test -> bool with false
+src/visit.rs: replace attr_is_test -> bool with true
+src/visit.rs: replace attr_is_test -> bool with false
+src/visit.rs: replace path_is -> bool with true
+src/visit.rs: replace path_is -> bool with false
+src/visit.rs: replace attr_is_mutants_skip -> bool with true
+src/visit.rs: replace attr_is_mutants_skip -> bool with false
+src/workspace.rs: replace PackageFilter::explicit -> PackageFilter with Default::default()
+src/workspace.rs: replace PackageFilter::resolve_auto -> Result<PackageFilter> with Ok(Default::default())
+src/workspace.rs: replace PackageFilter::resolve_auto -> Result<PackageFilter> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace == with != in PackageFilter::resolve_auto
+src/workspace.rs: replace Workspace::open -> Result<Self> with Ok(Default::default())
+src/workspace.rs: replace Workspace::open -> Result<Self> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace Workspace::packages -> Result<Vec<Arc<Package>>> with Ok(vec![])
+src/workspace.rs: replace Workspace::packages -> Result<Vec<Arc<Package>>> with Ok(vec![Arc::new(Default::default())])
+src/workspace.rs: replace Workspace::packages -> Result<Vec<Arc<Package>>> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace Workspace::package_tops -> Result<Vec<PackageTop>> with Ok(vec![])
+src/workspace.rs: replace Workspace::package_tops -> Result<Vec<PackageTop>> with Ok(vec![Default::default()])
+src/workspace.rs: replace Workspace::package_tops -> Result<Vec<PackageTop>> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace == with != in Workspace::package_tops
+src/workspace.rs: replace Workspace::top_sources -> Result<Vec<SourceFile>> with Ok(vec![])
+src/workspace.rs: replace Workspace::top_sources -> Result<Vec<SourceFile>> with Ok(vec![Default::default()])
+src/workspace.rs: replace Workspace::top_sources -> Result<Vec<SourceFile>> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace Workspace::discover -> Result<Discovered> with Ok(Default::default())
+src/workspace.rs: replace Workspace::discover -> Result<Discovered> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace Workspace::mutants -> Result<Vec<Mutant>> with Ok(vec![])
+src/workspace.rs: replace Workspace::mutants -> Result<Vec<Mutant>> with Ok(vec![Default::default()])
+src/workspace.rs: replace Workspace::mutants -> Result<Vec<Mutant>> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace direct_package_sources -> Result<Vec<Utf8PathBuf>> with Ok(vec![])
+src/workspace.rs: replace direct_package_sources -> Result<Vec<Utf8PathBuf>> with Ok(vec![Default::default()])
+src/workspace.rs: replace direct_package_sources -> Result<Vec<Utf8PathBuf>> with Err(::anyhow::anyhow!("mutated!"))
+src/workspace.rs: replace should_mutate_target -> bool with true
+src/workspace.rs: replace should_mutate_target -> bool with false
+src/workspace.rs: replace || with && in should_mutate_target
+src/workspace.rs: replace == with != in should_mutate_target
+src/workspace.rs: replace locate_project -> Result<Utf8PathBuf> with Ok(Default::default())
+src/workspace.rs: replace locate_project -> Result<Utf8PathBuf> with Err(::anyhow::anyhow!("mutated!"))

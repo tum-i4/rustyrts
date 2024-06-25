@@ -186,14 +186,19 @@ impl Options {
         );
 
         let json_args = if args.json {
-            vec!["-Zunstable-options", "--format=json", "--report-time"]
+            let mut vec = Vec::new();
+            if !args.cargo_test_args.iter().any(|s| s == "--") {
+                vec.push("--");
+            }
+            vec.extend_from_slice(&["-Zunstable-options", "--format=json", "--report-time"]);
+            vec
         } else {
             Vec::new()
         };
 
         let gitignore = {
             match args.test_tool {
-                Some(TestTool::Dynamic) | Some(TestTool::Static) => false,
+                Some(TestTool::Dynamic | TestTool::Static) => false,
                 _ => args.gitignore,
             }
         };
