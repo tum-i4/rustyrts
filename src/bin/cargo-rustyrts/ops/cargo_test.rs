@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
 use anyhow::format_err;
-use cargo::core::{TargetKind, Workspace};
 use cargo::ops;
 use cargo::{
     core::compiler::{BuildContext, Context},
@@ -20,6 +19,10 @@ use cargo::{
         shell::Verbosity,
     },
     util::profile,
+};
+use cargo::{
+    core::{TargetKind, Workspace},
+    ops::TestOptions,
 };
 use cargo::{
     ops::CompileOptions,
@@ -95,21 +98,28 @@ impl UnitTestError {
 /// code that Cargo should use.
 pub fn run_tests(
     ws: &Workspace<'_>,
-    options: &CompileOptions,
+    options: &TestOptions,
     test_args: &[&str],
     mode: &dyn SelectionMode,
 ) -> CliResult {
     let target_dir = ws.target_dir().into_path_unlocked();
 
     let interner = UnitInterner::new();
-    let bcx = create_bcx(ws, options, &interner)?;
+    let bcx = create_bcx(ws, &options.compile_opts, &interner)?;
     let unit_graph = &bcx.unit_graph;
 
     mode.prepare_cache(&target_dir, unit_graph);
     mode.prepare_cache(&target_dir, unit_graph);
 
     let exec: Arc<dyn Executor> = Arc::new(mode.executor(target_dir.clone()));
-    let compilation = compile_tests(ws, options, &bcx, exec)?;
+    let compilation = compile_tests(ws, &options.compile_opts, &bcx, exec)?;
+
+    if options.no_run {
+        if !options.compile_opts.build_config.emit_json() {
+            display_no_run_information(ws, test_args, &compilation, "unittests")?;
+        }
+        return Ok(());
+    }
 
     let arena = Arena::new();
     let mut selection_context = mode.selection_context(ws, &target_dir, &arena, unit_graph);
@@ -117,7 +127,7 @@ pub fn run_tests(
 
     let mut errors: Vec<UnitTestError> = run_unit_tests(
         ws,
-        options,
+        &options.compile_opts,
         test_args,
         &compilation,
         TestKind::Test,
@@ -126,15 +136,23 @@ pub fn run_tests(
         &target_dir,
     )?;
 
-    let doctest_errors =
-        run_doc_tests(ws, options, test_args, &compilation, selector, &target_dir)?;
+    let doctest_errors = run_doc_tests(
+        ws,
+        &options.compile_opts,
+        test_args,
+        &compilation,
+        selector,
+        &target_dir,
+    )?;
 
     errors.extend(doctest_errors);
 
-    mode.clean_cache(&target_dir);
-    mode.clean_cache(&target_dir);
+    if !options.no_run {
+        mode.clean_cache(&target_dir);
+        mode.clean_cache(&target_dir);
+    }
 
-    no_fail_fast_err(ws, options, &errors)
+    no_fail_fast_err(ws, &options.compile_opts, &errors)
 }
 
 /// Runs the unit and integration tests of a package.
@@ -158,11 +176,7 @@ fn run_unit_tests<'compilation, 'context, 'arena: 'context>(
     selector.note(&mut config.shell(), test_args);
 
     let mut test_args = Vec::from(test_args);
-    if test_args.iter().any(|s| s == &"--exact") {
-        panic!("Regression Test Selection is incompatible to using --exact");
-    } else {
-        test_args.push("--exact");
-    }
+    test_args.push("--exact");
 
     for UnitOutput {
         unit,
@@ -353,6 +367,44 @@ fn run_doc_tests<'compilation, 'context, 'arena: 'context>(
         }
     }
     Ok(errors)
+}
+
+/// Displays human-readable descriptions of the test executables.
+///
+/// This is used when `cargo test --no-run` is used.
+fn display_no_run_information(
+    ws: &Workspace<'_>,
+    test_args: &[&str],
+    compilation: &Compilation<'_>,
+    exec_type: &str,
+) -> CargoResult<()> {
+    let config = ws.config();
+    let cwd = config.cwd();
+    for UnitOutput {
+        unit,
+        path,
+        script_meta,
+    } in compilation.tests.iter()
+    {
+        let (exe_display, cmd) = cmd_builds(
+            config,
+            cwd,
+            unit,
+            path,
+            script_meta,
+            test_args,
+            compilation,
+            exec_type,
+        )?;
+        config
+            .shell()
+            .concise(|shell| shell.status("Executable", &exe_display))?;
+        config
+            .shell()
+            .verbose(|shell| shell.status("Executable", &cmd))?;
+    }
+
+    return Ok(());
 }
 
 /// Creates a [`ProcessBuilder`] for executing a single test.

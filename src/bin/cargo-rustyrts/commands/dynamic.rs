@@ -43,7 +43,17 @@ use super::{
 
 pub fn cli() -> Command {
     subcommand("dynamic")
-        .about("Perform regression test selection using a dynamic technique, collecting runtime traces")
+        .about(r"Perform regression test selection using a dynamic technique, collecting runtime traces
+
+ +++ extremely precise
+ + can trace child processes (linux only)
+ - prone to flakiness in case of random test input
+ - tampers with binaries (not always desired)
+ - needs to isolate tests in separate processes if tests are executed in parallel (not always feasible)
+ - needs to execute test sequentially/single-threaded on Windows
+ / small compilation overhead, moderate runtime overhead
+
+Consider using `cargo rustyrts static` instead if your tests rely on random input.")
         .arg(
             Arg::new("args")
                 .value_name("ARGS")
@@ -51,6 +61,10 @@ pub fn cli() -> Command {
                 .num_args(0..)
                 .last(true),
         )
+        .arg(flag("doc", "Test only this library's documentation"))
+        .arg(flag("no-run", "Compile, but don't run tests"))
+        .arg_ignore_rust_version()
+        .arg_future_incompat_report()
         .arg_message_format()
         .arg(
             flag(
@@ -75,10 +89,6 @@ pub fn cli() -> Command {
             "Test only the specified bench target",
             "Test all bench targets",
             "Test all targets (does not include doctests)",
-        )
-.arg(
-            flag("doc", "Test only this library's documentation")
-                .help_heading(heading::TARGET_SELECTION),
         )
         .arg_features()
         .arg_jobs()
@@ -510,20 +520,24 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
 
         let is_multithreaded = opts.and_then(|o| o.test_threads).map_or(true, |t| t > 1);
 
-        let message = if is_multithreaded {
-            r#"Regression Test Selection using runtime traces
-IMPORTANT: Tests are run in parallel, isolating them in separate processes
+        let message = "Regression Test Selection using runtime traces\n";
+
+        let info = if is_multithreaded {
+            r#"IMPORTANT: Tests are run in parallel, isolating them in separate processes
 This might not be feasible if tests rely on shared state.
 You may use "--test-threads 1" as test option to run test sequentially instead."#
         } else {
-            r"Regression Test Selection using runtime traces
-IMPORTANT: Tests are run sequentially (which does not require isolating them in separate processes)
+            r"IMPORTANT: Tests are run sequentially (which does not require isolating them in separate processes)
 This might lead to incomplete traces in the initialization of shared state."
         };
 
         shell.print_ansi_stderr(b"\n").unwrap();
         shell
-            .status_with_color("Dynamic RTS", message, &cargo::util::style::NOTE)
+            .status_with_color(
+                "Dynamic RTS",
+                message.to_string() + info,
+                &cargo::util::style::NOTE,
+            )
             .unwrap();
         shell.print_ansi_stderr(b"\n").unwrap();
     }

@@ -38,7 +38,15 @@ use super::{
 
 pub fn cli() -> Command {
     subcommand("static")
-        .about("Perform regression test selection using a static technique, constructing a dependency graph")
+        .about(r"Perform regression test selection using a static technique, constructing a dependency graph
+
+ + quite precise
+ + does not tamper with binaries at all
+ + no runtime overhead
+ - cannot track dependencies of child processes
+ / moderate compilation overhead
+
+Consider using `cargo rustyrts dynamic` instead if your tests spawn additional processes!")
         .arg(
             Arg::new("args")
                 .value_name("ARGS")
@@ -46,6 +54,10 @@ pub fn cli() -> Command {
                 .num_args(0..)
                 .last(true),
         )
+        .arg(flag("doc", "Test only this library's documentation"))
+        .arg(flag("no-run", "Compile, but don't run tests"))
+        .arg_ignore_rust_version()
+        .arg_future_incompat_report()
         .arg_message_format()
         .arg(
             flag(
@@ -70,10 +82,6 @@ pub fn cli() -> Command {
             "Test only the specified bench target",
             "Test all bench targets",
             "Test all targets (does not include doctests)",
-        )
-        .arg(
-            flag("doc", "Test only this library's documentation")
-                .help_heading(heading::TARGET_SELECTION),
         )
         .arg_features()
         .arg_jobs()
@@ -482,9 +490,8 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
     }
 
     fn note(&self, shell: &mut Shell, _test_args: &[&str]) {
-        let message = r"Regression Test Selection using a dependency graph
-This might lead to unsafe behavior when tests spawn additional processes.
-";
+        let message = r"Regression Test Selection using a dependency graph";
+
         shell.print_ansi_stderr(b"\n").unwrap();
         shell
             .status_with_color("Static RTS", message, &cargo::util::style::NOTE)

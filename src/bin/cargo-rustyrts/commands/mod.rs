@@ -143,6 +143,13 @@ pub fn exec(config: &Config, args: &ArgMatches, mode: &dyn SelectionMode) -> Cli
     let test_args = args.get_many::<String>("args").unwrap_or_default();
     let test_args = test_args.map(String::as_str).collect::<Vec<_>>();
 
+    if test_args.iter().any(|s| s == &"--exact") {
+        return Err(anyhow::format_err!(
+            "Regression Test Selection is incompatible to using --exact"
+        )
+        .into());
+    }
+
     let mut compile_opts = args.compile_options(
         config,
         CompileMode::Test,
@@ -153,7 +160,36 @@ pub fn exec(config: &Config, args: &ArgMatches, mode: &dyn SelectionMode) -> Cli
     compile_opts.build_config.requested_profile =
         args.get_profile_name(config, "test", ProfileChecking::Custom)?;
 
-    crate::ops::run_tests(&ws, &compile_opts, &test_args, mode)
+    let no_run = args.flag("no-run");
+    let doc = args.flag("doc");
+
+    if doc {
+        if compile_opts.filter.is_specific() {
+            return Err(
+                anyhow::format_err!("Can't mix --doc with other target selecting options").into(),
+            );
+        }
+        if no_run {
+            return Err(anyhow::format_err!("Can't skip running doc tests with --no-run").into());
+        }
+        compile_opts.build_config.mode = CompileMode::Doctest;
+        compile_opts.filter = cargo::ops::CompileFilter::lib_only();
+    }
+
+    if compile_opts.filter.is_specific() {
+        config.shell().warn(r"You are trying to manipulate the set of executed tests via target selection (--lib, --bins, --examples, ...).
+This is dangerous since changes may also affect tests outside of the crates that are compiled in this compiler session. Any affected tests not contained in your target selection, which are affected by changes in a crate that is compiled in this compiler session will definitely not be executed now and may also be missed in a subsequent invocation!
+Proceed with caution!!!
+").unwrap();
+    }
+
+    let ops = cargo::ops::TestOptions {
+        no_run,
+        no_fail_fast: true,
+        compile_opts,
+    };
+
+    crate::ops::run_tests(&ws, &ops, &test_args, mode)
 }
 
 pub fn convert_doctest_name(test_name: &str) -> (String, String) {
