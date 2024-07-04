@@ -33,6 +33,8 @@ use std::mem::transmute;
 use std::{path::PathBuf, sync::atomic::AtomicUsize};
 use tracing::{debug, trace};
 
+const BUILD_SCRIPT_NAMES: &[&str] = &["build_script_build", "build_script_main"];
+
 pub static OLD_OPTIMIZED_MIR: AtomicUsize = AtomicUsize::new(0);
 
 pub struct InstrumentingRTSCallbacks {}
@@ -62,7 +64,7 @@ impl InstrumentingCallback for InstrumentingRTSCallbacks {
 
         for (_, list) in attrs.iter() {
             for attr in *list {
-                if attr.name_or_empty().to_ident_string() == TEST_MARKER {
+                if attr.name_or_empty() == TEST_MARKER {
                     let def_path = def_id_name(tcx, def_id, false, false);
                     let def_path_test = &def_path[0..def_path.len() - 13];
 
@@ -77,10 +79,15 @@ impl InstrumentingCallback for InstrumentingRTSCallbacks {
         }
 
         #[cfg(unix)]
+        let do_process_instrumentation = cfg!(feature = "enable_cargo_build")
+            && !BUILD_SCRIPT_NAMES
+                .iter()
+                .any(|name| tcx.crate_name(LOCAL_CRATE).as_str() == *name);
+
+        #[cfg(unix)]
         if let Some(entry_def) = ENTRY_FN.get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id))
         {
-            if def_id == *entry_def && tcx.crate_name(LOCAL_CRATE).as_str() != "build_script_build"
-            {
+            if do_process_instrumentation && def_id == *entry_def {
                 // IMPORTANT: The order in which insert_post, trace, insert_pre are called is critical here
                 // 1. insert_post, 2. trace, 3. insert_pre
 
@@ -91,12 +98,13 @@ impl InstrumentingCallback for InstrumentingRTSCallbacks {
         body.insert_trace(tcx, &outer, &mut cache_ret);
 
         #[cfg(unix)]
-        body.check_calls_to_exit(tcx, &mut cache_ret);
+        if do_process_instrumentation {
+            body.check_calls_to_exit(tcx, &mut cache_ret);
+        }
 
         #[cfg(unix)]
         if let Some(entry_def) = ENTRY_FN.get().unwrap() {
-            if def_id == *entry_def && tcx.crate_name(LOCAL_CRATE).as_str() != "build_script_build"
-            {
+            if do_process_instrumentation && def_id == *entry_def {
                 body.insert_pre_main(tcx, &mut cache_ret);
             }
         }

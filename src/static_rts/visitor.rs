@@ -278,7 +278,7 @@ pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
                     .iter()
                     .flat_map(|(_, list)| list.iter())
                     .unique_by(|i| i.id)
-                    .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
+                    .any(|attr| attr.name_or_empty() == TEST_MARKER);
 
                 if is_test {
                     let body = tcx.optimized_mir(def.to_def_id());

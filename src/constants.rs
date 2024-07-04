@@ -8,7 +8,6 @@ pub const VERBOSE_COUNT: usize = 16;
 /// Is set by cargo
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
-/// Is set by cargo
 pub const ENV_COMPILE_MODE: &str = "RUSTYRTS_COMPILE_MODE";
 
 /// May be used to instruct `RustyRTS` to only emit checksums and changed nodes
@@ -16,7 +15,7 @@ pub const ENV_ONLY_INSTRUMENTATION: &str = "RUSTYRTS_ONLY_INSTRUMENTATION";
 
 /// May be used to skip the analysis
 pub const ENV_SKIP_ANALYSIS: &str = "RUSTYRTS_SKIP_ANALYSIS";
-/// May be used to skip the analysis
+/// May be used to skip instrumentation
 pub const ENV_SKIP_INSTRUMENTATION: &str = "RUSTYRTS_SKIP_INSTRUMENTATION";
 
 pub const ENV_BLACKBOX_TEST: &str = "RUSTYRTS_BLACKBOX_TEST";

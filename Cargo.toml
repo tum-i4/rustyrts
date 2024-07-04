@@ -16,8 +16,9 @@ debug = true
 opt-level = 'z' # Optimize for size
 
 [features]
-default = ["fs_lock_file_guard"]
+default = ["fs_lock_file_guard", "enable_cargo_build"]
 fs_lock_file_guard = []
+enable_cargo_build = []
 
 [[bin]]
 name = "cargo-rustyrts"

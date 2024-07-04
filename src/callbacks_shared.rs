@@ -8,7 +8,7 @@ use rustc_middle::{
     mir::mono::MonoItem,
     ty::{PolyTraitRef, VtblEntry},
 };
-use rustc_span::def_id::DefId;
+use rustc_span::{def_id::DefId, sym, Symbol};
 use std::{
     collections::HashSet,
     fs::read,
@@ -26,7 +26,7 @@ use crate::{
 };
 use crate::{
     checksums::{get_checksum_vtbl_entry, Checksums},
-    constants::{ENV_DOCTESTED, ENV_TARGET_DIR},
+    constants::ENV_DOCTESTED,
     fs_utils::{write_to_file, CacheFileKind, CacheKind, ChecksumKind},
     names::def_id_name,
 };
@@ -38,41 +38,10 @@ use crate::{
 pub static OLD_VTABLE_ENTRIES: AtomicUsize = AtomicUsize::new(0);
 pub static NEW_CHECKSUMS_VTBL: OnceCell<Mutex<Checksums>> = OnceCell::new();
 
-const EXCLUDED_CRATES: &[&str] = &["build_script_build", "build_script_main"];
-
-pub(crate) const TEST_MARKER: &str = "rustc_test_marker";
+pub(crate) const TEST_MARKER: Symbol = sym::rustc_test_marker;
 pub const DOCTEST_PREFIX: &str = "rust_out::_doctest_main_";
 
-pub(crate) static EXCLUDED: OnceCell<bool> = OnceCell::new();
-static NO_INSTRUMENTATION: OnceCell<bool> = OnceCell::new();
-
 pub(crate) static ENTRY_FN: OnceCell<Option<DefId>> = OnceCell::new();
-
-pub(crate) fn excluded(crate_name: &str) -> bool {
-    *EXCLUDED.get_or_init(|| {
-        let exclude = env::var(ENV_SKIP_ANALYSIS).is_ok() || no_instrumentation(crate_name);
-        if exclude {
-            debug!("Excluding crate {}", crate_name);
-        }
-        exclude
-    })
-}
-
-pub(crate) fn no_instrumentation(crate_name: &str) -> bool {
-    *NO_INSTRUMENTATION.get_or_init(|| {
-        let excluded_crate = EXCLUDED_CRATES.iter().any(|krate| *krate == crate_name);
-
-        let trybuild = std::env::var(ENV_TARGET_DIR)
-            .map(|d| d.ends_with("trybuild"))
-            .unwrap_or(false);
-
-        let no_instrumentation = excluded_crate || trybuild;
-        if no_instrumentation {
-            debug!("Not instrumenting crate {}", crate_name);
-        }
-        no_instrumentation
-    })
-}
 
 pub struct RTSContext {
     pub crate_name: String,
@@ -232,7 +201,7 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
 
         for def_id in tcx.mir_keys(()) {
             for attr in tcx.get_attrs_unchecked(def_id.to_def_id()) {
-                if attr.name_or_empty().to_ident_string() == TEST_MARKER {
+                if attr.name_or_empty() == TEST_MARKER {
                     tests.push(def_id_name(tcx, def_id.to_def_id(), false, false));
                 }
             }
@@ -273,7 +242,7 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
 
         let result = orig_function(tcx, key);
 
-        if !excluded(tcx.crate_name(LOCAL_CRATE).as_str()) {
+        if env::var(ENV_SKIP_ANALYSIS).is_err() {
             for entry in result {
                 if let VtblEntry::Method(instance) = entry {
                     let def_id = instance.def_id();
