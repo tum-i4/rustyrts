@@ -190,7 +190,8 @@ pub(crate) struct StaticSelector<'arena, 'context> {
 
 struct DependencyNode<'arena> {
     pub changes: HashSet<ArenaIntern<'arena, String>>,
-    pub reachable: HashSet<ArenaIntern<'arena, String>>,
+    pub reached: HashSet<ArenaIntern<'arena, String>>,
+    pub locally: HashSet<ArenaIntern<'arena, String>>,
 }
 
 impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
@@ -310,22 +311,31 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
             graph.render_to(&mut f);
         }
 
-        let mut starting_points = changed_nodes.clone();
+        let mut starting_points = vec![changed_nodes.clone()];
+        let mut reached = HashSet::new();
         let mut changed_nodes = changed_nodes;
 
         for other in unit_graph.get(unit).unwrap() {
             if other.unit.mode == CompileMode::Build {
                 let other_unit = DependencyUnit::Unit(&other.unit);
-                let DependencyNode { changes, reachable } = cache.get(other_unit);
+                let DependencyNode {
+                    changes,
+                    reached: _,
+                    locally,
+                } = cache.get(other_unit);
 
-                starting_points.extend(reachable);
+                starting_points.push(locally.clone());
                 changed_nodes.extend(changes);
             }
         }
 
+        let locally = graph.reachable_nodes(starting_points.into_iter().flatten());
+        reached.extend(&locally);
+
         DependencyNode {
             changes: changed_nodes,
-            reachable: graph.reachable_nodes(starting_points),
+            reached,
+            locally,
         }
     }
 }
@@ -337,9 +347,10 @@ impl<'arena, 'context> StaticSelector<'arena, 'context> {
     ) -> (
         &HashSet<ArenaIntern<'arena, String>>,
         &HashSet<ArenaIntern<'arena, String>>,
+        &HashSet<ArenaIntern<'arena, String>>,
     ) {
         let cached = self.cache.get(unit);
-        (&cached.changes, &cached.reachable)
+        (&cached.changes, &cached.locally, &cached.reached)
     }
 
     fn print_stats<T: Display>(
@@ -423,10 +434,9 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                 );
 
                 let dependency_unit = DependencyUnit::Unit(unit);
-                let (changed, reachable) = self.reachble_and_changed_nodes(dependency_unit);
-                let affected = reachable
-                    .intersection(&tests_found)
-                    .map(ToString::to_string);
+                let (changed, locally, reachable) =
+                    self.reachble_and_changed_nodes(dependency_unit);
+                let affected = locally.intersection(&tests_found).map(ToString::to_string);
 
                 changed_nodes.extend(changed.clone());
                 reachable_nodes.extend(reachable.clone());
@@ -458,12 +468,13 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                     let test = self.arena.intern(test_path.clone());
 
                     let dependency_unit = DependencyUnit::DoctestUnit(unit, test_path);
-                    let (changed, reachable) = self.reachble_and_changed_nodes(dependency_unit);
+                    let (changed, locally, reachable) =
+                        self.reachble_and_changed_nodes(dependency_unit);
 
                     changed_nodes.extend(changed.clone());
                     reachable_nodes.extend(reachable.clone());
 
-                    if reachable.contains(&test) {
+                    if locally.contains(&test) {
                         affected_tests.push(trimmed);
                     }
                     tests_found.insert(test);
@@ -471,7 +482,7 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
 
                 self.print_stats(
                     shell,
-                    "Static RTS (doctests)",
+                    "Static RTS",
                     &changed_nodes,
                     &reachable_nodes,
                     &tests_found,

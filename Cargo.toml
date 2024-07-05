@@ -51,7 +51,6 @@ humantime = "2.1.0"
 
 # utilities used in selecting tests
 internment = { version = "0.8.3", features = ["arena"] }
-queues = "1.0.2"
 itertools = "0.10.5"
 regex = "1.7.1"
 lazy_static = "1.4.0"

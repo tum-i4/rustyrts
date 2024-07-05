@@ -1,5 +1,5 @@
 // Inspired by rustc_monomorphize::collector
-// Source: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_monomorphize/collector.rs.html
+// Source: https://doc.rust-lang.org/1.77.0/nightly-rustc/src/rustc_monomorphize/collector.rs.html
 //
 // Adapted to extract the dependency relation instead of monomorphization
 
@@ -260,7 +260,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
         .collect()
 }
 
-// Find all test functions. These items serve as roots to start building the dependency graph from.
+// Find all test functions. These items serve as key points in the dependency graph.
 pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
     trace!("collecting test functions");
     let mut roots = Vec::new();

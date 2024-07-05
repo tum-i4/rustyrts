@@ -22,7 +22,6 @@ use rustyrts::{
     checksums::Checksums,
     fs_utils::{CacheKind, ChecksumKind},
 };
-use tracing::info;
 
 use crate::commands::convert_doctest_name;
 
@@ -150,8 +149,6 @@ pub(crate) fn run_analysis_doctests(
         .map(|test| convert_doctest_name(test).1)
         .counts()
     {
-        info!("Got {:?}, {:?}", test_fn, count);
-
         let doctest_name = Some(test_fn.clone());
 
         let compile_mode = CompileMode::try_from(format!("{:?}", unit.mode).as_str()).unwrap();

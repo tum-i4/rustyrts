@@ -23,7 +23,6 @@ struct Traced(&'static str, AtomicPtr<Traced>);
 //##########>############################################################################################################
 // Functions for tracing
 
-#[no_mangle]
 pub fn trace(input: &'static mut (&str, usize)) {
     let traced: &mut Traced = unsafe { std::mem::transmute(input) };
 
@@ -64,11 +63,9 @@ pub fn pre_test(test_name: &'static str, append: bool) {
     std::panic::set_hook(Box::new(new_hook));
 }
 
-#[no_mangle]
 #[cfg(unix)]
 pub fn pre_main() {}
 
-#[no_mangle]
 pub fn post_test(test_name: &'static str, append: bool) {
     let traces = reset_list();
 
@@ -76,7 +73,6 @@ pub fn post_test(test_name: &'static str, append: bool) {
     export_traces(traces, |path_buf| file_descr.apply(path_buf), append);
 }
 
-#[no_mangle]
 #[cfg(unix)]
 pub fn post_main() {
     use std::os::unix::process::parent_id;

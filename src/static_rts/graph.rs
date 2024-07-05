@@ -3,9 +3,8 @@ use internment::Arena;
 use internment::ArenaIntern;
 use itertools::Itertools;
 use num_enum::{IntoPrimitive, TryFromPrimitive};
-use queues::{IsQueue, Queue};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     io::Write,
 };
 use std::{fmt::Debug, ops::Deref};
@@ -157,25 +156,17 @@ impl<'arena, T: Eq + Hash> DependencyGraph<'arena, T> {
         &self,
         starting_points: impl IntoIterator<Item = ArenaIntern<'arena, T>>,
     ) -> HashSet<ArenaIntern<'arena, T>> {
-        let mut queue: Queue<ArenaIntern<'arena, T>> = Queue::new();
+        let mut queue: VecDeque<ArenaIntern<'arena, T>> = VecDeque::from_iter(starting_points);
         let mut reached: HashSet<ArenaIntern<'arena, T>> = HashSet::new();
 
-        for ele in starting_points {
-            queue.add(ele).unwrap();
-        }
-
-        while let Ok(node) = queue.remove() {
+        while let Some(node) = queue.pop_front() {
             if !reached.insert(node) {
                 // We already processed this node before
                 continue;
             }
 
             if let Some(edges) = self.backwards_edges.get(&node) {
-                for start in edges.keys() {
-                    if !reached.contains(start) {
-                        queue.add(*start).unwrap();
-                    }
-                }
+                queue.extend(edges.keys().filter(|k| !reached.contains(k)));
             }
         }
 
