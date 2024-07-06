@@ -63,18 +63,25 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticRTSCallbacks {
         } = self.context();
 
         let arena = internment::Arena::new();
-        let mut graph = self.create_graph(&arena, tcx);
 
-        let tests = tcx.sess.time("dependency_graph_root_collection", || {
-            collect_test_functions(tcx)
-        });
+        let graph = {
+            let _prof_timer = tcx
+                .prof
+                .generic_activity("RUSTYRTS_dependency_graph_creation");
 
-        for test in tests {
-            let def_id = test.def_id();
-            let name_trimmed = def_id_name(tcx, def_id, false, true);
-            let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
-            graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
-        }
+            let mut graph = self.create_graph(&arena, tcx);
+
+            let tests = collect_test_functions(tcx);
+
+            for test in tests {
+                let def_id = test.def_id();
+                let name_trimmed = def_id_name(tcx, def_id, false, true);
+                let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
+                graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
+            }
+
+            graph
+        };
 
         let path = CacheKind::Static.map(self.path.clone());
         write_to_file(

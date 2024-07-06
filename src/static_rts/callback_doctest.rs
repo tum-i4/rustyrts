@@ -59,18 +59,27 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
         } = self.context();
 
         let arena = internment::Arena::new();
-        let mut graph: DependencyGraph<'_, String> = self.create_graph(&arena, tcx);
 
-        let entry_def = ENTRY_FN
-            .get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id))
-            .unwrap();
-        let entry_name = def_id_name(tcx, entry_def, false, true);
+        let graph = {
+            let _prof_timer = tcx
+                .prof
+                .generic_activity("RUSTYRTS_dependency_graph_creation");
 
-        graph.add_edge(
-            doctest_name.as_ref().unwrap().to_string(),
-            entry_name,
-            EdgeType::Trimmed,
-        );
+            let mut graph: DependencyGraph<'_, String> = self.create_graph(&arena, tcx);
+
+            let entry_def = ENTRY_FN
+                .get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id))
+                .unwrap();
+            let entry_name = def_id_name(tcx, entry_def, false, true);
+
+            graph.add_edge(
+                doctest_name.as_ref().unwrap().to_string(),
+                entry_name,
+                EdgeType::Trimmed,
+            );
+
+            graph
+        };
 
         let path = CacheKind::Static.map(self.path.clone());
         append_to_file(

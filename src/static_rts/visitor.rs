@@ -35,7 +35,7 @@ use rustc_middle::{
     ty::TyKind,
 };
 use rustc_session::{config::EntryFnType, Limit};
-use rustc_span::{def_id::LocalDefId, symbol::sym};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{
     source_map::{dummy_spanned, respan, Spanned},
     ErrorGuaranteed,
@@ -177,13 +177,11 @@ pub fn create_dependency_graph<'arena>(
     arena: &'arena Arena<String>,
     mode: MonoItemCollectionMode,
 ) -> DependencyGraph<'arena, String> {
-    let _prof_timer = tcx.prof.generic_activity("dependency_graph_creation");
+    let _prof_timer = tcx
+        .prof
+        .generic_activity("RUSTYRTS_dependency_graph_creation");
 
-    let roots = tcx
-        .sess
-        .time("dependency_graph_creation_root_collections", || {
-            collect_roots(tcx, mode)
-        });
+    let roots = collect_roots(tcx, mode);
 
     trace!("building dependency graph, beginning at roots");
 
@@ -195,18 +193,16 @@ pub fn create_dependency_graph<'arena>(
         let visited: MTLockRef<'_, _> = &mut visited;
         let usage_map: MTLockRef<'_, _> = &mut usage_map;
 
-        tcx.sess.time("dependency_graph_creation_graph_walk", || {
-            par_for_each_in(roots, |root| {
-                let mut recursion_depths = DefIdMap::default();
-                collect_items_rec(
-                    tcx,
-                    dummy_spanned(root),
-                    visited,
-                    &mut recursion_depths,
-                    recursion_limit,
-                    usage_map,
-                );
-            });
+        par_for_each_in(roots, |root| {
+            let mut recursion_depths = DefIdMap::default();
+            collect_items_rec(
+                tcx,
+                dummy_spanned(root),
+                visited,
+                &mut recursion_depths,
+                recursion_limit,
+                usage_map,
+            );
         });
     }
 
@@ -254,8 +250,12 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
                 Spanned {
                     node: mono_item, ..
                 },
-                _context,
-            )| { mono_item.is_instantiable(tcx).then_some(mono_item) },
+                context,
+            )| {
+                (mono_item.is_instantiable(tcx)
+                    && !matches!(context, MonomorphizationContext::NonLocal(_)))
+                .then_some(mono_item)
+            },
         )
         .collect()
 }
@@ -398,11 +398,10 @@ fn collect_items_rec<'tcx>(
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
-                            trace!("collecting static {:?}", def_id);
-
                             if let Some(context) =
                                 maybe_codegen_context(tcx, &instance, Some(EdgeType::Static))
                             {
+                                trace!("collecting static {:?}", def_id);
                                 used_items
                                     .push((dummy_spanned(MonoItem::Static(*def_id)), context));
                             }
@@ -887,36 +886,32 @@ fn visit_instance_use<'tcx>(
         ));
     }
 
-    match instance.def {
-        InstanceDef::Intrinsic(def_id) => {
-            let name = tcx.item_name(def_id);
-            if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
-                // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
-                // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
-                // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
-                // codegen a call to that function without generating code for the function itself.
-                let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
-                let panic_instance = Instance::mono(tcx, def_id);
-                if let Some(context) =
-                    maybe_codegen_context(tcx, &panic_instance, Some(EdgeType::Intrinsic))
-                {
-                    output.push((create_fn_mono_item(tcx, panic_instance, source), context));
-                }
-            } else if tcx.has_attr(def_id, sym::rustc_safe_intrinsic) {
-                // Codegen the fallback body of intrinsics with fallback bodies
-                let instance = ty::Instance::new(def_id, instance.args);
-                if let Some(context) =
-                    maybe_codegen_context(tcx, &instance, Some(EdgeType::Intrinsic))
-                {
-                    output.push((create_fn_mono_item(tcx, instance, source), context));
-                }
+    // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
+    // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
+    // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
+    // codegen a call to that function without generating code for the function itself.
+    if let ty::InstanceDef::Intrinsic(def_id) = instance.def {
+        let name = tcx.item_name(def_id);
+        if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
+            let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
+            let panic_instance = Instance::mono(tcx, def_id);
+            if let Some(context) =
+                maybe_codegen_context(tcx, &panic_instance, Some(EdgeType::Intrinsic))
+            {
+                output.push((create_fn_mono_item(tcx, panic_instance, source), context));
             }
         }
-        InstanceDef::Virtual(..) => {}
-        InstanceDef::ThreadLocalShim(..) => {}
-        InstanceDef::Item(def_id)
-            if tcx.is_closure(def_id)
-                && (edge_type != EdgeType::FnPtr && edge_type != EdgeType::Contained) => {}
+    }
+
+    match instance.def {
+        ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(_) => {
+            if !is_direct_call {
+                bug!("{:?} being reified", instance);
+            }
+        }
+        ty::InstanceDef::ThreadLocalShim(..) => {
+            bug!("{:?} being reified", instance);
+        }
         InstanceDef::DropGlue(_, None) => {
             if !is_direct_call {
                 if let Some(context) = maybe_codegen_context(tcx, &instance, Some(edge_type)) {
@@ -924,6 +919,9 @@ fn visit_instance_use<'tcx>(
                 }
             }
         }
+        InstanceDef::Item(def_id)
+            if tcx.is_closure(def_id)
+                && (edge_type != EdgeType::FnPtr && edge_type != EdgeType::Contained) => {}
         InstanceDef::DropGlue(_, Some(_))
         | InstanceDef::VTableShim(..)
         | InstanceDef::ReifyShim(..)
@@ -964,7 +962,7 @@ fn maybe_codegen_context<'tcx>(
     }
 
     if instance
-        // .polymorphize(tcx)
+        .polymorphize(tcx)
         .upstream_monomorphization(tcx)
         .is_some()
     {
@@ -1099,11 +1097,11 @@ fn find_vtable_types_for_unsizing<'tcx>(
 }
 
 fn create_fn_mono_item<'tcx>(
-    _tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
-    respan(source, MonoItem::Fn(instance /*.polymorphize(tcx)*/))
+    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -1354,14 +1352,8 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let Some(impl_) = tcx.impl_trait_ref(item.owner_id) else {
-        return;
-    };
-
-    if matches!(
-        tcx.impl_polarity(impl_.skip_binder().def_id),
-        ty::ImplPolarity::Negative
-    ) {
+    let polarity = tcx.impl_polarity(item.owner_id);
+    if matches!(polarity, ty::ImplPolarity::Negative) {
         return;
     }
 
@@ -1371,6 +1363,10 @@ fn create_mono_items_for_default_impls<'tcx>(
     {
         return;
     }
+
+    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
+        return;
+    };
 
     // Lifetimes never affect trait selection, so we are allowed to eagerly
     // instantiate an instance of an impl method if the impl (and method,
@@ -1391,7 +1387,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
     };
     let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = impl_.instantiate(tcx, impl_args);
+    let trait_ref = trait_ref.instantiate(tcx, impl_args);
 
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl
@@ -1443,11 +1439,11 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         GlobalAlloc::Static(def_id) => {
             assert!(!tcx.is_thread_local_static(def_id));
             let instance = Instance::mono(tcx, def_id);
-            trace!("collecting static {:?}", def_id);
 
             // 5.1. function -> accessed static variable
             // 5.2. static variable -> static variable that is pointed to
             if let Some(context) = maybe_codegen_context(tcx, &instance, Some(EdgeType::Static)) {
+                trace!("collecting static {:?}", def_id);
                 output.push((dummy_spanned(MonoItem::Static(def_id)), context));
             }
         }
@@ -1460,9 +1456,9 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             }
         }
         GlobalAlloc::Function(fn_instance) => {
-            trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
             // 5.3. static variable -> function that is pointed to
             if let Some(context) = maybe_codegen_context(tcx, &fn_instance, Some(EdgeType::FnPtr)) {
+                trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push((create_fn_mono_item(tcx, fn_instance, DUMMY_SP), context));
 
                 // IMPORTANT: This ensures that functions referenced in closures contained in Consts are considered

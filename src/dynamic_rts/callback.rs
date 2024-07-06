@@ -47,6 +47,8 @@ impl InstrumentingRTSCallbacks {
 
 impl InstrumentingCallback for InstrumentingRTSCallbacks {
     fn modify_body<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        let _prof_timer = tcx.prof.generic_activity("RUSTYRTS_instrumentation");
+
         let def_id = body.source.instance.def_id();
         let outer = def_id_name(tcx, def_id, false, true);
 

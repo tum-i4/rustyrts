@@ -147,46 +147,52 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
             ..
         } = self.context_mut();
 
-        //##############################################################################################################
-        // Collect all MIR bodies that are relevant for code generation
+        {
+            let _prof_timer = tcx.prof.generic_activity("RUSTYRTS_checksum_collection");
 
-        let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
+            //##########################################################################################################
+            // Collect all MIR bodies that are relevant for code generation
 
-        let bodies = code_gen_units
-            .iter()
-            .flat_map(|c| c.items().keys())
-            .filter_map(|m| match m {
-                MonoItem::Fn(instance) => Some(instance),
-                _ => None,
-            })
-            .map(Instance::def_id)
-            //.filter(|d| d.is_local()) // It is not feasible to only analyze local MIR
-            .filter(|d| tcx.is_mir_available(d))
-            .unique()
-            .map(|d| tcx.optimized_mir(d))
-            .collect_vec();
+            let code_gen_units = tcx.collect_and_partition_mono_items(()).1;
 
-        //##########################################################################################################
-        // Calculate checksum of every MIR body and the consts that it uses
+            let bodies = code_gen_units
+                .iter()
+                .flat_map(|c| c.items().keys())
+                .filter_map(|m| match m {
+                    MonoItem::Fn(instance) => Some(instance),
+                    _ => None,
+                })
+                .map(Instance::def_id)
+                //.filter(|d| d.is_local()) // It is not feasible to only analyze local MIR
+                .filter(|d| tcx.is_mir_available(d))
+                .unique()
+                .map(|d| tcx.optimized_mir(d))
+                .collect_vec();
 
-        for body in &bodies {
-            let name = def_id_name(tcx, body.source.def_id(), false, true);
+            //##########################################################################################################
+            // Calculate checksum of every MIR body and the consts that it uses
 
-            let checksums_const = ResolvingConstVisitor::find_consts(tcx, body);
-            for checksum in checksums_const {
-                insert_hashmap(
-                    &mut *new_checksums_const.get_mut().unwrap(),
-                    &name,
-                    checksum,
-                );
+            for body in &bodies {
+                let name = def_id_name(tcx, body.source.def_id(), false, true);
+
+                let checksums_const = ResolvingConstVisitor::find_consts(tcx, body);
+                for checksum in checksums_const {
+                    insert_hashmap(
+                        &mut *new_checksums_const.get_mut().unwrap(),
+                        &name,
+                        checksum,
+                    );
+                }
+
+                let checksum = get_checksum_body(tcx, body);
+                insert_hashmap(&mut *new_checksums.get_mut().unwrap(), &name, checksum);
             }
-
-            let checksum = get_checksum_body(tcx, body);
-            insert_hashmap(&mut *new_checksums.get_mut().unwrap(), &name, checksum);
         }
     }
 
     fn run_analysis_tests(&self, tcx: TyCtxt<'tcx>) {
+        let _prof_timer = tcx.prof.generic_activity("RUSTYRTS_test_collection");
+
         let path = self.path();
         let RTSContext {
             crate_name,
@@ -230,6 +236,8 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
         key: PolyTraitRef<'tcx>,
         suffix: &str,
     ) -> &'tcx [VtblEntry<'tcx>] {
+        let _prof_timer = tcx.prof.generic_activity("RUSTYRTS_checksum_collection");
+
         let content = OLD_VTABLE_ENTRIES.load(SeqCst);
 
         // SAFETY: At this address, the original vtable_entries() function has been stored before.

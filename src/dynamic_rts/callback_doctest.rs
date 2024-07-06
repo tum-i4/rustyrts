@@ -33,6 +33,8 @@ impl InstrumentingCallback for InstrumentingDoctestRTSCallbacks {
         tcx: rustc_middle::ty::TyCtxt<'tcx>,
         body: &mut rustc_middle::mir::Body<'tcx>,
     ) {
+        let _prof_timer = tcx.prof.generic_activity("RUSTYRTS_instrumentation");
+
         let def_id = body.source.instance.def_id();
         let outer = def_id_name(tcx, def_id, false, true);
 
