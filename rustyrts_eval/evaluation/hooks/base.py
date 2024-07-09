@@ -28,7 +28,6 @@ class Hook(ABC):
         commit: Commit,
         features_parent: Optional[str],
         features: Optional[str],
-        rustflags: Optional[str],
     ) -> int:
         pass
 

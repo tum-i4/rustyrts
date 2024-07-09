@@ -55,7 +55,6 @@ def walk(
     test_options += ["-Z unstable-options", "--report-time", "--format", "json"]
 
     env_vars = env_vars if env_vars else {}
-    env_vars |= {"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])}
 
     name_postfix = ""
     if sequentially:

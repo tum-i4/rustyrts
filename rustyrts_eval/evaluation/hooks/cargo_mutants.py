@@ -66,7 +66,6 @@ class CargoMutantsHook(Hook):
         commit: Commit,
         features_parent: Optional[str],
         features: Optional[str],
-        rustflags: Optional[str],
     ) -> bool:
         """
         Run cargo mutants-rts.

@@ -42,8 +42,8 @@ class CargoRustyRTSHook(CargoHook):
 
         self.mode = mode
 
-    def build_env(self, rustflags):
-        env = super().build_env(rustflags)
+    def build_env(self):
+        env = super().build_env()
         if self.mode is RustyRTSMode.DYNAMIC:
             env["RUSTC"] = abspath(expanduser("~/.cargo/bin/rustyrts-dynamic"))
             env["RUSTYRTS_ONLY_INSTRUMENTATION"] = "true"

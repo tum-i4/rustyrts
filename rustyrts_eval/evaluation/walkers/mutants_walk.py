@@ -51,7 +51,6 @@ def walk(
     options.append("--gitignore=false")
 
     env_vars = env_vars if env_vars else {}
-    env_vars.update({"RUSTFLAGS": " ".join(["--cap-lints=allow", "-C", "link-arg=-fuse-ld=lld"])})
 
     walker = GitWalker(
         repository=repository,

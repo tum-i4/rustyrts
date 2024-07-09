@@ -79,7 +79,7 @@ class GitWalker(Walker):
         # init counter
         counter = 0
 
-        for commit, features_parent, features, rustflags in self.strategy:
+        for commit, features_parent, features in self.strategy:
             # get next commit with changeset
             next_commit = self.git_client.get_commit_from_repo(commit_id=commit)
 
@@ -91,7 +91,7 @@ class GitWalker(Walker):
             # run hooks
             success = True
             for h in self.hooks:
-                success &= h.run(next_commit, features_parent, features, rustflags)
+                success &= h.run(next_commit, features_parent, features)
                 if not success:
                     break
 

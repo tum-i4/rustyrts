@@ -61,15 +61,13 @@ class CargoHook(Hook, ABC):
                 if "target/debug" in content:
                     self.build_release = True
 
-    def env(self, rustflags) -> dict[str, str]:
+    def env(self) -> dict[str, str]:
         os.makedirs(self.target_dir, exist_ok=True)
-        rustflags = (self.env_vars["RUSTFLAGS"] + " " if self.env_vars and "RUSTFLAGS" in self.env_vars else "") + (rustflags if rustflags else "")
         env = {"CARGO_TARGET_DIR": self.target_dir}
-        return os.environ | self.env_vars | env | {"RUSTFLAGS": rustflags}
+        return os.environ | self.env_vars | env
 
-    def build_env(self, rustflags) -> dict[str, str]:
-        rustflags = (self.env_vars["RUSTFLAGS"] + " " if self.env_vars and "RUSTFLAGS" in self.env_vars else "") + (rustflags if rustflags else "")
-        return os.environ | self.env_vars | {"RUSTFLAGS": rustflags}
+    def build_env(self) -> dict[str, str]:
+        return os.environ | self.env_vars
 
     def clean_command(self):
         return "cargo clean"
@@ -94,7 +92,6 @@ class CargoHook(Hook, ABC):
         commit: Commit,
         features_parent: Optional[str],
         features: Optional[str],
-        rustflags: Optional[str],
     ) -> bool:
         """
         Run cargo test.
@@ -124,12 +121,14 @@ class CargoHook(Hook, ABC):
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
+            if os.path.exists(".cargo"):
+                os.remove(".cargo")  # Cargo config overwrites the one we are setting in .cargo/config.toml
 
             # clean
             proc: SubprocessContainer = SubprocessContainer(
                 command=self.clean_command(),
                 output_filepath=self.prepare_cache_file(),
-                env=self.env(rustflags),
+                env=self.env(),
             )
             proc.execute(capture_output=True, shell=True, timeout=100.0)
 
@@ -146,7 +145,7 @@ class CargoHook(Hook, ABC):
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features_parent),
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(rustflags),
+                        env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -184,7 +183,7 @@ class CargoHook(Hook, ABC):
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features_parent) + " --release",
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(rustflags),
+                        env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -219,7 +218,7 @@ class CargoHook(Hook, ABC):
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.test_command_parent(features_parent),
                     output_filepath=self.prepare_cache_file(),
-                    env=self.env(rustflags) | env_tmp_override(),
+                    env=self.env() | env_tmp_override(),
                 )
                 proc.execute(capture_output=True, shell=True, timeout=10000.0)
                 has_errored |= proc.exit_code == -1 or "thread caused non-unwinding panic. aborting." in proc.output or (not (proc.exit_code == 0 or any(line.startswith("{") and line.endswith("}") for line in proc.output.splitlines())))
@@ -265,6 +264,8 @@ class CargoHook(Hook, ABC):
 
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
+            if os.path.exists(".cargo"):
+                os.remove(".cargo")  # Cargo config overwrites the one we are setting in .cargo/config.toml
 
             # update dependencies
             self.update_dependencies(commit)
@@ -279,7 +280,7 @@ class CargoHook(Hook, ABC):
                     proc: SubprocessContainer = SubprocessContainer(
                         command=self.build_command(features),
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(rustflags),
+                        env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -315,9 +316,9 @@ class CargoHook(Hook, ABC):
                 if not has_errored:
                     # Run build command on actual commit
                     proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(features),
+                        command=self.build_command(features) + " --release",
                         output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(rustflags),
+                        env=self.build_env(),
                     )
                     proc.execute(capture_output=True, shell=True, timeout=10000.0)
 
@@ -353,7 +354,7 @@ class CargoHook(Hook, ABC):
                 proc: SubprocessContainer = SubprocessContainer(
                     command=self.test_command(features),
                     output_filepath=self.prepare_cache_file(),
-                    env=self.env(rustflags)
+                    env=self.env()
                     # | {"CARGO_LOG": "debug"}
                     # e.g. changes trybuild files will be overridden by git reset, so we just use it here as well
                     # this effectively prevents those tests from failing, but there is just no other way

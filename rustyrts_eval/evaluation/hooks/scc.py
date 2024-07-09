@@ -37,7 +37,6 @@ class SccHook(Hook):
         commit: Commit,
         features_parent: Optional[str],
         features: Optional[str],
-        rustflags: Optional[str],
     ) -> bool:
         _LOGGER.debug("Checking out commit {}.".format(commit.commit_str))
         self.git_client.checkout(commit)
