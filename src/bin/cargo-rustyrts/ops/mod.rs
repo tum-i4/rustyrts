@@ -6,20 +6,23 @@ use rustyrts::constants::{
 };
 use tracing::debug;
 
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf, sync::Mutex};
 
 use cargo::{
-    core::compiler::{DefaultExecutor, Executor},
+    core::{
+        compiler::{DefaultExecutor, Executor},
+        Target,
+    },
     CargoResult,
 };
 
-pub(crate) struct TestExecutor {
+pub(crate) struct PreciseExecutor {
     cmd: PathBuf,
     target_dir: PathBuf,
     delegate: DefaultExecutor,
 }
 
-impl TestExecutor {
+impl PreciseExecutor {
     pub fn new(cmd: PathBuf, target_dir: PathBuf) -> Self {
         Self {
             cmd,
@@ -29,7 +32,7 @@ impl TestExecutor {
     }
 }
 
-impl Executor for TestExecutor {
+impl Executor for PreciseExecutor {
     fn exec(
         &self,
         cmd: &cargo_util::ProcessBuilder,
@@ -62,5 +65,42 @@ impl Executor for TestExecutor {
             self.delegate
                 .exec(&cmd, id, target, mode, on_stdout_line, on_stderr_line)
         }
+    }
+}
+
+pub(crate) struct CrateLevelExecutor {
+    compiled_targets: Mutex<HashSet<Target>>,
+    delegate: DefaultExecutor,
+}
+
+impl CrateLevelExecutor {
+    pub(crate) fn new() -> Self {
+        Self {
+            compiled_targets: Mutex::new(HashSet::new()),
+            delegate: DefaultExecutor,
+        }
+    }
+
+    pub(crate) fn compiled_targets(self) -> HashSet<Target> {
+        self.compiled_targets.into_inner().unwrap()
+    }
+}
+
+impl Executor for CrateLevelExecutor {
+    fn exec(
+        &self,
+        cmd: &cargo_util::ProcessBuilder,
+        id: cargo::core::PackageId,
+        target: &cargo::core::Target,
+        mode: cargo::util::command_prelude::CompileMode,
+        on_stdout_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+        on_stderr_line: &mut dyn FnMut(&str) -> CargoResult<()>,
+    ) -> CargoResult<()> {
+        if mode == cargo::util::command_prelude::CompileMode::Test {
+            self.compiled_targets.lock().unwrap().insert(target.clone());
+        }
+
+        self.delegate
+            .exec(&cmd, id, target, mode, on_stdout_line, on_stderr_line)
     }
 }

@@ -6,6 +6,7 @@ use std::{
     fs::{read, read_dir, read_to_string, File},
     path::{Path, PathBuf},
     string::ToString,
+    sync::Arc,
     time::Instant,
 };
 
@@ -13,7 +14,7 @@ use cargo::{
     core::{
         compiler::{
             unit_graph::{UnitDep, UnitGraph},
-            Unit,
+            Executor, Unit,
         },
         Shell, Workspace,
     },
@@ -30,17 +31,18 @@ use rustyrts::{
 };
 use tracing::trace;
 
-use crate::{commands::convert_doctest_name, ops::TestExecutor};
+use crate::{commands::convert_doctest_name, ops::PreciseExecutor};
 
 use super::{
-    cache::HashCache, DependencyUnit, SelectionContext, SelectionMode, Selector, TestInfo, TestUnit,
+    cache::HashCache, DependencyUnit, PreciseSelectionMode, SelectionContext, SelectionMode,
+    SelectionUnit, Selector, TestInfo, TestUnit,
 };
 
 pub fn cli() -> Command {
     subcommand("static")
         .about(r"Perform regression test selection using a static technique, constructing a dependency graph
 
- + quite precise
+ ++ quite precise
  + does not tamper with binaries at all
  + no runtime overhead
  - cannot track dependencies of child processes
@@ -104,13 +106,15 @@ impl SelectionMode for StaticMode {
         target_dir
     }
 
-    fn executor(&self, target_dir: PathBuf) -> TestExecutor {
+    fn executor(&self, target_dir: PathBuf) -> Arc<dyn Executor> {
         let mut path_buf = std::env::current_exe().expect("current executable path invalid");
         path_buf.set_file_name("rustyrts-static");
 
-        TestExecutor::new(path_buf, target_dir)
+        Arc::new(PreciseExecutor::new(path_buf, target_dir))
     }
+}
 
+impl PreciseSelectionMode for StaticMode {
     fn prepare_cache(&self, target_dir: &Path, unit_graph: &UnitGraph) {
         for kind in [CacheKind::General, CacheKind::Static] {
             let path = kind.map(target_dir.to_path_buf());
@@ -157,7 +161,7 @@ impl SelectionMode for StaticMode {
 }
 
 pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
-    super::exec(config, args, &StaticMode)
+    super::exec(config, args, super::Selection::Precise(&StaticMode))
 }
 
 pub(crate) struct StaticSelectionContext<'arena, 'context> {
@@ -417,8 +421,11 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
         test_unit: TestUnit<'context, 'context>,
         shell: &mut Shell,
         start_time: Instant,
-    ) -> Vec<String> {
+    ) -> SelectionUnit {
         let TestUnit(unit, test_info) = test_unit;
+        let Some(test_info) = test_info else {
+            panic!("Precise selection requires information about tests")
+        };
 
         let mut changed_nodes = HashSet::new();
         let mut reachable_nodes = HashSet::new();
@@ -493,7 +500,7 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
             }
         }
 
-        affected_tests
+        SelectionUnit::Precise(affected_tests)
     }
 
     fn cache_kind(&self) -> CacheKind {

@@ -1,11 +1,11 @@
 extern crate cargo;
 
-use crate::{command_prelude::*, ops::TestExecutor};
+use crate::{command_prelude::*, doctest_rts::run_analysis_doctests};
 use cargo::{
     core::{
         compiler::{
             unit_graph::{UnitDep, UnitGraph},
-            Unit,
+            Compilation, Doctest, Executor, Unit,
         },
         Shell, Workspace,
     },
@@ -18,18 +18,20 @@ use std::{
     collections::{HashMap, HashSet},
     fs::read_to_string,
     path::{Path, PathBuf},
+    sync::Arc,
     time::Instant,
     vec::Vec,
 };
 
 pub fn commands() -> Vec<Command> {
-    vec![r#static::cli(), dynamic::cli(), clean::cli()]
+    vec![basic::cli(), r#static::cli(), dynamic::cli(), clean::cli()]
 }
 
 pub type Exec = fn(&mut Config, &ArgMatches) -> CliResult;
 
 pub fn command_exec(cmd: &str) -> Option<Exec> {
     let f = match cmd {
+        "basic" => r#basic::exec,
         "static" => r#static::exec,
         "dynamic" => dynamic::exec,
         "clean" => clean::exec,
@@ -38,6 +40,7 @@ pub fn command_exec(cmd: &str) -> Option<Exec> {
     Some(f)
 }
 
+pub(crate) mod basic;
 pub(crate) mod clean;
 pub(crate) mod dynamic;
 pub(crate) mod r#static;
@@ -53,12 +56,44 @@ enum DependencyUnit<'context> {
 pub(crate) trait SelectionMode {
     fn default_target_dir(&self, target_dir: PathBuf) -> PathBuf;
 
-    fn executor(&self, target_dir: PathBuf) -> TestExecutor;
+    fn executor(&self, target_dir: PathBuf) -> Arc<dyn Executor>;
+}
 
-    fn prepare_cache(&self, target_dir: &Path, unit_graph: &UnitGraph);
+pub enum Selection<'mode> {
+    Precise(&'mode dyn PreciseSelectionMode),
+    CrateLevel(&'mode dyn CrateLevelSelectionMode),
+}
 
-    fn clean_cache(&self, target_dir: &Path);
+impl<'mode> Selection<'mode> {
+    pub(crate) fn default_target_dir(&self, orig: PathBuf) -> PathBuf {
+        match self {
+            Selection::Precise(mode) => mode.default_target_dir(orig),
+            Selection::CrateLevel(mode) => mode.default_target_dir(orig),
+        }
+    }
 
+    pub(crate) fn executor(&self, target_dir: &PathBuf) -> Arc<dyn Executor> {
+        match self {
+            Selection::Precise(mode) => mode.executor(target_dir.clone()),
+            Selection::CrateLevel(mode) => mode.executor(target_dir.clone()),
+        }
+    }
+
+    pub(crate) fn selection_context<'target_dir: 'mode, 'arena: 'mode, 'unit_graph: 'mode>(
+        &self,
+        ws: &Workspace,
+        target_dir: &'target_dir Path,
+        arena: &'arena Arena<String>,
+        unit_graph: &'unit_graph HashMap<Unit, Vec<UnitDep>>,
+    ) -> Box<dyn SelectionContext<'mode> + 'mode> {
+        match self {
+            Selection::Precise(mode) => mode.selection_context(ws, &target_dir, &arena, unit_graph),
+            Selection::CrateLevel(mode) => mode.selection_context(),
+        }
+    }
+}
+
+pub(crate) trait PreciseSelectionMode: SelectionMode {
     fn selection_context<'context, 'arena: 'context>(
         &self,
         ws: &Workspace<'_>,
@@ -66,21 +101,41 @@ pub(crate) trait SelectionMode {
         arena: &'arena Arena<String>,
         units: &'context HashMap<Unit, Vec<UnitDep>>,
     ) -> Box<dyn SelectionContext<'context> + 'context>;
+
+    fn prepare_cache(&self, target_dir: &Path, unit_graph: &UnitGraph);
+
+    fn clean_cache(&self, target_dir: &Path);
+}
+
+pub(crate) trait CrateLevelSelectionMode: SelectionMode {
+    fn selection_context<'context>(
+        &'context self,
+    ) -> Box<dyn SelectionContext<'context> + 'context>;
 }
 
 pub trait SelectionContext<'context> {
     fn selector(&mut self) -> &mut dyn Selector<'context>;
 }
 
-pub struct TestUnit<'unit, 'arena>(&'unit Unit, TestInfo<'arena>);
+pub struct TestUnit<'unit, 'arena>(pub &'unit Unit, pub Option<TestInfo<'arena>>);
 
 pub enum TestInfo<'arena> {
     Test(HashSet<ArenaIntern<'arena, String>>),
     Doctest(HashSet<String>),
 }
 
-impl<'unit, 'arena> TestUnit<'unit, 'arena> {
-    pub fn test(unit: &'unit Unit, arena: &'arena Arena<String>, target_dir: &Path) -> Self {
+pub enum SelectionUnit {
+    CrateLevel { execute_tests: bool },
+    Precise(Vec<String>),
+}
+
+pub trait Selector<'context> {
+    fn test_info<'arena>(
+        &self,
+        unit: &Unit,
+        arena: &'arena Arena<String>,
+        target_dir: &Path,
+    ) -> Option<TestInfo<'arena>> {
         let path_buf = CacheKind::General.map(target_dir.to_path_buf());
 
         let crate_name = unit.target.crate_name();
@@ -105,21 +160,35 @@ impl<'unit, 'arena> TestUnit<'unit, 'arena> {
                     .collect()
             });
 
-        Self(unit, TestInfo::Test(tests_found))
+        Some(TestInfo::Test(tests_found))
     }
 
-    pub fn doctest(unit: &'unit Unit, tests: HashSet<String>) -> Self {
-        Self(unit, TestInfo::Doctest(tests))
+    fn doctest_info<'arena>(
+        &self,
+        ws: &Workspace,
+        test_args: &[&str],
+        compilation: &Compilation,
+        target_dir: &Path,
+        doctest_info: &Doctest,
+    ) -> Result<Option<TestInfo<'arena>>, CliError> {
+        let tests = run_analysis_doctests(
+            ws,
+            test_args,
+            compilation,
+            target_dir,
+            doctest_info,
+            self.cache_kind(),
+            self.doctest_callback_analysis(),
+        )?;
+        Ok(Some(TestInfo::Doctest(tests)))
     }
-}
 
-pub trait Selector<'context> {
     fn select_tests(
         &mut self,
         test: TestUnit<'context, 'context>,
         shell: &mut Shell,
         start_time: Instant,
-    ) -> Vec<String>;
+    ) -> SelectionUnit;
 
     fn cache_kind(&self) -> CacheKind;
 
@@ -128,12 +197,12 @@ pub trait Selector<'context> {
     fn doctest_callback_execution(&self) -> fn(&mut ProcessBuilder, &Path, &Unit);
 }
 
-pub fn exec(config: &Config, args: &ArgMatches, mode: &dyn SelectionMode) -> CliResult {
+pub fn exec(config: &Config, args: &ArgMatches, selection: Selection) -> CliResult {
     let ws = {
         let mut ws = args.workspace(config)?;
 
         if config.target_dir().unwrap().is_none() {
-            let target_dir = mode.default_target_dir(ws.target_dir().into_path_unlocked());
+            let target_dir = selection.default_target_dir(ws.target_dir().into_path_unlocked());
             ws.set_target_dir(Filesystem::new(target_dir));
         }
 
@@ -189,7 +258,7 @@ Proceed with caution!!!
         compile_opts,
     };
 
-    crate::ops::run_tests(&ws, &ops, &test_args, mode)
+    crate::ops::run_tests(&ws, &ops, &test_args, selection)
 }
 
 pub fn convert_doctest_name(test_name: &str) -> (String, String) {

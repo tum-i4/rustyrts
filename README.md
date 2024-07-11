@@ -3,7 +3,9 @@
 RustyRTS is a regression test selection tool for Rust projects.
 Whether it is invoked _manually by a developer_ or _automatically in a CI pipeline_, it aims to reduce the time that is spent on waiting for the test results by excluding tests that do not actually run changed code.
 
-RustyRTS provides two ways of selecting tests:
+RustyRTS provides multiple ways of selecting tests:
+
+## Test-level RTS
 
 - `cargo rustyrts dynamic` instruments all binaries to trace which functions are executed during the tests
   - ${\color{lightgreen}+++}$ extremely precise
@@ -15,13 +17,24 @@ RustyRTS provides two ways of selecting tests:
   - ${\color{orange}/}$ small compilation overhead, moderate runtime overhead
 
 - `cargo rustyrts static` creates a directed dependency graph via static analysis
-  - ${\color{lightgreen}+}$ quite precise
+  - ${\color{lightgreen}++}$ quite precise
   - ${\color{lightgreen}+}$ does not tamper with binaries at all
   - ${\color{lightgreen}+}$ no runtime overhead
   - ${\color{red}-}$ cannot track dependencies of child processes
   - ${\color{orange}/}$ moderate compilation overhead
 
-Whenever it detects that some test depends on a function that has changed, this test is selected.
+Whenever RustyRTS detects that some test depends on a function that has changed, this test is selected.
+
+## Crate-level RTS
+
+- `cargo rustyrts basic` runs tests only if the corresponding target has been (re-)compiled
+  - ${\color{lightgreen}+}$ moderately precise
+  - ${\color{lightgreen}+}$ does not tamper with binaries at all
+  - ${\color{lightgreen}+}$ no runtime overhead
+  - ${\color{lightgreen}+}$ negligible compiletime overhead
+  - ${\color{red}-}$ cannot track dependencies of child processes
+
+Whenever a test target is (re-)compiled, all of its tests are executed.
 
 # Rust version
 
@@ -50,10 +63,11 @@ This will first install the required toolchain, if it is not present, and then b
 
 # Usage
 
-| Command                  | Explanation                                                 |
-| ------------------------ | ----------------------------------------------------------- |
-| `cargo rustyrts static`  | perform static regression test selection and execute tests  |
-| `cargo rustyrts dynamic` | perform dynamic regression test selection and execute tests |
+| Command                  | Explanation                                                     |
+| ------------------------ | --------------------------------------------------------------- |
+| `cargo rustyrts basic`   | perform crate-level regression test selection and execute tests |
+| `cargo rustyrts static`  | perform static regression test selection and execute tests      |
+| `cargo rustyrts dynamic` | perform dynamic regression test selection and execute tests     |
 
 <!-- | `cargo rustyrts clean`   | clean temporary directories created by RustyRTS by default (or just use `cargo clean`) | -->
 

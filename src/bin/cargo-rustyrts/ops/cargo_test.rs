@@ -40,10 +40,7 @@ use std::{
 };
 use tracing::trace;
 
-use crate::{
-    commands::{SelectionMode, Selector, TestUnit},
-    doctest_rts::run_analysis_doctests,
-};
+use crate::commands::{Selection, Selector, TestUnit};
 
 //#####################################################################################################################
 // Source: https://github.com/rust-lang/cargo/blob/d0390c22b16ea6c800754fb7620ab8ee31debcc7/src/cargo/ops/cargo_test.rs
@@ -100,7 +97,7 @@ pub fn run_tests(
     ws: &Workspace<'_>,
     options: &TestOptions,
     test_args: &[&str],
-    mode: &dyn SelectionMode,
+    selection: Selection,
 ) -> CliResult {
     let target_dir = ws.target_dir().into_path_unlocked();
 
@@ -108,10 +105,16 @@ pub fn run_tests(
     let bcx = create_bcx(ws, &options.compile_opts, &interner)?;
     let unit_graph = &bcx.unit_graph;
 
-    mode.prepare_cache(&target_dir, unit_graph);
-    mode.prepare_cache(&target_dir, unit_graph);
+    if unit_graph.keys().any(|unit| !unit.target.harness()) {
+        return Err(anyhow::Error::msg("RustyRTS is incompatible with using a custom test harness. Please use the default test harness instead!").into());
+    }
 
-    let exec: Arc<dyn Executor> = Arc::new(mode.executor(target_dir.clone()));
+    if let Selection::Precise(mode) = selection {
+        mode.prepare_cache(&target_dir, unit_graph);
+        mode.prepare_cache(&target_dir, unit_graph);
+    }
+
+    let exec = selection.executor(&target_dir);
     let compilation = compile_tests(ws, &options.compile_opts, &bcx, exec)?;
 
     if options.no_run {
@@ -122,7 +125,7 @@ pub fn run_tests(
     }
 
     let arena = Arena::new();
-    let mut selection_context = mode.selection_context(ws, &target_dir, &arena, unit_graph);
+    let mut selection_context = selection.selection_context(ws, &target_dir, &arena, unit_graph);
     let selector = selection_context.selector();
 
     let mut errors: Vec<UnitTestError> = run_unit_tests(
@@ -148,8 +151,10 @@ pub fn run_tests(
     errors.extend(doctest_errors);
 
     if !options.no_run {
-        mode.clean_cache(&target_dir);
-        mode.clean_cache(&target_dir);
+        if let Selection::Precise(mode) = selection {
+            mode.clean_cache(&target_dir);
+            mode.clean_cache(&target_dir);
+        }
     }
 
     no_fail_fast_err(ws, &options.compile_opts, &errors)
@@ -175,8 +180,7 @@ fn run_unit_tests<'compilation, 'context, 'arena: 'context>(
 
     selector.note(&mut config.shell(), test_args);
 
-    let mut test_args = Vec::from(test_args);
-    test_args.push("--exact");
+    let test_args = Vec::from(test_args);
 
     for UnitOutput {
         unit,
@@ -185,22 +189,34 @@ fn run_unit_tests<'compilation, 'context, 'arena: 'context>(
     } in &compilation.tests
     {
         let start_time = Instant::now();
-        let test_unit = TestUnit::test(unit, arena, target_dir);
-        let affected_tests = selector.select_tests(test_unit, &mut config.shell(), start_time);
-
-        let prefix = unit.target.crate_name().to_string() + "::";
-        trace!("Stripping crate name {:?}", prefix);
-        let mut affected_tests = affected_tests
-            .iter()
-            .filter_map(|s| s.strip_prefix(&prefix))
-            .collect_vec();
-
+        let test_unit = TestUnit(unit, selector.test_info(unit, arena, target_dir));
         let mut test_args = test_args.clone();
-        if affected_tests.is_empty() {
-            test_args.push("?"); // This excludes all tests
-        } else {
-            test_args.append(&mut affected_tests);
-        }
+
+        let selected = selector.select_tests(test_unit, &mut config.shell(), start_time);
+        match &selected {
+            crate::commands::SelectionUnit::CrateLevel { execute_tests } => {
+                if !execute_tests {
+                    test_args.push("--exact");
+                    test_args.push("?"); // This excludes all tests
+                }
+            }
+            crate::commands::SelectionUnit::Precise(affected_tests) => {
+                test_args.push("--exact");
+
+                let prefix = unit.target.crate_name().to_string() + "::";
+                trace!("Stripping crate name {:?}", prefix);
+                let mut affected_tests = affected_tests
+                    .iter()
+                    .filter_map(|s| s.strip_prefix(&prefix))
+                    .collect_vec();
+
+                if affected_tests.is_empty() {
+                    test_args.push("?"); // This excludes all tests
+                } else {
+                    test_args.append(&mut affected_tests);
+                }
+            }
+        };
 
         let (exe_display, mut cmd) = cmd_builds(
             config,
@@ -279,26 +295,29 @@ fn run_doc_tests<'compilation, 'context, 'arena: 'context>(
         args.push(rlib_source.into_os_string());
 
         let start = Instant::now();
-        let tests = run_analysis_doctests(
-            ws,
-            test_args,
-            compilation,
-            target_dir,
-            doctest_info,
-            selector.cache_kind(),
-            selector.doctest_callback_analysis(),
-        )?;
-        let test_unit = TestUnit::doctest(unit, tests);
-        let affected_tests = selector.select_tests(test_unit, &mut config.shell(), start);
-
+        let test_unit = TestUnit(
+            unit,
+            selector.doctest_info(ws, test_args, compilation, target_dir, doctest_info)?,
+        );
         let mut test_args = Vec::from(test_args);
-        let mut affected_tests = affected_tests.iter().map(String::as_str).collect_vec();
 
-        if affected_tests.is_empty() {
-            test_args.push("?"); // This excludes all tests
-        } else {
-            test_args.append(&mut affected_tests);
-        }
+        let selected = selector.select_tests(test_unit, &mut config.shell(), start);
+        match &selected {
+            crate::commands::SelectionUnit::CrateLevel { execute_tests } => {
+                if !execute_tests {
+                    test_args.push("?"); // This excludes all tests
+                }
+            }
+            crate::commands::SelectionUnit::Precise(affected_tests) => {
+                let mut affected_tests = affected_tests.iter().map(String::as_str).collect_vec();
+
+                if affected_tests.is_empty() {
+                    test_args.push("?"); // This excludes all tests
+                } else {
+                    test_args.append(&mut affected_tests);
+                }
+            }
+        };
 
         config.shell().status("Doc-tests", unit.target.name())?;
         let mut p = compilation.rustdoc_process(unit, *script_meta)?;
@@ -384,7 +403,7 @@ fn display_no_run_information(
         unit,
         path,
         script_meta,
-    } in compilation.tests.iter()
+    } in &compilation.tests
     {
         let (exe_display, cmd) = cmd_builds(
             config,

@@ -3,11 +3,15 @@ use std::{
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
     string::ToString,
+    sync::Arc,
     time::Instant,
     vec::Vec,
 };
 
-use cargo::{core::Workspace, util::command_prelude::*};
+use cargo::{
+    core::{compiler::Executor, Workspace},
+    util::command_prelude::*,
+};
 use cargo::{
     core::{
         compiler::{
@@ -34,11 +38,12 @@ use test::{test::parse_opts, TestOpts};
 
 use crate::{
     commands::{convert_doctest_name, TestInfo},
-    ops::TestExecutor,
+    ops::PreciseExecutor,
 };
 
 use super::{
-    cache::HashCache, DependencyUnit, SelectionContext, SelectionMode, Selector, TestUnit,
+    cache::HashCache, DependencyUnit, PreciseSelectionMode, Selection, SelectionContext,
+    SelectionMode, SelectionUnit, Selector, TestUnit,
 };
 
 pub fn cli() -> Command {
@@ -111,13 +116,15 @@ impl SelectionMode for DynamicMode {
         target_dir
     }
 
-    fn executor(&self, target_dir: PathBuf) -> TestExecutor {
+    fn executor(&self, target_dir: PathBuf) -> Arc<dyn Executor> {
         let mut path_buf = std::env::current_exe().expect("current executable path invalid");
         path_buf.set_file_name("rustyrts-dynamic");
 
-        TestExecutor::new(path_buf, target_dir)
+        Arc::new(PreciseExecutor::new(path_buf, target_dir))
     }
+}
 
+impl PreciseSelectionMode for DynamicMode {
     fn prepare_cache(&self, target_dir: &std::path::Path, unit_graph: &UnitGraph) {
         for kind in [CacheKind::General, CacheKind::Dynamic] {
             let path = kind.map(target_dir.to_path_buf());
@@ -165,7 +172,7 @@ impl SelectionMode for DynamicMode {
 }
 
 pub fn exec(config: &mut Config, args: &ArgMatches) -> CliResult {
-    super::exec(config, args, &DynamicMode)
+    super::exec(config, args, Selection::Precise(&DynamicMode))
 }
 
 pub(crate) struct DynamicSelectionContext<'arena, 'context> {
@@ -349,8 +356,11 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
         test_unit: TestUnit<'context, 'context>,
         shell: &mut Shell,
         start_time: Instant,
-    ) -> Vec<String> {
+    ) -> SelectionUnit {
         let TestUnit(unit, test_info) = test_unit;
+        let Some(test_info) = test_info else {
+            panic!("Precise selction requires information about tests")
+        };
 
         let mut changed_nodes = HashSet::new();
         let mut traced_tests = HashSet::new();
@@ -503,7 +513,7 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
             }
         };
 
-        affected_tests
+        SelectionUnit::Precise(affected_tests)
     }
 
     fn cache_kind(&self) -> CacheKind {
