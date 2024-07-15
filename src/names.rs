@@ -1,13 +1,19 @@
+use std::sync::atomic::AtomicBool;
+
 use lazy_static::lazy_static;
 use regex::Regex;
-use rustc_data_structures::stable_hasher::ToStableHashKey;
+use rustc_data_structures::{stable_hasher::ToStableHashKey, sync::Ordering};
 use rustc_hir::{def::Namespace, def_id::DefId, definitions::DefPathData};
+use rustc_middle::ty::TyKind;
 use rustc_middle::ty::{
     print::FmtPrinter, AliasTy, Binder, FnSig, GenericArgs, ParamTy, Ty, TyCtxt, TypeAndMut,
 };
 use rustc_middle::ty::{print::Printer, List};
 use rustc_span::{def_id::LOCAL_CRATE, Symbol};
-use rustc_type_ir::TyKind;
+
+use crate::callbacks_shared::DOCTEST_PREFIX;
+
+pub(crate) static IS_COMPILING_DOCTESTS: AtomicBool = AtomicBool::new(false);
 
 lazy_static! {
     static ref RE_LIFETIME: [Regex; 2] = [
@@ -16,9 +22,9 @@ lazy_static! {
     ];
 }
 
-/// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
-pub(crate) fn def_id_name<'tcx>(
-    tcx: TyCtxt<'tcx>,
+/// Custom naming scheme for MIR bodies, adapted from `def_path_debug_str()` in `TyCtxt`
+pub(crate) fn def_id_name(
+    tcx: TyCtxt<'_>,
     def_id: DefId,
     add_crate_id: bool,
     trimmed: bool,
@@ -26,7 +32,7 @@ pub(crate) fn def_id_name<'tcx>(
     mono_def_id_name(tcx, def_id, List::empty(), add_crate_id, trimmed)
 }
 
-/// Custom naming scheme for MIR bodies, adapted from def_path_debug_str() in TyCtxt
+/// Custom naming scheme for MIR bodies, adapted from `def_path_debug_str()` in `TyCtxt`
 pub(crate) fn mono_def_id_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
@@ -53,7 +59,7 @@ pub(crate) fn mono_def_id_name<'tcx>(
             )
         }
     } else {
-        "".to_string()
+        String::new()
     };
 
     let suffix = def_path_str_with_substs_with_no_visible_path(tcx, def_id, substs, trimmed);
@@ -63,11 +69,11 @@ pub(crate) fn mono_def_id_name<'tcx>(
         if def_id.is_local() || !suffix.starts_with(&name) {
             name
         } else {
-            "".to_string()
+            String::new()
         }
     };
 
-    let mut def_path_str = format!("{}{}{}", crate_id, crate_name, suffix);
+    let mut def_path_str = format!("{crate_id}{crate_name}{suffix}");
 
     for re in RE_LIFETIME.iter() {
         // Remove lifetime parameters if present
@@ -75,7 +81,14 @@ pub(crate) fn mono_def_id_name<'tcx>(
     }
 
     // Occasionally, there is a newline which we do not want to keep
-    def_path_str = def_path_str.replace("\n", "");
+    def_path_str = def_path_str.replace('\n', "");
+
+    if IS_COMPILING_DOCTESTS.load(Ordering::SeqCst) && def_path_str.starts_with(DOCTEST_PREFIX) {
+        // IMPORTANT: We need to remove the line number from the name of the test function in doctests
+        if let Some(without_line) = def_path_str.rsplitn(3, '_').nth(2) {
+            def_path_str = without_line.to_string();
+        }
+    }
 
     def_path_str
 }
@@ -130,7 +143,7 @@ fn filter_generic_args<'tcx>(
 ) -> &'tcx GenericArgs<'tcx> {
     let mut new_args = Vec::new();
 
-    for arg in args.into_iter() {
+    for arg in args {
         let new_arg = if let Some(ty) = arg.as_type() {
             filter_ty(tcx, ty, depth).into()
         } else {
@@ -187,7 +200,7 @@ fn filter_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> Ty<'tcx> {
             TyKind::Ref(*region, filter_ty(tcx, *ty, depth + 1), *mutbl)
         }
         TyKind::FnDef(def_id, args) => {
-            TyKind::FnDef(*def_id, filter_generic_args(tcx, *args, depth + 1))
+            TyKind::FnDef(*def_id, filter_generic_args(tcx, args, depth + 1))
         }
         TyKind::FnPtr(poly_fn_sig) => {
             let bound = poly_fn_sig.bound_vars();
@@ -207,16 +220,24 @@ fn filter_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, depth: usize) -> Ty<'tcx> {
         } // TODO
         TyKind::Closure(def_id, _args) => {
             // TyKind::Closure(*def_id, filter_generic_args(tcx, *def_id, *args))
-            let name = format!("Fn#{}",tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher)).0);
+            let name = format!(
+                "Fn#{}",
+                tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher))
+                    .0
+            );
             return get_placeholder(tcx, &name);
         }
         TyKind::Coroutine(def_id, _args, _mvblt) => {
             // TyKind::Coroutine(*def_id, filter_generic_args(tcx, *def_id, *args), *mvblt)
-            let name = format!("Fn#{}",tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher)).0);
+            let name = format!(
+                "Fn#{}",
+                tcx.with_stable_hashing_context(|hasher| def_id.to_stable_hash_key(&hasher))
+                    .0
+            );
             return get_placeholder(tcx, &name);
         }
         TyKind::CoroutineWitness(def_id, args) => {
-            TyKind::CoroutineWitness(*def_id, filter_generic_args(tcx, *args, depth + 1))
+            TyKind::CoroutineWitness(*def_id, filter_generic_args(tcx, args, depth + 1))
         }
         TyKind::Never => {
             return ty;

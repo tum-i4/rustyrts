@@ -2,13 +2,12 @@ use std::mem::transmute;
 
 use super::defid_util::{get_def_id_post_test_fn, get_def_id_pre_test_fn, get_def_id_trace_fn};
 use crate::constants::EDGE_CASES_NO_TRACE;
-use log::{error, trace};
 use rustc_abi::HasDataLayout;
-use rustc_abi::{Align, Size};
+use rustc_abi::Size;
 use rustc_ast::Mutability;
-use rustc_const_eval::interpret::CtfeProvenance;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
+use rustc_middle::mir::interpret::CtfeProvenance;
 use rustc_middle::{
     mir::{interpret::AllocId, CallSource, Const, ConstOperand, ConstValue, UnwindAction},
     ty::Region,
@@ -16,12 +15,13 @@ use rustc_middle::{
 use rustc_middle::{
     mir::{
         interpret::{Allocation, Pointer, Scalar},
-        BasicBlock, BasicBlockData, Body, Local, LocalDecl, Operand, Place, ProjectionElem, Rvalue,
-        SourceInfo, Statement, StatementKind, Terminator, TerminatorKind,
+        BasicBlock, BasicBlockData, Body, Local, LocalDecl, Operand, Place, ProjectionElem,
+        SourceInfo, Terminator, TerminatorKind,
     },
     ty::{List, RegionKind, Ty, TyCtxt, TyKind, TypeAndMut, UintTy},
 };
 use rustc_span::Span;
+use tracing::{error, trace};
 
 #[cfg(unix)]
 use super::defid_util::{get_def_id_post_main_fn, get_def_id_pre_main_fn};
@@ -34,40 +34,23 @@ fn insert_local_ret<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> Local {
     let ty_empty = tcx.mk_ty_from_kind(TyKind::Tuple(List::empty()));
     let local_decl_1 = LocalDecl::new(ty_empty, span).immutable();
     let local_decls = &mut body.local_decls;
-    let local_1 = local_decls.push(local_decl_1);
-    local_1
+
+    local_decls.push(local_decl_1)
 }
 
-#[allow(dead_code)]
-fn insert_local_u8<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> (Local, Ty<'tcx>) {
-    let span = body.span;
-    let ty_u8 = tcx.mk_ty_from_kind(TyKind::Uint(UintTy::U8));
-    let region = Region::new_from_kind(tcx, RegionKind::ReErased);
-    let ty_ref_u8 = tcx.mk_ty_from_kind(TyKind::Ref(region, ty_u8, Mutability::Mut));
-    let local_decl = LocalDecl::new(ty_ref_u8, span).immutable();
-    let local_decls = &mut body.local_decls;
-    let local = local_decls.push(local_decl);
-    (local, ty_ref_u8)
+fn ty_bool(tcx: TyCtxt<'_>) -> Ty<'_> {
+    let ty_bool = tcx.mk_ty_from_kind(TyKind::Bool);
+    ty_bool
 }
 
-#[allow(dead_code)]
-fn insert_local_str<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> (Local, Ty<'tcx>) {
-    let span = body.span;
+fn ty_str(tcx: TyCtxt<'_>) -> Ty<'_> {
     let ty_str = tcx.mk_ty_from_kind(TyKind::Str);
     let region = Region::new_from_kind(tcx, RegionKind::ReErased);
     let ty_ref_str = tcx.mk_ty_from_kind(TyKind::Ref(region, ty_str, Mutability::Not));
-    let local_decl = LocalDecl::new(ty_ref_str, span).immutable();
-    let local_decls = &mut body.local_decls;
-    let local = local_decls.push(local_decl);
-    (local, ty_ref_str)
+    ty_ref_str
 }
 
-#[allow(dead_code)]
-fn insert_local_tuple_of_str_and_ptr<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-) -> (Local, Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
-    let span = body.span;
+fn ty_tuple_of_str_and_ptr(tcx: TyCtxt<'_>) -> Ty<'_> {
     let ty_str = tcx.mk_ty_from_kind(TyKind::Str);
     let ty_ptr = tcx.mk_ty_from_kind(TyKind::RawPtr(TypeAndMut {
         ty: tcx.mk_ty_from_kind(TyKind::Uint(UintTy::U64)),
@@ -78,214 +61,92 @@ fn insert_local_tuple_of_str_and_ptr<'tcx>(
     let list = tcx.mk_type_list(&[ty_ref_str, ty_ptr]);
     let ty_tuple = tcx.mk_ty_from_kind(TyKind::Tuple(list));
     let ty_ref_tuple = tcx.mk_ty_from_kind(TyKind::Ref(region, ty_tuple, Mutability::Mut));
-    let local_decl = LocalDecl::new(ty_ref_tuple, span).immutable();
-    let local_decls = &mut body.local_decls;
-    let local = local_decls.push(local_decl);
-    (local, ty_ref_tuple, ty_ref_str, ty_ptr)
+    ty_ref_tuple
 }
 
 //######################################################################################################################
 // Functions for inserting assign statements, e.g. (_52 <= const "foo::bar")
 
-fn insert_assign_str<'tcx>(
+fn operand_str<'tcx>(
     tcx: TyCtxt<'tcx>,
-    local_str: Local,
-    place_elem_list: &'tcx List<ProjectionElem<Local, Ty<'tcx>>>,
     content: &str,
     ty_ref_str: Ty<'tcx>,
     span: Span,
-) -> (Statement<'tcx>, Place<'tcx>) {
-    let const_assign_statement_str = {
-        let place_str = Place {
-            local: local_str,
-            projection: place_elem_list,
-        };
+) -> Operand<'tcx> {
+    let new_allocation = Allocation::from_bytes_byte_aligned_immutable(content.as_bytes());
+    let interned_allocation = tcx.mk_const_alloc(new_allocation);
+    let new_const_value = ConstValue::Slice {
+        data: interned_allocation,
+        meta: content.len() as u64,
+    };
+    let new_literal = Const::Val(new_const_value, ty_ref_str);
 
-        let new_allocation = Allocation::from_bytes_byte_aligned_immutable(content.as_bytes());
-        let interned_allocation = tcx.mk_const_alloc(new_allocation);
-        let new_const_value = ConstValue::Slice {
-            data: interned_allocation,
-            meta: content.len() as u64,
-        };
-        let new_literal = Const::Val(new_const_value, ty_ref_str);
-
-        let new_constant = ConstOperand {
-            span,
-            user_ty: None,
-            const_: new_literal,
-        };
-
-        let new_operand = Operand::Constant(Box::new(new_constant));
-        let new_rvalue = Rvalue::Use(new_operand);
-
-        let const_assign_statement = Statement {
-            source_info: SourceInfo::outermost(span),
-            kind: StatementKind::Assign(Box::new((place_str, new_rvalue))),
-        };
-
-        const_assign_statement
+    let new_constant = ConstOperand {
+        span,
+        user_ty: None,
+        const_: new_literal,
     };
 
-    let place_ref_str = Place {
-        local: local_str,
-        projection: place_elem_list,
-    };
-
-    (const_assign_statement_str, place_ref_str)
+    Operand::Constant(Box::new(new_constant))
 }
 
-#[allow(dead_code)]
-fn insert_assign_u8<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    local_u8: Local,
-    place_elem_list: &'tcx List<ProjectionElem<Local, Ty<'tcx>>>,
-    content: u8,
-    ty_ref_u8: Ty<'tcx>,
-    span: Span,
-) -> (Statement<'tcx>, Place<'tcx>) {
-    let const_assign_statement_u8 = {
-        let place_u8 = Place {
-            local: local_u8,
-            projection: place_elem_list,
-        };
+fn operand_bool(content: bool, ty_bool: Ty<'_>, span: Span) -> Operand<'_> {
+    let new_const_value = ConstValue::Scalar(Scalar::from_bool(content));
 
-        let content = [content];
-        let new_allocation = Allocation::from_bytes(&content[..], Align::ONE, Mutability::Mut);
-        let interned_allocation = tcx.mk_const_alloc(new_allocation);
-        let memory_allocation = tcx.reserve_and_set_memory_alloc(interned_allocation);
-        let provenance = CtfeProvenance::from(memory_allocation);
+    let new_literal = Const::Val(new_const_value, ty_bool);
 
-        let new_ptr = Pointer::new(provenance, Size::ZERO);
-        let new_const_value = ConstValue::Scalar(Scalar::from_pointer(new_ptr, &tcx));
-
-        let new_literal = Const::Val(new_const_value, ty_ref_u8);
-
-        let new_constant = ConstOperand {
-            span,
-            user_ty: None,
-            const_: new_literal,
-        };
-
-        let new_operand = Operand::Constant(Box::new(new_constant));
-        let new_rvalue = Rvalue::Use(new_operand);
-
-        let const_assign_statement = Statement {
-            source_info: SourceInfo::outermost(span),
-            kind: StatementKind::Assign(Box::new((place_u8, new_rvalue))),
-        };
-
-        const_assign_statement
+    let new_constant = ConstOperand {
+        span,
+        user_ty: None,
+        const_: new_literal,
     };
 
-    let place_ref_u8 = Place {
-        local: local_u8,
-        projection: place_elem_list,
-    };
-
-    (const_assign_statement_u8, place_ref_u8)
+    Operand::Constant(Box::new(new_constant))
 }
 
-fn insert_assign_tuple_of_str_and_ptr<'tcx>(
+fn operand_tuple_of_str_and_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
-    local_tuple_of_str_and_ptr: Local,
     content_str: &str,
     content_ptr: u64,
     ty_tuple_of_str_and_ptr: Ty<'tcx>,
     span: Span,
-) -> (Statement<'tcx>, Place<'tcx>) {
-    // let const_assign_statements = {
-    let const_assign_statement = {
-        let place_str = Place {
-            local: local_tuple_of_str_and_ptr,
-            projection: tcx.mk_place_elems(&[]),
-        };
+) -> Operand<'tcx> {
+    let str_allocation = Allocation::from_bytes_byte_aligned_immutable(content_str.as_bytes());
+    let str_interned_allocation = tcx.mk_const_alloc(str_allocation);
+    let str_memory_alloc = tcx.reserve_and_set_memory_alloc(str_interned_allocation);
 
-        let str_allocation = Allocation::from_bytes_byte_aligned_immutable(content_str.as_bytes());
-        let str_interned_allocation = tcx.mk_const_alloc(str_allocation);
-        let str_memory_alloc = tcx.reserve_and_set_memory_alloc(str_interned_allocation);
+    let tuple_allocation = Allocation::from_bytes(
+        [
+            [0x0; 8],
+            content_str.len().to_ne_bytes(),
+            content_ptr.to_ne_bytes(),
+        ]
+        .concat(),
+        tcx.data_layout().aggregate_align.pref,
+        Mutability::Mut,
+    );
 
-        let tuple_allocation = Allocation::from_bytes(
-            [
-                [0x0; 8],
-                content_str.len().to_ne_bytes(),
-                content_ptr.to_ne_bytes(),
-            ]
-            .concat(),
-            tcx.data_layout().aggregate_align.pref,
-            Mutability::Mut,
-        );
+    let provenance_map = tuple_allocation.provenance();
+    let map: &mut SortedMap<Size, AllocId> = unsafe { std::mem::transmute(provenance_map.ptrs()) };
+    map.insert(Size::from_bytes(0), str_memory_alloc);
 
-        //let init_mask: &mut InitMask = std::mem::transmute(tuple_allocation.init_mask());
+    let tuple_interned_allocation = tcx.mk_const_alloc(tuple_allocation);
 
-        let provenance_map = tuple_allocation.provenance();
-        let map: &mut SortedMap<Size, AllocId> =
-            unsafe { std::mem::transmute(provenance_map.ptrs()) };
-        map.insert(Size::from_bytes(0), str_memory_alloc);
+    let tuple_memory_allocation = tcx.reserve_and_set_memory_alloc(tuple_interned_allocation);
+    let provenance = CtfeProvenance::from(tuple_memory_allocation);
 
-        let tuple_interned_allocation = tcx.mk_const_alloc(tuple_allocation);
+    let tuple_ptr = Pointer::new(provenance, Size::ZERO);
+    let tuple_const_value = ConstValue::Scalar(Scalar::from_pointer(tuple_ptr, &tcx));
 
-        let tuple_memory_allocation = tcx.reserve_and_set_memory_alloc(tuple_interned_allocation);
-        let provenance = CtfeProvenance::from(tuple_memory_allocation);
+    let ref_tuple = Const::Val(tuple_const_value, ty_tuple_of_str_and_ptr);
 
-        let tuple_ptr = Pointer::new(provenance, Size::ZERO);
-        let tuple_const_value = ConstValue::Scalar(Scalar::from_pointer(tuple_ptr, &tcx));
-
-        let ref_tuple = Const::Val(tuple_const_value, ty_tuple_of_str_and_ptr);
-
-        let tuple_constant = ConstOperand {
-            span,
-            user_ty: None,
-            const_: ref_tuple,
-        };
-
-        let new_operand = Operand::Constant(Box::new(tuple_constant));
-        let new_rvalue = Rvalue::Use(new_operand);
-
-        let const_assign_statement = Statement {
-            source_info: SourceInfo::outermost(span),
-            kind: StatementKind::Assign(Box::new((place_str, new_rvalue))),
-        };
-
-        const_assign_statement
+    let tuple_constant = ConstOperand {
+        span,
+        user_ty: None,
+        const_: ref_tuple,
     };
 
-    // let const_assign_statement_ptr = {
-    //     let place_u8 = Place {
-    //         local: local_tuple_of_str_and_ptr,
-    //         projection: tcx
-    //             .mk_place_elems([ProjectionElem::Field(Field::from_usize(1), ty_ptr)].iter()),
-    //     };
-
-    //     let new_const_value = ConstValue::Scalar(Scalar::null_ptr(&tcx));
-
-    //     let new_literal = ConstantKind::Val(new_const_value, ty_ptr);
-
-    //     let new_constant = Constant {
-    //         span,
-    //         user_ty: None,
-    //         literal: new_literal,
-    //     };
-
-    //     let new_operand = Operand::Constant(Box::new(new_constant));
-    //     let new_rvalue = Rvalue::Use(new_operand);
-
-    //     let const_assign_statement = Statement {
-    //         source_info: SourceInfo::outermost(span),
-    //         kind: StatementKind::Assign(Box::new((place_u8, new_rvalue))),
-    //     };
-
-    //     const_assign_statement
-    // };
-
-    // [const_assign_statement_ptr, const_assign_statement_str]
-    // };
-
-    let place_ref_tuple_of_str_and_ptr = Place {
-        local: local_tuple_of_str_and_ptr,
-        projection: tcx.mk_place_elems(&[]),
-    };
-
-    (const_assign_statement, place_ref_tuple_of_str_and_ptr)
+    Operand::Constant(Box::new(tuple_constant))
 }
 
 fn create_call<'tcx>(
@@ -323,27 +184,25 @@ fn create_call<'tcx>(
         unwind: UnwindAction::Continue,
     };
 
-    let terminator = Terminator {
+    Terminator {
         source_info: SourceInfo::outermost(span),
         kind: terminator_kind,
-    };
-
-    terminator
+    }
 }
 
 //######################################################################################################################
 // Functions and traits for inserting calls to rustyrts_dynamic_rlib
 
 pub trait Traceable<'tcx> {
-    fn insert_trace(
+    fn insert_trace(&mut self, tcx: TyCtxt<'tcx>, name: &str, cache_ret: &mut Option<Local>);
+
+    fn insert_pre_test(
         &mut self,
         tcx: TyCtxt<'tcx>,
         name: &str,
-        cache_tuple_of_str_and_ptr: &mut Option<(Local, Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)>,
         cache_ret: &mut Option<Local>,
+        append: bool,
     );
-
-    fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
 
     #[cfg(unix)]
     fn insert_pre_main(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>);
@@ -352,9 +211,8 @@ pub trait Traceable<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         name: &str,
-        cache_str: &mut Option<(Local, Ty<'tcx>)>,
         cache_ret: &mut Option<Local>,
-        cache_call: &mut Option<BasicBlock>,
+        append: bool,
     );
 
     #[cfg(unix)]
@@ -370,13 +228,7 @@ pub trait Traceable<'tcx> {
 }
 
 impl<'tcx> Traceable<'tcx> for Body<'tcx> {
-    fn insert_trace(
-        &mut self,
-        tcx: TyCtxt<'tcx>,
-        name: &str,
-        cache_tuple_of_str_and_ptr: &mut Option<(Local, Ty<'tcx>, Ty<'tcx>, Ty<'tcx>)>,
-        cache_ret: &mut Option<Local>,
-    ) {
+    fn insert_trace(&mut self, tcx: TyCtxt<'tcx>, name: &str, cache_ret: &mut Option<Local>) {
         if !EDGE_CASES_NO_TRACE.iter().any(|c| name.ends_with(c)) {
             trace!(
                 "Inserting trace(\"{}\") into {:?}",
@@ -389,35 +241,21 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                 return;
             };
 
-            let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
-            let (local_tuple_of_str_and_ptr, ty_tuple_of_str_and_ptr, _ty_ref_str, _ty_ptr) =
-                *cache_tuple_of_str_and_ptr
-                    .get_or_insert_with(|| insert_local_tuple_of_str_and_ptr(tcx, self));
-
             let span = self.span;
-
-            //*******************************************************
-            // Create assign statements
-
             let place_elem_list = tcx.mk_place_elems(&[]);
 
-            let (assign_statement, place_ref_tuple_of_str_and_ptr) =
-                insert_assign_tuple_of_str_and_ptr(
-                    tcx,
-                    local_tuple_of_str_and_ptr,
-                    name,
-                    u64::MAX,
-                    ty_tuple_of_str_and_ptr,
-                    span,
-                );
+            let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+            let ty_tuple = ty_tuple_of_str_and_ptr(tcx);
 
             //*******************************************************
             // Create new basic block
 
             let basic_blocks = self.basic_blocks.as_mut();
 
-            let mut args_vec = Vec::new();
-            args_vec.push(Operand::Move(place_ref_tuple_of_str_and_ptr));
+            let operand_tuple_of_str_and_ptr =
+                operand_tuple_of_str_and_ptr(tcx, name, u64::MAX, ty_tuple, span);
+
+            let args_vec = vec![operand_tuple_of_str_and_ptr];
             let terminator = create_call(
                 tcx,
                 def_id_trace_fn,
@@ -428,9 +266,7 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                 Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb0
             );
 
-            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-            new_basic_block_data.statements.push(assign_statement);
-
+            let new_basic_block_data = BasicBlockData::new(Some(terminator));
             let index = basic_blocks.push(new_basic_block_data);
 
             // Swap bb0 and the new basic block
@@ -438,7 +274,13 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         }
     }
 
-    fn insert_pre_test(&mut self, tcx: TyCtxt<'tcx>, cache_ret: &mut Option<Local>) {
+    fn insert_pre_test(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+        name: &str,
+        cache_ret: &mut Option<Local>,
+        append: bool,
+    ) {
         trace!("Inserting pre_test() into {:?}", self.source.def_id());
 
         let Some(def_id_pre_fn) = get_def_id_pre_test_fn(tcx) else {
@@ -446,7 +288,11 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
             return;
         };
 
-        let local_ret = *cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+        cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+
+        let local_ret = cache_ret.unwrap();
+        let ty_ref_str = ty_str(tcx);
+        let ty_bool = ty_bool(tcx);
 
         let span = self.span;
 
@@ -457,7 +303,10 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
         let basic_blocks = self.basic_blocks.as_mut();
 
-        let args_vec = Vec::with_capacity(0);
+        let operand_str = operand_str(tcx, name, ty_ref_str, span);
+        let operand_bool = operand_bool(append, ty_bool, span);
+
+        let args_vec = vec![operand_str, operand_bool];
         let terminator = create_call(
             tcx,
             def_id_pre_fn,
@@ -522,9 +371,8 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         name: &str,
-        cache_str: &mut Option<(Local, Ty<'tcx>)>,
         cache_ret: &mut Option<Local>,
-        cache_call: &mut Option<BasicBlock>,
+        append: bool,
     ) {
         trace!("Inserting post_test() into {:?}", self.source.def_id());
 
@@ -541,28 +389,24 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
             match terminator_kind {
                 TerminatorKind::Return | TerminatorKind::UnwindResume => {
-                    cache_str.get_or_insert_with(|| insert_local_str(tcx, self));
                     cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
 
-                    let local_ret = cache_ret.unwrap();
-                    let (local_str, ty_ref_str) = cache_str.unwrap();
-
+                    let place_elem_list = tcx.mk_place_elems(&[]);
                     let span = self.span;
 
-                    //*******************************************************
-                    // Create assign statements
-
-                    let place_elem_list = tcx.mk_place_elems(&[]);
-                    let (assign_statement_str, place_ref_str) =
-                        insert_assign_str(tcx, local_str, place_elem_list, name, ty_ref_str, span);
+                    let local_ret = cache_ret.unwrap();
+                    let ty_ref_str = ty_str(tcx);
+                    let ty_bool = ty_bool(tcx);
 
                     //*******************************************************
                     // Create new basic block
 
                     let basic_blocks = self.basic_blocks.as_mut();
 
-                    let mut args_vec = Vec::new();
-                    args_vec.push(Operand::Move(place_ref_str));
+                    let operand_str = operand_str(tcx, name, ty_ref_str, span);
+                    let operand_bool = operand_bool(append, ty_bool, span);
+
+                    let args_vec = vec![operand_str, operand_bool];
                     let terminator = create_call(
                         tcx,
                         def_id_post_fn,
@@ -574,7 +418,6 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                     );
 
                     let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-                    new_basic_block_data.statements.push(assign_statement_str);
 
                     if let TerminatorKind::UnwindResume = terminator_kind {
                         new_basic_block_data.is_cleanup = true;
@@ -584,87 +427,6 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
 
                     // Swap bb_i and the new basic block
                     basic_blocks.swap(BasicBlock::from_usize(i), index);
-                }
-                TerminatorKind::Call { unwind, .. }
-                | TerminatorKind::Assert { unwind, .. }
-                | TerminatorKind::InlineAsm { unwind, .. }
-                    if *unwind == UnwindAction::Continue
-                        && !self
-                            .basic_blocks
-                            .get(BasicBlock::from_usize(i))
-                            .unwrap()
-                            .is_cleanup =>
-                {
-                    if let Some(call_bb) = cache_call {
-                        *unwind = UnwindAction::Cleanup(*call_bb);
-                    } else {
-                        cache_str.get_or_insert_with(|| insert_local_str(tcx, self));
-                        cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
-
-                        let local_ret = cache_ret.unwrap();
-                        let (local_str, ty_ref_str) = cache_str.unwrap();
-
-                        let span = self.span;
-
-                        let basic_blocks = self.basic_blocks.as_mut();
-
-                        // At this index, we will insert the call to rustyrts_post_test()
-                        *unwind = UnwindAction::Cleanup(basic_blocks.next_index());
-
-                        //*******************************************************
-                        // Insert new bb to resume unwinding
-
-                        let resume_bb = {
-                            let terminator = Terminator {
-                                source_info: SourceInfo::outermost(span),
-                                kind: TerminatorKind::UnwindResume,
-                            };
-
-                            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-                            new_basic_block_data.is_cleanup = true;
-
-                            basic_blocks.push(new_basic_block_data)
-                        };
-
-                        //*******************************************************
-                        // Create assign statements
-
-                        let place_elem_list = tcx.mk_place_elems(&[]);
-                        let (assign_statement_str, place_ref_str) = insert_assign_str(
-                            tcx,
-                            local_str,
-                            place_elem_list,
-                            name,
-                            ty_ref_str,
-                            span,
-                        );
-
-                        //*******************************************************
-                        // Create new basic block
-
-                        let mut args_vec = Vec::new();
-                        args_vec.push(Operand::Move(place_ref_str));
-                        let terminator = create_call(
-                            tcx,
-                            def_id_post_fn,
-                            span,
-                            args_vec,
-                            local_ret,
-                            place_elem_list,
-                            Some(basic_blocks.next_index()), // After swapping bbs, this will point to resume
-                        );
-
-                        let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
-                        new_basic_block_data.statements.push(assign_statement_str);
-                        new_basic_block_data.is_cleanup = true;
-
-                        let index = basic_blocks.push(new_basic_block_data);
-
-                        // Swap bbs to order nicely (first call, then resume)
-                        basic_blocks.swap(index, resume_bb);
-
-                        cache_call.replace(resume_bb); // At this index we now find the bb containing the call
-                    }
                 }
                 _ => (),
             }
@@ -698,49 +460,50 @@ impl<'tcx> Traceable<'tcx> for Body<'tcx> {
                 .terminator()
                 .kind;
 
-            if let TerminatorKind::Call { func, .. } = terminator_kind {
-                if let Operand::Constant(boxed_def_id) = func {
-                    if let Const::Val(ConstValue::ZeroSized, func_ty) = boxed_def_id.const_ {
-                        if let TyKind::FnDef(def_id, _) = func_ty.kind() {
-                            if *def_id == def_id_exit {
-                                // We found a call to std::process::exit()
+            if let TerminatorKind::Call {
+                func: Operand::Constant(boxed_def_id),
+                ..
+            } = terminator_kind
+            {
+                if let Const::Val(ConstValue::ZeroSized, func_ty) = boxed_def_id.const_ {
+                    if let TyKind::FnDef(def_id, _) = func_ty.kind() {
+                        if *def_id == def_id_exit {
+                            // We found a call to std::process::exit()
 
-                                cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
+                            cache_ret.get_or_insert_with(|| insert_local_ret(tcx, self));
 
-                                let local_ret = cache_ret.unwrap();
+                            let local_ret = cache_ret.unwrap();
 
-                                let span = self.span;
+                            let span = self.span;
 
-                                let place_elem_list = tcx.mk_place_elems(&[]);
+                            let place_elem_list = tcx.mk_place_elems(&[]);
 
-                                //*******************************************************
-                                // Create new basic block
+                            //*******************************************************
+                            // Create new basic block
 
-                                let basic_blocks = self.basic_blocks.as_mut();
+                            let basic_blocks = self.basic_blocks.as_mut();
 
-                                let args_vec = Vec::with_capacity(0);
-                                let terminator = create_call(
-                                    tcx,
-                                    def_id_post_fn,
-                                    span,
-                                    args_vec,
-                                    local_ret,
-                                    place_elem_list,
-                                    Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb_i
-                                );
+                            let args_vec = Vec::with_capacity(0);
+                            let terminator = create_call(
+                                tcx,
+                                def_id_post_fn,
+                                span,
+                                args_vec,
+                                local_ret,
+                                place_elem_list,
+                                Some(basic_blocks.next_index()), // After we swap bbs later, this will point to the original bb_i
+                            );
 
-                                let mut new_basic_block_data =
-                                    BasicBlockData::new(Some(terminator));
+                            let mut new_basic_block_data = BasicBlockData::new(Some(terminator));
 
-                                if is_cleanup {
-                                    new_basic_block_data.is_cleanup = true;
-                                }
-
-                                let index = basic_blocks.push(new_basic_block_data);
-
-                                // Swap bb_i and the new basic block
-                                basic_blocks.swap(BasicBlock::from_usize(i), index);
+                            if is_cleanup {
+                                new_basic_block_data.is_cleanup = true;
                             }
+
+                            let index = basic_blocks.push(new_basic_block_data);
+
+                            // Swap bb_i and the new basic block
+                            basic_blocks.swap(BasicBlock::from_usize(i), index);
                         }
                     }
                 }

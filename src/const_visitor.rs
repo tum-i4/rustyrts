@@ -33,7 +33,7 @@ pub struct ResolvingConstVisitor<'tcx> {
     processed: Option<DefId>,
 }
 
-impl<'tcx, 'g> ResolvingConstVisitor<'tcx> {
+impl<'tcx> ResolvingConstVisitor<'tcx> {
     pub(crate) fn find_consts(tcx: TyCtxt<'tcx>, body: &'tcx Body<'tcx>) -> HashSet<(u64, u64)> {
         let def_id = body.source.def_id();
         let param_env = tcx.param_env(def_id).with_reveal_all_normalized(tcx);
@@ -48,29 +48,27 @@ impl<'tcx, 'g> ResolvingConstVisitor<'tcx> {
 
         resolver.visit_body(body);
         for body in tcx.promoted_mir(def_id) {
-            resolver.visit_body(body)
+            resolver.visit_body(body);
         }
         resolver.acc
     }
 
     fn visit(&mut self, def_id: DefId, substs: &'tcx List<GenericArg<'tcx>>) {
-        if self.visited.insert((def_id, substs)) {
-            if self.tcx.is_mir_available(def_id) {
-                let old_processed = self.processed;
-                self.processed = Some(def_id);
+        if self.visited.insert((def_id, substs)) && self.tcx.is_mir_available(def_id) {
+            let old_processed = self.processed;
+            self.processed = Some(def_id);
 
-                let old_substs = self.substs;
-                self.substs = substs;
+            let old_substs = self.substs;
+            self.substs = substs;
 
-                let body = self.tcx.optimized_mir(def_id);
+            let body = self.tcx.optimized_mir(def_id);
+            self.visit_body(body);
+            for body in self.tcx.promoted_mir(def_id) {
                 self.visit_body(body);
-                for body in self.tcx.promoted_mir(def_id) {
-                    self.visit_body(body)
-                }
-
-                self.substs = old_substs;
-                self.processed = old_processed;
             }
+
+            self.substs = old_substs;
+            self.processed = old_processed;
         }
     }
 
@@ -95,7 +93,7 @@ impl<'tcx, 'g> ResolvingConstVisitor<'tcx> {
                                 return None;
                             }
 
-                            self.tcx.eval_static_initializer(def_id).ok().map(|s| Ok(s))
+                            self.tcx.eval_static_initializer(def_id).ok().map(Ok)
                         }
                         GlobalAlloc::Memory(const_alloc) => Some(Ok(const_alloc)),
                         _ => None,
@@ -125,13 +123,13 @@ impl<'tcx, 'g> ResolvingConstVisitor<'tcx> {
                             return None;
                         }
 
-                        self.tcx.eval_static_initializer(def_id).ok().map(|s| Ok(s))
+                        self.tcx.eval_static_initializer(def_id).ok().map(Ok)
                     }
                     GlobalAlloc::Memory(const_alloc) => Some(Ok(const_alloc)),
                     _ => None,
                 }
             }
-            _ => None,
+            ConstValue::ZeroSized => None,
         }
     }
 }
@@ -158,16 +156,13 @@ impl<'tcx> Visitor<'tcx> for ResolvingConstVisitor<'tcx> {
                         .and_then(|c| self.maybe_const_alloc_from_const_value(c))
                 })
             }
-            _ => None,
+            Const::Ty(_) => None,
         };
 
         if let Some(allocation_or_int) = maybe_allocation_or_int {
             let checksum = match allocation_or_int {
                 Ok(allocation) => get_checksum_const_allocation(self.tcx, &allocation),
-                Err(scalar_int) => {
-                    let checksum = get_checksum_scalar_int(self.tcx, &scalar_int);
-                    checksum
-                }
+                Err(scalar_int) => get_checksum_scalar_int(self.tcx, &scalar_int),
             };
             self.acc.insert(checksum);
         }

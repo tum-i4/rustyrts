@@ -1,11 +1,11 @@
 // Inspired by rustc_monomorphize::collector
-// Source: https://doc.rust-lang.org/nightly/nightly-rustc/src/rustc_monomorphize/collector.rs.html
+// Source: https://doc.rust-lang.org/1.77.0/nightly-rustc/src/rustc_monomorphize/collector.rs.html
 //
 // Adapted to extract the dependency relation instead of monomorphization
 
 use hir::{AttributeMap, ConstContext};
+use internment::Arena;
 use itertools::Itertools;
-use log::trace;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::{par_for_each_in, MTLock, MTLockRef};
 use rustc_hir as hir;
@@ -35,23 +35,26 @@ use rustc_middle::{
     ty::TyKind,
 };
 use rustc_session::{config::EntryFnType, Limit};
-use rustc_span::{def_id::LocalDefId, symbol::sym};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{
     source_map::{dummy_spanned, respan, Spanned},
     ErrorGuaranteed,
 };
 use rustc_span::{Span, DUMMY_SP};
-use std::path::PathBuf;
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
+use tracing::trace;
 
 use crate::{
     callbacks_shared::TEST_MARKER,
+    constants::SUFFIX_DYN,
     names::{def_id_name, mono_def_id_name},
     static_rts::graph::EdgeType,
 };
 
 use super::graph::DependencyGraph;
-
-// pub static debug: AtomicBool = AtomicBool::new(false);
 
 #[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
@@ -59,17 +62,12 @@ pub enum MonoItemCollectionMode {
     Lazy,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(Default, PartialEq, Debug)]
 pub enum MonomorphizationContext {
+    #[default]
     Root,
     Local(EdgeType),
     NonLocal(EdgeType),
-}
-
-impl Default for MonomorphizationContext {
-    fn default() -> Self {
-        MonomorphizationContext::Root
-    }
 }
 
 #[derive(Debug)]
@@ -90,7 +88,7 @@ impl<'a> TryInto<EdgeType> for &'a MonomorphizationContext {
 }
 
 pub struct CustomUsageMap<'tcx> {
-    graph: DependencyGraph<MonoItem<'tcx>>,
+    dependencies: HashMap<MonoItem<'tcx>, HashMap<MonoItem<'tcx>, HashSet<EdgeType>>>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -99,7 +97,7 @@ type MonoItems<'tcx> = Vec<(Spanned<MonoItem<'tcx>>, MonomorphizationContext)>;
 impl<'tcx> CustomUsageMap<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> CustomUsageMap<'tcx> {
         CustomUsageMap {
-            graph: DependencyGraph::new(),
+            dependencies: HashMap::new(),
             tcx,
         }
     }
@@ -111,28 +109,79 @@ impl<'tcx> CustomUsageMap<'tcx> {
     ) where
         'tcx: 'a,
     {
-        for (used_item, context) in used_items.into_iter() {
-            self.graph
-                .add_edge(user_item, used_item.node, context.try_into().unwrap());
+        for (used_item, context) in used_items {
+            let used_item = used_item.node;
+
+            if self.dependencies.get(&used_item).is_none() {
+                self.dependencies.insert(used_item, HashMap::new());
+            }
+
+            let ingoing = self.dependencies.get_mut(&used_item).unwrap();
+
+            if ingoing.get(&user_item).is_none() {
+                ingoing.insert(user_item, HashSet::new());
+            }
+
+            let types = ingoing.get_mut(&user_item).unwrap();
+            types.insert(context.try_into().unwrap());
         }
     }
 
-    pub fn finalize(self) -> DependencyGraph<String> {
-        self.graph.convert_to_string(self.tcx)
+    pub fn finalize(self, arena: &Arena<String>) -> DependencyGraph<String> {
+        let mut graph = DependencyGraph::new(arena);
+
+        self.dependencies.into_iter().for_each(|(to, from)| {
+            if let Some((new_to, new_to_trimmed)) = Self::mono_item_name(self.tcx, to) {
+                graph.add_edge(new_to.clone(), new_to_trimmed.clone(), EdgeType::Trimmed);
+
+                for (node, types) in from {
+                    for ty in types {
+                        if let Some((new_from, new_from_trimmed)) =
+                            Self::mono_item_name(self.tcx, node)
+                        {
+                            graph.add_edge(new_from.clone(), new_from_trimmed, EdgeType::Trimmed);
+                            if ty == EdgeType::Unsize {
+                                graph.add_edge(
+                                    new_from.clone(),
+                                    new_to_trimmed.clone() + SUFFIX_DYN,
+                                    ty,
+                                );
+                            }
+                            graph.add_edge(new_from, new_to.clone(), ty);
+                        }
+                    }
+                }
+            }
+        });
+
+        graph
+    }
+
+    fn mono_item_name(tcx: TyCtxt<'tcx>, mono_item: MonoItem<'tcx>) -> Option<(String, String)> {
+        match mono_item {
+            MonoItem::Fn(instance) => Some((
+                mono_def_id_name(tcx, instance.def_id(), instance.args, false, true),
+                def_id_name(tcx, instance.def_id(), false, true),
+            )),
+            MonoItem::Static(def_id) => Some((
+                mono_def_id_name(tcx, def_id, List::empty(), false, true),
+                def_id_name(tcx, def_id, false, true),
+            )),
+            MonoItem::GlobalAsm(_item_id) => None,
+        }
     }
 }
 
-pub fn create_dependency_graph<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn create_dependency_graph<'arena>(
+    tcx: TyCtxt<'_>,
+    arena: &'arena Arena<String>,
     mode: MonoItemCollectionMode,
-) -> DependencyGraph<String> {
-    let _prof_timer = tcx.prof.generic_activity("dependency_graph_creation");
+) -> DependencyGraph<'arena, String> {
+    let _prof_timer = tcx
+        .prof
+        .generic_activity("RUSTYRTS_dependency_graph_creation");
 
-    let roots = tcx
-        .sess
-        .time("dependency_graph_creation_root_collections", || {
-            collect_roots(tcx, mode)
-        });
+    let roots = collect_roots(tcx, mode);
 
     trace!("building dependency graph, beginning at roots");
 
@@ -144,35 +193,20 @@ pub fn create_dependency_graph<'tcx>(
         let visited: MTLockRef<'_, _> = &mut visited;
         let usage_map: MTLockRef<'_, _> = &mut usage_map;
 
-        tcx.sess.time("dependency_graph_creation_graph_walk", || {
-            par_for_each_in(roots, |root| {
-                let mut recursion_depths = DefIdMap::default();
-                collect_items_rec(
-                    tcx,
-                    dummy_spanned(root),
-                    visited,
-                    &mut recursion_depths,
-                    recursion_limit,
-                    usage_map,
-                );
-            });
+        par_for_each_in(roots, |root| {
+            let mut recursion_depths = DefIdMap::default();
+            collect_items_rec(
+                tcx,
+                dummy_spanned(root),
+                visited,
+                &mut recursion_depths,
+                recursion_limit,
+                usage_map,
+            );
         });
     }
 
-    let mut graph = usage_map.into_inner().finalize();
-
-    let tests = tcx.sess.time("dependency_graph_root_collection", || {
-        collect_test_functions(tcx)
-    });
-
-    for test in tests {
-        let def_id = test.def_id();
-        let name_trimmed = def_id_name(tcx, def_id, false, true);
-        let name = mono_def_id_name(tcx, def_id, List::empty(), false, false);
-        graph.add_edge(name, name_trimmed, EdgeType::Trimmed);
-    }
-
-    graph
+    usage_map.into_inner().finalize(arena)
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
@@ -216,13 +250,17 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionMode) -> Vec<MonoItem<
                 Spanned {
                     node: mono_item, ..
                 },
-                _context,
-            )| { mono_item.is_instantiable(tcx).then_some(mono_item) },
+                context,
+            )| {
+                (mono_item.is_instantiable(tcx)
+                    && !matches!(context, MonomorphizationContext::NonLocal(_)))
+                .then_some(mono_item)
+            },
         )
         .collect()
 }
 
-// Find all test functions. These items serve as roots to start building the dependency graph from.
+// Find all test functions. These items serve as key points in the dependency graph.
 pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
     trace!("collecting test functions");
     let mut roots = Vec::new();
@@ -240,7 +278,7 @@ pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
                     .iter()
                     .flat_map(|(_, list)| list.iter())
                     .unique_by(|i| i.id)
-                    .any(|attr| attr.name_or_empty().to_ident_string() == TEST_MARKER);
+                    .any(|attr| attr.name_or_empty() == TEST_MARKER);
 
                 if is_test {
                     let body = tcx.optimized_mir(def.to_def_id());
@@ -248,14 +286,16 @@ pub fn collect_test_functions(tcx: TyCtxt<'_>) -> Vec<MonoItem<'_>> {
                     let first_call = maybe_first_bb.and_then(|bb| bb.terminator.as_ref());
 
                     if let Some(terminator) = first_call {
-                        if let TerminatorKind::Call { func, .. } = &terminator.kind {
-                            if let Operand::Constant(const_operand) = func {
-                                let ty = const_operand.ty();
-                                if let TyKind::FnDef(def_id, substs) = ty.kind() {
-                                    let instance = Instance::new(*def_id, substs);
-                                    let mono_item = MonoItem::Fn(instance);
-                                    roots.push(dummy_spanned(mono_item))
-                                }
+                        if let TerminatorKind::Call {
+                            func: Operand::Constant(const_operand),
+                            ..
+                        } = &terminator.kind
+                        {
+                            let ty = const_operand.ty();
+                            if let TyKind::FnDef(def_id, substs) = ty.kind() {
+                                let instance = Instance::new(*def_id, substs);
+                                let mono_item = MonoItem::Fn(instance);
+                                roots.push(dummy_spanned(mono_item));
                             }
                         }
                     }
@@ -358,11 +398,10 @@ fn collect_items_rec<'tcx>(
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             let instance = Instance::mono(tcx, *def_id);
-                            trace!("collecting static {:?}", def_id);
-
                             if let Some(context) =
                                 maybe_codegen_context(tcx, &instance, Some(EdgeType::Static))
                             {
+                                trace!("collecting static {:?}", def_id);
                                 used_items
                                     .push((dummy_spanned(MonoItem::Static(*def_id)), context));
                             }
@@ -685,10 +724,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     callee_ty,
                     true,
                     source,
-                    &mut self.output,
-                    // 1. function -> callee function (static dispatch)
+                    self.output,
+                    // 1. function → callee function (static dispatch)
                     EdgeType::Call,
-                )
+                );
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -756,7 +795,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         self.visiting_call_terminator = false;
     }
 
-    fn visit_ty(&mut self, ty: Ty<'tcx>, context: TyContext) {
+    fn visit_ty(&mut self, ty: Ty<'tcx>, _context: TyContext) {
         // But not inside drop glue
         if self.body.source.def_id() != self.tcx.require_lang_item(LangItem::DropInPlace, None) {
             let source = self.body.span;
@@ -771,7 +810,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             }
             if let TyKind::Ref(_region, ty, _mtblt) = *ty.kind() {
                 // Also account for closures behind references
-                self.visit_ty(ty, context);
+                self.visit_ty(ty, _context);
             }
             // self.super_ty(ty) //Weirdly, this is just empty
         }
@@ -847,36 +886,32 @@ fn visit_instance_use<'tcx>(
         ));
     }
 
-    match instance.def {
-        InstanceDef::Intrinsic(def_id) => {
-            let name = tcx.item_name(def_id);
-            if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
-                // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
-                // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
-                // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
-                // codegen a call to that function without generating code for the function itself.
-                let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
-                let panic_instance = Instance::mono(tcx, def_id);
-                if let Some(context) =
-                    maybe_codegen_context(tcx, &panic_instance, Some(EdgeType::Intrinsic))
-                {
-                    output.push((create_fn_mono_item(tcx, panic_instance, source), context));
-                }
-            } else if tcx.has_attr(def_id, sym::rustc_safe_intrinsic) {
-                // Codegen the fallback body of intrinsics with fallback bodies
-                let instance = ty::Instance::new(def_id, instance.args);
-                if let Some(context) =
-                    maybe_codegen_context(tcx, &instance, Some(EdgeType::Intrinsic))
-                {
-                    output.push((create_fn_mono_item(tcx, instance, source), context));
-                }
+    // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
+    // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
+    // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
+    // codegen a call to that function without generating code for the function itself.
+    if let ty::InstanceDef::Intrinsic(def_id) = instance.def {
+        let name = tcx.item_name(def_id);
+        if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
+            let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
+            let panic_instance = Instance::mono(tcx, def_id);
+            if let Some(context) =
+                maybe_codegen_context(tcx, &panic_instance, Some(EdgeType::Intrinsic))
+            {
+                output.push((create_fn_mono_item(tcx, panic_instance, source), context));
             }
         }
-        InstanceDef::Virtual(..) => {}
-        InstanceDef::ThreadLocalShim(..) => {}
-        InstanceDef::Item(def_id)
-            if tcx.is_closure(def_id)
-                && (edge_type != EdgeType::FnPtr && edge_type != EdgeType::Contained) => {}
+    }
+
+    match instance.def {
+        ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(_) => {
+            if !is_direct_call {
+                bug!("{:?} being reified", instance);
+            }
+        }
+        ty::InstanceDef::ThreadLocalShim(..) => {
+            bug!("{:?} being reified", instance);
+        }
         InstanceDef::DropGlue(_, None) => {
             if !is_direct_call {
                 if let Some(context) = maybe_codegen_context(tcx, &instance, Some(edge_type)) {
@@ -884,6 +919,9 @@ fn visit_instance_use<'tcx>(
                 }
             }
         }
+        InstanceDef::Item(def_id)
+            if tcx.is_closure(def_id)
+                && (edge_type != EdgeType::FnPtr && edge_type != EdgeType::Contained) => {}
         InstanceDef::DropGlue(_, Some(_))
         | InstanceDef::VTableShim(..)
         | InstanceDef::ReifyShim(..)
@@ -905,8 +943,7 @@ fn maybe_codegen_context<'tcx>(
     edge_type: Option<EdgeType>,
 ) -> Option<MonomorphizationContext> {
     let Some(def_id) = instance.def.def_id_if_not_guaranteed_local_codegen() else {
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     };
 
     if tcx.is_foreign_item(def_id) {
@@ -916,40 +953,35 @@ fn maybe_codegen_context<'tcx>(
 
     if def_id.is_local() {
         // Local items cannot be referred to locally without monomorphizing them locally.
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     }
 
     // IMPORTANT: This connects the graphs of multiple crates
     if tcx.is_reachable_non_generic(instance.def_id()) {
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::NonLocal(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::NonLocal);
     }
 
     if instance
-        // .polymorphize(tcx)
+        .polymorphize(tcx)
         .upstream_monomorphization(tcx)
         .is_some()
     {
         // Local is necessary here
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     }
 
     if let DefKind::Static(_) = tcx.def_kind(def_id) {
-        return Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type)))
-            .unwrap_or_default();
+        return edge_type.map(MonomorphizationContext::Local);
     }
 
-    if !tcx.is_mir_available(def_id) {
-        panic!(
-            "Unable to find optimized MIR {:?} {}",
-            tcx.def_span(def_id),
-            tcx.crate_name(def_id.krate),
-        );
-    }
+    assert!(
+        tcx.is_mir_available(def_id),
+        "Unable to find optimized MIR {:?} {}",
+        tcx.def_span(def_id),
+        tcx.crate_name(def_id.krate),
+    );
 
-    Some(edge_type.map(|edge_type| MonomorphizationContext::Local(edge_type))).unwrap_or_default()
+    edge_type.map(MonomorphizationContext::Local)
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,
@@ -1065,11 +1097,11 @@ fn find_vtable_types_for_unsizing<'tcx>(
 }
 
 fn create_fn_mono_item<'tcx>(
-    _tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     source: Span,
 ) -> Spanned<MonoItem<'tcx>> {
-    respan(source, MonoItem::Fn(instance /*.polymorphize(tcx)*/))
+    respan(source, MonoItem::Fn(instance.polymorphize(tcx)))
 }
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
@@ -1148,7 +1180,7 @@ fn collect_const_value<'tcx>(
 ) {
     match value {
         mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
-            collect_alloc(tcx, ptr.provenance.alloc_id(), output)
+            collect_alloc(tcx, ptr.provenance.alloc_id(), output);
         }
         mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
         mir::ConstValue::Slice { data, meta: _ } => {
@@ -1320,14 +1352,8 @@ fn create_mono_items_for_default_impls<'tcx>(
     item: hir::ItemId,
     output: &mut MonoItems<'tcx>,
 ) {
-    let Some(impl_) = tcx.impl_trait_ref(item.owner_id) else {
-        return;
-    };
-
-    if matches!(
-        tcx.impl_polarity(impl_.skip_binder().def_id),
-        ty::ImplPolarity::Negative
-    ) {
+    let polarity = tcx.impl_polarity(item.owner_id);
+    if matches!(polarity, ty::ImplPolarity::Negative) {
         return;
     }
 
@@ -1337,6 +1363,10 @@ fn create_mono_items_for_default_impls<'tcx>(
     {
         return;
     }
+
+    let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id) else {
+        return;
+    };
 
     // Lifetimes never affect trait selection, so we are allowed to eagerly
     // instantiate an instance of an impl method if the impl (and method,
@@ -1357,7 +1387,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
     };
     let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = impl_.instantiate(tcx, impl_args);
+    let trait_ref = trait_ref.instantiate(tcx, impl_args);
 
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl
@@ -1409,11 +1439,11 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         GlobalAlloc::Static(def_id) => {
             assert!(!tcx.is_thread_local_static(def_id));
             let instance = Instance::mono(tcx, def_id);
-            trace!("collecting static {:?}", def_id);
 
             // 5.1. function -> accessed static variable
             // 5.2. static variable -> static variable that is pointed to
             if let Some(context) = maybe_codegen_context(tcx, &instance, Some(EdgeType::Static)) {
+                trace!("collecting static {:?}", def_id);
                 output.push((dummy_spanned(MonoItem::Static(def_id)), context));
             }
         }
@@ -1426,15 +1456,15 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             }
         }
         GlobalAlloc::Function(fn_instance) => {
-            trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
             // 5.3. static variable -> function that is pointed to
             if let Some(context) = maybe_codegen_context(tcx, &fn_instance, Some(EdgeType::FnPtr)) {
+                trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
                 output.push((create_fn_mono_item(tcx, fn_instance, DUMMY_SP), context));
 
                 // IMPORTANT: This ensures that functions referenced in closures contained in Consts are considered
                 // For instance this is the case for all test functions
                 if fn_instance.args.len() > 0 {
-                    let maybe_arg = fn_instance.args.get(0);
+                    let maybe_arg = fn_instance.args.first();
                     let maybe_pointee = maybe_arg.and_then(|arg| arg.as_type());
 
                     if let Some(pointee) = maybe_pointee {
@@ -1446,7 +1476,7 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         }
         GlobalAlloc::VTable(ty, trait_ref) => {
             let alloc_id = tcx.vtable_allocation((ty, trait_ref));
-            collect_alloc(tcx, alloc_id, output)
+            collect_alloc(tcx, alloc_id, output);
         }
     }
 }

@@ -2,17 +2,23 @@
 name = "rustyrts"
 version = "0.1.0"
 edition = "2021"
+description = "Static or Dynamic Regression Test Selection"
+license = "Apache 2.0"
+repository = "https://github.com/tum-i4/rustyrts"
+keywords = ["static analysis", "dynamic analysis", "regression test selection"]
+categories = ["command-line-utilities", "development-tools::cargo-plugins"]
 
 [package.metadata.rust-analyzer]
-rustc_private=true
+rustc_private = true
 
 [profile.release]
 debug = true
+opt-level = 'z' # Optimize for size
 
 [features]
-default = []
-print_paths = []
-
+default = ["fs_lock_file_guard", "enable_cargo_build"]
+fs_lock_file_guard = []
+enable_cargo_build = []
 
 [[bin]]
 name = "cargo-rustyrts"
@@ -21,20 +27,38 @@ name = "cargo-rustyrts"
 name = "rustyrts-static"
 
 [[bin]]
+name = "rustyrts-static-doctest"
+
+[[bin]]
 name = "rustyrts-dynamic"
 
+[[bin]]
+name = "rustyrts-dynamic-doctest"
+
 [dependencies]
-log = "0.4"
-serde_json = "1.0.61"
-queues = "1.0.2"
+# imitating cargo test command
+cargo = "0.77.0"
+cargo-util = "0.2.11"
+git2 = "0.18.3"
+git2-curl = "0.19.0"
+anyhow = "1.0.83"
+clap = "4.5.4"
+
+# logging
+tracing-subscriber = "0.3.18"
+tracing = "0.1.40"
+humantime = "2.1.0"
+
+# utilities used in selecting tests
+internment = { version = "0.8.3", features = ["arena"] }
 itertools = "0.10.5"
-test-log = "0.2.11"
-env_logger = "0.10.0"
 regex = "1.7.1"
 lazy_static = "1.4.0"
 once_cell = "1.17.1"
-threadpool = "1.8.1"
-bimap = "0.6.3"
+file-guard = "0.2.0"
+
+num_enum = "0.7.2"
+dot = "0.1.4"
 
 [dev-dependencies]
 tempdir = "0.3.7"

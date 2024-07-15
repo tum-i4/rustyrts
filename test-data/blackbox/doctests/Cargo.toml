@@ -1,0 +1,17 @@
+[package]
+name = "doctests"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+changes_run = []
+changes_compile_fail = []
+changes_no_run = []
+changes_should_panic = []
+
+changes_indirect_run = []
+changes_indirect_should_panic = []
+
+[dependencies]

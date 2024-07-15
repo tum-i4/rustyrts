@@ -1,5 +1,6 @@
 pub mod callback;
-pub mod defid_util;
-pub mod file_loader;
-pub mod instrumentation;
-pub mod mir_util;
+pub mod callback_doctest;
+
+mod defid_util;
+mod file_loader;
+mod mir_util;

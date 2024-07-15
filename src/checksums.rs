@@ -5,11 +5,15 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_middle::mir::interpret::ConstAllocation;
 use rustc_middle::mir::Body;
 use rustc_middle::ty::{ScalarInt, TyCtxt, VtblEntry};
-use std::collections::{HashMap, HashSet};
+use rustc_span::sym;
 use std::hash::Hash;
 use std::ops::{Deref, DerefMut};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::Hasher,
+};
 
-/// Wrapper of HashMap to provide serialization and deserialization of checksums
+/// Wrapper of `HashMap` to provide serialization and deserialization of checksums
 /// (Newtype Pattern)
 #[derive(Eq, PartialEq, Debug, Clone)]
 pub struct Checksums {
@@ -29,6 +33,12 @@ impl Checksums {
     }
 }
 
+impl Default for Checksums {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Deref for Checksums {
     type Target = HashMap<String, HashSet<(u64, u64)>>;
 
@@ -43,17 +53,17 @@ impl DerefMut for Checksums {
     }
 }
 
-impl Into<Vec<u8>> for &Checksums {
-    fn into(self) -> Vec<u8> {
+impl From<&Checksums> for Vec<u8> {
+    fn from(val: &Checksums) -> Self {
         let mut output = Vec::new();
 
-        for (name, checksums) in &self.inner {
+        for (name, checksums) in &val.inner {
             for (first, second) in checksums {
                 output.extend(name.as_bytes());
                 output.extend(" - ".as_bytes());
                 output.extend(Vec::from(first.to_ne_bytes()));
                 output.extend(Vec::from(second.to_ne_bytes()));
-                output.push('\n' as u8);
+                output.push(b'\n');
             }
         }
         output
@@ -70,7 +80,6 @@ impl From<&[u8]> for Checksums {
 
         REGEX_LINE
             .find_iter(value)
-            .into_iter()
             .map(|m| m.as_bytes())
             .map(|line| {
                 // spilt into name and checksum
@@ -79,7 +88,7 @@ impl From<&[u8]> for Checksums {
                     line.get(line.len() - 17..line.len() - 1).unwrap(), // checksums begin 17 bytes before end + removing \n at the end
                 )
             })
-            .map(|(name, checksum)| (std::str::from_utf8(&name).unwrap(), checksum.split_at(8))) // parse name and split checksum
+            .map(|(name, checksum)| (std::str::from_utf8(name).unwrap(), checksum.split_at(8))) // parse name and split checksum
             .map(|(name, (first_str, second_str))| {
                 // Parse checksums from two [u8,8] in two u64s
                 let first = u64::from_ne_bytes(first_str.try_into().unwrap());
@@ -94,7 +103,7 @@ impl From<&[u8]> for Checksums {
 }
 
 /// Function to obtain a stable checksum of a MIR body
-pub(crate) fn get_checksum_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u64) {
+pub(crate) fn get_checksum_body(tcx: TyCtxt<'_>, body: &Body) -> (u64, u64) {
     let mut hash = (0, 0);
 
     tcx.with_stable_hashing_context(|ref mut context| {
@@ -104,9 +113,18 @@ pub(crate) fn get_checksum_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body) -> (u64, u
         context.without_hir_bodies(|context| {
             context.while_hashing_spans(false, |context| {
                 let mut hasher = StableHasher::new();
+                if tcx
+                    .get_attr(body.source.def_id(), sym::should_panic)
+                    .is_some()
+                {
+                    hasher.write("should_panic".as_bytes());
+                }
+                if tcx.get_attr(body.source.def_id(), sym::ignore).is_some() {
+                    hasher.write("ignore".as_bytes());
+                }
                 body.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -129,7 +147,7 @@ pub(crate) fn get_checksum_vtbl_entry<'tcx>(
                 let mut hasher = StableHasher::new();
                 entry.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -152,7 +170,7 @@ pub(crate) fn get_checksum_const_allocation<'tcx>(
                 let mut hasher = StableHasher::new();
                 alloc.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -160,10 +178,7 @@ pub(crate) fn get_checksum_const_allocation<'tcx>(
 }
 
 /// Function to obtain a stable checksum of a scalar int
-pub(crate) fn get_checksum_scalar_int<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    scalar_int: &ScalarInt,
-) -> (u64, u64) {
+pub(crate) fn get_checksum_scalar_int(tcx: TyCtxt<'_>, scalar_int: &ScalarInt) -> (u64, u64) {
     let mut hash = (0, 0);
 
     tcx.with_stable_hashing_context(|ref mut context| {
@@ -175,7 +190,7 @@ pub(crate) fn get_checksum_scalar_int<'tcx>(
                 let mut hasher = StableHasher::new();
                 scalar_int.hash_stable(context, &mut hasher);
                 hash = hasher.finalize();
-            })
+            });
         });
     });
 
@@ -187,28 +202,42 @@ pub(crate) fn insert_hashmap<K: Hash + Eq + Clone, V: Hash + Eq>(
     key: &K,
     value: V,
 ) {
-    if let None = map.get(key) {
+    if map.get(key).is_none() {
         map.insert(key.clone(), HashSet::new()).unwrap_or_default();
     }
     map.get_mut(key).unwrap().insert(value);
 }
 
 #[cfg(test)]
-mod teest {
-
-    use crate::checksums::insert_hashmap;
+mod test {
 
     use super::Checksums;
-    use test_log::test;
+    use crate::checksums::insert_hashmap;
 
     #[test]
     pub fn test_checksum_deserialization() {
         let mut checksums = Checksums::new();
 
-        insert_hashmap(&mut checksums, &"node1".to_string(), (100000000000006, 0));
-        insert_hashmap(&mut checksums, &"node2".to_string(), (2, 100000000000005));
-        insert_hashmap(&mut checksums, &"node3".to_string(), (3, 100000000000004));
-        insert_hashmap(&mut checksums, &"node4".to_string(), (4, 100000000000003));
+        insert_hashmap(
+            &mut checksums,
+            &"node1".to_string(),
+            (100_000_000_000_006, 0),
+        );
+        insert_hashmap(
+            &mut checksums,
+            &"node2".to_string(),
+            (2, 100_000_000_000_005),
+        );
+        insert_hashmap(
+            &mut checksums,
+            &"node3".to_string(),
+            (3, 100_000_000_000_004),
+        );
+        insert_hashmap(
+            &mut checksums,
+            &"node4".to_string(),
+            (4, 100_000_000_000_003),
+        );
         insert_hashmap(&mut checksums, &"node5".to_string(), (5, u64::MAX - 1));
         insert_hashmap(&mut checksums, &"node6".to_string(), (6, u64::MAX));
 

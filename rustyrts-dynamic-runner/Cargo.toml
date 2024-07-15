@@ -8,12 +8,3 @@ crate-type = ["staticlib"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[target.'cfg(unix)'.dependencies]
-threadpool = "1.8.1"
-fork = "0.1.20"
-libc = "0.2.139"
-
-[dependencies]
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-once_cell = "1.18.0"
