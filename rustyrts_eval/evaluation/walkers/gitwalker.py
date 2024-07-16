@@ -19,11 +19,11 @@ class SequentialWalkerStrategy(WalkerStrategy):
         self.include_merge_commits = include_merge_commits
         self.branch = branch
 
-    def commits(self) -> list[(str, Optional[str], Optional[str])]:
+    def commits(self) -> list[(str, tuple[Optional[str], Optional[str]], tuple[Optional[str], Optional[str]])]:
         start_commit = self.git_repo.git.rev_list(self.branch, max_parents=0).splitlines()[0]
 
         return [
-            (commit.hexsha, None, None)
+            (commit.hexsha, (None, None), (None, None))
             for commit in self.git_repo.iter_commits(
                 "{}..{}".format(start_commit, self.branch),
                 ancestry_path=True,
@@ -47,7 +47,7 @@ class RandomWalkerStrategy(SequentialWalkerStrategy):
 
 
 class GivenWalkerStrategy(WalkerStrategy):
-    def __init__(self, commits: list[(str, Optional[str], Optional[str])]):
+    def __init__(self, commits: list[(str, tuple[Optional[str], Optional[str]], tuple[Optional[str], Optional[str]])]):
         self.commits = commits
 
     def __iter__(self):
@@ -79,7 +79,7 @@ class GitWalker(Walker):
         # init counter
         counter = 0
 
-        for commit, features_parent, features in self.strategy:
+        for commit, individual_options_parent, individual_options in self.strategy:
             # get next commit with changeset
             next_commit = self.git_client.get_commit_from_repo(commit_id=commit)
 
@@ -91,7 +91,7 @@ class GitWalker(Walker):
             # run hooks
             success = True
             for h in self.hooks:
-                success &= h.run(next_commit, features_parent, features)
+                success &= h.run(next_commit, individual_options_parent, individual_options)
                 if not success:
                     break
 

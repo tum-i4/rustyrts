@@ -4,6 +4,7 @@ import os
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
+import shutil
 from time import time
 from typing import Optional
 import tempfile
@@ -75,12 +76,15 @@ class CargoHook(Hook, ABC):
     def update_command(self):
         return "cargo update"
 
-    def build_command(self, features) -> str:
-        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+    def build_command(
+        self,
+        individual_build_options,
+    ) -> str:
+        build_options = " ".join(self.build_options + individual_build_options)
         return "cargo build {0}".format(build_options)
 
     @abstractmethod
-    def test_command_parent(self, features) -> str:
+    def test_command_parent(self, individual_build_options, individual_test_options) -> str:
         pass
 
     @abstractmethod
@@ -90,8 +94,8 @@ class CargoHook(Hook, ABC):
     def run(
         self,
         commit: Commit,
-        features_parent: Optional[str],
-        features: Optional[str],
+        individual_options_parent: tuple[Optional[str], Optional[str]],
+        individual_options: tuple[Optional[str], Optional[str]],
     ) -> bool:
         """
         Run cargo test.
@@ -111,6 +115,10 @@ class CargoHook(Hook, ABC):
             ############################################################################################################
             # Prepare on parent commit
 
+            individual_build_options_parent, individual_test_options_parent = individual_options_parent
+            individual_build_options_parent = individual_build_options_parent if individual_build_options_parent else []
+            individual_test_options_parent = individual_test_options_parent if individual_test_options_parent else []
+
             # checkout parent commit
             parent_commit = self.git_client.get_parent_commit(commit_sha=commit.commit_str)
             self.git_client.git_repo.git.checkout(parent_commit, force=True)
@@ -122,7 +130,7 @@ class CargoHook(Hook, ABC):
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
             if os.path.exists(".cargo"):
-                os.remove(".cargo")  # Cargo config overwrites the one we are setting in .cargo/config.toml
+                shutil.rmtree(".cargo")  # Cargo config overwrites the one we are setting in .cargo/config.toml
 
             # clean
             proc: SubprocessContainer = SubprocessContainer(
@@ -143,7 +151,7 @@ class CargoHook(Hook, ABC):
                 if not has_errored:
                     # Run build command on parent commit
                     proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(features_parent),
+                        command=self.build_command(individual_build_options_parent),
                         output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
@@ -173,50 +181,12 @@ class CargoHook(Hook, ABC):
 
                     DBTestReport.create_or_update(report=test_report, session=session)
 
-            if self.build_release:
-                ########################################################################################################
-                # Build release on parent commit
-                # (Some tests in certain projects require artifacts that are build only by cargo build)
-
-                if not has_errored:
-                    # Run build command on parent commit
-                    proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(features_parent) + " --release",
-                        output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(),
-                    )
-                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
-
-                    # Do not consider it an error if the build command fails
-                    # has_errored |= not (proc.exit_code == 0 or any(
-                    #    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
-
-                    # ******************************************************************************************************
-                    # Parse result
-
-                    log = proc.output
-
-                    # create test report object
-                    test_report: TestReport = TestReport(
-                        name=self.report_name + " - parent build release",
-                        duration=proc.end_to_end_time,
-                        build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
-                        suites=[],
-                        commit=commit,
-                        commit_str=commit.commit_str,
-                        log=log,
-                        has_failed=proc.exit_code != 0,
-                        has_errored=has_errored,
-                    )
-
-                    DBTestReport.create_or_update(report=test_report, session=session)
-
             ############################################################################################################
             # Run on parent commit
             if not has_errored:
                 # Run test command to generate temporary files for incremental compilation or traces
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.test_command_parent(features_parent),
+                    command=self.test_command_parent(individual_build_options_parent, individual_test_options_parent),
                     output_filepath=self.prepare_cache_file(),
                     env=self.env() | env_tmp_override(),
                 )
@@ -255,6 +225,10 @@ class CargoHook(Hook, ABC):
             ############################################################################################################
             # Prepare on actual commit
 
+            individual_build_options, individual_test_options = individual_options
+            individual_build_options = individual_build_options if individual_build_options else []
+            individual_test_options = individual_test_options if individual_test_options else []
+
             # checkout actual commit
             self.git_client.git_repo.git.checkout(commit.commit_str, force=True)
             self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
@@ -265,7 +239,7 @@ class CargoHook(Hook, ABC):
             for filename in glob.glob("rust-toolchain*"):
                 os.remove(filename)
             if os.path.exists(".cargo"):
-                os.remove(".cargo")  # Cargo config overwrites the one we are setting in .cargo/config.toml
+                shutil.rmtree(".cargo")  # Cargo config overwrites the one we are setting in .cargo/config.toml
 
             # update dependencies
             self.update_dependencies(commit)
@@ -278,7 +252,7 @@ class CargoHook(Hook, ABC):
                 if not has_errored:
                     # Run build command on actual commit
                     proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(features),
+                        command=self.build_command(individual_build_options),
                         output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
@@ -308,51 +282,13 @@ class CargoHook(Hook, ABC):
 
                     DBTestReport.create_or_update(report=test_report, session=session)
 
-            if self.build_release:
-                ########################################################################################################
-                # Build release on actual commit
-                # (Some tests in certain projects require artifacts that are build only by cargo build)
-
-                if not has_errored:
-                    # Run build command on actual commit
-                    proc: SubprocessContainer = SubprocessContainer(
-                        command=self.build_command(features) + " --release",
-                        output_filepath=self.prepare_cache_file(),
-                        env=self.build_env(),
-                    )
-                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
-
-                    # Do not consider it an error if the build command fails
-                    # has_errored |= not (proc.exit_code == 0 or any(
-                    #    line.startswith("{") and line.endswith("}") for line in proc.output.splitlines()))
-
-                    # ******************************************************************************************************
-                    # Parse result
-
-                    log = proc.output
-
-                    # create test report object
-                    test_report: TestReport = TestReport(
-                        name=self.report_name + " - build release",
-                        duration=proc.end_to_end_time,
-                        build_duration=(CargoTestTestReportLoader.parse_build_time(log) if not has_errored else None),
-                        suites=[],
-                        commit=commit,
-                        commit_str=commit.commit_str,
-                        log=log,
-                        has_failed=proc.exit_code != 0,
-                        has_errored=has_errored,
-                    )
-
-                    DBTestReport.create_or_update(report=test_report, session=session)
-
             ############################################################################################################
             # Run on actual commit
 
             if not has_errored:
                 # Run test command on actual commit
                 proc: SubprocessContainer = SubprocessContainer(
-                    command=self.test_command(features),
+                    command=self.test_command(individual_build_options, individual_test_options),
                     output_filepath=self.prepare_cache_file(),
                     env=self.env()
                     # | {"CARGO_LOG": "debug"}

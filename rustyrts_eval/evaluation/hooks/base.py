@@ -26,8 +26,8 @@ class Hook(ABC):
     def run(
         self,
         commit: Commit,
-        features_parent: Optional[str],
-        features: Optional[str],
+        individual_options_parent: tuple[Optional[str], Optional[str]],
+        individual_options: tuple[Optional[str], Optional[str]],
     ) -> int:
         pass
 

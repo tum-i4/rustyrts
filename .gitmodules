@@ -73,3 +73,6 @@
 [submodule "projects/small/anyhow"]
 	path = projects/small/anyhow
 	url = https://github.com/dtolnay/anyhow.git
+[submodule "projects/git_walk/solana"]
+	path = projects/git_walk/solana
+	url = https://github.com/solana-labs/solana.git

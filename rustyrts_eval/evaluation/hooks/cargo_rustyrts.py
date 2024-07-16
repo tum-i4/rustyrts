@@ -50,18 +50,20 @@ class CargoRustyRTSHook(CargoHook):
             env["CARGO_TARGET_DIR"] = "target"
         return env
 
-    def test_command_parent(self, features) -> str:
-        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+    def test_command_parent(self, individual_build_options, individual_test_options):
+        build_options = " ".join(self.build_options + individual_build_options)
+        test_options = " ".join(self.test_options + individual_test_options)
         return "cargo rustyrts {0} {1} -- {2}".format(
             self.mode,
             build_options,
-            " ".join(self.test_options),
+            test_options,
         )
 
-    def test_command(self, features) -> str:
-        build_options = " ".join(self.build_options) + (" --features {0}".format(features) if features else "")
+    def test_command(self, individual_build_options, individual_test_options):
+        build_options = " ".join(self.build_options + individual_build_options)
+        test_options = " ".join(self.test_options + individual_test_options)
         return "cargo rustyrts {0} -Z no-index-update {1} -- {2}".format(
             self.mode,
             build_options,
-            " ".join(self.test_options),
+            test_options,
         )

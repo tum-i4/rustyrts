@@ -64,8 +64,8 @@ class CargoMutantsHook(Hook):
     def run(
         self,
         commit: Commit,
-        features_parent: Optional[str],
-        features: Optional[str],
+        individual_options_parent: tuple[Optional[str], Optional[str]],
+        individual_options: tuple[Optional[str], Optional[str]],
     ) -> bool:
         """
         Run cargo mutants-rts.

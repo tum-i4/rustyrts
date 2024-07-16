@@ -2,11 +2,10 @@ import pandas as pd
 import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from sqlalchemy.sql import Select, distinct, literal_column, select
-from sqlalchemy.sql.functions import coalesce, count, sum, aggregate_strings
+from sqlalchemy.sql import Select, select
 
 from .analysis import get_test_diff, get_test_diff_and_intersection
-from .git import DBCommit, DBRepository
+from .git import DBCommit
 
 COLORS_REGULAR = [
     ["#DAD7CB", "#E37222", "#A2AD00"],

@@ -20,7 +20,7 @@ def walk(
     path,
     branch="main",
     logging_level="DEBUG",
-    commits: Optional[list[(str, Optional[str], Optional[str])]] = None,
+    commits: Optional[list[(str, Optional[str], Optional[str], Optional[list[str]])]] = None,
     sequentially: bool = False,
     env_vars: Optional[dict[str]] = None,
     build_options: Optional[list[str]] = None,
