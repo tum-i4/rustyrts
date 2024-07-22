@@ -6,7 +6,7 @@ from typing import Optional, Callable
 from git import Repo
 
 from .gitwalker import GivenWalkerStrategy, RandomWalkerStrategy, GitWalker
-from ..hooks.cargo_mutants import CargoMutantsHook, RustyMutantsRTSMode
+from ..hooks.cargo_mutants import CargoMutantsHook, RustyRTSMode
 from ..hooks.scc import SccHook
 from rustyrts_eval.models.scm.base import Repository
 from ...models.scm.git import GitClient
@@ -67,7 +67,7 @@ def walk(
             CargoMutantsHook(
                 repository=repository,
                 git_client=git_client,
-                mode=RustyMutantsRTSMode.TEST,
+                mode=RustyRTSMode.TEST,
                 env_vars=env_vars,
                 options=options,
                 connection=connection,
@@ -76,7 +76,7 @@ def walk(
             CargoMutantsHook(
                 repository=repository,
                 git_client=git_client,
-                mode=RustyMutantsRTSMode.DYNAMIC,
+                mode=RustyRTSMode.BASIC,
                 env_vars=env_vars,
                 options=options,
                 connection=connection,
@@ -85,7 +85,16 @@ def walk(
             CargoMutantsHook(
                 repository=repository,
                 git_client=git_client,
-                mode=RustyMutantsRTSMode.STATIC,
+                mode=RustyRTSMode.DYNAMIC,
+                env_vars=env_vars,
+                options=options,
+                connection=connection,
+                pre_hook=pre_hook,
+            ),
+            CargoMutantsHook(
+                repository=repository,
+                git_client=git_client,
+                mode=RustyRTSMode.STATIC,
                 env_vars=env_vars,
                 options=options,
                 connection=connection,

@@ -20,8 +20,9 @@ _LOGGER = get_logger(__name__)
 ask_for_skip = True
 
 
-class RustyMutantsRTSMode(str, Enum):
+class RustyRTSMode(str, Enum):
     TEST = ""
+    BASIC = " basic"
     DYNAMIC = " dynamic"
     STATIC = " static"
 
@@ -31,7 +32,7 @@ class CargoMutantsHook(Hook):
         self,
         repository: Repository,
         git_client: GitClient,
-        mode: RustyMutantsRTSMode,
+        mode: RustyRTSMode,
         connection: DBConnection,
         env_vars: Optional[Dict] = None,
         options=None,

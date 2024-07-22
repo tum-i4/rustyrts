@@ -395,9 +395,11 @@ def register_views() -> MutantsViewInformation:
     )
 
     retest_all = report.alias("retest_all")
+    basic = report.alias("basic")
     dynamic = report.alias("dynamic")
     static = report.alias("static")
     retest_all_mutant = mutant.alias("retest_all_mutant")
+    basic_mutant = mutant.alias("basic_mutant")
     dynamic_mutant = mutant.alias("dynamic_mutant")
     static_mutant = mutant.alias("static_mutant")
 
@@ -413,6 +415,11 @@ def register_views() -> MutantsViewInformation:
             retest_all_mutant.c.test_result.label("retest_all_test_result"),
             retest_all_mutant.c.test_duration.label("retest_all_test_duration"),
             retest_all_mutant.c.build_duration.label("retest_all_build_duration"),
+            basic_mutant.c.id.label("basic_id"),
+            basic_mutant.c.test_log.label("basic_test_log"),
+            basic_mutant.c.test_result.label("basic_test_result"),
+            basic_mutant.c.test_duration.label("basic_test_duration"),
+            basic_mutant.c.build_duration.label("basic_build_duration"),
             dynamic_mutant.c.id.label("dynamic_id"),
             dynamic_mutant.c.test_log.label("dynamic_test_log"),
             dynamic_mutant.c.test_result.label("dynamic_test_result"),
@@ -427,6 +434,7 @@ def register_views() -> MutantsViewInformation:
         .select_from(
             commit,
             retest_all,
+            basic,
             dynamic,
             static,
             retest_all_mutant,
@@ -434,18 +442,23 @@ def register_views() -> MutantsViewInformation:
             static_mutant,
         )
         .where(commit.c.id == retest_all.c.commit_id)
+        .where(commit.c.id == basic.c.commit_id)
         .where(commit.c.id == dynamic.c.commit_id)
         .where(commit.c.id == static.c.commit_id)
         .where(retest_all_mutant.c.report_id == retest_all.c.id)
         .where(dynamic_mutant.c.report_id == dynamic.c.id)
+        .where(basic_mutant.c.report_id == basic.c.id)
         .where(static_mutant.c.report_id == static.c.id)
         .where(retest_all.c.name == "mutants")
+        .where(basic.c.name == "mutants basic")
         .where(dynamic.c.name == "mutants dynamic")
         .where(static.c.name == "mutants static")
+        .where(retest_all_mutant.c.descr == basic_mutant.c.descr)
         .where(retest_all_mutant.c.descr == dynamic_mutant.c.descr)
         .where(retest_all_mutant.c.descr == static_mutant.c.descr)
         .where(retest_all_mutant.c.test_log != None)
         .where(retest_all_mutant.c.test_result != "TIMEOUT")
+        .where(basic_mutant.c.test_result != "TIMEOUT")
         .where(dynamic_mutant.c.test_result != "TIMEOUT")
         .where(static_mutant.c.test_result != "TIMEOUT")
         .where(retest_all_mutant.c.descr != "baseline")
@@ -481,6 +494,7 @@ def register_views() -> MutantsViewInformation:
     testcase = mutants_testcase_extended
 
     retest_all_testcases = testcase.alias("retest_all_test_cases")
+    basic_testcases = testcase.alias("basic_test_cases")
     dynamic_testcases = testcase.alias("dynamic_test_cases")
     static_testcases = testcase.alias("static_test_cases")
 
@@ -489,6 +503,7 @@ def register_views() -> MutantsViewInformation:
             mutant.c.commit,
             mutant.c.descr.label("descr"),
             mutant.c.retest_all_id.label("retest_all_mutant_id"),
+            mutant.c.basic_id.label("basic_mutant_id"),
             mutant.c.dynamic_id.label("dynamic_mutant_id"),
             mutant.c.static_id.label("static_mutant_id"),
             retest_all_testcases.c.target.label("target"),
@@ -496,6 +511,10 @@ def register_views() -> MutantsViewInformation:
             retest_all_testcases.c.name.label("retest_all_name"),
             retest_all_testcases.c.id.label("retest_all_testcase_id"),
             retest_all_testcases.c.status.label("retest_all_status"),
+            basic_testcases.c.testsuite_name.label("basic_suite_name"),
+            basic_testcases.c.name.label("basic_name"),
+            basic_testcases.c.id.label("basic_testcase_id"),
+            basic_testcases.c.status.label("basic_status"),
             dynamic_testcases.c.testsuite_name.label("dynamic_suite_name"),
             dynamic_testcases.c.name.label("dynamic_name"),
             dynamic_testcases.c.id.label("dynamic_testcase_id"),
@@ -511,6 +530,10 @@ def register_views() -> MutantsViewInformation:
             mutant.c.retest_all_id == retest_all_testcases.c.mutant_id,
         )
         .outerjoin(
+            basic_testcases,
+            (mutant.c.basic_id == basic_testcases.c.mutant_id) & (retest_all_testcases.c.name == basic_testcases.c.name) & (retest_all_testcases.c.testsuite_name == basic_testcases.c.testsuite_name),
+        )
+        .outerjoin(
             dynamic_testcases,
             (mutant.c.dynamic_id == dynamic_testcases.c.mutant_id) & (retest_all_testcases.c.name == dynamic_testcases.c.name) & (retest_all_testcases.c.testsuite_name == dynamic_testcases.c.testsuite_name),
         )
@@ -519,6 +542,7 @@ def register_views() -> MutantsViewInformation:
             (mutant.c.static_id == static_testcases.c.mutant_id) & (retest_all_testcases.c.name == static_testcases.c.name) & (retest_all_testcases.c.testsuite_name == static_testcases.c.testsuite_name),
         )
         .where(retest_all_testcases.c.crashed == False)  # filter suites that are not comparable
+        .where((basic_testcases.c.crashed == None) | (basic_testcases.c.crashed == False))
         .where((dynamic_testcases.c.crashed == None) | (dynamic_testcases.c.crashed == False))
         .where((static_testcases.c.crashed == None) | (static_testcases.c.crashed == False))
         .where(retest_all_testcases.c.status != "IGNORED")
@@ -540,6 +564,8 @@ def register_views() -> MutantsViewInformation:
             overview.c.descr,
             count(distinct(overview.c.retest_all_testcase_id)).label("retest_all_count"),
             count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.retest_all_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("retest_all_count_failed"),
+            count(distinct(overview.c.basic_testcase_id)).label("basic_count"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.basic_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("basic_count_failed"),
             count(distinct(overview.c.dynamic_testcase_id)).label("dynamic_count"),
             count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.dynamic_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("dynamic_count_failed"),
             count(distinct(overview.c.static_testcase_id)).label("static_count"),
@@ -550,7 +576,9 @@ def register_views() -> MutantsViewInformation:
             overview.c.commit,
             overview.c.descr,
             overview.c.retest_all_mutant_id,
+            overview.c.basic_mutant_id,
             overview.c.dynamic_mutant_id,
+            overview.c.static_mutant_id,
         )
     )
 
@@ -569,6 +597,8 @@ def register_views() -> MutantsViewInformation:
             overview.c.descr,
             count(distinct(overview.c.retest_all_testcase_id)).label("retest_all_count"),
             count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.retest_all_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("retest_all_count_failed"),
+            count(distinct(overview.c.basic_testcase_id)).label("basic_count"),
+            count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.basic_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("basic_count_failed"),
             count(distinct(overview.c.dynamic_testcase_id)).label("dynamic_count"),
             count(distinct(select(testcase.c.id).select_from(testcase).where(testcase.c.id == overview.c.dynamic_testcase_id).where(testcase.c.status == "FAILED").scalar_subquery())).label("dynamic_count_failed"),
             count(distinct(overview.c.static_testcase_id)).label("static_count"),
@@ -580,7 +610,9 @@ def register_views() -> MutantsViewInformation:
             overview.c.target,
             overview.c.descr,
             overview.c.retest_all_mutant_id,
+            overview.c.basic_mutant_id,
             overview.c.dynamic_mutant_id,
+            overview.c.static_mutant_id,
         )
     )
 
@@ -592,6 +624,7 @@ def register_views() -> MutantsViewInformation:
     )
 
     retest_all_selected = testcase.alias("restest_all_selected")
+    basic_selected = testcase.alias("basic_selected")
     dynamic_selected = testcase.alias("dynamic_selected")
     static_selected = testcase.alias("static_selected")
 
@@ -609,11 +642,11 @@ def register_views() -> MutantsViewInformation:
             ).label("retest_all"),
             coalesce(
                 aggregate_strings(
-                    static_selected.c.name,
+                    basic_selected.c.name,
                     literal_column("'\n'"),
                 ),
                 "",
-            ).label("static"),
+            ).label("basic"),
             coalesce(
                 aggregate_strings(
                     dynamic_selected.c.name,
@@ -621,11 +654,22 @@ def register_views() -> MutantsViewInformation:
                 ),
                 "",
             ).label("dynamic"),
+            coalesce(
+                aggregate_strings(
+                    static_selected.c.name,
+                    literal_column("'\n'"),
+                ),
+                "",
+            ).label("static"),
         )
         .select_from(overview)
         .outerjoin(
             retest_all_selected,
             overview.c.retest_all_testcase_id == retest_all_selected.c.id,
+        )
+        .outerjoin(
+            basic_selected,
+            overview.c.basic_testcase_id == basic_selected.c.id,
         )
         .outerjoin(
             dynamic_selected,
@@ -639,6 +683,7 @@ def register_views() -> MutantsViewInformation:
             overview.c.commit,
             overview.c.descr,
             overview.c.retest_all_mutant_id,
+            overview.c.basic_mutant_id,
             overview.c.dynamic_mutant_id,
             overview.c.static_mutant_id,
         )
@@ -664,6 +709,12 @@ def register_views() -> MutantsViewInformation:
             ).label("retest_all"),
             coalesce(
                 aggregate_strings(
+                    basic_selected.c.name,
+                    literal_column("'\n'"),
+                )
+            ).label("basic"),
+            coalesce(
+                aggregate_strings(
                     dynamic_selected.c.name,
                     literal_column("'\n'"),
                 )
@@ -681,6 +732,10 @@ def register_views() -> MutantsViewInformation:
             (overview.c.retest_all_testcase_id == retest_all_selected.c.id) & (retest_all_selected.c.status == "FAILED"),
         )
         .outerjoin(
+            basic_selected,
+            (overview.c.basic_testcase_id == basic_selected.c.id) & (basic_selected.c.status == "FAILED"),
+        )
+        .outerjoin(
             dynamic_selected,
             (overview.c.dynamic_testcase_id == dynamic_selected.c.id) & (dynamic_selected.c.status == "FAILED"),
         )
@@ -692,6 +747,7 @@ def register_views() -> MutantsViewInformation:
             overview.c.commit,
             overview.c.descr,
             overview.c.retest_all_mutant_id,
+            overview.c.basic_mutant_id,
             overview.c.dynamic_mutant_id,
             overview.c.static_mutant_id,
         )
@@ -716,9 +772,14 @@ def register_views() -> MutantsViewInformation:
     ).select_from(testcases_selected)
 
     total_retest_all = select(
-        literal_column("'4'"),
+        literal_column("'3'"),
         literal_column("'MutantsTotalRetestAll'"),
         func.sum(testcases_count.c.retest_all_count),
+    ).select_from(testcases_count)
+    total_basic = select(
+        literal_column("'4'"),
+        literal_column("'MutantsTotalBasic'"),
+        func.sum(testcases_count.c.basic_count),
     ).select_from(testcases_count)
     total_dynamic = select(
         literal_column("'5'"),
@@ -736,19 +797,35 @@ def register_views() -> MutantsViewInformation:
         literal_column("'MutantsRetestAllFailed'"),
         func.sum(testcases_count.c.retest_all_count_failed),
     ).select_from(testcases_count)
-    dynamic_failed = select(
+    basic_failed = select(
         literal_column("'8'"),
+        literal_column("'MutantsBasicFailed'"),
+        func.sum(testcases_count.c.basic_count_failed),
+    ).select_from(testcases_count)
+    dynamic_failed = select(
+        literal_column("'9'"),
         literal_column("'MutantsDynamicFailed'"),
         func.sum(testcases_count.c.dynamic_count_failed),
     ).select_from(testcases_count)
     static_failed = select(
-        literal_column("'9'"),
+        literal_column("'10'"),
         literal_column("'MutantsStaticFailed'"),
         func.sum(testcases_count.c.static_count_failed),
     ).select_from(testcases_count)
 
+    relative_basic = select(
+        literal_column("'11'"),
+        literal_column("'MutantsRelativeBasic'"),
+        func.round(
+            func.cast(
+                func.sum(testcases_count.c.basic_count) / func.sum(testcases_count.c.retest_all_count) * 100.0,
+                NUMERIC,
+            ),
+            2,
+        ),
+    ).select_from(testcases_count)
     relative_dynamic = select(
-        literal_column("'10'"),
+        literal_column("'12'"),
         literal_column("'MutantsRelativeDynamic'"),
         func.round(
             func.cast(
@@ -759,7 +836,7 @@ def register_views() -> MutantsViewInformation:
         ),
     ).select_from(testcases_count)
     relative_static = select(
-        literal_column("'11'"),
+        literal_column("'13'"),
         literal_column("'MutantsRelativeStatic'"),
         func.round(
             func.cast(
@@ -772,16 +849,25 @@ def register_views() -> MutantsViewInformation:
 
     unit_retest_all = (
         select(
-            literal_column("'12'"),
+            literal_column("'14'"),
             literal_column("'MutantsUnitRetestAll'"),
             func.sum(target_count.c.retest_all_count),
         )
         .select_from(target_count)
         .where(target_count.c.target == "UNIT")
     )
+    unit_basic = (
+        select(
+            literal_column("'15'"),
+            literal_column("'MutantsUnitBasic'"),
+            func.sum(target_count.c.basic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
     unit_dynamic = (
         select(
-            literal_column("'13'"),
+            literal_column("'16'"),
             literal_column("'MutantsUnitDynamic'"),
             func.sum(target_count.c.dynamic_count),
         )
@@ -790,7 +876,7 @@ def register_views() -> MutantsViewInformation:
     )
     unit_static = (
         select(
-            literal_column("'14'"),
+            literal_column("'17'"),
             literal_column("'MutantsUnitStatic'"),
             func.sum(target_count.c.static_count),
         )
@@ -798,9 +884,24 @@ def register_views() -> MutantsViewInformation:
         .where(target_count.c.target == "UNIT")
     )
 
+    unit_relative_basic = (
+        select(
+            literal_column("'18'"),
+            literal_column("'MutantsUnitRelativeBasic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.basic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "UNIT")
+    )
     unit_relative_dynamic = (
         select(
-            literal_column("'15'"),
+            literal_column("'19'"),
             literal_column("'MutantsUnitRelativeDynamic'"),
             func.round(
                 func.cast(
@@ -815,7 +916,7 @@ def register_views() -> MutantsViewInformation:
     )
     unit_relative_static = (
         select(
-            literal_column("'16'"),
+            literal_column("'20'"),
             literal_column("'MutantsUnitRelativeStatic'"),
             func.round(
                 func.cast(
@@ -831,16 +932,25 @@ def register_views() -> MutantsViewInformation:
 
     integration_retest_all = (
         select(
-            literal_column("'17'"),
+            literal_column("'21'"),
             literal_column("'MutantsIntegrationRetestAll'"),
             func.sum(target_count.c.retest_all_count),
         )
         .select_from(target_count)
         .where(target_count.c.target == "INTEGRATION")
     )
+    integration_basic = (
+        select(
+            literal_column("'22'"),
+            literal_column("'MutantsIntegrationBasic'"),
+            func.sum(target_count.c.basic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
     integration_dynamic = (
         select(
-            literal_column("'18'"),
+            literal_column("'23'"),
             literal_column("'MutantsIntegrationDynamic'"),
             func.sum(target_count.c.dynamic_count),
         )
@@ -849,7 +959,7 @@ def register_views() -> MutantsViewInformation:
     )
     integration_static = (
         select(
-            literal_column("'19'"),
+            literal_column("'24'"),
             literal_column("'MutantsIntegrationStatic'"),
             func.sum(target_count.c.static_count),
         )
@@ -857,9 +967,24 @@ def register_views() -> MutantsViewInformation:
         .where(target_count.c.target == "INTEGRATION")
     )
 
+    integration_relative_basic = (
+        select(
+            literal_column("'25'"),
+            literal_column("'MutantsIntegrationRelativeBasic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.basic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "INTEGRATION")
+    )
     integration_relative_dynamic = (
         select(
-            literal_column("'20'"),
+            literal_column("'26'"),
             literal_column("'MutantsIntegrationRelativeDynamic'"),
             func.round(
                 func.cast(
@@ -874,7 +999,7 @@ def register_views() -> MutantsViewInformation:
     )
     integration_relative_static = (
         select(
-            literal_column("'21'"),
+            literal_column("'27'"),
             literal_column("'MutantsIntegrationRelativeStatic'"),
             func.round(
                 func.cast(
@@ -890,7 +1015,7 @@ def register_views() -> MutantsViewInformation:
 
     percentage_failed_retest_all = (
         select(
-            literal_column("'22'"),
+            literal_column("'28'"),
             literal_column("'MutantsPercentageFailedRetestall'"),
             func.round(
                 func.cast(
@@ -903,9 +1028,24 @@ def register_views() -> MutantsViewInformation:
         .select_from(testcases_count)
         .where(testcases_count.c.retest_all_count != 0)
     )
+    percentage_failed_basic = (
+        select(
+            literal_column("'29'"),
+            literal_column("'MutantsPercentageFailedBasic'"),
+            func.round(
+                func.cast(
+                    func.avg(testcases_count.c.basic_count_failed / testcases_count.c.basic_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(testcases_count)
+        .where(testcases_count.c.basic_count != 0)
+    )
     percentage_failed_dynamic = (
         select(
-            literal_column("'23'"),
+            literal_column("'30'"),
             literal_column("'MutantsPercentageFailedDynamic'"),
             func.round(
                 func.cast(
@@ -920,7 +1060,7 @@ def register_views() -> MutantsViewInformation:
     )
     percentage_failed_static = (
         select(
-            literal_column("'24'"),
+            literal_column("'31'"),
             literal_column("'MutantsPercentageFailedStatic'"),
             func.round(
                 func.cast(
@@ -937,24 +1077,32 @@ def register_views() -> MutantsViewInformation:
     facts = total_repos.union(
         number_mutants_total,
         total_retest_all,
+        total_basic,
         total_dynamic,
         total_static,
         retest_all_failed,
+        basic_failed,
         dynamic_failed,
         static_failed,
+        relative_basic,
         relative_dynamic,
         relative_static,
         unit_retest_all,
+        unit_basic,
         unit_dynamic,
         unit_static,
+        unit_relative_basic,
         unit_relative_dynamic,
         unit_relative_static,
         integration_retest_all,
+        integration_basic,
         integration_dynamic,
         integration_static,
+        integration_relative_basic,
         integration_relative_dynamic,
         integration_relative_static,
         percentage_failed_retest_all,
+        percentage_failed_basic,
         percentage_failed_dynamic,
         percentage_failed_static,
     )

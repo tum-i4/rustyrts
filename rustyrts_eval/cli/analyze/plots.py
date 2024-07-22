@@ -110,7 +110,7 @@ def history_cmd(ctx, strategy):
             True if strategy == "sequential" else False,
         )
 
-        partition = True
+        partition = False
 
         plotter.plot_history_duration_absolute(partition=partition)
         plotter.plot_history_duration_relative()

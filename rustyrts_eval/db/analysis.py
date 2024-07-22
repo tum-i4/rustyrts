@@ -54,14 +54,16 @@ class DBMutantsTestsNotSelected(Base):
     algorithm = Column(String, nullable=False)
     test_name = Column(String, nullable=False)
     not_selected_count = Column(Integer)
+    mutants = Column(String)
 
-    def __init__(self, commit, algorithm, test_name, not_selected_count):
+    def __init__(self, commit, algorithm, test_name, not_selected_count, mutants):
         super().__init__()
 
         self.commit_id = commit
         self.algorithm = algorithm
         self.test_name = test_name
         self.not_selected_count = not_selected_count
+        self.mutants = descr
 
 
 def mutants_testcases_contained(connection, view_info):
@@ -141,6 +143,7 @@ def mutants_failed_not_selected(connection, view_info):
             testcases_selected.c.commit.label("repository"),
             testcases_selected.c.retest_all_mutant_id,
             testcases_selected.c.descr.label("mutant"),
+            testcases_selected.c.basic,
             testcases_selected.c.dynamic,
             testcases_selected.c.static,
         )
@@ -152,53 +155,68 @@ def mutants_failed_not_selected(connection, view_info):
     df_failed_retest_all = connection.query(failed_retest_all)
     df_selected_rustyrts = connection.query(selected)
 
+    df_selected_basic = df_selected_rustyrts[["repository", "retest_all_mutant_id", "basic"]].copy()
     df_selected_dynamic = df_selected_rustyrts[["repository", "retest_all_mutant_id", "dynamic"]].copy()
-
     df_selected_static = df_selected_rustyrts[["repository", "retest_all_mutant_id", "static"]].copy()
 
+    not_selected_basic = {}
     not_selected_dynamic = {}
     not_selected_static = {}
 
     for i in range(1, len(labels) + 1):
+        not_selected_basic[i] = {}
         not_selected_dynamic[i] = {}
         not_selected_static[i] = {}
 
     failed_retest_all = df_failed_retest_all.to_dict(orient="records")
+    selected_basic = df_selected_basic.to_dict(orient="records")
     selected_dynamic = df_selected_dynamic.to_dict(orient="records")
     selected_static = df_selected_static.to_dict(orient="records")
 
-    assert len(failed_retest_all) == len(selected_dynamic) and len(failed_retest_all) == len(selected_static)
+    assert len(failed_retest_all) == len(selected_dynamic) and len(failed_retest_all) == len(selected_static) and len(failed_retest_all) == len(selected_basic)
 
-    for retest_all_mutant, dynamic_mutant, static_mutant in zip(failed_retest_all, selected_dynamic, selected_static):
+    for retest_all_mutant, basic_mutant, dynamic_mutant, static_mutant in zip(failed_retest_all, selected_basic, selected_dynamic, selected_static):
+        assert retest_all_mutant["retest_all_mutant_id"] == basic_mutant["retest_all_mutant_id"]
         assert retest_all_mutant["retest_all_mutant_id"] == dynamic_mutant["retest_all_mutant_id"]
         assert retest_all_mutant["retest_all_mutant_id"] == static_mutant["retest_all_mutant_id"]
 
         repository = retest_all_mutant["repository"]
         descr = retest_all_mutant["mutant"]
 
+        diff_basic = get_test_diff(retest_all_mutant["retest_all"], basic_mutant["basic"])
         diff_dynamic = get_test_diff(retest_all_mutant["retest_all"], dynamic_mutant["dynamic"])
         diff_static = get_test_diff(retest_all_mutant["retest_all"], static_mutant["static"])
 
+        for test in diff_basic:
+            if test not in not_selected_basic[repository]:
+                not_selected_dynamic[repository][test] = descr
+            else:
+                not_selected_dynamic[repository][test] += "\n" + descr
+
         for test in diff_dynamic:
             if test not in not_selected_dynamic[repository]:
-                not_selected_dynamic[repository][test] = 1
+                not_selected_dynamic[repository][test] = descr
             else:
-                not_selected_dynamic[repository][test] += 1
+                not_selected_dynamic[repository][test] += "\n" + descr
 
         for test in diff_static:
             if test not in not_selected_static[repository]:
-                not_selected_static[repository][test] = 1
+                not_selected_static[repository][test] = descr
             else:
-                not_selected_static[repository][test] += 1
+                not_selected_static[repository][test] += "\n" + descr
 
     with connection.create_session_ctx() as session:
+        for commit in not_selected_basic:
+            for test, mutants in not_selected_basic[commit].items():
+                entry = DBMutantsTestsNotSelected(commit, "basic", test, mutants, mutants.count("\n") + 1)
+                session.add(entry)
         for commit in not_selected_dynamic:
-            for test, count in not_selected_dynamic[commit].items():
-                entry = DBMutantsTestsNotSelected(commit, "dynamic", test, count)
+            for test, mutants in not_selected_dynamic[commit].items():
+                entry = DBMutantsTestsNotSelected(commit, "dynamic", test, mutants, mutants.count("\n") + 1)
                 session.add(entry)
         for commit in not_selected_static:
-            for test, count in not_selected_static[commit].items():
-                entry = DBMutantsTestsNotSelected(commit, "static", test, count)
+            for test, mutants in not_selected_static[commit].items():
+                entry = DBMutantsTestsNotSelected(commit, "static", test, mutants, mutants.count("\n") + 1)
                 session.add(entry)
         session.commit()
 
@@ -327,6 +345,7 @@ def history_testcases_different(connection, view_info):
         select(
             commit.c.repo_id.label("repository"),
             testcases_selected.c.commit,
+            testcases_selected.c.basic,
             testcases_selected.c.dynamic,
             testcases_selected.c.static,
         )
@@ -338,61 +357,83 @@ def history_testcases_different(connection, view_info):
     df_different_retest_all = connection.query(different_retest_all)
     df_selected_rustyrts = connection.query(selected)
 
+    df_selected_basic = df_selected_rustyrts[["repository", "commit", "basic"]].copy()
     df_selected_dynamic = df_selected_rustyrts[["repository", "commit", "dynamic"]].copy()
-
     df_selected_static = df_selected_rustyrts[["repository", "commit", "static"]].copy()
 
+    not_selected_basic = {}
     not_selected_dynamic = {}
     not_selected_static = {}
+    tests_selected_basic = {}
     tests_selected_dynamic = {}
     tests_selected_static = {}
 
     for i in range(1, len(labels) + 1):
+        not_selected_basic[i] = {}
         not_selected_dynamic[i] = {}
         not_selected_static[i] = {}
+        tests_selected_basic[i] = {}
         tests_selected_dynamic[i] = {}
         tests_selected_static[i] = {}
 
     different_retest_all = df_different_retest_all.to_dict(orient="records")
+    selected_basic = df_selected_basic.to_dict(orient="records")
     selected_dynamic = df_selected_dynamic.to_dict(orient="records")
     selected_static = df_selected_static.to_dict(orient="records")
 
-    assert len(different_retest_all) == len(selected_dynamic) and len(different_retest_all) == len(selected_static)
+    assert len(different_retest_all) == len(selected_dynamic) and len(different_retest_all) == len(selected_static) and len(different_retest_all) == len(selected_basic)
 
-    for retest_all_report, dynamic_report, static_report in zip(different_retest_all, selected_dynamic, selected_static):
+    for retest_all_report, basic_report, dynamic_report, static_report in zip(different_retest_all, selected_basic, selected_dynamic, selected_static):
+        assert retest_all_report["commit"] == basic_report["commit"]
         assert retest_all_report["commit"] == dynamic_report["commit"]
         assert retest_all_report["commit"] == static_report["commit"]
 
         repository = retest_all_report["repository"]
         commit = retest_all_report["commit"]
 
+        diff_basic, intersection_basic = get_test_diff_and_intersection(retest_all_report["retest_all"], basic_report["basic"])
         diff_dynamic, intersection_dynamic = get_test_diff_and_intersection(retest_all_report["retest_all"], dynamic_report["dynamic"])
         diff_static, intersection_static = get_test_diff_and_intersection(retest_all_report["retest_all"], static_report["static"])
 
+        if commit not in not_selected_basic[repository]:
+            not_selected_basic[repository][commit] = []
         if commit not in not_selected_dynamic[repository]:
             not_selected_dynamic[repository][commit] = []
         if commit not in not_selected_static[repository]:
             not_selected_static[repository][commit] = []
 
+        for test in diff_basic:
+            not_selected_basic[repository][commit].append(test)
         for test in diff_dynamic:
             not_selected_dynamic[repository][commit].append(test)
-
         for test in diff_static:
             not_selected_static[repository][commit].append(test)
 
+        if commit not in tests_selected_basic[repository]:
+            tests_selected_basic[repository][commit] = []
         if commit not in tests_selected_dynamic[repository]:
             tests_selected_dynamic[repository][commit] = []
         if commit not in tests_selected_static[repository]:
             tests_selected_static[repository][commit] = []
 
+        for test in intersection_basic:
+            tests_selected_basic[repository][commit].append(test)
         for test in intersection_dynamic:
             tests_selected_dynamic[repository][commit].append(test)
-
         for test in intersection_static:
             tests_selected_static[repository][commit].append(test)
 
     with connection.create_session_ctx() as session:
         for repository in not_selected_static:
+            for commit in not_selected_basic[repository]:
+                for test in not_selected_basic[repository][commit]:
+                    entry = DBHistoryTestsDifferentNotSelected(
+                        repository,
+                        commit,
+                        "basic",
+                        test,
+                    )
+                    session.add(entry)
             for commit in not_selected_dynamic[repository]:
                 for test in not_selected_dynamic[repository][commit]:
                     entry = DBHistoryTestsDifferentNotSelected(
@@ -415,6 +456,15 @@ def history_testcases_different(connection, view_info):
 
     with connection.create_session_ctx() as session:
         for repository in tests_selected_static:
+            for commit in tests_selected_basic[repository]:
+                for test in tests_selected_basic[repository][commit]:
+                    entry = DBHistoryTestsDifferentSelected(
+                        repository,
+                        commit,
+                        "basic",
+                        test,
+                    )
+                    session.add(entry)
             for commit in tests_selected_dynamic[repository]:
                 for test in tests_selected_dynamic[repository][commit]:
                     entry = DBHistoryTestsDifferentSelected(

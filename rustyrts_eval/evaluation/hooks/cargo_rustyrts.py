@@ -11,6 +11,7 @@ from os.path import abspath, expanduser
 
 
 class RustyRTSMode(str, Enum):
+    BASIC = "basic"
     DYNAMIC = "dynamic"
     STATIC = "static"
 
