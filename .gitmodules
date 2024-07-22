@@ -25,44 +25,44 @@
 [submodule "projects/mutants/trust-dns"]
 	path = projects/mutants/trust-dns
 	url = https://github.com/bluejekyll/trust-dns
-[submodule "projects/git_walk/actix-web"]
-	path = projects/git_walk/actix-web
+[submodule "projects/history/actix-web"]
+	path = projects/history/actix-web
 	url = https://github.com/actix/actix-web
-[submodule "projects/git_walk/arrow-datafusion"]
-	path = projects/git_walk/arrow-datafusion
+[submodule "projects/history/arrow-datafusion"]
+	path = projects/history/arrow-datafusion
 	url = https://github.com/apache/arrow-datafusion
-[submodule "projects/git_walk/feroxbuster"]
-	path = projects/git_walk/feroxbuster
+[submodule "projects/history/feroxbuster"]
+	path = projects/history/feroxbuster
 	url = https://github.com/epi052/feroxbuster
-[submodule "projects/git_walk/nushell"]
-	path = projects/git_walk/nushell
+[submodule "projects/history/nushell"]
+	path = projects/history/nushell
 	url = https://github.com/nushell/nushell
-[submodule "projects/git_walk/ockam"]
-	path = projects/git_walk/ockam
+[submodule "projects/history/ockam"]
+	path = projects/history/ockam
 	url = https://github.com/build-trust/ockam
-[submodule "projects/git_walk/rayon"]
-	path = projects/git_walk/rayon
+[submodule "projects/history/rayon"]
+	path = projects/history/rayon
 	url = https://github.com/rayon-rs/rayon
-[submodule "projects/git_walk/rust-analyzer"]
-	path = projects/git_walk/rust-analyzer
+[submodule "projects/history/rust-analyzer"]
+	path = projects/history/rust-analyzer
 	url = https://github.com/rust-lang/rust-analyzer
-[submodule "projects/git_walk/wasmer"]
-	path = projects/git_walk/wasmer
+[submodule "projects/history/wasmer"]
+	path = projects/history/wasmer
 	url = https://github.com/wasmerio/wasmer
-[submodule "projects/git_walk/zenoh"]
-	path = projects/git_walk/zenoh
+[submodule "projects/history/zenoh"]
+	path = projects/history/zenoh
 	url = https://github.com/eclipse-zenoh/zenoh
-[submodule "projects/git_walk/exonum"]
-	path = projects/git_walk/exonum
+[submodule "projects/history/exonum"]
+	path = projects/history/exonum
 	url = https://github.com/exonum/exonum
-[submodule "projects/git_walk/tantivy"]
-	path = projects/git_walk/tantivy
+[submodule "projects/history/tantivy"]
+	path = projects/history/tantivy
 	url = https://github.com/quickwit-oss/tantivy
-[submodule "projects/git_walk/meilisearch"]
-	path = projects/git_walk/meilisearch
+[submodule "projects/history/meilisearch"]
+	path = projects/history/meilisearch
 	url = https://github.com/meilisearch/meilisearch
-[submodule "projects/git_walk/penumbra"]
-	path = projects/git_walk/penumbra
+[submodule "projects/history/penumbra"]
+	path = projects/history/penumbra
 	url = https://github.com/penumbra-zone/penumbra
 [submodule "projects/small/budget"]
 	path = projects/small/budget
@@ -73,6 +73,9 @@
 [submodule "projects/small/anyhow"]
 	path = projects/small/anyhow
 	url = https://github.com/dtolnay/anyhow.git
-[submodule "projects/git_walk/solana"]
-	path = projects/git_walk/solana
+[submodule "projects/history/solana"]
+	path = projects/history/solana
 	url = https://github.com/solana-labs/solana.git
+[submodule "projects/history/horaedb"]
+	path = projects/history/horaedb
+	url = https://github.com/apache/horaedb.git

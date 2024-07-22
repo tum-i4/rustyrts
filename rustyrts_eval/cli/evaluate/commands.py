@@ -80,7 +80,7 @@ MUTANTS_PROJECTS = [
 
 TESTING_PROJECTS = [
     (
-        "projects/git_walk/exonum",
+        "projects/history/exonum",
         "master",
         [
             ("cb1a0384651bd31a869ab1aa65e1806a53a3d7bb", (None, None), (None, None)),
@@ -116,7 +116,7 @@ TESTING_PROJECTS = [
         ],
     ),
     (
-        "projects/git_walk/feroxbuster",
+        "projects/history/feroxbuster",
         "main",
         [
             ("216e0e6595fbf9329656983b047f2b2b7d78977d", (None, None), (None, None)),
@@ -152,7 +152,7 @@ TESTING_PROJECTS = [
         ],
     ),
     (
-        "projects/git_walk/meilisearch",
+        "projects/history/meilisearch",
         "main",
         [
             ("b99ef3d33644b24cccf9ff167f698b30b99625d1", (None, None), (None, None)),
@@ -188,7 +188,7 @@ TESTING_PROJECTS = [
         ],
     ),
     (
-        "projects/git_walk/rayon",
+        "projects/history/rayon",
         "master",
         [
             ("f0c5a47fca1f2a1ba627aa9ed0514eb0855147c4", (None, None), (None, None)),
@@ -224,7 +224,7 @@ TESTING_PROJECTS = [
         ],
     ),
     (
-        "projects/git_walk/wasmer",
+        "projects/history/wasmer",
         "master",
         # Only one feature out of {test-native, test-jit} is feasible (otherwise compiler error) Sometimes only one
         # feature out of {test-singlepass, test-cranelift, test-llvm} is feasible (otherwise compiler error)
@@ -391,7 +391,7 @@ TESTING_PROJECTS = [
         ],
     ),
     (
-        "projects/git_walk/zenoh",
+        "projects/history/zenoh",
         "master",
         [
             ("431ffd48f6dd4192f63a168efbd84bcfa7142749", (None, None), (None, None)),
@@ -427,7 +427,7 @@ TESTING_PROJECTS = [
         ],
     ),
     (
-        "projects/git_walk/penumbra",
+        "projects/history/penumbra",
         "main",
         [
             ("4235275e5033945ad7ad4a2137326cf4d75380ed", (None, None), (None, None)),
@@ -463,7 +463,7 @@ TESTING_PROJECTS = [
         ],
     ),
     (
-        "projects/git_walk/solana",
+        "projects/history/solana",
         "master",
         [
             ("874fbcb9d46d3b748c05d31e46b55b46ff5339cd", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
@@ -496,6 +496,42 @@ TESTING_PROJECTS = [
             ("4ac52c2a9d2bcb0abd015b5ad3c2c87d34b989d2", ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None)),
             ("b619b0d33f2a5b525003b4b8f4ad6c4f3a42ceb7", ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None)),
             ("42cc76e33dbd6f54033101b016d1d58d25f9943e", ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None)),
+        ],
+    ),
+    (
+        "projects/history/horaedb",
+        "main",
+        [
+            ("ebca8a7855d3001301cd14ef21521eacb8efac28", (None, None), (None, None)),
+            ("33b1e1ebcefca755722690a5d1e4be2fafb54179", (None, None), (None, None)),
+            ("71d261d5000b71eaffe19d4ae79f7d5cec1c614f", (None, None), (None, None)),
+            ("cf5ec10406d90290e1b9d557805e95c82520d507", (None, None), (None, None)),
+            ("601d821d68ec567441b1830900b0f08fe5c3ebaf", (None, None), (None, None)),
+            ("43eb318172eab11f2c557ba6ff5398df42e99477", (None, None), (None, None)),
+            ("66d7a0d3d1a59743ccefbb248165c28b78cdf0bb", (None, None), (None, None)),
+            ("6d391152d0c0faef6a7a36c0a16b9fdb7e984b64", (None, None), (None, None)),
+            ("44caa997e37991e570741c3da6c961563569da42", (None, None), (None, None)),
+            ("148790c8faf75a13988e939313b1c6de2a00bc6e", (None, None), (None, None)),
+            ("e5c9923baf84be45a54c724f3f146c77de91b999", (None, None), (None, None)),
+            ("2e6f92be3fb101dbe146a20f241b83042bd62b37", (None, None), (None, None)),
+            ("75af5b3142e6b56d11d22a72267b1a5aeed36496", (None, None), (None, None)),
+            ("784fd09cc58a74c058a3f6f6533add6f09caa294", (None, None), (None, None)),
+            ("a1168ecafc0636ea80d2d1154b17bf40b3d64929", (None, None), (None, None)),
+            ("423f0b22ad593005dd2baa33615f5ad8dad32fad", (None, None), (None, None)),
+            ("a1db882892013448c2ba93f6bee620aa2b021201", (None, None), (None, None)),
+            ("8d53620b06eeac16ca4197e9e7f484ce44a6fc6c", (None, None), (None, None)),
+            ("7d6131cc413f61e535d49eaac4c78d63a596fd3c", (None, None), (None, None)),
+            ("54a5db725e674934ca490a64118d50df1b1f4cde", (None, None), (None, None)),
+            ("a75608760badb042a126b5443b3dc3915aad5958", (None, None), (None, None)),
+            ("a1869dc670c7ca2a103063c60c6585f1780e5622", (None, None), (None, None)),
+            ("928ddf9c102493807e9d9c84271e1a6b227943cb", (None, None), (None, None)),
+            ("512302ea0f60cf4ddbed20974b9b30ef7b27e531", (None, None), (None, None)),
+            ("d99186d0cc5896325ff780e8e36e3b9d0c335799", (None, None), (None, None)),
+            ("5ec187e5926f23ecafb6edaf13a843ad97ec22a9", (None, None), (None, None)),
+            ("5aeb8cc297622904d5899748dbb82435bacdd8db", (None, None), (None, None)),
+            ("9e356c62a7e3db3b27b457a6699eac1a11941db9", (None, None), (None, None)),
+            ("1a989bfc558d554bb2f3ae052f38811dd52d6a14", (None, None), (None, None)),
+            ("431ae5169f9c97bd5b6f6664be889df47c360a0a", (None, None), (None, None)),
         ],
     ),
 ]
