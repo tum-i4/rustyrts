@@ -35,6 +35,7 @@ pub enum Phase {
     Check,
     Build,
     Test,
+    Basic,
     Dynamic,
     Static,
     BuildDynamic,
@@ -48,13 +49,22 @@ impl Phase {
             Phase::BuildDynamic => vec!["build"],
 
             Phase::Test => vec!["test"],
+            Phase::Basic => vec!["rustyrts", "basic"],
             Phase::Dynamic => vec!["rustyrts", "dynamic"],
             Phase::Static => vec!["rustyrts", "static"],
         }
     }
 
     pub fn is_test_phase(&self) -> bool {
-        return self == &Phase::Test || self == &Phase::Dynamic || self == &Phase::Static;
+        match self {
+            Phase::Check => false,
+            Phase::Build => false,
+            Phase::Test => true,
+            Phase::Basic => true,
+            Phase::Dynamic => true,
+            Phase::Static => true,
+            Phase::BuildDynamic => false,
+        }
     }
 }
 

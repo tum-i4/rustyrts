@@ -378,11 +378,6 @@ src/outcome.rs: replace Phase::name -> Vec<&'static str> with vec![""]
 src/outcome.rs: replace Phase::name -> Vec<&'static str> with vec!["xyzzy"]
 src/outcome.rs: replace Phase::is_test_phase -> bool with true
 src/outcome.rs: replace Phase::is_test_phase -> bool with false
-src/outcome.rs: replace || with && in Phase::is_test_phase
-src/outcome.rs: replace || with && in Phase::is_test_phase
-src/outcome.rs: replace == with != in Phase::is_test_phase
-src/outcome.rs: replace == with != in Phase::is_test_phase
-src/outcome.rs: replace == with != in Phase::is_test_phase
 src/outcome.rs: replace <impl Display for Phase>::fmt -> fmt::Result with Ok(Default::default())
 src/outcome.rs: replace <impl Display for Phase>::fmt -> fmt::Result with Err(::anyhow::anyhow!("mutated!"))
 src/outcome.rs: replace LabOutcome::add with ()

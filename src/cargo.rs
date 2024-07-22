@@ -232,6 +232,16 @@ mod test {
             ]
         );
         assert_eq!(
+            cargo_argv(build_dir, None, Phase::Basic, &options)[1..],
+            [
+                "rustyrts",
+                "basic",
+                "-Z",
+                "no-index-update",
+                // "--workspace",
+            ]
+        );
+        assert_eq!(
             cargo_argv(build_dir, None, Phase::Dynamic, &options)[1..],
             [
                 "rustyrts",
@@ -309,6 +319,10 @@ mod test {
             ]
         );
         assert_eq!(
+            cargo_argv(build_dir, Some(&[&package]), Phase::Basic, &options)[1..],
+            ["rustyrts", "basic", "-Z", "no-index-update",]
+        );
+        assert_eq!(
             cargo_argv(build_dir, Some(&[&package]), Phase::Dynamic, &options)[1..],
             ["rustyrts", "dynamic", "-Z", "no-index-update",]
         );
@@ -366,6 +380,19 @@ mod test {
                 "-Z",
                 "no-index-update",
                 "--no-fail-fast",
+                "--verbose",
+                // "--workspace",
+                "--",
+                "--test-threads=1"
+            ]
+        );
+        assert_eq!(
+            cargo_argv(build_dir, None, Phase::Basic, &options)[1..],
+            [
+                "rustyrts",
+                "basic",
+                "-Z",
+                "no-index-update",
                 "--verbose",
                 // "--workspace",
                 "--",

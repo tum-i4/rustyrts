@@ -216,6 +216,7 @@ fn test_scenario(
         let test_phase = match options.test_tool {
             TestTool::Cargo => Phase::Test,
             TestTool::Nextest => panic!("Nextest is not supported"),
+            TestTool::Basic => Phase::Basic,
             TestTool::Dynamic => Phase::Dynamic,
             TestTool::Static => Phase::Static,
         };

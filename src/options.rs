@@ -119,6 +119,9 @@ pub enum TestTool {
     /// Use `cargo nextest`.
     Nextest,
 
+    // Use 'cargo rustyrts basic'
+    Basic,
+
     // Use 'cargo rustyrts dynamic'
     Dynamic,
 
