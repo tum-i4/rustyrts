@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     boxed::Box,
     collections::{HashMap, HashSet},
@@ -25,6 +24,7 @@ use cargo::{
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
 use rustyrts::{
+    callbacks_shared::DOCTEST_PREFIX,
     constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET_DIR},
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
     static_rts::graph::{serialize::ArenaDeserializable, DependencyGraph},
@@ -294,8 +294,17 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                                 "Did not find dependency graph for crate {:?} in mode {:?}\nTried reading from {:?}",
                                 crate_name, compile_mode, graph_path
                             );
-                            DependencyGraph::new(arena)
+                            let mut graph = DependencyGraph::new(arena);
+                            if let Some(doctest_name) = maybe_doctest_name {
+                                let entry_name = DOCTEST_PREFIX.to_string() + doctest_name;
+                                graph.add_edge(doctest_name.to_string(), entry_name, rustyrts::static_rts::graph::EdgeType::Trimmed);
+                            }
+                            graph
                         }, |s| DependencyGraph::deserialize(arena, &s).unwrap());
+
+        if maybe_doctest_name.is_some() && graph_path.is_file() {
+            std::fs::remove_file(graph_path).unwrap();
+        }
 
         if pretty_print_graph {
             let pretty_path = {
