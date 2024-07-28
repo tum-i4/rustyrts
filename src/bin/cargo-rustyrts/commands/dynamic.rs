@@ -357,6 +357,10 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
         shell: &mut Shell,
         start_time: Instant,
     ) -> SelectionUnit {
+        if self.check_retest_all() {
+            return SelectionUnit::RetestAll;
+        }
+
         let TestUnit(unit, test_info) = test_unit;
         let Some(test_info) = test_info else {
             panic!("Precise selction requires information about tests")

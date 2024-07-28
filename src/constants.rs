@@ -10,6 +10,9 @@ pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
 pub const ENV_COMPILE_MODE: &str = "RUSTYRTS_COMPILE_MODE";
 
+// May be used to trigger execution of all tests, e.g., to attempt to reset all traces
+pub const ENV_RETEST_ALL: &str = "RUSTYRTS_RETEST_ALL";
+
 /// May be used to instruct `RustyRTS` to only emit checksums and changed nodes
 pub const ENV_ONLY_INSTRUMENTATION: &str = "RUSTYRTS_ONLY_INSTRUMENTATION";
 

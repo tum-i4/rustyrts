@@ -13,7 +13,10 @@ use cargo::{
 };
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
-use rustyrts::fs_utils::{CacheFileDescr, CacheFileKind, CacheKind};
+use rustyrts::{
+    constants::ENV_RETEST_ALL,
+    fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
+};
 use std::{
     collections::{HashMap, HashSet},
     fs::read_to_string,
@@ -125,6 +128,7 @@ pub enum TestInfo<'arena> {
 }
 
 pub enum SelectionUnit {
+    RetestAll,
     CrateLevel { execute_tests: bool },
     Precise(Vec<String>),
 }
@@ -195,6 +199,10 @@ pub trait Selector<'context> {
     fn note(&self, shell: &mut Shell, test_args: &[&str]);
     fn doctest_callback_analysis(&self) -> fn(&mut ProcessBuilder, &Path, &Unit);
     fn doctest_callback_execution(&self) -> fn(&mut ProcessBuilder, &Path, &Unit);
+
+    fn check_retest_all(&self) -> bool {
+        std::env::var(ENV_RETEST_ALL).is_ok()
+    }
 }
 
 pub fn exec(config: &Config, args: &ArgMatches, selection: Selection) -> CliResult {

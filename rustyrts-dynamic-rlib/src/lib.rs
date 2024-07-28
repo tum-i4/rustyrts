@@ -63,6 +63,7 @@ pub fn pre_test(test_name: &'static str, append: bool) {
     std::panic::set_hook(Box::new(new_hook));
 }
 
+// If this is ever (re-)populated, remember to change in callbacks
 #[cfg(unix)]
 pub fn pre_main() {}
 

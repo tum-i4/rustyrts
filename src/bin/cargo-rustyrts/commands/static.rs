@@ -431,6 +431,10 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
         shell: &mut Shell,
         start_time: Instant,
     ) -> SelectionUnit {
+        if self.check_retest_all() {
+            return SelectionUnit::RetestAll;
+        }
+
         let TestUnit(unit, test_info) = test_unit;
         let Some(test_info) = test_info else {
             panic!("Precise selection requires information about tests")

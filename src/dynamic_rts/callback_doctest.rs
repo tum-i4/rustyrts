@@ -65,12 +65,15 @@ impl InstrumentingCallback for InstrumentingDoctestRTSCallbacks {
         #[cfg(unix)]
         body.check_calls_to_exit(tcx, &mut cache_ret);
 
-        #[cfg(unix)]
-        if let Some(entry_def) = ENTRY_FN.get().unwrap() {
-            if def_id == *entry_def {
-                body.insert_pre_main(tcx, &mut cache_ret);
-            }
-        }
+        // RATIONALE: Function pre_main is empty and therefore not codegened
+        // Leaving this in, in case it gets (re-)populated
+        //
+        // #[cfg(unix)]
+        // if let Some(entry_def) = ENTRY_FN.get().unwrap() {
+        //     if def_id == *entry_def {
+        //         body.insert_pre_main(tcx, &mut cache_ret);
+        //     }
+        // }
     }
 }
 
