@@ -48,7 +48,8 @@ def walk(
 
     options = options if options else []
     options.append("--json")
-    options.append("--gitignore=false")
+    # options.append("--gitignore=false")
+    options.append("--in-place")
 
     env_vars = env_vars if env_vars else {}
 

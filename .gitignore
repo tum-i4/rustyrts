@@ -92,3 +92,5 @@ bugs/
 plots/
 
 util/
+requirements.lock
+requirements-dev.lock

@@ -60,7 +60,7 @@ rustyrts_eval db postgresql://postgres:rustyrts@localhost:5432/history_parallel 
 ## Start recording mutants
 
 ```bash
-rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/mutants mutants
+rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/mutants mutants full
 ```
 
 ## Start recording history changes

@@ -20,6 +20,7 @@ dependencies = [
     'sqlalchemy-utils@git+https://github.com/kvesteri/sqlalchemy-utils.git@00d800063d2f8d2dcee714a3314311d79f8d4040',
     'sqlalchemy-views>=0.3.2'
 ]
+requires-python = ">= 3.10"
 
 [tool.setuptools]
 packages = [
