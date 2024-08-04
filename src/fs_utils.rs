@@ -126,6 +126,7 @@ impl FromStr for CacheFileKind {
 pub struct CacheFileDescr<'data> {
     pub crate_name: &'data str,
     pub compile_mode: Option<&'data str>,
+    pub target: Option<&'data str>,
     pub doctest_name: Option<&'data str>,
     pub kind: CacheFileKind,
 }
@@ -134,12 +135,14 @@ impl<'data> CacheFileDescr<'data> {
     pub fn new(
         crate_name: &'data str,
         compile_mode: Option<&'data str>,
+        target: Option<&'data str>,
         doctest_name: Option<&'data str>,
         kind: CacheFileKind,
     ) -> Self {
         Self {
             crate_name,
             compile_mode,
+            target,
             doctest_name,
             kind,
         }
@@ -149,6 +152,10 @@ impl<'data> CacheFileDescr<'data> {
         let mut file_name = String::new();
         if let Some(mode) = self.compile_mode {
             file_name += mode;
+            file_name += "_";
+        }
+        if let Some(target) = self.target {
+            file_name += target;
             file_name += "_";
         }
         file_name += self.crate_name;
@@ -177,6 +184,11 @@ impl<'data> TryFrom<&'data Path> for CacheFileDescr<'data> {
             compile_mode
         });
 
+        let target = path_str.split_once('_').map(|(target, remainder)| {
+            path_str = remainder;
+            target
+        });
+
         let doctest_name = path_str
             .rsplit_once('_')
             .map(|(remainder, crate_id)| {
@@ -198,6 +210,7 @@ impl<'data> TryFrom<&'data Path> for CacheFileDescr<'data> {
         Ok(Self {
             crate_name,
             compile_mode,
+            target,
             doctest_name,
             kind,
         })

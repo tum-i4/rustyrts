@@ -9,6 +9,7 @@ pub const VERBOSE_COUNT: usize = 16;
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
 pub const ENV_COMPILE_MODE: &str = "RUSTYRTS_COMPILE_MODE";
+pub const ENV_TARGET: &str = "RUSTYRTS_TARGET";
 
 // May be used to trigger execution of all tests, e.g., to attempt to reset all traces
 pub const ENV_RETEST_ALL: &str = "RUSTYRTS_RETEST_ALL";

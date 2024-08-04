@@ -144,11 +144,18 @@ pub trait Selector<'context> {
 
         let crate_name = unit.target.crate_name();
         let compile_mode = format!("{:?}", unit.mode);
+        let target = unit.target.kind().description();
 
         let tests_path = {
             let mut path = path_buf;
-            CacheFileDescr::new(&crate_name, Some(&compile_mode), None, CacheFileKind::Tests)
-                .apply(&mut path);
+            CacheFileDescr::new(
+                &crate_name,
+                Some(&compile_mode),
+                Some(&target),
+                None,
+                CacheFileKind::Tests,
+            )
+            .apply(&mut path);
             path
         };
 

@@ -30,7 +30,7 @@ use rustyrts::{
     callbacks_shared::DOCTEST_PREFIX,
     constants::{
         ENDING_CHANGES, ENDING_PROCESS_TRACE, ENV_COMPILE_MODE, ENV_DOCTESTED,
-        ENV_ONLY_INSTRUMENTATION, ENV_TARGET_DIR,
+        ENV_ONLY_INSTRUMENTATION, ENV_TARGET, ENV_TARGET_DIR,
     },
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
 };
@@ -256,12 +256,14 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
 
         let crate_name = unit.target.crate_name();
         let compile_mode = format!("{:?}", unit.mode);
+        let target = unit.target.kind().description();
 
         let changes_path = {
             let mut path = CacheKind::Dynamic.map(target_dir);
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
+                Some(target),
                 maybe_doctest_name,
                 CacheFileKind::Changes,
             )
@@ -388,8 +390,13 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                     let path = CacheKind::Dynamic.map(self.target_dir.to_path_buf());
 
                     for test in &tests_found {
-                        let descr =
-                            CacheFileDescr::new(test.as_str(), None, None, CacheFileKind::Traces);
+                        let descr = CacheFileDescr::new(
+                            test.as_str(),
+                            None,
+                            None,
+                            None,
+                            CacheFileKind::Traces,
+                        );
                         let mut path = path.clone();
                         descr.apply(&mut path);
 
@@ -462,6 +469,7 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
 
                         let descr = CacheFileDescr::new(
                             fn_name.as_str(),
+                            None,
                             None,
                             None,
                             CacheFileKind::Traces,
@@ -574,6 +582,7 @@ This might lead to incomplete traces in the initialization of shared state."
             p.env(ENV_TARGET_DIR, target_dir);
             p.env(ENV_DOCTESTED, unit.target.crate_name());
             p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+            p.env(ENV_TARGET, format!("{}", unit.target.kind().description()));
         }
     }
 
@@ -595,6 +604,7 @@ This might lead to incomplete traces in the initialization of shared state."
             p.env(ENV_TARGET_DIR, target_dir);
             p.env(ENV_DOCTESTED, unit.target.crate_name());
             p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+            p.env(ENV_TARGET, format!("{}", unit.target.kind().description()));
 
             p.env(ENV_ONLY_INSTRUMENTATION, "true");
         }

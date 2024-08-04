@@ -18,7 +18,7 @@ use cargo::{
 use cargo_util::ProcessBuilder;
 use itertools::Itertools;
 use rustyrts::{
-    callbacks_shared::{ChecksumsCallback, CompileMode, RTSContext, DOCTEST_PREFIX},
+    callbacks_shared::{ChecksumsCallback, CompileMode, RTSContext, Target, DOCTEST_PREFIX},
     checksums::Checksums,
     fs_utils::{CacheKind, ChecksumKind},
 };
@@ -152,9 +152,12 @@ pub(crate) fn run_analysis_doctests(
         let doctest_name = Some(test_fn.clone());
 
         let compile_mode = CompileMode::try_from(format!("{:?}", unit.mode).as_str()).unwrap();
+        let target =
+            Target::try_from(format!("{}", unit.target.kind().description()).as_str()).unwrap();
+
         let mut analysis = DoctestAnalysis {
             path: target_dir.to_path_buf(),
-            context: RTSContext::new(unit.target.crate_name(), compile_mode, doctest_name),
+            context: RTSContext::new(unit.target.crate_name(), compile_mode, target, doctest_name),
         };
 
         let old_checksums = analysis.import_checksums(ChecksumKind::Checksum, true);

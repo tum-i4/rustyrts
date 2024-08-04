@@ -25,7 +25,7 @@ use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
 use rustyrts::{
     callbacks_shared::DOCTEST_PREFIX,
-    constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET_DIR},
+    constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET, ENV_TARGET_DIR},
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
     static_rts::graph::{serialize::ArenaDeserializable, DependencyGraph},
 };
@@ -253,12 +253,14 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
 
         let crate_name = unit.target.crate_name();
         let compile_mode = format!("{:?}", unit.mode);
+        let target = unit.target.kind().description();
 
         let graph_path = {
             let mut path = CacheKind::Static.map(target_dir.clone());
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
+                Some(target),
                 maybe_doctest_name,
                 CacheFileKind::Graph,
             )
@@ -270,6 +272,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
+                Some(target),
                 maybe_doctest_name,
                 CacheFileKind::Changes,
             )
@@ -312,6 +315,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                 CacheFileDescr::new(
                     &crate_name,
                     Some(&compile_mode),
+                    Some(target),
                     maybe_doctest_name,
                     CacheFileKind::PrettyGraph,
                 )
@@ -548,6 +552,7 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
             p.env(ENV_TARGET_DIR, target_dir);
             p.env(ENV_DOCTESTED, unit.target.crate_name());
             p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+            p.env(ENV_TARGET, format!("{}", unit.target.kind().description()));
         }
     }
 

@@ -54,6 +54,7 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
         let RTSContext {
             crate_name,
             compile_mode,
+            target,
             doctest_name,
             ..
         } = self.context();
@@ -90,6 +91,7 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
                 CacheFileDescr::new(
                     crate_name,
                     Some(compile_mode.as_ref()),
+                    Some(target.as_ref()),
                     doctest_name.as_deref(),
                     CacheFileKind::Graph,
                 )

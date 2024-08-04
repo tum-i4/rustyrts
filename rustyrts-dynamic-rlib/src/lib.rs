@@ -70,7 +70,7 @@ pub fn pre_main() {}
 pub fn post_test(test_name: &'static str, append: bool) {
     let traces = reset_list();
 
-    let file_descr = CacheFileDescr::new(test_name, None, None, CacheFileKind::Traces);
+    let file_descr = CacheFileDescr::new(test_name, None, None, None, CacheFileKind::Traces);
     export_traces(traces, |path_buf| file_descr.apply(path_buf), append);
 }
 
@@ -81,7 +81,7 @@ pub fn post_main() {
     let traces = read_list();
 
     let ppid = format!("{}", parent_id());
-    let file_descr = CacheFileDescr::new(&ppid, None, None, CacheFileKind::ProcessTraces);
+    let file_descr = CacheFileDescr::new(&ppid, None, None, None, CacheFileKind::ProcessTraces);
     export_traces(traces, |path_buf| file_descr.apply(path_buf), true);
 }
 
@@ -126,7 +126,7 @@ where
         let mut traces = traces;
         let pid = format!("{}", id());
         let mut path_child_traces = path_buf.clone();
-        let file_descr = CacheFileDescr::new(&pid, None, None, CacheFileKind::ProcessTraces);
+        let file_descr = CacheFileDescr::new(&pid, None, None, None, CacheFileKind::ProcessTraces);
         file_descr.apply(&mut path_child_traces);
         if path_child_traces.is_file() {
             read_to_string(path_child_traces)
