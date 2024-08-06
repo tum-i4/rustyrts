@@ -88,8 +88,6 @@ class CargoTestTestReportLoader(TestReportLoader):
 
             name = names_iter.__next__()[0]
 
-            print("Got: " + name)
-
             is_doctest = name.startswith("Doc-tests ")
             if is_doctest:
                 name = name.removeprefix("Doc-tests ")

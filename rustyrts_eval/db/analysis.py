@@ -53,17 +53,17 @@ class DBMutantsTestsNotSelected(Base):
     commit_id = Column(Integer, nullable=False)
     algorithm = Column(String, nullable=False)
     test_name = Column(String, nullable=False)
-    not_selected_count = Column(Integer)
     mutants = Column(String)
+    not_selected_count = Column(Integer)
 
-    def __init__(self, commit, algorithm, test_name, not_selected_count, mutants):
+    def __init__(self, commit, algorithm, test_name, mutants, not_selected_count):
         super().__init__()
 
         self.commit_id = commit
         self.algorithm = algorithm
         self.test_name = test_name
+        self.mutants = mutants
         self.not_selected_count = not_selected_count
-        self.mutants = descr
 
 
 def mutants_testcases_contained(connection, view_info):

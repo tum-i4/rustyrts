@@ -74,7 +74,7 @@ def mutants_cmd(ctx):
         info = mutants.register_views()
         plotter = MutantsPlotter(conn, info, output_format)
 
-        partition = True
+        partition = False
 
         plotter.plot_mutants_duration_absolute()
         plotter.plot_mutants_duration_relative()

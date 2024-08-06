@@ -31,7 +31,7 @@ COLORS_BLIND = [
     ["#BA1414"],
 ]
 
-COLORS = COLORS_BLIND
+COLORS = COLORS_REGULAR
 
 
 class HistoryPlotter:
