@@ -48,8 +48,8 @@ class CargoHook(Hook, ABC):
         self.connection = connection
         self.env_vars = env_vars if env_vars else {}
         self.target_dir = abspath(repository.path + "/target_test")
-        self.build_options = build_options if build_options else []
-        self.test_options = test_options if test_options else []
+        self.build_options = build_options if build_options else ""
+        self.test_options = test_options if test_options else ""
 
         # Check if we need to build before testing
         self.build_debug = False
@@ -80,7 +80,7 @@ class CargoHook(Hook, ABC):
         self,
         individual_build_options,
     ) -> str:
-        build_options = " ".join(self.build_options + individual_build_options)
+        build_options = " ".join([self.build_options, individual_build_options])
         return "cargo build {0}".format(build_options)
 
     @abstractmethod
@@ -88,7 +88,7 @@ class CargoHook(Hook, ABC):
         pass
 
     @abstractmethod
-    def test_command(self, features) -> str:
+    def test_command(self, individual_build_options, individual_test_options) -> str:
         pass
 
     def run(
@@ -116,8 +116,8 @@ class CargoHook(Hook, ABC):
             # Prepare on parent commit
 
             individual_build_options_parent, individual_test_options_parent = individual_options_parent
-            individual_build_options_parent = individual_build_options_parent if individual_build_options_parent else []
-            individual_test_options_parent = individual_test_options_parent if individual_test_options_parent else []
+            individual_build_options_parent = individual_build_options_parent if individual_build_options_parent else ""
+            individual_test_options_parent = individual_test_options_parent if individual_test_options_parent else ""
 
             # checkout parent commit
             parent_commit = self.git_client.get_parent_commit(commit_sha=commit.commit_str)
@@ -226,8 +226,8 @@ class CargoHook(Hook, ABC):
             # Prepare on actual commit
 
             individual_build_options, individual_test_options = individual_options
-            individual_build_options = individual_build_options if individual_build_options else []
-            individual_test_options = individual_test_options if individual_test_options else []
+            individual_build_options = individual_build_options if individual_build_options else ""
+            individual_test_options = individual_test_options if individual_test_options else ""
 
             # checkout actual commit
             self.git_client.git_repo.git.checkout(commit.commit_str, force=True)

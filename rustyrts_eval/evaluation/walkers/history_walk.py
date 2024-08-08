@@ -23,8 +23,8 @@ def walk(
     commits: Optional[list[(str, Optional[str], Optional[str], Optional[list[str]])]] = None,
     sequentially: bool = False,
     env_vars: Optional[dict[str]] = None,
-    build_options: Optional[list[str]] = None,
-    test_options: Optional[list[str]] = None,
+    build_options: Optional[str] = None,
+    test_options: Optional[str] = None,
 ):
     # set logging level
     numeric_level = getattr(logging, logging_level.upper(), None)
@@ -49,17 +49,17 @@ def walk(
     # that is why we fixed the commits that are analyzed
     (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (RandomWalkerStrategy(repository, branch=branch), 30)
 
-    build_options = build_options if build_options else []
+    build_options = build_options if build_options else ""
 
-    test_options = test_options if test_options else []
-    test_options += ["-Z unstable-options", "--report-time", "--format", "json"]
+    test_options = test_options if test_options else ""
+    test_options += "-Z unstable-options --report-time --format json"
 
     env_vars = env_vars if env_vars else {}
 
     name_postfix = ""
     if sequentially:
-        build_options += ["--jobs 1"]
-        test_options += ["--test-threads 1"]
+        build_options += " --jobs 1"
+        test_options += " --test-threads 1"
         name_postfix = " sequentially"
 
     walker = GitWalker(
@@ -80,8 +80,8 @@ def walk(
                 git_client=git_client,
                 report_name="cargo test" + name_postfix,
                 env_vars=env_vars.copy(),
-                build_options=build_options.copy(),
-                test_options=test_options.copy(),
+                build_options=build_options,
+                test_options=test_options,
             ),
             CargoRustyRTSHook(
                 repository=repository,
@@ -90,8 +90,8 @@ def walk(
                 report_name="cargo rustyrts basic" + name_postfix,
                 mode=RustyRTSMode.BASIC,
                 env_vars=env_vars.copy(),
-                build_options=build_options.copy(),
-                test_options=test_options.copy(),
+                build_options=build_options,
+                test_options=test_options,
             ),
             CargoRustyRTSHook(
                 repository=repository,
@@ -100,8 +100,8 @@ def walk(
                 report_name="cargo rustyrts dynamic" + name_postfix,
                 mode=RustyRTSMode.DYNAMIC,
                 env_vars=env_vars.copy(),
-                build_options=build_options.copy(),
-                test_options=test_options.copy(),
+                build_options=build_options,
+                test_options=test_options,
             ),
             CargoRustyRTSHook(
                 repository=repository,
@@ -110,8 +110,8 @@ def walk(
                 report_name="cargo rustyrts static" + name_postfix,
                 mode=RustyRTSMode.STATIC,
                 env_vars=env_vars.copy(),
-                build_options=build_options.copy(),
-                test_options=test_options.copy(),
+                build_options=build_options,
+                test_options=test_options,
             ),
         ],
     )

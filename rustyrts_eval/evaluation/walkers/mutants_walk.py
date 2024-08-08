@@ -20,7 +20,7 @@ def walk(
     logging_level="DEBUG",
     commits=None,
     env_vars: Optional[dict[str]] = None,
-    options: Optional[list[str]] = None,
+    options: Optional[str] = None,
     pre_hook: Optional[Callable] = None,
 ):
     # set logging level
@@ -46,10 +46,10 @@ def walk(
     # that is why we fixed the commits that are analyzed
     (strategy, num_commits) = (GivenWalkerStrategy(commits), len(commits)) if commits else (RandomWalkerStrategy(repository, branch=branch), 20)
 
-    options = options if options else []
-    options.append("--json")
-    # options.append("--gitignore=false")
-    options.append("--in-place")
+    options = options if options else ""
+    options += " --json"
+    # options += "--gitignore=false"
+    options += " --in-place"
 
     env_vars = env_vars if env_vars else {}
 

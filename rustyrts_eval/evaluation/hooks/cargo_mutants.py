@@ -47,16 +47,16 @@ class CargoMutantsHook(Hook):
             self.cache_dir = os.path.join(tempfile.gettempdir(), ".cargo-hook")
         self.mode = mode
         self.env_vars = env_vars
-        self.options = options if options else []
-        self.test_options = test_options if test_options else []
+        self.options = options if options else ""
+        self.test_options = test_options if test_options else ""
         self.connection = connection
         self.pre_hook = pre_hook
 
     def mutants_command(self):
         return "cargo mutants-rts{0} {1} -- {2}".format(
             self.mode,
-            " ".join(self.options),
-            " ".join(self.test_options),
+            self.options,
+            self.test_options,
         )
 
     def env(self):

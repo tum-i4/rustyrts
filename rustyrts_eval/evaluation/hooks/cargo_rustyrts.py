@@ -52,8 +52,8 @@ class CargoRustyRTSHook(CargoHook):
         return env
 
     def test_command_parent(self, individual_build_options, individual_test_options):
-        build_options = " ".join(self.build_options + individual_build_options)
-        test_options = " ".join(self.test_options + individual_test_options)
+        build_options = " ".join([self.build_options, individual_build_options])
+        test_options = " ".join([self.test_options, individual_test_options])
         return "cargo rustyrts {0} {1} -- {2}".format(
             self.mode,
             build_options,
@@ -61,8 +61,8 @@ class CargoRustyRTSHook(CargoHook):
         )
 
     def test_command(self, individual_build_options, individual_test_options):
-        build_options = " ".join(self.build_options + individual_build_options)
-        test_options = " ".join(self.test_options + individual_test_options)
+        build_options = " ".join([self.build_options, individual_build_options])
+        test_options = " ".join([self.test_options, individual_test_options])
         return "cargo rustyrts {0} -Z no-index-update {1} -- {2}".format(
             self.mode,
             build_options,

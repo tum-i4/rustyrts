@@ -36,16 +36,16 @@ class CargoTestHook(CargoHook):
         )
 
     def test_command_parent(self, individual_build_options, individual_test_options):
-        build_options = " ".join(self.build_options + individual_build_options)
-        test_options = " ".join(self.test_options + individual_test_options)
+        build_options = " ".join([self.build_options, individual_build_options])
+        test_options = " ".join([self.test_options, individual_test_options])
         return "cargo test {0} --no-fail-fast -- {1}".format(
             build_options,
             test_options,
         )
 
     def test_command(self, individual_build_options, individual_test_options):
-        build_options = " ".join(self.build_options + individual_build_options)
-        test_options = " ".join(self.test_options + individual_test_options)
+        build_options = " ".join([self.build_options, individual_build_options])
+        test_options = " ".join([self.test_options, individual_test_options])
         return "cargo test {0} -Z no-index-update --no-fail-fast -- {1}".format(
             build_options,
             test_options,
