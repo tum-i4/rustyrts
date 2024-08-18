@@ -27,15 +27,17 @@ FAILED_HISTORY_MSG = "Failed git walk"
 # Projects configuration for mutants evaluation
 
 MUTANTS_PROJECTS = [
+    # Doc-tests take to long on tracing and tabled, rendering mutation testing far too time-consuming,
+    # which is why we disabled them here
     (
         "projects/mutants/tracing",
         "master",
-        [("3de7f8c6016aebc22228375dc9100c02e955c6d4", (None, None), (None, None))],
+        [("3de7f8c6016aebc22228375dc9100c02e955c6d4", (None, None), (None, "--lib --bins --tests --examples"))],
     ),
     (
         "projects/mutants/tabled",
         "master",
-        [("cc4a110d5963b7eede0e634c83c44d9e8b8250e4", (None, None), (None, None))],
+        [("cc4a110d5963b7eede0e634c83c44d9e8b8250e4", (None, None), (None, "--lib --bins --tests --examples"))],
     ),
     (
         "projects/mutants/regex",
@@ -466,24 +468,25 @@ TESTING_PROJECTS = [
         "projects/history/solana",
         "master",
         [
+            # Some test suites kept aborting abnormally, which is why we purposefully exclude them here
             ("874fbcb9d46d3b748c05d31e46b55b46ff5339cd", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
             ("87b4dc64e3fc8026515e4186c92ff4325e2ab5a7", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
-            ("6d2c14e147e0aa420fff39ad29209444885b8ce1", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
+            ("6d2c14e147e0aa420fff39ad29209444885b8ce1", ("--workspace --exclude solana-bpf-loader-program --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-geyser-plugin-manager", None)),
             ("a3e4c96bc019dfe87e81534b0be3a4279fdba21f", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
             ("63bd0cdd5d534444ac65d97ea8373337ea0c827c", ("--workspace --exclude solana-bpf-loader-program --exclude solana-accounts-cluster-bench --exclude solana-cli", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-accounts-cluster-bench --exclude solana-cli", None)),
             ("b389d509a8ecb8337adf1feca78ff7cfeccb112d", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
-            ("169307d40541fe454c7063c07a6db0261fa9937c", ("--workspace --exclude solana-local-cluster", None), ("--workspace --exclude solana-local-cluster", None)),
-            ("a2e7d1356c4ec3accee20cab9a4ed6743251cc62", (None, None), (None, None)),
+            ("169307d40541fe454c7063c07a6db0261fa9937c", ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None)),
+            ("a2e7d1356c4ec3accee20cab9a4ed6743251cc62", ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None)),
             ("4940d530b8e5d4aa1ee4ae05aee55b44cdde3663", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
             ("cd93719f68a20e78bff9f0104860cdf6d914f049", ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None)),
             ("284c41a6db8cc17e75a66c2a7814bb1ef181a56e", ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None)),
             ("416b45ac0f69cfad17e1af06f67055e228a585ad", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
-            ("8940dd01fe954dafd97837bb3ea001fa78df947d", ("--workspace --exclude solana-local-cluster", None), ("--workspace --exclude solana-local-cluster", None)),
+            ("8940dd01fe954dafd97837bb3ea001fa78df947d", ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None)),
             ("a3395a786aea208f81516c0e43d71c239bc0a631", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
-            ("39615bd075cc330177b0ac5bb056ce77a4a107b4", ("--workspace --exclude solana-local-cluster", None), ("--workspace --exclude solana-local-cluster", None)),
-            ("14d0759af0663c7739ffd0c6e94c3c57f1ebcff1", (None, None), (None, None)),
-            ("1693af8e686f582c81ab21ca32c31fe3e8e267ee", ("--workspace --exclude solana-local-cluster", None), ("--workspace --exclude solana-local-cluster", None)),
-            ("37887d487ce9b87297d9a20dd07a89adf4c66cd5", (None, None), (None, None)),
+            ("39615bd075cc330177b0ac5bb056ce77a4a107b4", ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None)),
+            ("14d0759af0663c7739ffd0c6e94c3c57f1ebcff1", ("--workspace --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-geyser-plugin-manager", None)),
+            ("1693af8e686f582c81ab21ca32c31fe3e8e267ee", ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-local-cluster --exclude solana-geyser-plugin-manager", None)),
+            ("37887d487ce9b87297d9a20dd07a89adf4c66cd5", ("--workspace --exclude solana-geyser-plugin-manager", None), ("--workspace --exclude solana-geyser-plugin-manager", None)),
             ("7c8b846344e2bf776caa008d064fe70f58e9b5b6", ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-bench-tps", None)),
             ("e3e888c0e0d24e61c9fb9a1a52e054e4fa57a11d", ("--workspace --exclude solana-bpf-loader-program", None), ("--workspace --exclude solana-bpf-loader-program", None)),
             ("4f947a0db3ff9a1622fc50527134ea7617860da8", ("--workspace --exclude solana-bpf-loader-program --exclude solana-accounts-cluster-bench --exclude solana-cli", None), ("--workspace --exclude solana-bpf-loader-program --exclude solana-accounts-cluster-bench --exclude solana-cli", None)),

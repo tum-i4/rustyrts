@@ -1013,9 +1013,92 @@ def register_views() -> MutantsViewInformation:
         .where(target_count.c.target == "INTEGRATION")
     )
 
-    percentage_failed_retest_all = (
+    doc_retest_all = (
         select(
             literal_column("'28'"),
+            literal_column("'MutantsDoctestRetestAll'"),
+            func.sum(target_count.c.retest_all_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_basic = (
+        select(
+            literal_column("'29'"),
+            literal_column("'MutantsDoctestBasic'"),
+            func.sum(target_count.c.basic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_dynamic = (
+        select(
+            literal_column("'30'"),
+            literal_column("'MutantsDoctestDynamic'"),
+            func.sum(target_count.c.dynamic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_static = (
+        select(
+            literal_column("'31'"),
+            literal_column("'MutantsDoctestStatic'"),
+            func.sum(target_count.c.static_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+
+    doc_relative_basic = (
+        select(
+            literal_column("'32'"),
+            literal_column("'MutantsDoctestRelativeBasic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.basic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_relative_dynamic = (
+        select(
+            literal_column("'33'"),
+            literal_column("'MutantsDoctestRelativeDynamic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.dynamic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_relative_static = (
+        select(
+            literal_column("'34'"),
+            literal_column("'MutantsDoctestRelativeStatic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.static_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+
+    percentage_failed_retest_all = (
+        select(
+            literal_column("'35'"),
             literal_column("'MutantsPercentageFailedRetestall'"),
             func.round(
                 func.cast(
@@ -1030,7 +1113,7 @@ def register_views() -> MutantsViewInformation:
     )
     percentage_failed_basic = (
         select(
-            literal_column("'29'"),
+            literal_column("'36'"),
             literal_column("'MutantsPercentageFailedBasic'"),
             func.round(
                 func.cast(
@@ -1045,7 +1128,7 @@ def register_views() -> MutantsViewInformation:
     )
     percentage_failed_dynamic = (
         select(
-            literal_column("'30'"),
+            literal_column("'37'"),
             literal_column("'MutantsPercentageFailedDynamic'"),
             func.round(
                 func.cast(
@@ -1060,7 +1143,7 @@ def register_views() -> MutantsViewInformation:
     )
     percentage_failed_static = (
         select(
-            literal_column("'31'"),
+            literal_column("'38'"),
             literal_column("'MutantsPercentageFailedStatic'"),
             func.round(
                 func.cast(
@@ -1101,6 +1184,13 @@ def register_views() -> MutantsViewInformation:
         integration_relative_basic,
         integration_relative_dynamic,
         integration_relative_static,
+        doc_retest_all,
+        doc_basic,
+        doc_dynamic,
+        doc_static,
+        doc_relative_basic,
+        doc_relative_dynamic,
+        doc_relative_static,
         percentage_failed_retest_all,
         percentage_failed_basic,
         percentage_failed_dynamic,

@@ -52,11 +52,13 @@ class CargoMutantsHook(Hook):
         self.connection = connection
         self.pre_hook = pre_hook
 
-    def mutants_command(self):
+    def mutants_command(self, individual_mutants_options, individual_test_options):
+        mutants_options = " ".join([self.options, individual_mutants_options])
+        test_options = " ".join([self.test_options, individual_test_options])
         return "cargo mutants-rts{0} {1} -- {2}".format(
             self.mode,
-            self.options,
-            self.test_options,
+            mutants_options,
+            test_options,
         )
 
     def env(self):
@@ -74,7 +76,11 @@ class CargoMutantsHook(Hook):
         :return:
         """
 
-        _LOGGER.info("About to start mutation testing using '" + self.mutants_command() + "' on " + self.repository.path)
+        individual_mutants_options, individual_test_options = individual_options
+        individual_mutants_options = individual_mutants_options if individual_mutants_options else ""
+        individual_test_options = individual_test_options if individual_test_options else ""
+
+        _LOGGER.info("About to start mutation testing using '" + self.mutants_command(individual_mutants_options, individual_test_options) + "' on " + self.repository.path)
         global ask_for_skip
         if ask_for_skip and input(" Skip? ") == "y":
             return True
@@ -108,7 +114,7 @@ class CargoMutantsHook(Hook):
 
         # Run test command on actual commit
         proc: SubprocessContainer = SubprocessContainer(
-            command=self.mutants_command(),
+            command=self.mutants_command(individual_mutants_options, individual_test_options),
             output_filepath=cache_file_path,
             env=self.env(),
         )

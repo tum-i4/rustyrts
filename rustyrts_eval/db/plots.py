@@ -11,10 +11,10 @@ COLORS_REGULAR = [
     ["#DAD7CB", "#005293", "#E37222", "#A2AD00"],
     ["#005293", "#E37222", "#A2AD00"],
     [
-        ["#0062b3", "#003866", "#E98C4A", "#B65C1B", "#B4BE26", "#818B00"],
-        ["#E0DED4", "#ADABA1", "#0062b3", "#003866"],
-        ["#E0DED4", "#ADABA1", "#E98C4A", "#B65C1B"],
-        ["#E0DED4", "#ADABA1", "#B4BE26", "#818B00"],
+        ["#0062b3", "#375d84", "#003866", "#E98C4A", "#c77d51", "#B65C1B", "#B4BE26", "#98a24d", "#818B00"],
+        ["#E0DED4", "#ADABA1", "#7f7e76", "#0062b3", "#375d84", "#003866"],
+        ["#E0DED4", "#ADABA1", "#7f7e76", "#E98C4A", "#c77d51", "#B65C1B"],
+        ["#E0DED4", "#ADABA1", "#7f7e76", "#B4BE26", "#98a24d", "#818B00"],
     ],
     ["#E37222"],
 ]
@@ -258,9 +258,23 @@ class HistoryPlotter:
             .where(target_count.c.target == "INTEGRATION")
             .order_by(target_count.c.commit)
         )
+        count_doc = (
+            select(
+                commit.c.repo_id.label("repository"),
+                target_count.c.retest_all_count,
+                target_count.c.basic_count,
+                target_count.c.dynamic_count,
+                target_count.c.static_count,
+            )
+            .select_from(target_count, commit)
+            .where(target_count.c.commit == commit.c.id)
+            .where(target_count.c.target == "DOCTEST")
+            .order_by(target_count.c.commit)
+        )
 
         df_unit = self.query(count_unit)
         df_integration = self.query(count_integration)
+        df_doc = self.query(count_doc)
 
         df_retest_all_unit = df_unit[["repository"]].copy()
         df_retest_all_unit["y"] = df_unit["retest_all_count"]
@@ -294,28 +308,50 @@ class HistoryPlotter:
         df_static_integration["y"] = df_integration["static_count"]
         df_static_integration["algorithm"] = "static - integration"
 
+        df_retest_all_doc = df_doc[["repository"]].copy()
+        df_retest_all_doc["y"] = df_doc["retest_all_count"]
+        df_retest_all_doc["algorithm"] = "retest_all - doctest"
+
+        df_basic_doc = df_doc[["repository"]].copy()
+        df_basic_doc["y"] = df_doc["basic_count"]
+        df_basic_doc["algorithm"] = "basic - doctest"
+
+        df_dynamic_doc = df_doc[["repository"]].copy()
+        df_dynamic_doc["y"] = df_doc["dynamic_count"]
+        df_dynamic_doc["algorithm"] = "dynamic - doctest"
+
+        df_static_doc = df_doc[["repository"]].copy()
+        df_static_doc["y"] = df_doc["static_count"]
+        df_static_doc["algorithm"] = "static - doctest"
+
         df_basic = pd.concat(
             [
                 df_retest_all_unit,
                 df_retest_all_integration,
+                df_retest_all_doc,
                 df_basic_unit,
                 df_basic_integration,
+                df_basic_doc,
             ]
         )
         df_dynamic = pd.concat(
             [
                 df_retest_all_unit,
                 df_retest_all_integration,
+                df_retest_all_doc,
                 df_dynamic_unit,
                 df_dynamic_integration,
+                df_dynamic_doc,
             ]
         )
         df_static = pd.concat(
             [
                 df_retest_all_unit,
                 df_retest_all_integration,
+                df_retest_all_doc,
                 df_static_unit,
                 df_static_integration,
+                df_static_doc,
             ]
         )
 
@@ -444,9 +480,22 @@ class HistoryPlotter:
             .where(target_count.c.target == "INTEGRATION")
             .order_by(target_count.c.commit)
         )
+        count_doc = (
+            select(
+                commit.c.repo_id.label("repository"),
+                (target_count.c.basic_count * 100.0 / target_count.c.retest_all_count).label("basic_count"),
+                (target_count.c.dynamic_count * 100.0 / target_count.c.retest_all_count).label("dynamic_count"),
+                (target_count.c.static_count * 100.0 / target_count.c.retest_all_count).label("static_count"),
+            )
+            .select_from(target_count, commit)
+            .where(target_count.c.commit == commit.c.id)
+            .where(target_count.c.target == "DOCTEST")
+            .order_by(target_count.c.commit)
+        )
 
         df_unit = self.query(count_unit)
         df_integration = self.query(count_integration)
+        df_doc = self.query(count_doc)
 
         df_basic_unit = df_unit[["repository"]].copy()
         df_basic_unit["y"] = df_unit["basic_count"]
@@ -472,14 +521,29 @@ class HistoryPlotter:
         df_static_integration["y"] = df_integration["static_count"]
         df_static_integration["algorithm"] = "static - integration"
 
+        df_basic_doc = df_doc[["repository"]].copy()
+        df_basic_doc["y"] = df_doc["basic_count"]
+        df_basic_doc["algorithm"] = "basic - doctest"
+
+        df_dynamic_doc = df_doc[["repository"]].copy()
+        df_dynamic_doc["y"] = df_doc["dynamic_count"]
+        df_dynamic_doc["algorithm"] = "dynamic - doctest"
+
+        df_static_doc = df_doc[["repository"]].copy()
+        df_static_doc["y"] = df_doc["static_count"]
+        df_static_doc["algorithm"] = "static - doctest"
+
         df = pd.concat(
             [
                 df_basic_unit,
                 df_basic_integration,
+                df_basic_doc,
                 df_dynamic_unit,
                 df_dynamic_integration,
+                df_dynamic_doc,
                 df_static_unit,
                 df_static_integration,
+                df_static_doc,
             ]
         )
         dfs = [df]
@@ -1044,9 +1108,22 @@ class MutantsPlotter:
             .where(target_count.c.target == "INTEGRATION")
             .order_by(target_count.c.commit)
         )
+        count_doc = (
+            select(
+                target_count.c.commit.label("repository"),
+                target_count.c.retest_all_count,
+                target_count.c.basic_count,
+                target_count.c.dynamic_count,
+                target_count.c.static_count,
+            )
+            .select_from(target_count)
+            .where(target_count.c.target == "DOCTEST")
+            .order_by(target_count.c.commit)
+        )
 
         df_unit = self.query(count_unit)
         df_integration = self.query(count_integration)
+        df_doc = self.query(count_doc)
 
         df_retest_all_unit = df_unit[["repository"]].copy()
         df_retest_all_unit["y"] = df_unit["retest_all_count"]
@@ -1080,28 +1157,50 @@ class MutantsPlotter:
         df_static_integration["y"] = df_integration["static_count"]
         df_static_integration["algorithm"] = "static - integration"
 
+        df_retest_all_doc = df_doc[["repository"]].copy()
+        df_retest_all_doc["y"] = df_doc["retest_all_count"]
+        df_retest_all_doc["algorithm"] = "retest_all - doctest"
+
+        df_basic_doc = df_doc[["repository"]].copy()
+        df_basic_doc["y"] = df_doc["basic_count"]
+        df_basic_doc["algorithm"] = "basic - doctest"
+
+        df_dynamic_doc = df_doc[["repository"]].copy()
+        df_dynamic_doc["y"] = df_doc["dynamic_count"]
+        df_dynamic_doc["algorithm"] = "dynamic - doctest"
+
+        df_static_doc = df_doc[["repository"]].copy()
+        df_static_doc["y"] = df_doc["static_count"]
+        df_static_doc["algorithm"] = "static - doctest"
+
         df_basic = pd.concat(
             [
                 df_retest_all_unit,
                 df_retest_all_integration,
+                df_retest_all_doc,
                 df_basic_unit,
                 df_basic_integration,
+                df_basic_doc,
             ]
         )
         df_dynamic = pd.concat(
             [
                 df_retest_all_unit,
                 df_retest_all_integration,
+                df_retest_all_doc,
                 df_dynamic_unit,
                 df_dynamic_integration,
+                df_dynamic_doc,
             ]
         )
         df_static = pd.concat(
             [
                 df_retest_all_unit,
                 df_retest_all_integration,
+                df_retest_all_doc,
                 df_static_unit,
                 df_static_integration,
+                df_static_doc,
             ]
         )
 
@@ -1165,7 +1264,7 @@ class MutantsPlotter:
             labels_dynamic,
             y_label,
             file + "_dynamic" + self.output_format,
-            COLORS[2][1],
+            COLORS[2][2],
         )
 
         if partition:
@@ -1193,7 +1292,7 @@ class MutantsPlotter:
             labels_static,
             y_label,
             file + "_static" + self.output_format,
-            COLORS[2][2],
+            COLORS[2][3],
         )
 
     def plot_mutants_target_count_relative(self):
@@ -1224,9 +1323,21 @@ class MutantsPlotter:
             .where(target_count.c.target == "INTEGRATION")
             .order_by(target_count.c.commit)
         )
+        count_doc = (
+            select(
+                target_count.c.commit.label("repository"),
+                (target_count.c.basic_count * 100.0 / target_count.c.retest_all_count).label("basic_count"),
+                (target_count.c.dynamic_count * 100.0 / target_count.c.retest_all_count).label("dynamic_count"),
+                (target_count.c.static_count * 100.0 / target_count.c.retest_all_count).label("static_count"),
+            )
+            .select_from(target_count)
+            .where(target_count.c.target == "DOCTEST")
+            .order_by(target_count.c.commit)
+        )
 
         df_unit = self.query(count_unit)
         df_integration = self.query(count_integration)
+        df_doc = self.query(count_doc)
 
         df_basic_unit = df_unit[["repository"]].copy()
         df_basic_unit["y"] = df_unit["basic_count"]
@@ -1252,14 +1363,29 @@ class MutantsPlotter:
         df_static_integration["y"] = df_integration["static_count"]
         df_static_integration["algorithm"] = "static - integration"
 
+        df_basic_doc = df_doc[["repository"]].copy()
+        df_basic_doc["y"] = df_doc["basic_count"]
+        df_basic_doc["algorithm"] = "basic - doctest"
+
+        df_dynamic_doc = df_doc[["repository"]].copy()
+        df_dynamic_doc["y"] = df_doc["dynamic_count"]
+        df_dynamic_doc["algorithm"] = "dynamic - doctest"
+
+        df_static_doc = df_doc[["repository"]].copy()
+        df_static_doc["y"] = df_doc["static_count"]
+        df_static_doc["algorithm"] = "static - doctest"
+
         df = pd.concat(
             [
                 df_basic_unit,
                 df_basic_integration,
+                df_basic_doc,
                 df_dynamic_unit,
                 df_dynamic_integration,
+                df_dynamic_doc,
                 df_static_unit,
                 df_static_integration,
+                df_static_doc,
             ]
         )
         dfs = [df]

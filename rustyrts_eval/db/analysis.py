@@ -1,14 +1,8 @@
 from sqlalchemy import Enum, String, Integer, Column, select
-from sqlalchemy.engine import Engine
 from sqlalchemy.ext.declarative import declared_attr, as_declarative
-from sqlalchemy.orm import sessionmaker, Session
 
 from rustyrts_eval.db.git import DBCommit
 from rustyrts_eval.models.testing.base import TestStatus
-
-from ..util.logging.logger import get_logger
-
-_LOGGER = get_logger(__name__)
 
 
 def get_test_diff_and_intersection(retest_all, other):
@@ -28,7 +22,6 @@ class Base:
     id = Column(Integer, primary_key=True, index=True)
     reason = Column(String)
     comment = Column(String)
-    __name__: str
 
     @classmethod
     @declared_attr
@@ -39,13 +32,15 @@ class Base:
 class DBMutantsTestsNotContained(Base):
     commit_id = Column(Integer, nullable=False)
     test_name = Column(String, nullable=False)
+    mutants = Column(String)
     not_contained_count = Column(Integer)
 
-    def __init__(self, commit, test_name, not_contained_count):
+    def __init__(self, commit, test_name, mutants, not_contained_count):
         super().__init__()
 
         self.commit_id = commit
         self.test_name = test_name
+        self.mutants = mutants
         self.not_contained_count = not_contained_count
 
 
@@ -109,14 +104,14 @@ def mutants_testcases_contained(connection, view_info):
 
         for test in diff:
             if test not in not_selected_static[repository]:
-                not_selected_static[repository][test] = 1
+                not_selected_static[repository][test] = descr
             else:
-                not_selected_static[repository][test] += 1
+                not_selected_static[repository][test] += "\n" + descr
 
     with connection.create_session_ctx() as session:
         for commit in not_selected_static:
-            for test, count in not_selected_static[commit].items():
-                entry = DBMutantsTestsNotContained(commit, test, count)
+            for test, mutants in not_selected_static[commit].items():
+                entry = DBMutantsTestsNotContained(commit, test, mutants, mutants.count("\n") + 1)
                 session.add(entry)
         session.commit()
 
@@ -189,9 +184,9 @@ def mutants_failed_not_selected(connection, view_info):
 
         for test in diff_basic:
             if test not in not_selected_basic[repository]:
-                not_selected_dynamic[repository][test] = descr
+                not_selected_basic[repository][test] = descr
             else:
-                not_selected_dynamic[repository][test] += "\n" + descr
+                not_selected_basic[repository][test] += "\n" + descr
 
         for test in diff_dynamic:
             if test not in not_selected_dynamic[repository]:

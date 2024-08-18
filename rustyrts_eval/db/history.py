@@ -1294,9 +1294,92 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         .where(target_count.c.target == "INTEGRATION")
     )
 
+    doc_retest_all = (
+        select(
+            literal_column("'29'"),
+            literal_column("'HistoryDoctestRetestAll'"),
+            func.sum(target_count.c.retest_all_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_basic = (
+        select(
+            literal_column("'30'"),
+            literal_column("'HistoryDoctestBasic'"),
+            func.sum(target_count.c.basic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_dynamic = (
+        select(
+            literal_column("'31'"),
+            literal_column("'HistoryDoctestDynamic'"),
+            func.sum(target_count.c.dynamic_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_static = (
+        select(
+            literal_column("'32'"),
+            literal_column("'HistoryDoctestStatic'"),
+            func.sum(target_count.c.static_count),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+
+    doc_relative_basic = (
+        select(
+            literal_column("'33'"),
+            literal_column("'HistoryDoctestRelativeBasic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.basic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_relative_dynamic = (
+        select(
+            literal_column("'34'"),
+            literal_column("'HistoryDoctestRelativeDynamic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.dynamic_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+    doc_relative_static = (
+        select(
+            literal_column("'35'"),
+            literal_column("'HistoryDoctestRelativeStatic'"),
+            func.round(
+                func.cast(
+                    func.sum(target_count.c.static_count) / func.sum(target_count.c.retest_all_count) * 100.0,
+                    NUMERIC,
+                ),
+                2,
+            ),
+        )
+        .select_from(target_count)
+        .where(target_count.c.target == "DOCTEST")
+    )
+
     average_testing_time = (
         select(
-            literal_column("29"),
+            literal_column("36"),
             literal_column("'HistoryAverageTestingTime'"),
             duration.c.retest_all_mean,
         )
@@ -1305,7 +1388,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     average_testing_time_min = (
         select(
-            literal_column("30"),
+            literal_column("37"),
             literal_column("'HistoryAverageTestingTimeMin'"),
             func.min(duration.c.retest_all_mean),
         )
@@ -1314,7 +1397,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     average_testing_time_max = (
         select(
-            literal_column("31"),
+            literal_column("38"),
             literal_column("'HistoryAverageTestingTimeMax'"),
             func.max(duration.c.retest_all_mean),
         )
@@ -1324,7 +1407,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
 
     efficiency_basic = (
         select(
-            literal_column("32"),
+            literal_column("39"),
             literal_column("'HistoryEfficiencyBasic'"),
             duration.c.basic_mean_relative,
         )
@@ -1333,7 +1416,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_basic_min = (
         select(
-            literal_column("33"),
+            literal_column("40"),
             literal_column("'HistoryEfficiencyBasicMin'"),
             func.min(duration.c.basic_mean_relative),
         )
@@ -1342,7 +1425,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_basic_max = (
         select(
-            literal_column("34"),
+            literal_column("41"),
             literal_column("'HistoryEfficiencyBasicMax'"),
             func.max(duration.c.basic_mean_relative),
         )
@@ -1352,7 +1435,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
 
     efficiency_dynamic = (
         select(
-            literal_column("35"),
+            literal_column("42"),
             literal_column("'HistoryEfficiencyDynamic'"),
             duration.c.dynamic_mean_relative,
         )
@@ -1361,7 +1444,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_dynamic_min = (
         select(
-            literal_column("36"),
+            literal_column("43"),
             literal_column("'HistoryEfficiencyDynamicMin'"),
             func.min(duration.c.dynamic_mean_relative),
         )
@@ -1370,7 +1453,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_dynamic_max = (
         select(
-            literal_column("37"),
+            literal_column("44"),
             literal_column("'HistoryEfficiencyDynamicMax'"),
             func.max(duration.c.dynamic_mean_relative),
         )
@@ -1380,7 +1463,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
 
     efficiency_static = (
         select(
-            literal_column("38"),
+            literal_column("45"),
             literal_column("'HistoryEfficiencyStatic'"),
             duration.c.static_mean_relative,
         )
@@ -1389,7 +1472,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_static_min = (
         select(
-            literal_column("39"),
+            literal_column("46"),
             literal_column("'HistoryEfficiencyStaticMin'"),
             func.min(duration.c.static_mean_relative),
         )
@@ -1398,7 +1481,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_static_max = (
         select(
-            literal_column("40"),
+            literal_column("47"),
             literal_column("'HistoryEfficiencyStaticMax'"),
             func.max(duration.c.static_mean_relative),
         )
@@ -1408,7 +1491,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
 
     efficiency_better_basic = (
         select(
-            literal_column("41"),
+            literal_column("48"),
             literal_column("'HistoryEfficiencyBetterBasic'"),
             0 + func.sum(1),
         )
@@ -1418,7 +1501,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_better_dynamic = (
         select(
-            literal_column("42"),
+            literal_column("49"),
             literal_column("'HistoryEfficiencyBetterDynamic'"),
             0 + func.sum(1),
         )
@@ -1428,7 +1511,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
     efficiency_better_static = (
         select(
-            literal_column("43"),
+            literal_column("50"),
             literal_column("'HistoryEfficiencyBetterStatic'"),
             0 + func.sum(1),
         )
@@ -1438,7 +1521,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     )
 
     build_overhead_basic = select(
-        literal_column("44"),
+        literal_column("51"),
         literal_column("'HistoryBuildOverheadBasic'"),
         func.round(
             func.cast(
@@ -1448,8 +1531,9 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
             2,
         ),
     ).select_from(report_parent)
+
     build_overhead_dynamic = select(
-        literal_column("45"),
+        literal_column("52"),
         literal_column("'HistoryBuildOverheadDynamic'"),
         func.round(
             func.cast(
@@ -1460,7 +1544,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         ),
     ).select_from(report_parent)
     build_overhead_static = select(
-        literal_column("46"),
+        literal_column("53"),
         literal_column("'HistoryBuildOverheadStatic'"),
         func.round(
             func.cast(
@@ -1472,7 +1556,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     ).select_from(report_parent)
 
     build_overhead_basic_parent = select(
-        literal_column("47"),
+        literal_column("54"),
         literal_column("'HistoryBuildOverheadParentBasic'"),
         func.round(
             func.cast(
@@ -1483,7 +1567,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         ),
     ).select_from(report_parent)
     build_overhead_dynamic_parent = select(
-        literal_column("48"),
+        literal_column("55"),
         literal_column("'HistoryBuildOverheadParentDynamic'"),
         func.round(
             func.cast(
@@ -1494,7 +1578,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         ),
     ).select_from(report_parent)
     build_overhead_static_parent = select(
-        literal_column("49"),
+        literal_column("56"),
         literal_column("'HistoryBuildOverheadParentStatic'"),
         func.round(
             func.cast(
@@ -1506,7 +1590,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     ).select_from(report_parent)
 
     test_overhead_basic = select(
-        literal_column("50"),
+        literal_column("57"),
         literal_column("'HistoryTestOverheadBasic'"),
         func.round(
             func.cast(
@@ -1517,7 +1601,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         ),
     ).select_from(report_parent)
     test_overhead_dynamic = select(
-        literal_column("51"),
+        literal_column("58"),
         literal_column("'HistoryTestOverheadDynamic'"),
         func.round(
             func.cast(
@@ -1528,7 +1612,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         ),
     ).select_from(report_parent)
     test_overhead_static = select(
-        literal_column("52"),
+        literal_column("59"),
         literal_column("'HistoryTestOverheadStatic'"),
         func.round(
             func.cast(
@@ -1540,7 +1624,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
     ).select_from(report_parent)
 
     test_overhead_basic_parent = select(
-        literal_column("53"),
+        literal_column("60"),
         literal_column("'HistoryTestOverheadParentBasic'"),
         func.round(
             func.cast(
@@ -1551,7 +1635,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         ),
     ).select_from(report_parent)
     test_overhead_dynamic_parent = select(
-        literal_column("54"),
+        literal_column("61"),
         literal_column("'HistoryTestOverheadParentDynamic'"),
         func.round(
             func.cast(
@@ -1562,7 +1646,7 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         ),
     ).select_from(report_parent)
     test_overhead_static_parent = select(
-        literal_column("55"),
+        literal_column("62"),
         literal_column("'HistoryTestOverheadParentStatic'"),
         func.round(
             func.cast(
@@ -1601,6 +1685,13 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         integration_relative_basic,
         integration_relative_dynamic,
         integration_relative_static,
+        doc_retest_all,
+        doc_basic,
+        doc_dynamic,
+        doc_static,
+        doc_relative_basic,
+        doc_relative_dynamic,
+        doc_relative_static,
         average_testing_time,
         average_testing_time_min,
         average_testing_time_max,
