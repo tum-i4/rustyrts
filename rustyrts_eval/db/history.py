@@ -66,7 +66,7 @@ class DBTestReport(Base, TestReport, metaclass=DBTestReportMeta):
     build_duration = Column(Float)
     suites: Mapped[List["DBTestSuite"]] = relationship("DBTestSuite", back_populates="report")
     commit_str = Column(String, nullable=False)
-    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
+    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE", onupdate="CASCADE"))
     commit: Mapped[DBCommit] = relationship("DBCommit", back_populates="reports")
     log = Column(Text)
     has_failed = Column(Boolean)
@@ -153,7 +153,7 @@ class DBTestSuite(Base, TestSuite, metaclass=DBTestSuiteMeta):
     filtered_out_count = Column(Integer)
     report_id = Column(
         Integer,
-        ForeignKey("{}.id".format(DBTestReport.__tablename__), ondelete="CASCADE"),
+        ForeignKey("{}.id".format(DBTestReport.__tablename__), ondelete="CASCADE", onupdate="CASCADE"),
     )
     report = relationship("DBTestReport", back_populates="suites")
     cases: Mapped[List["DBTestCase"]] = relationship("DBTestCase", back_populates="suite", cascade="all, delete-orphan")
@@ -203,7 +203,7 @@ class DBTestCase(Base, TestCase, metaclass=DBTestCaseMeta):
     duration = Column(Float)
     suite_id = Column(
         Integer,
-        ForeignKey("{}.id".format(DBTestSuite.__tablename__), ondelete="CASCADE"),
+        ForeignKey("{}.id".format(DBTestSuite.__tablename__), ondelete="CASCADE", onupdate="CASCADE"),
     )
     suite = relationship("DBTestSuite", back_populates="cases")
     stdout = Column(String)

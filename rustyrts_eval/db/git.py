@@ -86,7 +86,7 @@ class DBCommit(Base, Commit, metaclass=DBCommitMeta):
     changelist: Mapped[List["DBChangelistItem"]] = relationship("DBChangelistItem", back_populates="commit")
     repo_id = Column(
         Integer,
-        ForeignKey("{}.id".format(DBRepository.__tablename__), ondelete="CASCADE"),
+        ForeignKey("{}.id".format(DBRepository.__tablename__), ondelete="CASCADE", onupdate="CASCADE"),
     )
     repo: Mapped[Optional[DBRepository]] = relationship("DBRepository", back_populates="commits")
     reports = relationship("DBTestReport", back_populates="commit")
@@ -172,7 +172,7 @@ class DBChangelistItem(Base, ChangelistItem, metaclass=DBChangelistItemMeta):
     action = Column(Enum(ChangelistItemAction))
     kind = Column(Enum(ChangelistItemKind))
     content = Column(String)
-    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
+    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE", onupdate="CASCADE"))
     commit = relationship("DBCommit", back_populates="changelist")
 
     @classmethod

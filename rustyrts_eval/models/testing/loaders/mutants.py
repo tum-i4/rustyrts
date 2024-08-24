@@ -64,13 +64,13 @@ class CargoMutantsTestReportLoader:
                 test_duration = re.search(r"^result: .* in (.*)s", elements[4 + offset], flags=re.MULTILINE).group(1)
                 test_log = elements[3 + offset].replace("\x00", "")
 
-            if test_log:
-                test_loader = CargoTestTestReportLoader(test_log)
-                try:
-                    suites = [MutantsTestSuite.from_test_suite(suite) for suite in test_loader.load()]
-                except:
-                    test_log = "Failed to parse testsuites\n" + test_log
-                    _LOGGER.warning("Failed to parse testsuites in file " + file)
+            # if test_log:
+            #     test_loader = CargoTestTestReportLoader(test_log)
+            #     try:
+            #         suites = [MutantsTestSuite.from_test_suite(suite) for suite in test_loader.load()]
+            #     except:
+            #         test_log = "Failed to parse testsuites\n" + test_log
+            #         _LOGGER.warning("Failed to parse testsuites in file " + file)
 
             mutant = Mutant(
                 descr=descr,

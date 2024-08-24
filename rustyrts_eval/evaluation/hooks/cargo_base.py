@@ -196,16 +196,17 @@ class CargoHook(Hook, ABC):
                 # ******************************************************************************************************
                 # Parse result
 
+                test_suites = []
                 log = proc.output
 
-                # parse test_suites
-                loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
-                try:
-                    test_suites = loader.load()
-                except:
-                    has_errored = True
-                    log = "Failed to parse testsuites\n" + log
-                    test_suites = []
+                # # parse test_suites
+                # loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
+                # try:
+                #     test_suites = loader.load()
+                # except:
+                #     has_errored = True
+                #     log = "Failed to parse testsuites\n" + log
+                #     test_suites = []
 
                 # create test report object
                 test_report: TestReport = TestReport(
@@ -302,16 +303,17 @@ class CargoHook(Hook, ABC):
                 # ******************************************************************************************************
                 # Parse result
 
+                test_suites = []
                 log = proc.output
 
-                # parse test_suites
-                loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
-                try:
-                    test_suites = loader.load()
-                except:
-                    has_errored = True
-                    log = "Failed to parse testsuites\n" + log
-                    test_suites = []
+                # # parse test_suites
+                # loader = CargoTestTestReportLoader(proc.output, load_ignored=False)
+                # try:
+                #     test_suites = loader.load()
+                # except:
+                #     has_errored = True
+                #     log = "Failed to parse testsuites\n" + log
+                #     test_suites = []
 
                 # create test report object
                 test_report: TestReport = TestReport(

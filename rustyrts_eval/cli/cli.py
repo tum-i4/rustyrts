@@ -2,6 +2,9 @@ import logging
 
 import click
 
+from rustyrts_eval.cli.db.consolidate import consolidate
+from rustyrts_eval.cli.db.parse import parse
+
 from .analyze.commands import analyze
 from .analyze.plots import plot
 from .db.commands import db
@@ -47,6 +50,8 @@ def version(ctx):
 
 
 entry_point.add_command(db)
+entry_point.add_command(consolidate)
+entry_point.add_command(parse)
 entry_point.add_command(evaluate)
 entry_point.add_command(analyze)
 entry_point.add_command(plot)

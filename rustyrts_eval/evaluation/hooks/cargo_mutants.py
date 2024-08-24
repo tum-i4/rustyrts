@@ -161,7 +161,6 @@ class CargoMutantsHook(Hook):
 
         with self.connection.create_session_ctx() as session:
             test_report = DBMutantsReport.create_or_update(report=test_report, session=session)
-            _LOGGER.warning("Mutants " + str(test_report.mutants))
             session.commit()
 
         if not has_failed:

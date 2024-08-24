@@ -69,7 +69,7 @@ class DBMutantsReport(Base, MutantsReport, metaclass=DBMutantsReportMeta):
     duration = Column(Float)
     mutants: Mapped[List["DBMutant"]] = relationship("DBMutant", back_populates="report")
     commit_str = Column(String, nullable=False)
-    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE"))
+    commit_id = Column(Integer, ForeignKey("{}.id".format(DBCommit.__tablename__), ondelete="CASCADE", onupdate="CASCADE"))
     commit: Mapped[DBCommit] = relationship("DBCommit", back_populates="mutants_reports")
     log = Column(Text)
     has_failed = Column(Boolean)
@@ -168,7 +168,7 @@ class DBMutant(Base, Mutant, metaclass=DBMutantMeta):
     test_log = Column(String, nullable=True)
     report_id = Column(
         Integer,
-        ForeignKey("{}.id".format(DBMutantsReport.__tablename__), ondelete="CASCADE"),
+        ForeignKey("{}.id".format(DBMutantsReport.__tablename__), ondelete="CASCADE", onupdate="CASCADE"),
     )
     report = relationship("DBMutantsReport", back_populates="mutants")
     suites: Mapped[List["DBMutantsTestSuite"]] = relationship("DBMutantsTestSuite", back_populates="mutant")
@@ -221,7 +221,7 @@ class DBMutantsTestSuite(Base, MutantsTestSuite, metaclass=DBMutantsTestSuiteMet
     ignored_count = Column(Integer)
     measured_count = Column(Integer)
     filtered_out_count = Column(Integer)
-    mutant_id = Column(Integer, ForeignKey("{}.id".format(DBMutant.__tablename__), ondelete="CASCADE"))
+    mutant_id = Column(Integer, ForeignKey("{}.id".format(DBMutant.__tablename__), ondelete="CASCADE", onupdate="CASCADE"))
     mutant = relationship("DBMutant", back_populates="suites")
     cases: Mapped[List["DBMutantsTestCase"]] = relationship("DBMutantsTestCase", back_populates="suite", cascade="all, delete-orphan")
 
@@ -270,7 +270,7 @@ class DBMutantsTestCase(Base, MutantsTestCase, metaclass=DBMutantsTestCaseMeta):
     duration = Column(Float)
     suite_id = Column(
         Integer,
-        ForeignKey("{}.id".format(DBMutantsTestSuite.__tablename__), ondelete="CASCADE"),
+        ForeignKey("{}.id".format(DBMutantsTestSuite.__tablename__), ondelete="CASCADE", onupdate="CASCADE"),
     )
     suite = relationship("DBMutantsTestSuite", back_populates="cases")
     stdout = Column(String)
