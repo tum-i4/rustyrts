@@ -205,7 +205,7 @@ class HistoryPlotter:
         df_static["algorithm"] = "static"
 
         scatterplot(
-            [df_dynamic, df_static],
+            [df_basic, df_dynamic, df_static],
             ["basic - " + reg_label, "dynamic - " + reg_label, "static - " + reg_label],
             x_label,
             y_label,
@@ -215,7 +215,7 @@ class HistoryPlotter:
         )
 
         scatterplot(
-            [df_dynamic, df_static],
+            [df_basic, df_dynamic, df_static],
             ["basic - " + reg_label, "dynamic - " + reg_label, "static - " + reg_label],
             x_label,
             y_label,
@@ -1771,8 +1771,8 @@ class MutantsPlotter:
         labels_not_selected = [self.labels["path"]]
 
         if partition:
-            filter_normal = [1, 2, 3, 4, 6, 8, 9]
-            filter_special = [5, 7]
+            filter_normal = [1, 2, 3, 4, 6, 7, 8, 9]
+            filter_special = [5]
 
             labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_2 = self.labels[(self.labels["id"].isin(filter_special))]

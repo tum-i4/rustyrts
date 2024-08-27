@@ -1,81 +1,77 @@
-[submodule "projects/mutants/orion"]
-	path = projects/mutants/orion
-	url = https://github.com/orion-rs/orion.git
-[submodule "projects/mutants/pulldown-cmark"]
-	path = projects/mutants/pulldown-cmark
-	url = https://github.com/raphlinus/pulldown-cmark.git
-[submodule "projects/mutants/regex"]
-	path = projects/mutants/regex
-	url = https://github.com/rust-lang/regex.git
-[submodule "projects/mutants/ripgrep"]
-	path = projects/mutants/ripgrep
-	url = https://github.com/BurntSushi/ripgrep.git
-[submodule "projects/mutants/rust-openssl"]
-	path = projects/mutants/rust-openssl
-	url = https://github.com/sfackler/rust-openssl.git
-[submodule "projects/mutants/rustls"]
-	path = projects/mutants/rustls
-	url = https://github.com/rustls/rustls.git
-[submodule "projects/mutants/tabled"]
-	path = projects/mutants/tabled
-	url = https://github.com/zhiburt/tabled.git
 [submodule "projects/mutants/tracing"]
 	path = projects/mutants/tracing
 	url = https://github.com/tokio-rs/tracing
-[submodule "projects/mutants/trust-dns"]
-	path = projects/mutants/trust-dns
-	url = https://github.com/bluejekyll/trust-dns
+[submodule "projects/mutants/tabled"]
+	path = projects/mutants/tabled
+	url = https://github.com/zhiburt/tabled.git
+[submodule "projects/mutants/regex"]
+	path = projects/mutants/regex
+	url = https://github.com/rust-lang/regex.git
+[submodule "projects/mutants/rustls"]
+	path = projects/mutants/rustls
+	url = https://github.com/rustls/rustls.git
+[submodule "projects/mutants/rust-openssl"]
+	path = projects/mutants/rust-openssl
+	url = https://github.com/sfackler/rust-openssl.git
+[submodule "projects/mutants/pulldown-cmark"]
+	path = projects/mutants/pulldown-cmark
+	url = https://github.com/raphlinus/pulldown-cmark.git
+[submodule "projects/mutants/orion"]
+	path = projects/mutants/orion
+	url = https://github.com/orion-rs/orion.git
+[submodule "projects/mutants/ripgrep"]
+	path = projects/mutants/ripgrep
+	url = https://github.com/BurntSushi/ripgrep.git
+[submodule "projects/mutants/rbatis"]
+	path = projects/mutants/rbatis
+	url = https://github.com/rbatis/rbatis.git
+
 [submodule "projects/history/actix-web"]
 	path = projects/history/actix-web
 	url = https://github.com/actix/actix-web
 [submodule "projects/history/arrow-datafusion"]
 	path = projects/history/arrow-datafusion
 	url = https://github.com/apache/arrow-datafusion
+[submodule "projects/history/exonum"]
+	path = projects/history/exonum
+	url = https://github.com/exonum/exonum
 [submodule "projects/history/feroxbuster"]
 	path = projects/history/feroxbuster
 	url = https://github.com/epi052/feroxbuster
+[submodule "projects/history/horaedb"]
+	path = projects/history/horaedb
+	url = https://github.com/apache/horaedb.git
+[submodule "projects/history/meilisearch"]
+	path = projects/history/meilisearch
+	url = https://github.com/meilisearch/meilisearch
 [submodule "projects/history/nushell"]
 	path = projects/history/nushell
 	url = https://github.com/nushell/nushell
-[submodule "projects/history/ockam"]
-	path = projects/history/ockam
-	url = https://github.com/build-trust/ockam
 [submodule "projects/history/rayon"]
 	path = projects/history/rayon
 	url = https://github.com/rayon-rs/rayon
 [submodule "projects/history/rust-analyzer"]
 	path = projects/history/rust-analyzer
 	url = https://github.com/rust-lang/rust-analyzer
+[submodule "projects/history/tantivy"]
+	path = projects/history/tantivy
+	url = https://github.com/quickwit-oss/tantivy
 [submodule "projects/history/wasmer"]
 	path = projects/history/wasmer
 	url = https://github.com/wasmerio/wasmer
 [submodule "projects/history/zenoh"]
 	path = projects/history/zenoh
 	url = https://github.com/eclipse-zenoh/zenoh
-[submodule "projects/history/exonum"]
-	path = projects/history/exonum
-	url = https://github.com/exonum/exonum
-[submodule "projects/history/tantivy"]
-	path = projects/history/tantivy
-	url = https://github.com/quickwit-oss/tantivy
-[submodule "projects/history/meilisearch"]
-	path = projects/history/meilisearch
-	url = https://github.com/meilisearch/meilisearch
 [submodule "projects/history/penumbra"]
 	path = projects/history/penumbra
 	url = https://github.com/penumbra-zone/penumbra
-[submodule "projects/small/budget"]
-	path = projects/small/budget
-	url = https://github.com/shterrett/budget
-[submodule "projects/mutants/rbatis"]
-	path = projects/mutants/rbatis
-	url = https://github.com/rbatis/rbatis.git
-[submodule "projects/small/anyhow"]
-	path = projects/small/anyhow
-	url = https://github.com/dtolnay/anyhow.git
 [submodule "projects/history/solana"]
 	path = projects/history/solana
 	url = https://github.com/solana-labs/solana.git
-[submodule "projects/history/horaedb"]
-	path = projects/history/horaedb
-	url = https://github.com/apache/horaedb.git
+
+[submodule "projects/small/budget"]
+	path = projects/small/budget
+	url = https://github.com/shterrett/budget
+[submodule "projects/small/anyhow"]
+	path = projects/small/anyhow
+	url = https://github.com/dtolnay/anyhow.git
