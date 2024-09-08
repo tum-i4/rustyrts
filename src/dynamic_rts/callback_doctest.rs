@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use crate::{
     callbacks_shared::{
-        AnalysisCallback, ChecksumsCallback, RTSContext, ENTRY_FN, NEW_CHECKSUMS_VTBL,
-        OLD_VTABLE_ENTRIES,
+        AnalysisCallback, ChecksumsCallback, RTSContext, DOCTEST_PREFIX, ENTRY_FN,
+        NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
     },
     constants::{ENV_SKIP_ANALYSIS, ENV_SKIP_INSTRUMENTATION, SUFFIX_DYN},
     dynamic_rts::{
@@ -53,8 +53,10 @@ impl InstrumentingCallback for InstrumentingDoctestRTSCallbacks {
                     .chars()
                     .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
                     .collect::<String>();
+                let fn_name = DOCTEST_PREFIX.to_string() + &doctest_name;
 
                 body.insert_post_test(tcx, &doctest_name, &mut cache_ret, true);
+                body.insert_trace(tcx, &fn_name, &mut cache_ret);
                 body.insert_pre_test(tcx, &doctest_name, &mut cache_ret, true);
                 return;
             }

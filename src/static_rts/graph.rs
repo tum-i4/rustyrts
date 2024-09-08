@@ -367,23 +367,23 @@ pub mod pretty {
         fn edges(&'a self) -> dot::Edges<'a, Edge<'arena>> {
             let mut vec = Vec::new();
 
-            for (end, edges) in self
+            let edges = self
                 .backwards_edges
                 .iter()
-                .sorted_by(|(s1, _), (s2, _)| Ord::cmp(s1.as_str(), s2.as_str()))
-            {
-                for (start, types) in edges
-                    .iter()
-                    .sorted_by(|(e1, _), (e2, _)| Ord::cmp(e1.as_str(), e2.as_str()))
-                {
-                    for ty in types.into_iter() {
-                        if ty != EdgeType::Trimmed {
-                            vec.push(Edge {
-                                start: *start,
-                                end: *end,
-                                ty,
-                            });
-                        }
+                .flat_map(|(end, edges)| {
+                    edges.iter().map(move |(start, types)| (start, end, types))
+                })
+                .sorted_by(|(_, e1, _), (_, e2, _)| Ord::cmp(e1.as_str(), e2.as_str()))
+                .sorted_by(|(s1, _, _), (s2, _, _)| Ord::cmp(s1.as_str(), s2.as_str()));
+
+            for (start, end, types) in edges {
+                for ty in types.into_iter() {
+                    if ty != EdgeType::Trimmed {
+                        vec.push(Edge {
+                            start: *start,
+                            end: *end,
+                            ty,
+                        });
                     }
                 }
             }

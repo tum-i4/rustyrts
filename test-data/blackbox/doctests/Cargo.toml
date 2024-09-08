@@ -7,11 +7,13 @@ edition = "2021"
 
 [features]
 changes_run = []
+changes_main = []
 changes_compile_fail = []
 changes_no_run = []
 changes_should_panic = []
 
 changes_indirect_run = []
+changes_indirect_main = []
 changes_indirect_should_panic = []
 
 [dependencies]

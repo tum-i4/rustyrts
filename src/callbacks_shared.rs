@@ -395,6 +395,7 @@ pub trait ChecksumsCallback {
 
         let changed_nodes = calculate_changes(
             from_new_revision,
+            doctest_name.as_ref(),
             new_checksums.get().unwrap(),
             new_checksums_vtbl.get().unwrap(),
             new_checksums_const.get().unwrap(),
@@ -459,6 +460,7 @@ pub trait ChecksumsCallback {
 
 fn calculate_changes(
     from_new_revision: bool,
+    maybe_doctest_name: Option<&String>,
     new_checksums: &Checksums,
     new_checksums_vtbl: &Checksums,
     new_checksums_const: &Checksums,
@@ -487,6 +489,15 @@ fn calculate_changes(
         };
 
         if changed {
+            // In case of a doc test with dedicated main function, we need to swap out its name here
+            let name = (name == "rust_out::main")
+                .then(|| {
+                    maybe_doctest_name
+                        .map(|doctest_name| DOCTEST_PREFIX.to_string() + &doctest_name)
+                })
+                .flatten()
+                .unwrap_or_else(|| name.clone());
+
             debug!(
                 "Changed due to regular checksums: {} {:?}/{:?}",
                 name, maybe_old, maybe_new
