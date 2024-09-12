@@ -8,6 +8,7 @@ pub const VERBOSE_COUNT: usize = 16;
 /// Is set by cargo
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
+pub const ENV_TARGET_HASH: &str = "RUSTYRTS_TARGET_HASH";
 pub const ENV_COMPILE_MODE: &str = "RUSTYRTS_COMPILE_MODE";
 pub const ENV_TARGET: &str = "RUSTYRTS_TARGET";
 

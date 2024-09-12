@@ -1,6 +1,6 @@
 extern crate cargo;
 
-use crate::{command_prelude::*, doctest_rts::run_analysis_doctests};
+use crate::{command_prelude::*, doctest_rts::run_analysis_doctests, target_hash::get_target_hash};
 use cargo::{
     core::{
         compiler::{
@@ -82,7 +82,12 @@ impl<'mode> Selection<'mode> {
         }
     }
 
-    pub(crate) fn selection_context<'target_dir: 'mode, 'arena: 'mode, 'unit_graph: 'mode>(
+    pub(crate) fn selection_context<
+        'target_dir: 'mode,
+        'arena: 'mode,
+        'unit_graph: 'mode,
+        'context: 'mode,
+    >(
         &self,
         ws: &Workspace,
         target_dir: &'target_dir Path,
@@ -97,7 +102,7 @@ impl<'mode> Selection<'mode> {
 }
 
 pub(crate) trait PreciseSelectionMode: SelectionMode {
-    fn selection_context<'context, 'arena: 'context>(
+    fn selection_context<'context, 'arena: 'context, 'a, 'cfg>(
         &self,
         ws: &Workspace<'_>,
         target_dir: &'context Path,
@@ -142,7 +147,11 @@ pub trait Selector<'context> {
     ) -> Option<TestInfo<'arena>> {
         let path_buf = CacheKind::General.map(target_dir.to_path_buf());
 
-        let crate_name = unit.target.crate_name();
+        let crate_name = format!(
+            "{}-{}",
+            unit.target.crate_name(),
+            get_target_hash(&unit.target)
+        );
         let compile_mode = format!("{:?}", unit.mode);
         let target = unit.target.kind().description();
 

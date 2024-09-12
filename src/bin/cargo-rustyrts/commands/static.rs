@@ -12,8 +12,7 @@ use std::{
 use cargo::{
     core::{
         compiler::{
-            unit_graph::{UnitDep, UnitGraph},
-            Executor, Unit,
+            unit_graph::{UnitDep, UnitGraph}, Executor, Unit,
         },
         Shell, Workspace,
     },
@@ -31,7 +30,7 @@ use rustyrts::{
 };
 use tracing::trace;
 
-use crate::{commands::convert_doctest_name, ops::PreciseExecutor};
+use crate::{commands::convert_doctest_name, ops::PreciseExecutor, target_hash::get_target_hash};
 
 use super::{
     cache::HashCache, DependencyUnit, PreciseSelectionMode, SelectionContext, SelectionMode,
@@ -230,7 +229,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
         unit: &DependencyUnit<'context>,
         pretty_print_graph: bool,
     ) -> DependencyNode<'arena> {
-        let (unit, maybe_doctest_name) = match unit {
+        let (unit, crate_name, maybe_doctest_name) = match unit {
             DependencyUnit::Unit(u) => {
                 debug_assert!(
                     matches!(u.mode, CompileMode::Test | CompileMode::Build),
@@ -238,7 +237,9 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, None)
+                let crate_name =
+                    format!("{}-{}", u.target.crate_name(), get_target_hash(&u.target));
+                (u, crate_name, None)
             }
             DependencyUnit::DoctestUnit(u, s) => {
                 debug_assert!(
@@ -247,11 +248,11 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, Some(s.as_str()))
+                let crate_name = format!("{}", u.target.crate_name());
+                (u, crate_name, Some(s.as_str()))
             }
         };
 
-        let crate_name = unit.target.crate_name();
         let compile_mode = format!("{:?}", unit.mode);
         let target = unit.target.kind().description();
 

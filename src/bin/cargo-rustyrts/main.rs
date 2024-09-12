@@ -31,6 +31,7 @@ mod commands;
 
 mod doctest_rts;
 mod ops;
+mod target_hash;
 
 //#####################################################################################################################
 // Source: https://github.com/rust-lang/cargo/blob/d0390c22b16ea6c800754fb7620ab8ee31debcc7/src/bin/cargo/main.rs

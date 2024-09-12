@@ -31,6 +31,8 @@ fn command(mode: &Mode, dir: &PathBuf, target_dir: &Path, feature: Option<&str>)
         ret.arg("--features").arg(name);
     }
 
+    ret.arg("-v");
+
     ret.env(ENV_TARGET_DIR, target_dir);
     ret.env(ENV_BLACKBOX_TEST, "true");
 

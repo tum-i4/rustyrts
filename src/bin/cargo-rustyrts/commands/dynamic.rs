@@ -9,18 +9,20 @@ use std::{
 };
 
 use cargo::{
-    core::{compiler::Executor, Workspace},
-    util::command_prelude::*,
-};
-use cargo::{
     core::{
         compiler::{
-            unit_graph::{UnitDep, UnitGraph},
-            Unit,
+            unit_graph::{UnitDep, UnitGraph}, Unit,
         },
         Shell,
     },
     CargoResult,
+};
+use cargo::{
+    core::{
+        compiler::{Executor},
+        Workspace,
+    },
+    util::command_prelude::*,
 };
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
@@ -39,6 +41,7 @@ use test::{test::parse_opts, TestOpts};
 use crate::{
     commands::{convert_doctest_name, TestInfo},
     ops::PreciseExecutor,
+    target_hash::get_target_hash,
 };
 
 use super::{
@@ -233,7 +236,7 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
         >,
         unit: &DependencyUnit<'context>,
     ) -> HashSet<ArenaIntern<'arena, String>> {
-        let (unit, maybe_doctest_name) = match unit {
+        let (unit, crate_name, maybe_doctest_name) = match unit {
             DependencyUnit::Unit(u) => {
                 debug_assert!(
                     matches!(u.mode, CompileMode::Test | CompileMode::Build),
@@ -241,7 +244,9 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, None)
+                let crate_name =
+                    format!("{}-{}", u.target.crate_name(), get_target_hash(&u.target));
+                (u, crate_name, None)
             }
             DependencyUnit::DoctestUnit(u, s) => {
                 debug_assert!(
@@ -250,11 +255,11 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, Some(s.as_str()))
+                let crate_name = format!("{}", u.target.crate_name());
+                (u, crate_name, Some(s.as_str()))
             }
         };
 
-        let crate_name = unit.target.crate_name();
         let compile_mode = format!("{:?}", unit.mode);
         let target = unit.target.kind().description();
 

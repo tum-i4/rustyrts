@@ -22,7 +22,7 @@ use tracing::{debug, trace};
 use crate::{
     checksums::{get_checksum_body, insert_hashmap},
     const_visitor::ResolvingConstVisitor,
-    constants::ENV_TARGET,
+    constants::{ENV_TARGET, ENV_TARGET_HASH},
     fs_utils::append_to_file,
 };
 use crate::{
@@ -148,6 +148,7 @@ impl AsRef<str> for Target {
         }
     }
 }
+
 pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
     fn init_analysis(&mut self, tcx: TyCtxt<'tcx>) -> RTSContext {
         let compile_mode = std::env::var(ENV_COMPILE_MODE)
@@ -169,7 +170,8 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
 
             (crate_name, Some(doctest_name))
         } else {
-            let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+            let target_hash = std::env::var(ENV_TARGET_HASH).expect("Failed to find target hash");
+            let crate_name = format!("{}-{}", tcx.crate_name(LOCAL_CRATE), target_hash);
 
             (crate_name, None)
         };
