@@ -1,6 +1,5 @@
 import gc
 import click
-from concurrent.futures import ThreadPoolExecutor
 
 
 from sqlalchemy import select
@@ -10,7 +9,6 @@ from rustyrts_eval.cli.db.commands import FAILED_CONNECTED_MSG, SUCCESS_CONNECTE
 from rustyrts_eval.db.base import DBConnection
 from rustyrts_eval.db.history import DBTestReport, DBTestSuite
 from rustyrts_eval.db.mutants import DBMutant, DBMutantsTestSuite
-from rustyrts_eval.models.testing.base import TestSuite
 from rustyrts_eval.models.testing.loaders.cargo_test import CargoTestTestReportLoader
 from rustyrts_eval.models.testing.mutants import MutantsTestSuite
 from rustyrts_eval.util.logging.cli import (
