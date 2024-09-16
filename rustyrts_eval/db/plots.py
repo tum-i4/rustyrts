@@ -21,13 +21,13 @@ COLORS_REGULAR = [
 ]
 
 COLORS_BLIND = [
-    ["#4343F9", "#005293", "#14BA14", "#BA1414", "#BA1414"],
-    ["#005293", "#14BA14"],
+    ["#DAD7CB", "#005293", "#14BA14", "#BA1414"],
+    ["#005293", "#14BA14", "#BA1414"],
     [
-        ["#ffaa00", "#996600", "#53BC53", "#118411", "#D85B5B", "#A51A1A"],
-        ["#7E7EfC", "#24249E", "#ffaa00", "#996600"],  # TODO: colors for doc tests
-        ["#7E7EfC", "#24249E", "#53BC53", "#118411"],
-        ["#7E7EfC", "#24249E", "#D85B5B", "#A51A1A"],
+        ["#ffaa00", "#c38200", "#996600", "#53BC53", "#16ae16", "#118411", "#D85B5B", "#cf2121", "#A51A1A"],
+        ["#E0DED4", "#ADABA1", "#24249E", "#ffaa00", "#c38200", "#996600"],
+        ["#E0DED4", "#ADABA1", "#24249E", "#53BC53", "#16ae16", "#118411"],
+        ["#E0DED4", "#ADABA1", "#24249E", "#D85B5B", "#cf2121", "#A51A1A"],
     ],
     [["#14BA14"], ["#BA1414"]],
 ]
@@ -96,20 +96,23 @@ class HistoryPlotter:
         labels = [self.labels["path"]]
 
         if partition:
-            filter_normal = [1, 2, 4, 5, 6, 8, 9, 10, 11]
-            filter_special = [3, 12]
+            filter_normal = [1, 2, 4, 5, 6, 8, 9, 11, 12]
+            filter_special = [3, 13]
             filter_even_more_special = [7]
+            filter_even_more_more_special = [10]
 
             labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
             labels_3 = self.labels[(self.labels["id"].isin(filter_even_more_special))]
+            labels_4 = self.labels[(self.labels["id"].isin(filter_even_more_more_special))]
 
             df_1 = df[(df["repository"].isin(filter_normal))]
             df_2 = df[(df["repository"].isin(filter_special))]
             df_3 = df[(df["repository"].isin(filter_even_more_special))]
+            df_4 = df[(df["repository"].isin(filter_even_more_more_special))]
 
-            dfs = [df_1, df_2, df_3]
-            labels = [labels_1["path"], labels_2["path"], labels_3["path"]]
+            dfs = [df_1, df_2, df_3, df_4]
+            labels = [labels_1["path"], labels_2["path"], labels_3["path"], labels_4["path"]]
 
         boxplot(
             dfs,
@@ -179,7 +182,7 @@ class HistoryPlotter:
             select(
                 duration.c.path.label("path"),
                 duration.c.repo_id.label("repository"),
-                (1.0 * statistics.c.avg_test_duration).label("retest_all_mean_testing_time"),
+                (1.0 * statistics.c.avg_test_duration_log).label("retest_all_mean_testing_time"),
                 (1.0 * duration.c.basic_mean_relative).label("basic_mean_relative"),
                 (1.0 * duration.c.static_mean_relative).label("static_mean_relative"),
                 (1.0 * duration.c.dynamic_mean_relative).label("dynamic_mean_relative"),
@@ -390,9 +393,9 @@ class HistoryPlotter:
         labels_dynamic = [self.labels["path"]]
 
         if partition:
-            filter_normal = [1, 3, 4, 5, 6, 7, 8, 10, 12]
+            filter_normal = [1, 3, 4, 5, 6, 7, 8, 12, 13]
             filter_special = [2, 11]
-            filter_even_more_special = [9]
+            filter_even_more_special = [9, 10]
 
             labels_basic_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_basic_2 = self.labels[(self.labels["id"].isin(filter_special))]
@@ -419,9 +422,9 @@ class HistoryPlotter:
         )
 
         if partition:
-            filter_normal = [1, 3, 4, 5, 6, 7, 8, 10, 12]
+            filter_normal = [1, 3, 4, 5, 6, 7, 8, 12, 13]
             filter_special = [2, 11]
-            filter_even_more_special = [9]
+            filter_even_more_special = [9, 10]
 
             labels_static_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_static_2 = self.labels[(self.labels["id"].isin(filter_special))]
@@ -448,9 +451,9 @@ class HistoryPlotter:
         )
 
         if partition:
-            filter_normal = [1, 3, 4, 5, 6, 7, 8, 10, 12]
+            filter_normal = [1, 3, 4, 5, 6, 7, 8, 12, 13]
             filter_special = [2, 11]
-            filter_even_more_special = [9]
+            filter_even_more_special = [9, 10]
 
             labels_dynamic_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_dynamic_2 = self.labels[(self.labels["id"].isin(filter_special))]
@@ -669,18 +672,18 @@ class HistoryPlotter:
         dfs = [df]
         labels = [self.labels["path"]]
 
-        if partition:
-            filter_normal = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
-            filter_special = [6]
+        # if partition:
+        #     filter_normal = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+        #     filter_special = []
 
-            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
-            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
+        #     labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+        #     labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
 
-            df_1 = df[(df["repository"].isin(filter_normal))]
-            df_2 = df[(df["repository"].isin(filter_special))]
+        #     df_1 = df[(df["repository"].isin(filter_normal))]
+        #     df_2 = df[(df["repository"].isin(filter_special))]
 
-            dfs = [df_1, df_2]
-            labels = [labels_1["path"], labels_2["path"]]
+        #     dfs = [df_1, df_2]
+        #     labels = [labels_1["path"], labels_2["path"]]
 
         stripplot(
             dfs,
@@ -700,7 +703,7 @@ class HistoryPlotter:
         labels = [self.labels["path"]]
 
         if partition:
-            filter_normal = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+            filter_normal = [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13]
             filter_special = [6]
 
             labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
@@ -723,7 +726,7 @@ class HistoryPlotter:
             sequential_watermark=self.sequential_watermark,
         )
 
-    def plot_history_testcases_count_absolute(self):
+    def plot_history_testcases_count_absolute(self, partition=False):
         y_label = "absolute number of tests"
         file = "selected_tests_absolute" + self.output_format
 
@@ -764,6 +767,22 @@ class HistoryPlotter:
         df = pd.concat([df_retest_all, df_basic, df_static, df_dynamic])
         dfs = [df]
         labels = [self.labels["path"]]
+
+        if partition:
+            filter_normal = [1, 4, 5, 6, 7, 8, 11, 12, 13]
+            filter_special = [2, 3]
+            filter_even_more_special = [9, 10]
+
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
+            labels_3 = self.labels[(self.labels["id"].isin(filter_even_more_special))]
+
+            df_1 = df[(df["repository"].isin(filter_normal))]
+            df_2 = df[(df["repository"].isin(filter_special))]
+            df_3 = df[(df["repository"].isin(filter_even_more_special))]
+
+            dfs = [df_1, df_2, df_3]
+            labels = [labels_1["path"], labels_2["path"], labels_3["path"]]
 
         boxplot(
             dfs,
@@ -1003,17 +1022,17 @@ class HistoryPlotter:
         labels_not_selected = [label]
 
         if partition:
-            filter_normal = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
-            filter_special = [2]
+            filter_normal = [1, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13]
+            filter_special = [2, 8]
 
-            labels_1 = label[:1] + label[2:]
-            labels_2 = [label[1]]
+            labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
+            labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
 
             df_selected_1 = df_selected[(df_selected["repository"].isin(filter_normal))]
             df_selected_2 = df_selected[(df_selected["repository"].isin(filter_special))]
 
             dfs_selected = [df_selected_1, df_selected_2]
-            labels_selected = [labels_1, labels_2]
+            labels_selected = [labels_1["path"], labels_2["path"]]
 
         stripplot(
             dfs_selected,

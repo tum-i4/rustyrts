@@ -117,7 +117,7 @@ def history_cmd(ctx, strategy):
         plotter.plot_history_target_count_absolute(partition=partition)
         plotter.plot_history_target_count_relative()
         plotter.plot_history_testcases_subsumption(partition=partition)
-        plotter.plot_history_testcases_count_absolute()
+        plotter.plot_history_testcases_count_absolute(partition=partition)
         plotter.plot_history_testcases_count_relative()
         plotter.plot_history_testcases_different_absolute(partition=partition)
         plotter.plot_history_efficiency_repo(partition=partition)
