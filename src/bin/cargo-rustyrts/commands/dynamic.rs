@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Display,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
     string::ToString,
@@ -9,20 +10,18 @@ use std::{
 };
 
 use cargo::{
+    core::{compiler::Executor, Workspace},
+    util::command_prelude::*,
+};
+use cargo::{
     core::{
         compiler::{
-            unit_graph::{UnitDep, UnitGraph}, Unit,
+            unit_graph::{UnitDep, UnitGraph},
+            Unit,
         },
         Shell,
     },
     CargoResult,
-};
-use cargo::{
-    core::{
-        compiler::{Executor},
-        Workspace,
-    },
-    util::command_prelude::*,
 };
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
@@ -37,6 +36,7 @@ use rustyrts::{
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
 };
 use test::{test::parse_opts, TestOpts};
+use tracing::debug;
 
 use crate::{
     commands::{convert_doctest_name, TestInfo},
@@ -307,54 +307,75 @@ impl<'arena, 'context> DynamicSelector<'arena, 'context> {
     ) -> &HashSet<ArenaIntern<'arena, String>> {
         self.cache.get(unit)
     }
+}
 
-    fn print_stats(
-        &self,
-        shell: &mut Shell,
-        changed_nodes: &HashSet<ArenaIntern<'_, String>>,
-        traced_tests: &HashSet<ArenaIntern<'_, String>>,
-        tests_found: &HashSet<ArenaIntern<'_, String>>,
-        affected_tests: &Vec<String>,
-        start_time: Instant,
-    ) -> CargoResult<()> {
-        shell.status_header("Dynamic RTS")?;
+fn print_stats(
+    shell: &mut Shell,
+    maybe_changed_nodes: Option<&HashSet<ArenaIntern<'_, String>>>,
+    traced_tests: &HashSet<ArenaIntern<'_, String>>,
+    tests_found: &HashSet<ArenaIntern<'_, String>>,
+    affected_tests: &Vec<String>,
+    start_time: Instant,
+) -> CargoResult<()> {
+    shell.status_header("Dynamic RTS")?;
 
+    if let Some(changed_nodes) = maybe_changed_nodes {
         shell.concise(|shell| {
             shell.print_ansi_stderr(format!("{} changed;", changed_nodes.len()).as_bytes())
         })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} traces;", traced_tests.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} tests found;", tests_found.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} affected;", affected_tests.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(
-                format!(" took {:.2}s\n", start_time.elapsed().as_secs_f64()).as_bytes(),
-            )
-        })?;
+    }
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} traces;", traced_tests.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} tests found;", tests_found.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} affected;", affected_tests.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(
+            format!(" took {:.2}s\n", start_time.elapsed().as_secs_f64()).as_bytes(),
+        )
+    })?;
 
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
-        })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
+    })?;
+    if let Some(changed_nodes) = maybe_changed_nodes {
         shell.verbose(|shell| {
             shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
         })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Traces: {traced_tests:?}\n").as_bytes())
-        })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
-        })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
-        })?;
-
-        Ok(())
     }
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Traces: {traced_tests:?}\n").as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
+    })?;
+
+    Ok(())
+}
+
+fn print_doctest_stats<T: Display>(
+    shell: &mut Shell,
+    status: T,
+    changed_nodes: &HashSet<ArenaIntern<'_, String>>,
+) -> CargoResult<()> {
+    shell.status_header(status)?;
+
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!("{} changed\n", changed_nodes.len()).as_bytes())
+    })?;
+
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
+    })?;
+
+    Ok(())
 }
 
 impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> {
@@ -433,9 +454,9 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
 
                 traced_tests.extend(traces.into_keys());
 
-                self.print_stats(
+                print_stats(
                     shell,
-                    &changed_nodes,
+                    Some(&changed_nodes),
                     &traced_tests,
                     &tests_found,
                     &affected_tests,
@@ -455,11 +476,7 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                 let mut tests_found = HashSet::new();
                 let tests = tests.into_iter().map(|s| convert_doctest_name(&s)).unique();
 
-                let (traces, no_traces) = {
-                    let mut map_traces: HashMap<
-                        ArenaIntern<'_, String>,
-                        HashSet<ArenaIntern<'_, String>>,
-                    > = HashMap::new();
+                let no_traces = {
                     let mut map_no_traces = HashMap::new();
 
                     for (trimmed, fn_name) in tests {
@@ -486,28 +503,30 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                             s.lines()
                                 .map(ToString::to_string)
                                 .map(|l| Arena::<String>::intern(self.arena, l))
-                                .collect()
+                                .collect::<HashSet<_>>()
                         }) {
-                            map_traces.insert(interned, traces);
+                            traced_tests.insert(interned);
+                            let mut intersection = traces.intersection(&changed).peekable();
+                            if intersection.peek().is_some() {
+                                debug!(
+                                    "Found non-empty intersection: {:?}",
+                                    intersection.collect::<Vec<_>>()
+                                );
+                                affected_tests.push(interned.to_string());
+                            }
                         } else {
                             let name = DOCTEST_PREFIX.to_string() + &fn_name;
+                            debug!("Found no traces");
                             map_no_traces
                                 .insert(interned, Arena::<String>::intern(self.arena, name));
+                            changed_nodes.extend(changed.clone());
                         }
-                        changed_nodes.extend(changed.clone());
+                        print_doctest_stats(shell, "Doc test ".to_string() + &trimmed, &changed)
+                            .unwrap();
                     }
 
-                    (map_traces, map_no_traces)
+                    map_no_traces
                 };
-
-                affected_tests.extend(
-                    traces
-                        .iter()
-                        .filter(|&(_test, traces)| {
-                            traces.intersection(&changed_nodes).next().is_some()
-                        })
-                        .map(|(test, _traces)| test.to_string()),
-                );
 
                 affected_tests.extend(
                     no_traces
@@ -516,11 +535,9 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                         .map(|(test, _name)| test.to_string()),
                 );
 
-                traced_tests.extend(traces.into_keys());
-
-                self.print_stats(
+                print_stats(
                     shell,
-                    &changed_nodes,
+                    None,
                     &traced_tests,
                     &tests_found,
                     &affected_tests,

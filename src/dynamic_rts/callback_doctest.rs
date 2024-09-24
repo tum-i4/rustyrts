@@ -5,7 +5,7 @@ use crate::{
         AnalysisCallback, ChecksumsCallback, RTSContext, DOCTEST_PREFIX, ENTRY_FN,
         NEW_CHECKSUMS_VTBL, OLD_VTABLE_ENTRIES,
     },
-    constants::{ENV_SKIP_ANALYSIS, ENV_SKIP_INSTRUMENTATION, SUFFIX_DYN},
+    constants::{ENV_SKIP_ANALYSIS, ENV_SKIP_INSTRUMENTATION},
     dynamic_rts::{
         callback::{InstrumentingCallback, OLD_OPTIMIZED_MIR},
         mir_util::Traceable,
@@ -171,7 +171,7 @@ impl Callbacks for AnalyzingRTSCallbacks {
             if std::env::var(ENV_SKIP_ANALYSIS).is_err() {
                 OLD_VTABLE_ENTRIES.store(providers.vtable_entries as usize, SeqCst);
                 providers.vtable_entries =
-                    |tcx, binder| Self::custom_vtable_entries(tcx, binder, SUFFIX_DYN);
+                    |tcx, binder| Self::custom_vtable_entries(tcx, binder, "");
             } else {
                 trace!("Not analyzing crate {:?}", session.opts.crate_name);
             }
