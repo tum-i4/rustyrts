@@ -4,6 +4,8 @@ pub fn setup_logger() {
     tracing_subscriber::fmt()
         .with_timer(tracing_subscriber::fmt::time::Uptime::default())
         .with_ansi(std::io::IsTerminal::is_terminal(&std::io::stderr()))
+        .with_file(true)
+        .with_line_number(true)
         .with_writer(std::io::stderr)
         .with_env_filter(env)
         .init();

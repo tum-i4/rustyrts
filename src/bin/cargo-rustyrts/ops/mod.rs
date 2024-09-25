@@ -2,7 +2,8 @@ pub use cargo_test::run_tests;
 pub mod cargo_test;
 
 use rustyrts::constants::{
-    ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_SKIP_ANALYSIS, ENV_SKIP_INSTRUMENTATION, ENV_TARGET_DIR,
+    ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_SKIP_ANALYSIS, ENV_SKIP_INSTRUMENTATION, ENV_TARGET,
+    ENV_TARGET_DIR, ENV_TARGET_HASH,
 };
 use tracing::debug;
 
@@ -15,6 +16,8 @@ use cargo::{
     },
     CargoResult,
 };
+
+use crate::target_hash::get_target_hash;
 
 pub(crate) struct PreciseExecutor {
     cmd: PathBuf,
@@ -52,7 +55,9 @@ impl Executor for PreciseExecutor {
             cmd.program(&self.cmd);
 
             cmd.env(ENV_TARGET_DIR, &self.target_dir);
+            cmd.env(ENV_TARGET_HASH, get_target_hash(target));
             cmd.env(ENV_COMPILE_MODE, format!("{mode:?}"));
+            cmd.env(ENV_TARGET, format!("{}", target.kind().description()));
             if target.doctested() {
                 cmd.env(ENV_DOCTESTED, "true");
             }

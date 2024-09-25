@@ -194,6 +194,7 @@ fn run_unit_tests<'compilation, 'context, 'arena: 'context>(
 
         let selected = selector.select_tests(test_unit, &mut config.shell(), start_time);
         match &selected {
+            crate::commands::SelectionUnit::RetestAll => {}
             crate::commands::SelectionUnit::CrateLevel { execute_tests } => {
                 if !execute_tests {
                     test_args.push("--exact");
@@ -303,6 +304,7 @@ fn run_doc_tests<'compilation, 'context, 'arena: 'context>(
 
         let selected = selector.select_tests(test_unit, &mut config.shell(), start);
         match &selected {
+            crate::commands::SelectionUnit::RetestAll => {}
             crate::commands::SelectionUnit::CrateLevel { execute_tests } => {
                 if !execute_tests {
                     test_args.push("?"); // This excludes all tests

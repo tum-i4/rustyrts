@@ -31,6 +31,8 @@ fn command(mode: &Mode, dir: &PathBuf, target_dir: &Path, feature: Option<&str>)
         ret.arg("--features").arg(name);
     }
 
+    ret.arg("-v");
+
     ret.env(ENV_TARGET_DIR, target_dir);
     ret.env(ENV_BLACKBOX_TEST, "true");
 
@@ -286,12 +288,18 @@ fn check_same_crate_id(mode: Mode) {
 #[test_case(Mode::Basic, "doctests", "", "changes_run")]
 #[test_case(Mode::Dynamic, "doctests", "", "changes_run")]
 #[test_case(Mode::Static, "doctests", "", "changes_run")]
+#[test_case(Mode::Basic, "doctests", "", "changes_main")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_main")]
+#[test_case(Mode::Static, "doctests", "", "changes_main")]
 #[test_case(Mode::Basic, "doctests", "", "changes_should_panic")]
 #[test_case(Mode::Dynamic, "doctests", "", "changes_should_panic")]
 #[test_case(Mode::Static, "doctests", "", "changes_should_panic")]
 #[test_case(Mode::Basic, "doctests", "", "changes_indirect_run")]
 #[test_case(Mode::Dynamic, "doctests", "", "changes_indirect_run")]
 #[test_case(Mode::Static, "doctests", "", "changes_indirect_run")]
+#[test_case(Mode::Basic, "doctests", "", "changes_indirect_main")]
+#[test_case(Mode::Dynamic, "doctests", "", "changes_indirect_main")]
+#[test_case(Mode::Static, "doctests", "", "changes_indirect_main")]
 #[test_case(Mode::Basic, "doctests", "", "changes_indirect_should_panic")]
 #[test_case(Mode::Dynamic, "doctests", "", "changes_indirect_should_panic")]
 #[test_case(Mode::Static, "doctests", "", "changes_indirect_should_panic")]

@@ -1,4 +1,3 @@
-use core::panic;
 use std::{
     boxed::Box,
     collections::{HashMap, HashSet},
@@ -25,13 +24,14 @@ use cargo::{
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
 use rustyrts::{
-    constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET_DIR},
+    callbacks_shared::DOCTEST_PREFIX,
+    constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET, ENV_TARGET_DIR},
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
     static_rts::graph::{serialize::ArenaDeserializable, DependencyGraph},
 };
 use tracing::trace;
 
-use crate::{commands::convert_doctest_name, ops::PreciseExecutor};
+use crate::{commands::convert_doctest_name, ops::PreciseExecutor, target_hash::get_target_hash};
 
 use super::{
     cache::HashCache, DependencyUnit, PreciseSelectionMode, SelectionContext, SelectionMode,
@@ -230,7 +230,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
         unit: &DependencyUnit<'context>,
         pretty_print_graph: bool,
     ) -> DependencyNode<'arena> {
-        let (unit, maybe_doctest_name) = match unit {
+        let (unit, crate_name, maybe_doctest_name) = match unit {
             DependencyUnit::Unit(u) => {
                 debug_assert!(
                     matches!(u.mode, CompileMode::Test | CompileMode::Build),
@@ -238,7 +238,9 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, None)
+                let crate_name =
+                    format!("{}-{}", u.target.crate_name(), get_target_hash(&u.target));
+                (u, crate_name, None)
             }
             DependencyUnit::DoctestUnit(u, s) => {
                 debug_assert!(
@@ -247,18 +249,20 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, Some(s.as_str()))
+                let crate_name = format!("{}", u.target.crate_name());
+                (u, crate_name, Some(s.as_str()))
             }
         };
 
-        let crate_name = unit.target.crate_name();
         let compile_mode = format!("{:?}", unit.mode);
+        let target = unit.target.kind().description();
 
         let graph_path = {
             let mut path = CacheKind::Static.map(target_dir.clone());
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
+                Some(target),
                 maybe_doctest_name,
                 CacheFileKind::Graph,
             )
@@ -270,6 +274,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
+                Some(target),
                 maybe_doctest_name,
                 CacheFileKind::Changes,
             )
@@ -294,8 +299,17 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                                 "Did not find dependency graph for crate {:?} in mode {:?}\nTried reading from {:?}",
                                 crate_name, compile_mode, graph_path
                             );
-                            DependencyGraph::new(arena)
+                            let mut graph = DependencyGraph::new(arena);
+                            if let Some(doctest_name) = maybe_doctest_name {
+                                let entry_name = DOCTEST_PREFIX.to_string() + doctest_name;
+                                graph.add_edge(doctest_name.to_string(), entry_name, rustyrts::static_rts::graph::EdgeType::Trimmed);
+                            }
+                            graph
                         }, |s| DependencyGraph::deserialize(arena, &s).unwrap());
+
+        if maybe_doctest_name.is_some() && graph_path.is_file() {
+            std::fs::remove_file(graph_path).unwrap();
+        }
 
         if pretty_print_graph {
             let pretty_path = {
@@ -303,6 +317,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                 CacheFileDescr::new(
                     &crate_name,
                     Some(&compile_mode),
+                    Some(target),
                     maybe_doctest_name,
                     CacheFileKind::PrettyGraph,
                 )
@@ -356,37 +371,49 @@ impl<'arena, 'context> StaticSelector<'arena, 'context> {
         let cached = self.cache.get(unit);
         (&cached.changes, &cached.locally, &cached.reached)
     }
+}
 
-    fn print_stats<T: Display>(
-        &self,
-        shell: &mut Shell,
-        status: T,
-        changed_nodes: &HashSet<ArenaIntern<'_, String>>,
-        reachable_nodes: &HashSet<ArenaIntern<'_, String>>,
-        tests_found: &HashSet<ArenaIntern<'_, String>>,
-        affected_tests: &Vec<String>,
-        start_time: Instant,
-    ) -> CargoResult<()> {
-        shell.status_header(status)?;
+fn print_stats(
+    shell: &mut Shell,
+    maybe_changed_nodes: Option<&HashSet<ArenaIntern<'_, String>>>,
+    maybe_reachable_nodes: Option<&HashSet<ArenaIntern<'_, String>>>,
+    tests_found: &HashSet<ArenaIntern<'_, String>>,
+    affected_tests: &Vec<String>,
+    start_time: Instant,
+) -> CargoResult<()> {
+    shell.status_header("Static RTS")?;
 
+    if let Some(changed_nodes) = maybe_changed_nodes {
         shell.concise(|shell| {
             shell.print_ansi_stderr(format!("{} changed;", changed_nodes.len()).as_bytes())
         })?;
+    }
+    if let Some(reachable_nodes) = maybe_reachable_nodes {
         shell.concise(|shell| {
             shell.print_ansi_stderr(format!(" {} reachable;", reachable_nodes.len()).as_bytes())
         })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} tests found;", tests_found.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} affected;", affected_tests.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(
-                format!(" took {:.2}s\n", start_time.elapsed().as_secs_f64()).as_bytes(),
-            )
-        })?;
+    }
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} tests found;", tests_found.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} affected;", affected_tests.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(
+            format!(" took {:.2}s\n", start_time.elapsed().as_secs_f64()).as_bytes(),
+        )
+    })?;
 
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
+    })?;
+    if let Some(changed_nodes) = maybe_changed_nodes {
+        shell.verbose(|shell| {
+            shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
+        })?;
+    }
+    if let Some(reachable_nodes) = maybe_reachable_nodes {
         let verbose_reachable = {
             if reachable_nodes.len() < 200 {
                 format!("{reachable_nodes:?}")
@@ -394,25 +421,50 @@ impl<'arena, 'context> StaticSelector<'arena, 'context> {
                 format!("{}", reachable_nodes.len())
             }
         };
-
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
-        })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
-        })?;
         shell.verbose(|shell| {
             shell.print_ansi_stderr(format!("Reachable: {verbose_reachable}\n").as_bytes())
         })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
-        })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
-        })?;
-
-        Ok(())
     }
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
+    })?;
+
+    Ok(())
+}
+
+fn print_doctest_stats<T: Display>(
+    shell: &mut Shell,
+    status: T,
+    changed_nodes: &HashSet<ArenaIntern<'_, String>>,
+    reachable_nodes: &HashSet<ArenaIntern<'_, String>>,
+) -> CargoResult<()> {
+    shell.status_header(status)?;
+
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!("{} changed;", changed_nodes.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} reachable\n", reachable_nodes.len()).as_bytes())
+    })?;
+
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
+    })?;
+    let verbose_reachable = {
+        if reachable_nodes.len() < 200 {
+            format!("{reachable_nodes:?}")
+        } else {
+            format!("{}", reachable_nodes.len())
+        }
+    };
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Reachable: {verbose_reachable}\n").as_bytes())
+    })?;
+
+    Ok(())
 }
 
 impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
@@ -422,13 +474,15 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
         shell: &mut Shell,
         start_time: Instant,
     ) -> SelectionUnit {
+        if self.check_retest_all() {
+            return SelectionUnit::RetestAll;
+        }
+
         let TestUnit(unit, test_info) = test_unit;
         let Some(test_info) = test_info else {
             panic!("Precise selection requires information about tests")
         };
 
-        let mut changed_nodes = HashSet::new();
-        let mut reachable_nodes = HashSet::new();
         let mut affected_tests = Vec::new();
 
         match test_info {
@@ -439,6 +493,8 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                     unit.mode,
                     unit
                 );
+                let mut changed_nodes = HashSet::new();
+                let mut reachable_nodes = HashSet::new();
 
                 let dependency_unit = DependencyUnit::Unit(unit);
                 let (changed, locally, reachable) =
@@ -449,11 +505,10 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                 reachable_nodes.extend(reachable.clone());
                 affected_tests.extend(affected);
 
-                self.print_stats(
+                print_stats(
                     shell,
-                    "Static RTS",
-                    &changed_nodes,
-                    &reachable_nodes,
+                    Some(&changed_nodes),
+                    Some(&reachable_nodes),
                     &tests_found,
                     &affected_tests,
                     start_time,
@@ -478,8 +533,13 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                     let (changed, locally, reachable) =
                         self.reachble_and_changed_nodes(dependency_unit);
 
-                    changed_nodes.extend(changed.clone());
-                    reachable_nodes.extend(reachable.clone());
+                    print_doctest_stats(
+                        shell,
+                        "Doc test ".to_string() + &trimmed,
+                        &changed,
+                        &reachable,
+                    )
+                    .unwrap();
 
                     if locally.contains(&test) {
                         affected_tests.push(trimmed);
@@ -487,16 +547,7 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                     tests_found.insert(test);
                 }
 
-                self.print_stats(
-                    shell,
-                    "Static RTS",
-                    &changed_nodes,
-                    &reachable_nodes,
-                    &tests_found,
-                    &affected_tests,
-                    start_time,
-                )
-                .unwrap();
+                print_stats(shell, None, None, &tests_found, &affected_tests, start_time).unwrap();
             }
         }
 
@@ -535,6 +586,7 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
             p.env(ENV_TARGET_DIR, target_dir);
             p.env(ENV_DOCTESTED, unit.target.crate_name());
             p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+            p.env(ENV_TARGET, format!("{}", unit.target.kind().description()));
         }
     }
 

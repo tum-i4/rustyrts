@@ -1,5 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
+    fmt::Display,
     fs::{read_dir, read_to_string},
     path::{Path, PathBuf},
     string::ToString,
@@ -30,15 +31,17 @@ use rustyrts::{
     callbacks_shared::DOCTEST_PREFIX,
     constants::{
         ENDING_CHANGES, ENDING_PROCESS_TRACE, ENV_COMPILE_MODE, ENV_DOCTESTED,
-        ENV_ONLY_INSTRUMENTATION, ENV_TARGET_DIR,
+        ENV_ONLY_INSTRUMENTATION, ENV_TARGET, ENV_TARGET_DIR,
     },
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
 };
 use test::{test::parse_opts, TestOpts};
+use tracing::debug;
 
 use crate::{
     commands::{convert_doctest_name, TestInfo},
     ops::PreciseExecutor,
+    target_hash::get_target_hash,
 };
 
 use super::{
@@ -233,7 +236,7 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
         >,
         unit: &DependencyUnit<'context>,
     ) -> HashSet<ArenaIntern<'arena, String>> {
-        let (unit, maybe_doctest_name) = match unit {
+        let (unit, crate_name, maybe_doctest_name) = match unit {
             DependencyUnit::Unit(u) => {
                 debug_assert!(
                     matches!(u.mode, CompileMode::Test | CompileMode::Build),
@@ -241,7 +244,9 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, None)
+                let crate_name =
+                    format!("{}-{}", u.target.crate_name(), get_target_hash(&u.target));
+                (u, crate_name, None)
             }
             DependencyUnit::DoctestUnit(u, s) => {
                 debug_assert!(
@@ -250,18 +255,20 @@ impl<'arena: 'context, 'context> DynamicSelector<'arena, 'context> {
                     u.mode,
                     u
                 );
-                (u, Some(s.as_str()))
+                let crate_name = format!("{}", u.target.crate_name());
+                (u, crate_name, Some(s.as_str()))
             }
         };
 
-        let crate_name = unit.target.crate_name();
         let compile_mode = format!("{:?}", unit.mode);
+        let target = unit.target.kind().description();
 
         let changes_path = {
             let mut path = CacheKind::Dynamic.map(target_dir);
             CacheFileDescr::new(
                 &crate_name,
                 Some(&compile_mode),
+                Some(target),
                 maybe_doctest_name,
                 CacheFileKind::Changes,
             )
@@ -300,54 +307,75 @@ impl<'arena, 'context> DynamicSelector<'arena, 'context> {
     ) -> &HashSet<ArenaIntern<'arena, String>> {
         self.cache.get(unit)
     }
+}
 
-    fn print_stats(
-        &self,
-        shell: &mut Shell,
-        changed_nodes: &HashSet<ArenaIntern<'_, String>>,
-        traced_tests: &HashSet<ArenaIntern<'_, String>>,
-        tests_found: &HashSet<ArenaIntern<'_, String>>,
-        affected_tests: &Vec<String>,
-        start_time: Instant,
-    ) -> CargoResult<()> {
-        shell.status_header("Dynamic RTS")?;
+fn print_stats(
+    shell: &mut Shell,
+    maybe_changed_nodes: Option<&HashSet<ArenaIntern<'_, String>>>,
+    traced_tests: &HashSet<ArenaIntern<'_, String>>,
+    tests_found: &HashSet<ArenaIntern<'_, String>>,
+    affected_tests: &Vec<String>,
+    start_time: Instant,
+) -> CargoResult<()> {
+    shell.status_header("Dynamic RTS")?;
 
+    if let Some(changed_nodes) = maybe_changed_nodes {
         shell.concise(|shell| {
             shell.print_ansi_stderr(format!("{} changed;", changed_nodes.len()).as_bytes())
         })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} traces;", traced_tests.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} tests found;", tests_found.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(format!(" {} affected;", affected_tests.len()).as_bytes())
-        })?;
-        shell.concise(|shell| {
-            shell.print_ansi_stderr(
-                format!(" took {:.2}s\n", start_time.elapsed().as_secs_f64()).as_bytes(),
-            )
-        })?;
+    }
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} traces;", traced_tests.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} tests found;", tests_found.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!(" {} affected;", affected_tests.len()).as_bytes())
+    })?;
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(
+            format!(" took {:.2}s\n", start_time.elapsed().as_secs_f64()).as_bytes(),
+        )
+    })?;
 
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
-        })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("took {:#?}\n", start_time.elapsed()).as_bytes())
+    })?;
+    if let Some(changed_nodes) = maybe_changed_nodes {
         shell.verbose(|shell| {
             shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
         })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Traces: {traced_tests:?}\n").as_bytes())
-        })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
-        })?;
-        shell.verbose(|shell| {
-            shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
-        })?;
-
-        Ok(())
     }
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Traces: {traced_tests:?}\n").as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Tests found: {tests_found:?}\n").as_bytes())
+    })?;
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("Affected: {affected_tests:?}\n").as_bytes())
+    })?;
+
+    Ok(())
+}
+
+fn print_doctest_stats<T: Display>(
+    shell: &mut Shell,
+    status: T,
+    changed_nodes: &HashSet<ArenaIntern<'_, String>>,
+) -> CargoResult<()> {
+    shell.status_header(status)?;
+
+    shell.concise(|shell| {
+        shell.print_ansi_stderr(format!("{} changed\n", changed_nodes.len()).as_bytes())
+    })?;
+
+    shell.verbose(|shell| {
+        shell.print_ansi_stderr(format!("\nChanged: {changed_nodes:?}\n").as_bytes())
+    })?;
+
+    Ok(())
 }
 
 impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> {
@@ -357,6 +385,10 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
         shell: &mut Shell,
         start_time: Instant,
     ) -> SelectionUnit {
+        if self.check_retest_all() {
+            return SelectionUnit::RetestAll;
+        }
+
         let TestUnit(unit, test_info) = test_unit;
         let Some(test_info) = test_info else {
             panic!("Precise selction requires information about tests")
@@ -384,8 +416,13 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                     let path = CacheKind::Dynamic.map(self.target_dir.to_path_buf());
 
                     for test in &tests_found {
-                        let descr =
-                            CacheFileDescr::new(test.as_str(), None, None, CacheFileKind::Traces);
+                        let descr = CacheFileDescr::new(
+                            test.as_str(),
+                            None,
+                            None,
+                            None,
+                            CacheFileKind::Traces,
+                        );
                         let mut path = path.clone();
                         descr.apply(&mut path);
 
@@ -417,9 +454,9 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
 
                 traced_tests.extend(traces.into_keys());
 
-                self.print_stats(
+                print_stats(
                     shell,
-                    &changed_nodes,
+                    Some(&changed_nodes),
                     &traced_tests,
                     &tests_found,
                     &affected_tests,
@@ -439,11 +476,7 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                 let mut tests_found = HashSet::new();
                 let tests = tests.into_iter().map(|s| convert_doctest_name(&s)).unique();
 
-                let (traces, no_traces) = {
-                    let mut map_traces: HashMap<
-                        ArenaIntern<'_, String>,
-                        HashSet<ArenaIntern<'_, String>>,
-                    > = HashMap::new();
+                let no_traces = {
                     let mut map_no_traces = HashMap::new();
 
                     for (trimmed, fn_name) in tests {
@@ -460,6 +493,7 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                             fn_name.as_str(),
                             None,
                             None,
+                            None,
                             CacheFileKind::Traces,
                         );
                         let mut path = path.clone();
@@ -469,28 +503,30 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                             s.lines()
                                 .map(ToString::to_string)
                                 .map(|l| Arena::<String>::intern(self.arena, l))
-                                .collect()
+                                .collect::<HashSet<_>>()
                         }) {
-                            map_traces.insert(interned, traces);
+                            traced_tests.insert(interned);
+                            let mut intersection = traces.intersection(&changed).peekable();
+                            if intersection.peek().is_some() {
+                                debug!(
+                                    "Found non-empty intersection: {:?}",
+                                    intersection.collect::<Vec<_>>()
+                                );
+                                affected_tests.push(interned.to_string());
+                            }
                         } else {
                             let name = DOCTEST_PREFIX.to_string() + &fn_name;
+                            debug!("Found no traces");
                             map_no_traces
                                 .insert(interned, Arena::<String>::intern(self.arena, name));
+                            changed_nodes.extend(changed.clone());
                         }
-                        changed_nodes.extend(changed.clone());
+                        print_doctest_stats(shell, "Doc test ".to_string() + &trimmed, &changed)
+                            .unwrap();
                     }
 
-                    (map_traces, map_no_traces)
+                    map_no_traces
                 };
-
-                affected_tests.extend(
-                    traces
-                        .iter()
-                        .filter(|&(_test, traces)| {
-                            traces.intersection(&changed_nodes).next().is_some()
-                        })
-                        .map(|(test, _traces)| test.to_string()),
-                );
 
                 affected_tests.extend(
                     no_traces
@@ -499,11 +535,9 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                         .map(|(test, _name)| test.to_string()),
                 );
 
-                traced_tests.extend(traces.into_keys());
-
-                self.print_stats(
+                print_stats(
                     shell,
-                    &changed_nodes,
+                    None,
                     &traced_tests,
                     &tests_found,
                     &affected_tests,
@@ -570,6 +604,7 @@ This might lead to incomplete traces in the initialization of shared state."
             p.env(ENV_TARGET_DIR, target_dir);
             p.env(ENV_DOCTESTED, unit.target.crate_name());
             p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+            p.env(ENV_TARGET, format!("{}", unit.target.kind().description()));
         }
     }
 
@@ -591,6 +626,7 @@ This might lead to incomplete traces in the initialization of shared state."
             p.env(ENV_TARGET_DIR, target_dir);
             p.env(ENV_DOCTESTED, unit.target.crate_name());
             p.env(ENV_COMPILE_MODE, format!("{:?}", unit.mode));
+            p.env(ENV_TARGET, format!("{}", unit.target.kind().description()));
 
             p.env(ENV_ONLY_INSTRUMENTATION, "true");
         }

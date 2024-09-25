@@ -8,7 +8,12 @@ pub const VERBOSE_COUNT: usize = 16;
 /// Is set by cargo
 pub const ENV_TARGET_DIR: &str = "CARGO_TARGET_DIR";
 
+pub const ENV_TARGET_HASH: &str = "RUSTYRTS_TARGET_HASH";
 pub const ENV_COMPILE_MODE: &str = "RUSTYRTS_COMPILE_MODE";
+pub const ENV_TARGET: &str = "RUSTYRTS_TARGET";
+
+// May be used to trigger execution of all tests, e.g., to attempt to reset all traces
+pub const ENV_RETEST_ALL: &str = "RUSTYRTS_RETEST_ALL";
 
 /// May be used to instruct `RustyRTS` to only emit checksums and changed nodes
 pub const ENV_ONLY_INSTRUMENTATION: &str = "RUSTYRTS_ONLY_INSTRUMENTATION";

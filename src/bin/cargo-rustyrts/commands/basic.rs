@@ -295,6 +295,10 @@ impl<'context> Selector<'context> for BasicSelector<'context> {
         shell: &mut Shell,
         start_time: Instant,
     ) -> SelectionUnit {
+        if self.check_retest_all() {
+            return SelectionUnit::RetestAll;
+        }
+
         let TestUnit(unit, test_info) = test_unit;
         debug_assert!(test_info.is_none());
 

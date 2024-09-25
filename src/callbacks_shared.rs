@@ -22,6 +22,7 @@ use tracing::{debug, trace};
 use crate::{
     checksums::{get_checksum_body, insert_hashmap},
     const_visitor::ResolvingConstVisitor,
+    constants::{ENV_TARGET, ENV_TARGET_HASH},
     fs_utils::append_to_file,
 };
 use crate::{
@@ -46,6 +47,7 @@ pub(crate) static ENTRY_FN: OnceCell<Option<DefId>> = OnceCell::new();
 pub struct RTSContext {
     pub crate_name: String,
     pub compile_mode: CompileMode,
+    pub target: Target,
     pub doctest_name: Option<String>,
 
     pub new_checksums: OnceCell<Checksums>,
@@ -60,11 +62,13 @@ impl RTSContext {
     pub fn new(
         crate_name: String,
         compile_mode: CompileMode,
+        target: Target,
         doctest_name: Option<String>,
     ) -> Self {
         Self {
             crate_name,
             compile_mode,
+            target,
             doctest_name,
             new_checksums: OnceCell::new(),
             new_checksums_vtbl: OnceCell::new(),
@@ -106,11 +110,54 @@ impl AsRef<str> for CompileMode {
     }
 }
 
+#[derive(PartialEq, Debug)]
+pub enum Target {
+    Lib,
+    Bin,
+    IntegrationTest,
+    Example,
+    Bench,
+    BuildScript,
+}
+
+impl TryFrom<&str> for Target {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "lib" => Ok(Self::Lib),
+            "bin" => Ok(Self::Bin),
+            "integration-test" => Ok(Self::IntegrationTest),
+            "example" => Ok(Self::Example),
+            "bench" => Ok(Self::Bench),
+            "build-script" => Ok(Self::BuildScript),
+            _ => Err(()),
+        }
+    }
+}
+
+impl AsRef<str> for Target {
+    fn as_ref(&self) -> &str {
+        match self {
+            Target::Lib => "lib",
+            Target::Bin => "bin",
+            Target::IntegrationTest => "integration-test",
+            Target::Example => "example",
+            Target::Bench => "bench",
+            Target::BuildScript => "build-script",
+        }
+    }
+}
+
 pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
     fn init_analysis(&mut self, tcx: TyCtxt<'tcx>) -> RTSContext {
         let compile_mode = std::env::var(ENV_COMPILE_MODE)
             .map(|s| CompileMode::try_from(s.as_str()).expect("Failed to convert compile mode"))
             .expect("Failed to find compile mode");
+
+        let target = std::env::var(ENV_TARGET)
+            .map(|s| Target::try_from(s.as_str()).expect("Failed to convert target"))
+            .expect("Failed to find target");
 
         let (crate_name, doctest_name) = if compile_mode == CompileMode::Doctest {
             let doctest_name = std::env::var("UNSTABLE_RUSTDOC_TEST_PATH")
@@ -123,12 +170,13 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
 
             (crate_name, Some(doctest_name))
         } else {
-            let crate_name = format!("{}", tcx.crate_name(LOCAL_CRATE));
+            let target_hash = std::env::var(ENV_TARGET_HASH).expect("Failed to find target hash");
+            let crate_name = format!("{}-{}", tcx.crate_name(LOCAL_CRATE), target_hash);
 
             (crate_name, None)
         };
 
-        let context = RTSContext::new(crate_name, compile_mode, doctest_name);
+        let context = RTSContext::new(crate_name, compile_mode, target, doctest_name);
         context.new_checksums.get_or_init(Checksums::new);
         context.new_checksums_const.get_or_init(Checksums::new);
 
@@ -197,6 +245,7 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
         let RTSContext {
             crate_name,
             compile_mode,
+            target,
             ..
         } = self.context();
 
@@ -220,6 +269,7 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
                 CacheFileDescr::new(
                     crate_name,
                     Some(compile_mode.as_ref()),
+                    Some(target.as_ref()),
                     None,
                     CacheFileKind::Tests,
                 )
@@ -284,6 +334,7 @@ pub trait ChecksumsCallback {
         let RTSContext {
             crate_name,
             compile_mode,
+            target,
             doctest_name,
             ..
         } = self.context();
@@ -301,6 +352,7 @@ pub trait ChecksumsCallback {
             CacheFileDescr::new(
                 crate_name,
                 Some(compile_mode.as_ref()),
+                Some(target.as_ref()),
                 doctest_name.as_deref(),
                 CacheFileKind::Checksums(kind),
             )
@@ -325,6 +377,7 @@ pub trait ChecksumsCallback {
         let RTSContext {
             crate_name,
             compile_mode,
+            target,
             doctest_name,
             new_checksums,
             new_checksums_vtbl,
@@ -344,6 +397,7 @@ pub trait ChecksumsCallback {
 
         let changed_nodes = calculate_changes(
             from_new_revision,
+            doctest_name.as_ref(),
             new_checksums.get().unwrap(),
             new_checksums_vtbl.get().unwrap(),
             new_checksums_const.get().unwrap(),
@@ -360,6 +414,7 @@ pub trait ChecksumsCallback {
                     CacheFileDescr::new(
                         crate_name,
                         Some(compile_mode.as_ref()),
+                        Some(target.as_ref()),
                         doctest_name.as_deref(),
                         CacheFileKind::Changes,
                     )
@@ -375,6 +430,7 @@ pub trait ChecksumsCallback {
         let RTSContext {
             crate_name,
             compile_mode,
+            target,
             doctest_name,
             ..
         } = self.context();
@@ -384,6 +440,7 @@ pub trait ChecksumsCallback {
         let descr = CacheFileDescr::new(
             crate_name,
             Some(compile_mode.as_ref()),
+            Some(target.as_ref()),
             doctest_name.as_deref(),
             CacheFileKind::Checksums(kind),
         );
@@ -405,6 +462,7 @@ pub trait ChecksumsCallback {
 
 fn calculate_changes(
     from_new_revision: bool,
+    maybe_doctest_name: Option<&String>,
     new_checksums: &Checksums,
     new_checksums_vtbl: &Checksums,
     new_checksums_const: &Checksums,
@@ -433,6 +491,15 @@ fn calculate_changes(
         };
 
         if changed {
+            // In case of a doc test with dedicated main function, we need to swap out its name here
+            let name = (name == "rust_out::main")
+                .then(|| {
+                    maybe_doctest_name
+                        .map(|doctest_name| DOCTEST_PREFIX.to_string() + &doctest_name)
+                })
+                .flatten()
+                .unwrap_or_else(|| name.clone());
+
             debug!(
                 "Changed due to regular checksums: {} {:?}/{:?}",
                 name, maybe_old, maybe_new

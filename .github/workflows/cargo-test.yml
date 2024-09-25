@@ -27,8 +27,10 @@ jobs:
         profile: minimal
         toolchain: nightly-2023-12-28
         override: true
+
     - name: Install Rust components
       run: rustup component add rustc-dev llvm-tools-preview
+
     - name: Check Rust version
       run: cargo --version && rustc --version
 
@@ -36,6 +38,7 @@ jobs:
       uses: Swatinem/rust-cache@v2.7.0
            
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --verbose --locked
+    
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo test --verbose --locked
