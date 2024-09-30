@@ -142,94 +142,104 @@ pub(crate) fn run_analysis_doctests(
         }
     }
 
-    let mut tests = Vec::new();
-
-    for (test_fn, count) in test_names
-        .iter()
-        .map(|test| convert_doctest_name(test).1)
-        .counts()
     {
-        let doctest_name = Some(test_fn.clone());
+        let grouped = test_names
+            .iter()
+            .sorted()
+            .group_by(|test| convert_doctest_name(test).1);
 
-        let compile_mode = CompileMode::try_from(format!("{:?}", unit.mode).as_str()).unwrap();
-        let target =
-            Target::try_from(format!("{}", unit.target.kind().description()).as_str()).unwrap();
+        let mut tests = Vec::new();
 
-        let mut analysis = DoctestAnalysis {
-            path: target_dir.to_path_buf(),
-            context: RTSContext::new(unit.target.crate_name(), compile_mode, target, doctest_name),
-        };
+        for (test_fn, names) in grouped.into_iter() {
+            let doctest_name = Some(test_fn.clone());
 
-        let old_checksums = analysis.import_checksums(ChecksumKind::Checksum, true);
-        let old_checksums_vtbl = analysis.import_checksums(ChecksumKind::VtblChecksum, true);
-        let old_checksums_const = analysis.import_checksums(ChecksumKind::ConstChecksum, true);
+            let compile_mode = CompileMode::try_from(format!("{:?}", unit.mode).as_str()).unwrap();
+            let target =
+                Target::try_from(format!("{}", unit.target.kind().description()).as_str()).unwrap();
+
+            let mut analysis = DoctestAnalysis {
+                path: target_dir.to_path_buf(),
+                context: RTSContext::new(
+                    unit.target.crate_name(),
+                    compile_mode,
+                    target,
+                    doctest_name,
+                ),
+            };
+
+            let old_checksums = analysis.import_checksums(ChecksumKind::Checksum, true);
+            let old_checksums_vtbl = analysis.import_checksums(ChecksumKind::VtblChecksum, true);
+            let old_checksums_const = analysis.import_checksums(ChecksumKind::ConstChecksum, true);
+
+            {
+                let context = &mut analysis.context;
+
+                context.old_checksums.get_or_init(|| old_checksums);
+                context
+                    .old_checksums_vtbl
+                    .get_or_init(|| old_checksums_vtbl);
+                context
+                    .old_checksums_const
+                    .get_or_init(|| old_checksums_const);
+            }
+
+            tests.push((analysis, names));
+        }
 
         {
-            let context = &mut analysis.context;
+            let mut p = p.clone();
+            callback(&mut p, target_dir, unit);
 
-            context.old_checksums.get_or_init(|| old_checksums);
-            context
-                .old_checksums_vtbl
-                .get_or_init(|| old_checksums_vtbl);
-            context
-                .old_checksums_const
-                .get_or_init(|| old_checksums_const);
+            for arg in test_args {
+                p.arg("--test-args").arg(arg);
+            }
+
+            let _ = p.output();
         }
 
-        tests.push((analysis, count));
-    }
+        for (analysis, names) in &mut tests {
+            let mut checksums = Checksums::new();
 
-    {
-        let mut p = p.clone();
-        callback(&mut p, target_dir, unit);
+            // We add a hash of the names of all tests, to recognize newly added or removed compile-fail tests
+            let name = DOCTEST_PREFIX.to_string() + analysis.context.doctest_name.as_ref().unwrap();
+            let hash = {
+                let mut hasher = DefaultHasher::new();
+                for name in names {
+                    hasher.write(name.as_bytes());
+                }
+                let value = hasher.finish();
 
-        for arg in test_args {
-            p.arg("--test-args").arg(arg);
+                (value, value)
+            };
+
+            if checksums.get(&name).is_none() {
+                checksums
+                    .insert(name.clone(), HashSet::new())
+                    .unwrap_or_default();
+            }
+            checksums.get_mut(&name).unwrap().insert(hash);
+
+            analysis.export_checksums(ChecksumKind::Checksum, &checksums, true);
         }
 
-        let _ = p.output();
-    }
+        for (analysis, _count) in &mut tests {
+            let checksums = analysis.import_checksums(ChecksumKind::Checksum, false);
+            let checksums_vtbl = analysis.import_checksums(ChecksumKind::VtblChecksum, false);
+            let checksums_const = analysis.import_checksums(ChecksumKind::ConstChecksum, false);
 
-    for (analysis, count) in &mut tests {
-        let mut checksums = Checksums::new();
+            let RTSContext {
+                new_checksums,
+                new_checksums_vtbl,
+                new_checksums_const,
+                ..
+            } = analysis.context_mut();
 
-        // We add a hash of the number of tests, to recognize newly added or removed compile-fail tests
-        let name = DOCTEST_PREFIX.to_string() + analysis.context.doctest_name.as_ref().unwrap();
-        let hash = {
-            let mut hasher = DefaultHasher::new();
-            hasher.write_usize(*count);
-            let value = hasher.finish();
+            new_checksums.get_or_init(|| checksums);
+            new_checksums_vtbl.get_or_init(|| checksums_vtbl);
+            new_checksums_const.get_or_init(|| checksums_const);
 
-            (value, value)
-        };
-
-        if checksums.get(&name).is_none() {
-            checksums
-                .insert(name.clone(), HashSet::new())
-                .unwrap_or_default();
+            analysis.export_changes(cache_kind);
         }
-        checksums.get_mut(&name).unwrap().insert(hash);
-
-        analysis.export_checksums(ChecksumKind::Checksum, &checksums, true);
-    }
-
-    for (analysis, _count) in &mut tests {
-        let checksums = analysis.import_checksums(ChecksumKind::Checksum, false);
-        let checksums_vtbl = analysis.import_checksums(ChecksumKind::VtblChecksum, false);
-        let checksums_const = analysis.import_checksums(ChecksumKind::ConstChecksum, false);
-
-        let RTSContext {
-            new_checksums,
-            new_checksums_vtbl,
-            new_checksums_const,
-            ..
-        } = analysis.context_mut();
-
-        new_checksums.get_or_init(|| checksums);
-        new_checksums_vtbl.get_or_init(|| checksums_vtbl);
-        new_checksums_const.get_or_init(|| checksums_const);
-
-        analysis.export_changes(cache_kind);
     }
 
     Ok(test_names)
