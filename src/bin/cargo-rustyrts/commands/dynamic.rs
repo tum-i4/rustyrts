@@ -28,7 +28,6 @@ use internment::{Arena, ArenaIntern};
 
 use itertools::Itertools;
 use rustyrts::{
-    callbacks_shared::DOCTEST_PREFIX,
     constants::{
         ENDING_CHANGES, ENDING_PROCESS_TRACE, ENV_COMPILE_MODE, ENV_DOCTESTED,
         ENV_ONLY_INSTRUMENTATION, ENV_TARGET, ENV_TARGET_DIR,
@@ -39,7 +38,7 @@ use test::{test::parse_opts, TestOpts};
 use tracing::debug;
 
 use crate::{
-    commands::{convert_doctest_name, TestInfo},
+    commands::{DoctestName, TestInfo},
     ops::PreciseExecutor,
     target_hash::get_target_hash,
 };
@@ -474,23 +473,32 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                 );
 
                 let mut tests_found = HashSet::new();
-                let tests = tests.into_iter().map(|s| convert_doctest_name(&s)).unique();
+                let tests = tests
+                    .into_iter()
+                    .map(|s| DoctestName::new(s))
+                    .map(|t| (t.cache_name(), t.trimmed_name().to_string(), t.fn_name()))
+                    .unique();
 
                 let no_traces = {
                     let mut map_no_traces = HashMap::new();
 
-                    for (trimmed, fn_name) in tests {
-                        let dependency_unit = DependencyUnit::DoctestUnit(unit, fn_name.clone());
+                    for (cache_name, trimmed_name, fn_name) in tests {
+                        let test = self.arena.intern(cache_name.clone());
+
+                        let dependency_unit = DependencyUnit::DoctestUnit(unit, cache_name.clone());
                         let changed = self.changed_nodes(dependency_unit).clone();
+
+                        print_doctest_stats(
+                            shell,
+                            "Doc test ".to_string() + &trimmed_name,
+                            &changed,
+                        )
+                        .unwrap();
 
                         let path = CacheKind::Dynamic.map(self.target_dir.to_path_buf());
 
-                        let interned = self.arena.intern(trimmed.clone());
-
-                        tests_found.insert(interned);
-
                         let descr = CacheFileDescr::new(
-                            fn_name.as_str(),
+                            &cache_name,
                             None,
                             None,
                             None,
@@ -505,24 +513,25 @@ impl<'arena, 'context> Selector<'context> for DynamicSelector<'arena, 'context> 
                                 .map(|l| Arena::<String>::intern(self.arena, l))
                                 .collect::<HashSet<_>>()
                         }) {
-                            traced_tests.insert(interned);
+                            traced_tests.insert(test);
                             let mut intersection = traces.intersection(&changed).peekable();
                             if intersection.peek().is_some() {
                                 debug!(
                                     "Found non-empty intersection: {:?}",
                                     intersection.collect::<Vec<_>>()
                                 );
-                                affected_tests.push(interned.to_string());
+                                affected_tests.push(trimmed_name);
                             }
                         } else {
-                            let name = DOCTEST_PREFIX.to_string() + &fn_name;
                             debug!("Found no traces");
-                            map_no_traces
-                                .insert(interned, Arena::<String>::intern(self.arena, name));
+                            map_no_traces.insert(
+                                trimmed_name,
+                                Arena::<String>::intern(self.arena, fn_name.clone()),
+                            );
                             changed_nodes.extend(changed.clone());
                         }
-                        print_doctest_stats(shell, "Doc test ".to_string() + &trimmed, &changed)
-                            .unwrap();
+
+                        tests_found.insert(test);
                     }
 
                     map_no_traces

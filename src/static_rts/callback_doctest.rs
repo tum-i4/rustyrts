@@ -56,6 +56,7 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
             compile_mode,
             target,
             doctest_name,
+            doctest_fn_name,
             ..
         } = self.context();
 
@@ -71,11 +72,11 @@ impl<'tcx> GraphAnalysisCallback<'tcx> for StaticDoctestRTSCallbacks {
             let entry_def = ENTRY_FN
                 .get_or_init(|| tcx.entry_fn(()).map(|(def_id, _)| def_id))
                 .unwrap();
-            let entry_name = def_id_name(tcx, entry_def, false, true);
+            let name = def_id_name(tcx, entry_def, false, true);
 
             graph.add_edge(
-                doctest_name.as_ref().unwrap().to_string(),
-                entry_name,
+                doctest_fn_name.as_ref().unwrap().to_string(),
+                name,
                 EdgeType::Trimmed,
             );
 

@@ -14,6 +14,7 @@ use cargo::{
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
 use rustyrts::{
+    callbacks_shared::DOCTEST_PREFIX,
     constants::ENV_RETEST_ALL,
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
 };
@@ -285,11 +286,38 @@ Proceed with caution!!!
     crate::ops::run_tests(&ws, &ops, &test_args, selection)
 }
 
-pub fn convert_doctest_name(test_name: &str) -> (String, String) {
-    let (trimmed, _) = test_name.split_once(" - ").unwrap();
-    let fn_name = trimmed
-        .chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect::<String>();
-    (trimmed.to_string(), fn_name)
+#[derive(Debug)]
+pub(crate) struct DoctestName {
+    inner: String,
+}
+
+impl DoctestName {
+    pub(crate) fn new(inner: String) -> Self {
+        debug_assert!(inner.contains(" - "));
+        Self { inner }
+    }
+
+    pub(crate) fn full_name(&self) -> String {
+        self.inner.split_once(" (line").unwrap().0.to_owned()
+    }
+
+    pub(crate) fn trimmed_name(&self) -> String {
+        self.inner.split_once(" - ").unwrap().0.to_owned()
+    }
+
+    pub(crate) fn cache_name(&self) -> String {
+        self.trimmed_name()
+            .chars()
+            .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+            .collect::<String>()
+    }
+
+    pub(crate) fn fn_name(&self) -> String {
+        DOCTEST_PREFIX.to_string()
+            + &self
+                .trimmed_name()
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                .collect::<String>()
+    }
 }

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     ffi::OsString,
     hash::DefaultHasher,
     hash::Hasher,
@@ -18,12 +18,12 @@ use cargo::{
 use cargo_util::ProcessBuilder;
 use itertools::Itertools;
 use rustyrts::{
-    callbacks_shared::{ChecksumsCallback, CompileMode, RTSContext, Target, DOCTEST_PREFIX},
+    callbacks_shared::{ChecksumsCallback, CompileMode, RTSContext, Target},
     checksums::Checksums,
     fs_utils::{CacheKind, ChecksumKind},
 };
 
-use crate::commands::convert_doctest_name;
+use crate::commands::DoctestName;
 
 struct DoctestAnalysis {
     path: PathBuf,
@@ -143,16 +143,25 @@ pub(crate) fn run_analysis_doctests(
     }
 
     {
-        let grouped = test_names
-            .iter()
-            .sorted()
-            .group_by(|test| convert_doctest_name(test).1);
+        let grouped = {
+            let mut groups = HashMap::new();
+
+            for test in &test_names {
+                let doctest_name = DoctestName::new(test.clone());
+                let key = (doctest_name.fn_name(), doctest_name.cache_name());
+
+                if groups.get(&key).is_none() {
+                    groups.insert(key.clone(), Vec::new()).unwrap_or_default();
+                }
+                groups.get_mut(&key).unwrap().push(doctest_name);
+            }
+
+            groups
+        };
 
         let mut tests = Vec::new();
 
-        for (test_fn, names) in grouped.into_iter() {
-            let doctest_name = Some(test_fn.clone());
-
+        for ((fn_name, cache_name), names) in grouped {
             let compile_mode = CompileMode::try_from(format!("{:?}", unit.mode).as_str()).unwrap();
             let target =
                 Target::try_from(format!("{}", unit.target.kind().description()).as_str()).unwrap();
@@ -163,7 +172,8 @@ pub(crate) fn run_analysis_doctests(
                     unit.target.crate_name(),
                     compile_mode,
                     target,
-                    doctest_name,
+                    Some(cache_name.clone()),
+                    Some(fn_name.clone()),
                 ),
             };
 
@@ -183,7 +193,7 @@ pub(crate) fn run_analysis_doctests(
                     .get_or_init(|| old_checksums_const);
             }
 
-            tests.push((analysis, names));
+            tests.push((fn_name, analysis, names));
         }
 
         {
@@ -197,32 +207,31 @@ pub(crate) fn run_analysis_doctests(
             let _ = p.output();
         }
 
-        for (analysis, names) in &mut tests {
+        for (fn_name, analysis, names) in &mut tests {
             let mut checksums = Checksums::new();
 
             // We add a hash of the names of all tests, to recognize newly added or removed compile-fail tests
-            let name = DOCTEST_PREFIX.to_string() + analysis.context.doctest_name.as_ref().unwrap();
             let hash = {
                 let mut hasher = DefaultHasher::new();
                 for name in names {
-                    hasher.write(name.as_bytes());
+                    hasher.write(name.full_name().as_bytes());
                 }
                 let value = hasher.finish();
 
                 (value, value)
             };
 
-            if checksums.get(&name).is_none() {
+            if checksums.get(fn_name).is_none() {
                 checksums
-                    .insert(name.clone(), HashSet::new())
+                    .insert(fn_name.clone(), HashSet::new())
                     .unwrap_or_default();
             }
-            checksums.get_mut(&name).unwrap().insert(hash);
+            checksums.get_mut(fn_name).unwrap().insert(hash);
 
             analysis.export_checksums(ChecksumKind::Checksum, &checksums, true);
         }
 
-        for (analysis, _count) in &mut tests {
+        for (_fn_name, analysis, _count) in &mut tests {
             let checksums = analysis.import_checksums(ChecksumKind::Checksum, false);
             let checksums_vtbl = analysis.import_checksums(ChecksumKind::VtblChecksum, false);
             let checksums_const = analysis.import_checksums(ChecksumKind::ConstChecksum, false);

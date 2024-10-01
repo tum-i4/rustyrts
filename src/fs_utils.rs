@@ -161,7 +161,7 @@ impl<'data> CacheFileDescr<'data> {
         file_name += self.crate_name;
         if let Some(doctest) = self.doctest_name {
             file_name += "_";
-            file_name += doctest;
+            file_name += &doctest;
         }
 
         buf.push(file_name);
