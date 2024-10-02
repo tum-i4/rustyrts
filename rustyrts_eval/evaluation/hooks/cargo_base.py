@@ -155,7 +155,7 @@ class CargoHook(Hook, ABC):
                         output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
-                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                    proc.execute(capture_output=True, shell=True, timeout=1000.0)
 
                     # Do not consider it an error if the build command fails
                     # has_errored |= not (proc.exit_code == 0 or any(
@@ -190,7 +190,7 @@ class CargoHook(Hook, ABC):
                     output_filepath=self.prepare_cache_file(),
                     env=self.env() | env_tmp_override(),
                 )
-                proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                proc.execute(capture_output=True, shell=True, timeout=7000.0)
                 has_errored |= proc.exit_code == -1 or "thread caused non-unwinding panic. aborting." in proc.output or (not (proc.exit_code == 0 or any(line.startswith("{") and line.endswith("}") for line in proc.output.splitlines())))
 
                 # ******************************************************************************************************
@@ -257,7 +257,7 @@ class CargoHook(Hook, ABC):
                         output_filepath=self.prepare_cache_file(),
                         env=self.build_env(),
                     )
-                    proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                    proc.execute(capture_output=True, shell=True, timeout=1000.0)
 
                     # Do not consider it an error if the build command fails
                     # has_errored |= not (proc.exit_code == 0 or any(
@@ -297,7 +297,7 @@ class CargoHook(Hook, ABC):
                     # this effectively prevents those tests from failing, but there is just no other way
                     | env_tmp_override(),
                 )
-                proc.execute(capture_output=True, shell=True, timeout=10000.0)
+                proc.execute(capture_output=True, shell=True, timeout=7000.0)
                 has_errored |= proc.exit_code == -1 or "thread caused non-unwinding panic. aborting." in proc.output or (not (proc.exit_code == 0 or any(line.startswith("{") and line.endswith("}") for line in proc.output.splitlines())))
 
                 # ******************************************************************************************************
@@ -369,6 +369,11 @@ class CargoHook(Hook, ABC):
         proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 
+        # additionally update cc which has shown to be problematic in cc
+        update_command = self.update_command() + " cc --precise 1.0.88"
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
         # additionally update proc-macro2@1 which has shown to be problematic in several projects
         update_command = self.update_command() + " proc-macro2@1"
         proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
@@ -405,6 +410,11 @@ class CargoHook(Hook, ABC):
 
         # additionally update tokio which have shown to be problematic in penumbra
         update_command = self.update_command() + " tokio"
+        proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update parse-size which has shown to be problematic in actix-web
+        update_command = self.update_command() + " parse-size --precise 1.0.0"
         proc: SubprocessContainer = SubprocessContainer(command=update_command, output_filepath=self.prepare_cache_file())
         proc.execute(capture_output=True, shell=True, timeout=100.0)
 

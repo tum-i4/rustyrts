@@ -61,6 +61,9 @@ class CargoMutantsHook(Hook):
             test_options,
         )
 
+    def update_command(self):
+        return "cargo update"
+
     def env(self):
         return os.environ | self.env_vars
 
@@ -103,6 +106,8 @@ class CargoMutantsHook(Hook):
         # checkout actual commit
         self.git_client.git_repo.git.checkout(commit.commit_str, force=True)
         self.git_client.git_repo.git.reset(commit.commit_str, hard=True)
+
+        self.update_dependencies(commit)
 
         # run pre_hook if present
         if self.pre_hook:
@@ -180,3 +185,106 @@ class CargoMutantsHook(Hook):
         _LOGGER.info("gc has freed " + str(freed) + " objects")
 
         return not has_failed
+
+    def update_dependencies(self, commit):
+        if not self.git_client.get_file_is_tracked(
+            commit, "Cargo.lock"
+        ):  # if Cargo.lock is versioned using git, we do not want to update all packages
+            update_command = self.update_command()
+            proc: SubprocessContainer = SubprocessContainer(
+                command=update_command, output_filepath=self.prepare_cache_file()
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
+        else:
+            _LOGGER.debug(
+                "Found versioned Carg.lock, skipping update of all dependencies"
+            )
+
+        ## The following commands will just silently fail if not applicable
+
+        # additionally update actix_derive which has shown to be problematic
+        update_command = self.update_command() + " actix_derive --precise 0.6.0"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update chrono which has shown to be problematic
+        update_command = self.update_command() + " chrono --precise 0.4.29"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update regex which has shown to be problematic
+        update_command = self.update_command() + " regex --precise 1.4.3"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update proc-macro2@1 which has shown to be problematic in several projects
+        update_command = self.update_command() + " proc-macro2@1"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update reedline which has shown to be problematic in meilisearch
+        # update_command = self.update_command() + " reedline"
+        # proc: SubprocessContainer = SubprocessContainer(
+        #     command=update_command, output_filepath=self.prepare_cache_file()
+        # )
+        # proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update value-bag which has shown to be problematic in feroxbuster
+        update_command = self.update_command() + " value-bag"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update log which has shown to be problematic in feroxbuster
+        update_command = self.update_command() + " log"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update rustc-serialize which has shown to be problematic in zenoh
+        update_command = self.update_command() + " rustc-serialize"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update log@0.4.14 which have shown to be problematic in zenoh
+        versions = ["0.4.14"]
+        for v in versions:
+            update_command = self.update_command() + " log@" + v
+            proc: SubprocessContainer = SubprocessContainer(
+                command=update_command, output_filepath=self.prepare_cache_file()
+            )
+            proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update tokio which have shown to be problematic in penumbra
+        update_command = self.update_command() + " tokio"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+
+        # additionally update rustversion which have shown to be problematic in actix-web
+        update_command = self.update_command() + " rustversion --precise 1.0.14"
+        proc: SubprocessContainer = SubprocessContainer(
+            command=update_command, output_filepath=self.prepare_cache_file()
+        )
+        proc.execute(capture_output=True, shell=True, timeout=100.0)
+        
+    def prepare_cache_file(self) -> str:
+        # prepare cache dir/file
+        cache_file = "run_{}.log".format(
+            int(time() * 1000)
+        )  # run identified by timestamp
+        cache_file_path = os.path.join(self.cache_dir, cache_file)
+        return cache_file_path
