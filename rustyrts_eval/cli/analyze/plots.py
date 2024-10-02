@@ -19,7 +19,7 @@ from ...util.logging.logger import get_logger
 
 _LOGGER = get_logger(__name__)
 
-output_format = ".svg"
+output_format = ".pdf"
 
 # mutants
 SUCCESS_MUTANTS_MSG = "Completed plotting results of mutants evaluation successfully"
@@ -74,13 +74,13 @@ def mutants_cmd(ctx):
         info = mutants.register_views()
         plotter = MutantsPlotter(conn, info, output_format)
 
-        partition = False
+        partition = True
 
         plotter.plot_mutants_duration_absolute()
         plotter.plot_mutants_duration_relative()
         plotter.plot_mutants_target_count_absolute(partition=partition)
         plotter.plot_mutants_target_count_relative()
-        plotter.plot_mutants_testcases_contains_relation()  # (partition=partition)
+        plotter.plot_mutants_testcases_subsumption()  # (partition=partition)
         plotter.plot_mutants_testcases_count_absolute(partition=partition)
         plotter.plot_mutants_testcases_count_relative()
         plotter.plot_mutants_testcases_failed_absolute(partition=partition)
@@ -110,17 +110,17 @@ def history_cmd(ctx, strategy):
             True if strategy == "sequential" else False,
         )
 
-        partition = False
+        partition = True
 
         plotter.plot_history_duration_absolute(partition=partition)
         plotter.plot_history_duration_relative()
         plotter.plot_history_target_count_absolute(partition=partition)
         plotter.plot_history_target_count_relative()
-        plotter.plot_history_testcases_contains_relation(partition=partition)
-        plotter.plot_history_testcases_count_absolute()
+        plotter.plot_history_testcases_subsumption(partition=partition)
+        plotter.plot_history_testcases_count_absolute(partition=partition)
         plotter.plot_history_testcases_count_relative()
         plotter.plot_history_testcases_different_absolute(partition=partition)
-        plotter.plot_history_efficiency_repo()
+        plotter.plot_history_efficiency_repo(partition=partition)
 
         spinner.stop()
         click_echo_success(SUCCESS_HISTORY_MSG)

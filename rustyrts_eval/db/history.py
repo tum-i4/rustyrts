@@ -402,6 +402,8 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
 
     check_parsed_tests = create_view("CheckParsedTests", check_parsed_tests, replace=True, metadata=Base.metadata)
 
+    report, report_parent = register_views_individual(special)
+
     statistics_commit = (
         select(
             commit.c.id,
@@ -413,14 +415,14 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
             sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.status != "IGNORED").scalar_subquery()).label("cases"),
             sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "UNIT").where(case.c.status != "IGNORED").scalar_subquery()).label("unit"),
             sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "INTEGRATION").where(case.c.status != "IGNORED").scalar_subquery()).label("integration"),
-            func.round(func.cast(sum(suite.c.duration), NUMERIC), 2).label("test_duration"),
+            sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "DOCTEST").where(case.c.status != "IGNORED").scalar_subquery()).label("doctest"),
+            func.round(func.cast(sum(suite.c.duration), NUMERIC), 2).label("test_duration_suites"),
+            func.round(func.cast(report.c.retest_all_test_duration - report.c.retest_all_build_duration, NUMERIC), 2).label("test_duration_log"),
         )
         .select_from(commit, report, suite)
-        .where(commit.c.id == report.c.commit_id)
-        .where(report.c.id == suite.c.report_id)
-        .where(report.c.has_errored == False)
-        .where(report.c.name == "cargo test" + special)
-        .group_by(commit.c.id, commit.c.repo_id)
+        .where(commit.c.id == report.c.commit)
+        .where(report.c.retest_all_id == suite.c.report_id)
+        .group_by(commit.c.id, commit.c.repo_id, report.c.retest_all_test_duration, report.c.retest_all_build_duration)
     )
 
     statistics_commit = create_materialized_view(
@@ -458,9 +460,17 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
                 2,
             ).label("avg_integration"),
             func.round(
-                func.cast(func.avg(statistics_commit.c.test_duration), NUMERIC),
+                func.cast(func.avg(statistics_commit.c.doctest), NUMERIC),
                 2,
-            ).label("avg_test_duration"),
+            ).label("avg_doctest"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.test_duration_suites), NUMERIC),
+                2,
+            ).label("avg_test_duration_suites"),
+            func.round(
+                func.cast(func.avg(statistics_commit.c.test_duration_log), NUMERIC),
+                2,
+            ).label("avg_test_duration_log"),
         )
         .select_from(statistics_commit)
         .group_by(statistics_commit.c.repo_id)
@@ -472,8 +482,6 @@ def register_views(sequential: bool = False) -> HistoryViewInformation:
         # replace=True,
         metadata=Base.metadata,
     )
-
-    report, report_parent = register_views_individual(special)
 
     report = create_view(
         "TestReportExtended",
