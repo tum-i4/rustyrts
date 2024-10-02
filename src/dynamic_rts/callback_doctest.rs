@@ -53,10 +53,11 @@ impl InstrumentingCallback for InstrumentingDoctestRTSCallbacks {
                     .chars()
                     .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
                     .collect::<String>();
-                let fn_name = DOCTEST_PREFIX.to_string() + &doctest_name;
+
+                let doctest_fn_name = DOCTEST_PREFIX.to_string() + &doctest_name;
 
                 body.insert_post_test(tcx, &doctest_name, &mut cache_ret, true);
-                body.insert_trace(tcx, &fn_name, &mut cache_ret);
+                body.insert_trace(tcx, &doctest_fn_name, &mut cache_ret);
                 body.insert_pre_test(tcx, &doctest_name, &mut cache_ret, true);
                 return;
             }

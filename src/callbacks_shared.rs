@@ -48,7 +48,9 @@ pub struct RTSContext {
     pub crate_name: String,
     pub compile_mode: CompileMode,
     pub target: Target,
+
     pub doctest_name: Option<String>,
+    pub doctest_fn_name: Option<String>,
 
     pub new_checksums: OnceCell<Checksums>,
     pub new_checksums_vtbl: OnceCell<Checksums>,
@@ -64,12 +66,14 @@ impl RTSContext {
         compile_mode: CompileMode,
         target: Target,
         doctest_name: Option<String>,
+        doctest_fn_name: Option<String>,
     ) -> Self {
         Self {
             crate_name,
             compile_mode,
             target,
             doctest_name,
+            doctest_fn_name,
             new_checksums: OnceCell::new(),
             new_checksums_vtbl: OnceCell::new(),
             new_checksums_const: OnceCell::new(),
@@ -159,24 +163,32 @@ pub trait AnalysisCallback<'tcx>: ChecksumsCallback {
             .map(|s| Target::try_from(s.as_str()).expect("Failed to convert target"))
             .expect("Failed to find target");
 
-        let (crate_name, doctest_name) = if compile_mode == CompileMode::Doctest {
+        let (crate_name, doctest_name, doctest_fn_name) = if compile_mode == CompileMode::Doctest {
             let doctest_name = std::env::var("UNSTABLE_RUSTDOC_TEST_PATH")
                 .expect("Did not find doctest name")
                 .chars()
                 .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
                 .collect::<String>();
 
+            let doctest_fn_name = DOCTEST_PREFIX.to_string() + &doctest_name;
+
             let crate_name = std::env::var(ENV_DOCTESTED).unwrap();
 
-            (crate_name, Some(doctest_name))
+            (crate_name, Some(doctest_name), Some(doctest_fn_name))
         } else {
             let target_hash = std::env::var(ENV_TARGET_HASH).expect("Failed to find target hash");
             let crate_name = format!("{}-{}", tcx.crate_name(LOCAL_CRATE), target_hash);
 
-            (crate_name, None)
+            (crate_name, None, None)
         };
 
-        let context = RTSContext::new(crate_name, compile_mode, target, doctest_name);
+        let context = RTSContext::new(
+            crate_name,
+            compile_mode,
+            target,
+            doctest_name,
+            doctest_fn_name,
+        );
         context.new_checksums.get_or_init(Checksums::new);
         context.new_checksums_const.get_or_init(Checksums::new);
 
@@ -379,6 +391,7 @@ pub trait ChecksumsCallback {
             compile_mode,
             target,
             doctest_name,
+            doctest_fn_name,
             new_checksums,
             new_checksums_vtbl,
             new_checksums_const,
@@ -397,7 +410,7 @@ pub trait ChecksumsCallback {
 
         let changed_nodes = calculate_changes(
             from_new_revision,
-            doctest_name.as_ref(),
+            doctest_fn_name.as_deref(),
             new_checksums.get().unwrap(),
             new_checksums_vtbl.get().unwrap(),
             new_checksums_const.get().unwrap(),
@@ -435,7 +448,10 @@ pub trait ChecksumsCallback {
             ..
         } = self.context();
 
-        debug!("Exporting {:?} checksums for {}", kind, crate_name);
+        debug!(
+            "Exporting {:?} for {},{:?},{:?}",
+            kind, crate_name, compile_mode, doctest_name
+        );
 
         let descr = CacheFileDescr::new(
             crate_name,
@@ -462,7 +478,7 @@ pub trait ChecksumsCallback {
 
 fn calculate_changes(
     from_new_revision: bool,
-    maybe_doctest_name: Option<&String>,
+    maybe_doctest_fn_name: Option<&str>,
     new_checksums: &Checksums,
     new_checksums_vtbl: &Checksums,
     new_checksums_const: &Checksums,
@@ -493,12 +509,10 @@ fn calculate_changes(
         if changed {
             // In case of a doc test with dedicated main function, we need to swap out its name here
             let name = (name == "rust_out::main")
-                .then(|| {
-                    maybe_doctest_name
-                        .map(|doctest_name| DOCTEST_PREFIX.to_string() + &doctest_name)
-                })
+                .then_some(maybe_doctest_fn_name)
                 .flatten()
-                .unwrap_or_else(|| name.clone());
+                .unwrap_or_else(|| name)
+                .to_string();
 
             debug!(
                 "Changed due to regular checksums: {} {:?}/{:?}",

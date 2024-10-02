@@ -23,15 +23,15 @@ use cargo::{
 
 use cargo_util::ProcessBuilder;
 use internment::{Arena, ArenaIntern};
+use itertools::Itertools;
 use rustyrts::{
-    callbacks_shared::DOCTEST_PREFIX,
     constants::{ENDING_CHANGES, ENV_COMPILE_MODE, ENV_DOCTESTED, ENV_TARGET, ENV_TARGET_DIR},
     fs_utils::{CacheFileDescr, CacheFileKind, CacheKind},
     static_rts::graph::{serialize::ArenaDeserializable, DependencyGraph},
 };
 use tracing::trace;
 
-use crate::{commands::convert_doctest_name, ops::PreciseExecutor, target_hash::get_target_hash};
+use crate::{commands::DoctestName, ops::PreciseExecutor, target_hash::get_target_hash};
 
 use super::{
     cache::HashCache, DependencyUnit, PreciseSelectionMode, SelectionContext, SelectionMode,
@@ -299,12 +299,7 @@ impl<'arena: 'context, 'context> StaticSelector<'arena, 'context> {
                                 "Did not find dependency graph for crate {:?} in mode {:?}\nTried reading from {:?}",
                                 crate_name, compile_mode, graph_path
                             );
-                            let mut graph = DependencyGraph::new(arena);
-                            if let Some(doctest_name) = maybe_doctest_name {
-                                let entry_name = DOCTEST_PREFIX.to_string() + doctest_name;
-                                graph.add_edge(doctest_name.to_string(), entry_name, rustyrts::static_rts::graph::EdgeType::Trimmed);
-                            }
-                            graph
+                            DependencyGraph::new(arena)
                         }, |s| DependencyGraph::deserialize(arena, &s).unwrap());
 
         if maybe_doctest_name.is_some() && graph_path.is_file() {
@@ -524,25 +519,29 @@ impl<'arena, 'context> Selector<'context> for StaticSelector<'arena, 'context> {
                 );
 
                 let mut tests_found = HashSet::new();
+                let tests = tests
+                    .into_iter()
+                    .map(|s| DoctestName::new(s))
+                    .map(|t| (t.cache_name(), t.trimmed_name().to_string(), t.fn_name()))
+                    .unique();
 
-                for test in &tests {
-                    let (trimmed, test_path) = convert_doctest_name(test);
-                    let test = self.arena.intern(test_path.clone());
+                for (cache_name, trimmed_name, fn_name) in tests {
+                    let test = self.arena.intern(fn_name.clone());
 
-                    let dependency_unit = DependencyUnit::DoctestUnit(unit, test_path);
+                    let dependency_unit = DependencyUnit::DoctestUnit(unit, cache_name);
                     let (changed, locally, reachable) =
                         self.reachble_and_changed_nodes(dependency_unit);
 
                     print_doctest_stats(
                         shell,
-                        "Doc test ".to_string() + &trimmed,
+                        "Doc test ".to_string() + &trimmed_name,
                         &changed,
                         &reachable,
                     )
                     .unwrap();
 
                     if locally.contains(&test) {
-                        affected_tests.push(trimmed);
+                        affected_tests.push(trimmed_name);
                     }
                     tests_found.insert(test);
                 }
