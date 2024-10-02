@@ -56,7 +56,7 @@ $ rustup override set nightly-2023-12-28 # (to use this toolchain in current dir
 To install RustyRTS simply run:
 
 ```
-$ cargo install --path .
+$ cargo install --path . --locked
 ```
 
 This will first install the required toolchain, if it is not present, and then build the required executables and install them to your local cargo directory.
@@ -83,8 +83,12 @@ Since RustyRTS creates intermediate files that are processed on the following in
 
 ## Notable Examples
 
-`cargo rustyrts static -v` - to enable verbose mode
-`cargo rustyrts static -- -Z unstable-options --format=json` - to print test results in json format
-`cargo rustyrts dynamic --all-features` - to enable all features
-`RUSTFLAGS="--emit=mir" cargo rustyrts dynamic` - to obtain a human-readable dump of the MIR, including function calls injected for tracing
-`cargo rustyrts dynamic -- --test-threads=1` - to execute tests single-threaded without forking for every test
+- `cargo rustyrts static -v` - to enable verbose mode
+
+- `cargo rustyrts static -- -Z unstable-options --format=json` - to print test results in json format
+
+- `cargo rustyrts dynamic --all-features` - to enable all features
+
+- `RUSTFLAGS="--emit=mir" cargo rustyrts dynamic` - to obtain a human-readable dump of the MIR, including function calls injected for tracing
+
+- `cargo rustyrts dynamic -- --test-threads=1` - to execute tests single-threaded without forking for every test
