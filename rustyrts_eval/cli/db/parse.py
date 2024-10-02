@@ -21,7 +21,7 @@ from ...util.logging.logger import get_logger
 
 _LOGGER = get_logger(__name__)
 
-output_format = ".svg"
+output_format = ".pdf"
 
 # mutants
 SUCCESS_MUTANTS_MSG = "Completed parsing results of mutants evaluation successfully"

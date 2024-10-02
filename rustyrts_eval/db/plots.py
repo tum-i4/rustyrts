@@ -213,16 +213,53 @@ class HistoryPlotter:
         project_labels["y"] = pd.DataFrame([df_basic["y"], df_static["y"], df_dynamic["y"]]).min(axis=0)
         project_labels["text"] = df["path"].apply(lambda p: p.split("/")[-1])
         project_labels["text"] += df["retest_all_mean_testing_time"].apply(lambda p: " - " + str(p) + "s")
+
         project_labels["ha"] = "center"
         project_labels["va"] = "top"
-        project_labels["xytext"] = -0.5
+
+        project_labels["xytext_x"] = 0.0
+        project_labels["xytext_y"] = -0.5
+        project_labels["textcoords"] = "offset fontsize"
+        project_labels["arrow"] = False
 
         if partition:
             filter = project_labels["text"].apply(lambda t: "tantivy" in t)
+            project_labels.loc[filter, "y"] = pd.DataFrame([df_basic.loc[filter, "y"], df_static.loc[filter, "y"], df_dynamic.loc[filter, "y"]]).mean(axis=0) + 5.0
+
+            project_labels.loc[filter, "ha"] = "center"
+            project_labels.loc[filter, "va"] = "center"
+
+            project_labels.loc[filter, "xytext_x"] = -50.0
+            project_labels.loc[filter, "xytext_y"] = +180.0
+            project_labels.loc[filter, "textcoords"] = "offset pixels"
+            project_labels.loc[filter, "arrow"] = True
+
+            filter = project_labels["text"].apply(lambda t: "meilisearch" in t)
+            project_labels.loc[filter, "y"] = pd.DataFrame([df_basic.loc[filter, "y"], df_static.loc[filter, "y"], df_dynamic.loc[filter, "y"]]).mean(axis=0) + 7.0
+
+            project_labels.loc[filter, "ha"] = "center"
+            project_labels.loc[filter, "va"] = "center"
+
+            project_labels.loc[filter, "xytext_x"] = +50.0
+            project_labels.loc[filter, "xytext_y"] = +120.0
+            project_labels.loc[filter, "textcoords"] = "offset pixels"
+            project_labels.loc[filter, "arrow"] = True
+
+            filter = project_labels["text"].apply(lambda t: "penumbra" in t)
             project_labels.loc[filter, "y"] = pd.DataFrame([df_basic.loc[filter, "y"], df_static.loc[filter, "y"], df_dynamic.loc[filter, "y"]]).max(axis=0)
+
             project_labels.loc[filter, "ha"] = "center"
             project_labels.loc[filter, "va"] = "bottom"
-            project_labels.loc[filter, "xytext"] = +0.5
+            project_labels.loc[filter, "xytext_x"] = 0.0
+            project_labels.loc[filter, "xytext_y"] = +0.5
+
+            filter = project_labels["text"].apply(lambda t: "solana" in t)
+            project_labels.loc[filter, "y"] = pd.DataFrame([df_basic.loc[filter, "y"], df_static.loc[filter, "y"], df_dynamic.loc[filter, "y"]]).max(axis=0)
+
+            project_labels.loc[filter, "ha"] = "center"
+            project_labels.loc[filter, "va"] = "bottom"
+            project_labels.loc[filter, "xytext_x"] = 0.0
+            project_labels.loc[filter, "xytext_y"] = +0.5
 
         vlines = df_basic[["x"]].copy()
         vlines["ymin"] = pd.DataFrame([df_basic["y"], df_static["y"], df_dynamic["y"]]).min(axis=0)
@@ -1022,8 +1059,8 @@ class HistoryPlotter:
         labels_not_selected = [label]
 
         if partition:
-            filter_normal = [1, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13]
-            filter_special = [2, 8]
+            filter_normal = [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
+            filter_special = [2]
 
             labels_1 = self.labels[(self.labels["id"].isin(filter_normal))]
             labels_2 = self.labels[(self.labels["id"].isin(filter_special))]
@@ -1483,7 +1520,6 @@ class MutantsPlotter:
             COLORS[2][0],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
-            linewidth=0.3,
         )
         boxplot(
             dfs,
@@ -1501,7 +1537,6 @@ class MutantsPlotter:
             COLORS[2][0],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
-            linewidth=0.3,
         )
 
     def plot_mutants_testcases_subsumption(self, partition=False):
@@ -1725,7 +1760,6 @@ class MutantsPlotter:
             COLORS[1],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
-            linewidth=0.3,
         )
         boxplot(
             dfs,
@@ -1743,7 +1777,6 @@ class MutantsPlotter:
             COLORS[1],
             legend_anchor=(1.0, 0.8, 0.1, 0.1),
             size=4,
-            linewidth=0.3,
         )
 
     def plot_mutants_testcases_failed_absolute(self, partition=False):
@@ -2097,7 +2130,7 @@ def boxplot_with_observations(
     legend_anchor=None,
     sequential_watermark=False,
     size=8,
-    linewidth=0.5,
+    linewidth=0.0,
 ):
     fig, axes = plt.subplots(1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)})
     if len(dfs) <= 1:
@@ -2184,7 +2217,7 @@ def stripplot(
     legend_anchor=None,
     sequential_watermark=False,
     size=8,
-    linewidth=0.5,
+    linewidth=0.0,
 ):
     fig, axes = plt.subplots(1, len(dfs), figsize=figsize, gridspec_kw={"width_ratios": __get_widths(labels)})
     if len(dfs) <= 1:
@@ -2256,7 +2289,7 @@ def scatterplot(
     legend_anchor=None,
     regression=False,
     sequential_watermark=False,
-    linewidth=1.0,
+    linewidth=0.0,
 ):
     df = pd.concat(df_raw)
 
@@ -2280,7 +2313,19 @@ def scatterplot(
     ax.set_yscale(y_scale)
 
     for _idx, row in project_labels.iterrows():
-        ax.annotate(text=row["text"], xy=(row["x"], row["y"]), xycoords="data", xytext=(0.0, row["xytext"]), textcoords="offset fontsize", rotation=270, fontsize=20, ha=row["ha"], va=row["va"])
+        arrowprops = {"width": 2.0, "headwidth": 8.0, "facecolor": "grey"} if row["arrow"] else None
+        ax.annotate(
+            text=row["text"],
+            xy=(row["x"], row["y"]),
+            xycoords="data",
+            xytext=(row["xytext_x"], row["xytext_y"]),
+            textcoords=row["textcoords"],
+            rotation=270,
+            fontsize=20,
+            ha=row["ha"],
+            va=row["va"],
+            arrowprops=arrowprops,
+        )
 
     if regression:
         for i in range(len(df_raw)):

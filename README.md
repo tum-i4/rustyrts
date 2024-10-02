@@ -70,6 +70,14 @@ rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/history_par
 rustyrts_eval evaluate postgresql://postgres:rustyrts@localhost:5432/history_sequential history hardcoded sequential
 ```
 
+## Parse test reports into test suites and test cases
+
+```bash
+rustyrts_eval parse postgresql://postgres:rustyrts@localhost:5432/mutants mutants
+rustyrts_eval parse postgresql://postgres:rustyrts@localhost:5432/history_parallel history
+rustyrts_eval parse postgresql://postgres:rustyrts@localhost:5432/history_sequential history
+```
+
 ## Analyze results
 
 ```bash

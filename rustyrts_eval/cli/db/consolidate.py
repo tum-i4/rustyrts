@@ -259,7 +259,7 @@ def extract_positions(item: DBChangelistItem) -> List[Tuple[Tuple[int, int], Tup
     return positions
 
 
-MARGIN = 100000
+MARGIN = 1000000
 
 
 def ranking_query(sess: Session, table, rank_by: SQLColumnExpression[Any] | list[SQLColumnExpression[Any]]):

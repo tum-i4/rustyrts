@@ -377,6 +377,7 @@ def register_views() -> MutantsViewInformation:
             sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.status != "IGNORED").scalar_subquery()).label("cases"),
             sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "UNIT").where(case.c.status != "IGNORED").scalar_subquery()).label("unit"),
             sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "INTEGRATION").where(case.c.status != "IGNORED").scalar_subquery()).label("integration"),
+            sum(select(count(distinct(case.c.id))).select_from(case).where(case.c.suite_id == suite.c.id).where(case.c.target == "DOCTEST").where(case.c.status != "IGNORED").scalar_subquery()).label("doctest"),
         )
         .select_from(commit, report, mutant, suite)
         .where(commit.c.id == report.c.commit_id)
