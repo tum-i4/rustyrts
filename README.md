@@ -5,7 +5,7 @@ Whether it is invoked _manually by a developer_ or _automatically in a CI pipeli
 
 RustyRTS provides multiple ways of selecting tests:
 
-## Test-level RTS
+## Function-level RTS
 
 - `cargo rustyrts dynamic` instruments all binaries to trace which functions are executed during the tests
   - ${\color{lightgreen}+++}$ extremely precise
@@ -36,6 +36,16 @@ Whenever RustyRTS detects that some test depends on a function that has changed,
 
 Whenever a test target is (re-)compiled, all of its tests are executed.
 
+## Are you really trying to sell me three tools? Which one should I use?
+
+In case your tests spawn additional processes, you may use `cargo rustyrts dynamic` **with extreme caution only if you know what you are doing**.
+
+Otherwise, since it is the least invasive and thus safest technique, we recommend using `cargo rustyrts basic`, which will be applicable in (almost) any case.
+
+If you want more fine-grained test selection and thus better testing time reduction, feel free to use `cargo rustyrts static`.
+
+For even more precise selection use `cargo rustyrts dynamic`, after having thought through all the quirks that come with using it.
+
 # Rust version
 
 RustyRTS depends on the internals of the `rustc` compiler, which are quite unstable.
@@ -53,9 +63,11 @@ $ rustup override set nightly-2023-12-28 # (to use this toolchain in current dir
 
 # How to install
 
-To install RustyRTS simply run:
+To install RustyRTS clone the repository and run:
 
 ```
+$ git clone https://github.com/tum-i4/rustyrts.git
+$ cd rustyrts
 $ cargo install --path . --locked
 ```
 
